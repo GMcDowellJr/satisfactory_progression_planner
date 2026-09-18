@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "satisfactory-progression"
+version = "0.1.0"
+description = "Progression-layer modules above the production adapter: tier unlock resolution."
+requires-python = ">=3.11"
+# satisfactory-production-adapter is imported for its contract types. Not declared
+# here because the repo is not installed: tests/conftest.py puts both src trees on
+# sys.path, matching how production_adapter is consumed elsewhere.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

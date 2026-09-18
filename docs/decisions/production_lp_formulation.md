@@ -1108,3 +1108,610 @@ can assert from where it was written.
 - The curated late-game route is one route. A second Phase 4/5 chain through a
   different producer mix (Quantum Encoder, Converter) would exercise the other two
   variable-power classes, which nothing currently does.
+
+---
+
+## 16. Amendment, 2026-09-18 — section 15.5 was wrong; the pair, and what it implies for D3b
+
+Greg's correction, verified. Section 15.5 recorded plan section 11's "Smart Plating
++ Iron Wire" row as a defect — a case that exercises nothing — and suggested moving
+it to a Wire-bearing target. **That conclusion is withdrawn.** The measurement it
+rested on was right; the reading of it was not.
+
+### 16.1 Iron Wire is not a standalone row, it is the second half of a pair
+
+Baseline Smart Plating is Reinforced Iron Plate plus Rotor, and neither uses Wire —
+so Iron Wire alone genuinely changes nothing, which is what 15.5 measured. What 15.5
+missed is *why section 11 lists it next to Stitched Iron Plate*.
+
+Stitched Iron Plate is an early alternate for Reinforced Iron Plate that consumes
+Wire instead of Screws. That is what puts Wire into the chain, and Wire's base recipe
+runs on Copper Ingot — so Stitched on its own is a gain only where copper is close
+enough to be worth belting in. Iron Wire then makes Wire from Iron Ingot, taking the
+copper back out.
+
+Measured, Smart Plating 1/min, canonical scenario, default weights:
+
+    variant                raw inputs                     power      machines  recipes
+    baseline               23.2500 ore                    26.0500    3.9000    7
+    stitched only          16.2500 ore + 3.3333 copper    23.5833    3.3444    9
+    iron wire only         23.2500 ore                    26.0500    3.9000    7
+    stitched + iron wire   19.9537 ore                    23.9290    3.4309    8
+
+Stitched alone trades 7.00 ore for 3.33 copper. Iron Wire buys the copper back for
+3.70 ore. The pair is 3.30 ore/min and 2.12 MW cheaper than baseline, on iron alone.
+
+One precision on the mechanism: Iron Wire removes Screws from the *Reinforced Iron
+Plate* branch, not from the chain. Rotor still consumes Screws, so `Recipe_Screw_C`
+is active in all four variants above.
+
+### 16.2 The structural point, which is larger than the row
+
+**An alternate's value is not a property of the alternate.** Iron Wire's marginal
+value here is exactly zero held alone and 3.30 ore/min held with Stitched Iron Plate.
+The two are not additive, and no independent per-recipe score reproduces the pair.
+
+Section 12.2 (D3b) already said valuation is scenario-parameterised and cannot be a
+static tier list. This is the sharper version: it cannot be a per-recipe list at all,
+static or not, because value is conditional on which *other* alternates are held. Any
+Phase 3 valuation that scores alternates one at a time and sums them gets this case
+wrong, and this case is an early-game one that a player meets in the first hours.
+
+That does not make Phase 3 a combinatorial search over 110 alternates — it makes the
+unit of valuation a *set*, and it means the comparator from section 14 is the right
+primitive for it, since a variant is already an arbitrary recipe set rather than a
+single swap.
+
+### 16.3 Proximity is not expressible to this model, and a cap does not fake it
+
+"Only worth it if copper is close" cannot be stated to a production solve. Capping
+Copper Ore at zero does not make the Stitched-only chain infeasible: the solver
+routes copper from Raw Quartz and SAM through the Converter, the same behaviour
+section 13.4 recorded for `Recipe_Iron_Limestone_C` and iron. The cap is a routing
+signal, not a distance.
+
+Distance is a world-layer fact and belongs to Phase 5, per plan section 16. Until
+then, "stitched is conditional on copper access" is a true statement about the game
+that the model cannot represent, and the honest handling is to report the raw mix and
+let the world layer judge it — which is what `RawInput` already does.
+
+### 16.4 Tests
+
+Section 11's row count is unchanged; its reading is not. Added to
+`tests/test_plan_section_11_validation.py`:
+
+    Smart Plating + Stitched Iron Plate + Iron Wire   reconciled as a seventh
+                                                      alternate case
+    test_stitched_plus_iron_wire_removes_the_copper_dependency
+    test_alternate_value_is_not_additive              16.2, executable
+    test_a_copper_cap_does_not_express_copper_distance 16.3, executable
+
+`test_iron_wire_is_inert_for_smart_plating` is renamed
+`test_iron_wire_is_inert_alone_but_not_in_the_pair`; its assertions are unchanged and
+its docstring no longer draws 15.5's conclusion.
+
+### 16.5 Open
+
+- Whether section 11's remaining rows hide other pairs. Solid Steel Ingot, Steeled
+  Frame and Steel Rotor were each validated alone; nothing has checked whether any of
+  them is conditional on another in the same way.
+- Section 15.7's suggestion of an Iron Wire case against a Wire-bearing target
+  (Automated Wiring) still stands on its own merits, but it is no longer a *fix* for
+  anything — the row was not broken.
+
+---
+
+## 17. Amendment, 2026-09-18 — per-resource scarcity: rejected as a weight, relocated as a constraint
+
+Section 7.4 left an open item: the raw-resource term sums unweighted physical rates
+across dissimilar resources, so one unit of Uranium costs what one unit of Iron Ore
+costs, which "is almost certainly wrong for progression purposes." This amendment
+investigates that and **closes it in the negative**: the bias is real, and
+per-resource weights in the objective are the wrong instrument for it.
+
+Greg's line of questioning drove this and his correction is what settled it. No code
+was written. Nothing in the adapter changed.
+
+### 17.1 The bias is real and pervasive
+
+Measured with `RecipeMode.ALL`, canonical scenario, default weights. The solver
+reaches for Caterium and Raw Quartz on nearly every mid and late target, because a
+unit of each costs exactly what a unit of Iron Ore costs:
+
+    Automated Wiring 1.2/min    Caterium   6.71   Raw Quartz   2.25
+    Adaptive Control Unit       Caterium   9.86   Raw Quartz   3.75
+    Motor 5/min                 Caterium  17.91   Raw Quartz  11.88
+    Modular Engine              Caterium  47.69   Raw Quartz  30.96
+    Magnetic Field Generator    Caterium  61.61   Raw Quartz  28.87
+    Assembly Director System    Caterium 125.62   Raw Quartz  90.67   Sulfur 15.00
+
+A prototype that scaled the objective's raw block by node-count-derived weights
+changed the answers substantially — Motor 5/min drops Raw Quartz entirely and cuts
+Caterium from 17.91 to 6.25, paying with iron (5.62 to 33.44). Scarcity-weighted
+cost roughly halves; physical material moved rises about a third. So the instrument
+works. The question is whether it is the right one.
+
+### 17.2 Three quantities were being conflated
+
+    global abundance          nodes on the map, by purity. A map constant.
+    reachable availability    what can be extracted and moved to where you are
+                              building, given transport. Local, and it EXPANDS.
+    progression availability  whether the recipe or extractor is unlocked at all.
+
+Only the first is a property of a resource. The second is a property of a base
+position and a transport tier. The third is a property of progression state. A
+single scalar per resource can express the first and silently stands in for the
+other two.
+
+### 17.3 Why a map-wide weight is the wrong shape, not merely premature
+
+Greg's correction, and it is the load-bearing point of this amendment:
+
+> the world ceiling only matters if and when you can transport resources from other
+> locations — until then it is locally bound. You cannot just add more machines if
+> the nearest node is half way across the map.
+
+A weight derived from map totals is wrong in both directions at once. Early it is
+far too permissive, because even Iron Ore is limited to the handful of nodes that
+can actually be belted to the build site. Late it is too restrictive, because trains
+make the map total genuinely reachable. It is not a number awaiting better
+calibration; it is a constant standing in for a function that starts local and grows.
+
+Two supporting measurements, both against the reference layer:
+
+**Map-wide extraction ceilings never bind at working scales.** Assembly Director
+System's 125.62 Caterium/min sits against a 1,500/min map-wide ceiling at Miner Mk1
+— 8%. Nothing at single-part rates comes close.
+
+    resource                      Mk1        Mk2        Mk3     (items/min, 100% clock)
+    Desc_OreIron_C              9,210     18,420     36,840
+    Desc_Stone_C                6,930     13,860     27,720
+    Desc_Coal_C                 4,230      8,460     16,920
+    Desc_OreCopper_C            3,690      7,380     14,760
+    Desc_OreGold_C              1,500      3,000      6,000
+    Desc_RawQuartz_C            1,350      2,700      5,400
+    Desc_OreBauxite_C           1,230      2,460      4,920
+    Desc_Sulfur_C               1,080      2,160      4,320
+    Desc_SAM_C                  1,020      2,040      4,080
+    Desc_OreUranium_C             210        420        840
+
+**Belt throughput is not a scarcity term either.** A belt is not a ceiling — another
+belt can always be run, at the cost of belts, splitters and space. That is plan
+section 1.5's *logistics complexity*, which it lists as a metric to keep separate
+and to compare in a Pareto rather than fold into a composite. And it rarely binds:
+from `logistics_capabilities.csv` and `extraction_rates.csv`, at 100% clock the belt
+is the binding side in exactly one place — Tier 0 to 1 on a pure node, where a Miner
+Mk1 produces 120/min and a Mk1 belt carries 60. From Tier 2 onward the miner binds
+everywhere. The exception is overclocking: a Mk3 miner on a pure node at 250% is
+1,200/min, which equals belt Mk6 exactly, so overclocked pure nodes are
+transport-bound at any tier below 9.
+
+Note also that Miner Mk2 and belt Mk3 both unlock at Tier 4, so the extraction and
+transport steps land together rather than staggered.
+
+### 17.4 Disposition — the mechanism already exists and is not in the objective
+
+**Scarcity is a constraint, sourced from the world layer, not a weight in the
+objective.** `SolveRequest.resource_caps` already takes an item and a rate per
+minute, which is exactly the shape of "this is what you can actually get here". The
+production solver stays ignorant of geography; the world layer computes the numbers
+from base position, transport tier and terrain. That is plan section 16 in both
+directions, including its own sentence that "district constraints can eventually
+feed the production optimizer: available iron, available coal, belt tier, miner
+tier, local oil, transport capacity."
+
+No contract change. Nothing invented. Section 7.4's open item is closed by
+relocation rather than by a coefficient.
+
+Two consequences worth keeping:
+
+- The behaviour recorded at 13.4 — that a cap is a routing signal rather than a
+  ceiling — becomes the useful property here. Capping Copper Ore to what is
+  reachable makes the solver show what it would do instead, which is the actual
+  answer to "is it worth belting copper in": two plans to compare, not a weight
+  asserting a trade rate.
+- Caps are part of the comparator's feasibility signature, so two transport horizons
+  are two feasible sets and cross-pricing is refused. Had scarcity been a weight,
+  the comparator would have cheerfully produced a regret number comparing a Tier 3
+  plan against a Tier 8 metric. Modelling it as a cap makes the section 14 guard
+  fire on precisely the comparison that would mislead.
+
+### 17.5 Defect — `resource_totals.csv` does not join to `resources.csv` for fluids
+
+Found while deriving the weights, and load-bearing for anything that derives capacity
+later.
+
+    resource_totals.csv   crude_oil_nodes, crude_oil_wells, geyser
+    resources.csv         crude_oil, geothermal_geyser
+    water, nitrogen_gas   no row in resource_totals.csv at all
+
+So a naive join silently drops every fluid, and a weight table built from it gives
+Crude Oil, Water and Nitrogen the default — as abundant as Iron Ore, the most
+abundant solid. That is what made the prototype's weighted plans lean so heavily on
+oil, and the oil-heavy magnitudes in 17.1 should not be relied on. The direction of
+the finding stands; those specific numbers do not.
+
+This is the same class of join defect as P3 and P4. Not patched: it is canonical
+world data, the fix is a naming decision rather than an obvious correction, and
+nothing consumes the join today.
+
+### 17.6 What exists, and what does not
+
+Checked in the repository, 2026-09-18:
+
+    planning_data/world/canonical/world_resource_sockets.csv    625 sockets with
+                                                                east_m, north_m, elevation_m
+    planning_data/world/configurations/default_502094/resource_assignments.csv
+                                                                the same 625 socket ids
+                                                                -> resource and purity
+    planning_data/game/reference/logistics_capabilities.csv     belts, lifts, pipelines
+                                                                and miners, with unlock tiers
+    docs/BUILD_SURFACE_V*.md, VEHICLE_PASSABILITY_PIPELINE.md   terrain and passability
+
+So reachable availability is a join plus the pathing machinery already in this
+repository, not new research.
+
+**Absent from `logistics_capabilities.csv`: every transport mode above a belt.** No
+trucks, trains or drones. The thing that expands the horizon — and therefore the
+thing that makes the map ceiling eventually real — is not modelled at all.
+
+### 17.7 Open
+
+- A base position. Reachable availability is a function of one, and nothing in the
+  repository carries the concept. Phase 5.
+- Vehicle, train and drone capability data, per 17.6.
+- The fluid join, per 17.5.
+- Whether per-resource weights ever return. They are not ruled out for a question
+  that is genuinely about trading one resource against another at a known exchange
+  rate; they are ruled out as a stand-in for locality.
+
+---
+
+## 18. Amendment, 2026-09-18 — tier unlock resolution, and the trap in it
+
+Greg's call: a recipe set should come from a tech tier rather than a hand-maintained
+list, because "if I'm on steel I won't have oil and plastic." Adopted, in the form
+of a tier filter that **reports its own incompleteness** rather than one that looks
+complete and is not.
+
+### 18.1 What exists
+
+    tools/progression/src/progression/unlocks.py   at_tier() -> TierUnlocks
+    tests/test_progression_unlocks.py              27 tests
+
+`at_tier(repo_root, tier, declared=())` returns the granted recipe ids, an
+`AllowedRecipes` ready for `SolveRequest`, and — always — what it withheld.
+
+**Placement.** A new sibling package, `tools/progression/`, above the adapter and
+importing downward. A tech tier is a progression concept and section 6 of the
+solver-selection record says the adapter never sees one, so `gamedata.py` does not
+grow two more tables. This also answers, provisionally and by precedent rather than
+deliberately, the open question at 11.5 about where the demand expansion module
+lives. It is cheap to move now and will not be later, so it is flagged rather than
+assumed settled.
+
+### 18.2 The rule, and the trap that shaped it
+
+    a recipe is granted at tier N when some schematic of type Milestone, Tutorial or
+    Custom, with tech_tier <= N, unlocks it, and recipes.csv does not flag it as an
+    alternate
+
+The obvious rule — Milestone and Tutorial only — is wrong, and wrong in a way that
+would have been hard to notice from the outside. `Recipe_IngotIron_C`,
+`Recipe_IronPlate_C` and `Recipe_IronRod_C` are unlocked by "Starting Blueprints",
+an **EST_Custom** schematic at tier 0. A Milestone-only filter returns a recipe set
+that cannot smelt iron, and every solve against it would be infeasible or bizarre
+rather than visibly broken. `test_tier_zero_can_smelt_iron` is the guard.
+
+EST_Custom also carries cosmetics, FICSMAS and asphalt, which is harmless: nothing
+targets them, so the solver never runs them.
+
+Sanity, measured:
+
+    tier   granted base   reachable
+       0             11   iron
+       3             24   iron, steel — and not plastic, rubber, motor
+       4             28   "
+       5             50   plastic, quickwire arrive
+       9            135   Matter Conversion arrives
+
+### 18.3 Unlock sources, measured
+
+Every recipe in `recipes.csv` is unlocked by at least one schematic; there are no
+orphans. But base recipes come from four places, not one:
+
+    EST_Milestone    79 base    the tier ladder, ordered by tech_tier
+    EST_MAM          58 base    MAM research across 53 nodes — player-driven
+    EST_Custom       48 base    mixed: starting blueprints, milestone companions,
+                                alternate companions, cosmetics
+    EST_Tutorial      8 base    HUB upgrades, tier 0
+    EST_Alternate     2 base    hard-drive schematics granting non-alternate recipes
+
+Counts overlap. After the rule at 18.2, tier 9 grants 135 of 181 base recipes;
+**the remaining 46 are reachable only through MAM research**, which a tech tier does
+not imply. The report states that count on every call, and `declared` is how a
+caller names what they have actually researched. Nothing infers it.
+
+**P4 does not block this.** P4 is the slug-versus-`Recipe_*_C` join on
+`alternate_recipe_unlocks.csv`. `schematic_recipe_unlocks.csv` is a different table
+and keys on `recipe_id` directly — 1,016 rows, no orphans among production recipes.
+Tier gating was buildable without touching P4, which had not been noticed.
+
+### 18.4 Open item — the `is_alternate` disagreement, reconciled and corrected
+
+The session handoff recorded the disagreement as two rows,
+`Recipe_PureAluminumIngot_C` and `Recipe_Alternate_Turbofuel_C`, with
+`schematic_recipe_unlocks.csv` as the authoritative check. Checked:
+
+    Recipe_PureAluminumIngot_C     is_alternate=true    unlocked by EST_Alternate
+                                   CONSISTENT — not a defect
+    Recipe_Alternate_Turbofuel_C   is_alternate=false   unlocked by EST_MAM "Turbofuel"
+                                   and EST_Custom "Alternate: Turbofuel"
+    Recipe_PackagedTurboFuel_C     is_alternate=false   unlocked by EST_Alternate
+    Recipe_UnpackageTurboFuel_C    is_alternate=false   unlocked by EST_Alternate
+
+So the recorded pair was wrong in both halves: one of the two named rows is fine,
+and two rows that were not named are defective. The actual set is three recipes,
+all flagged `is_alternate=false` while being reachable only through research or hard
+drives.
+
+Not patched — `recipes.csv` is canonical reference data and changing a flag there is
+a data decision with its own blast radius. Instead the filter grants them (the flag
+says base) and lists them under `uncertain`, saying the tier may be overstating what
+the player has. The mechanism is general: any granted recipe that is also unlocked
+by a MAM or Alternate schematic is reported. It found these three without being told
+about them, which is the property worth having.
+
+### 18.5 A retrospective confirmation
+
+"Matter Conversion" is an **EST_Milestone at tech_tier 9**. The SAM-and-Raw-Quartz
+route to Copper Ingot that prompted the whole scarcity investigation at section 17
+is therefore a Tier 9 capability. Its appearance in unconstrained early solves was a
+progression artefact, not a valuation failure — which is what 17.2 argued from
+structure and this now shows from the data.
+
+It also means the tier filter removes that route from early-game answers for free,
+with no weighting and no cap.
+
+### 18.6 What this deliberately is not
+
+    does       resolve a tier into a recipe set; report what it withheld
+    does not   walk schematic_dependencies.csv, or infer one unlock from another
+    does not   choose which schematics to pursue, or value them
+    does not   know what a hard drive is
+
+Two tests hold the line: one asserts the module contains no reference to
+`schematic_dependencies.csv` or `alternate_recipe_unlocks.csv` in code (checked
+against string literals, since the docstring names them in order to disclaim them),
+and one asserts by AST that no adapter module imports `progression`.
+
+The moment this needs the dependency graph to answer a question, it has become plan
+section 17's Phase 3 deliverable "unlocked-recipe candidate generation", and should
+be moved there deliberately rather than by growth.
+
+### 18.7 Open
+
+- The 46 MAM-only recipes have no declaration convenience. Naming them one id at a
+  time is workable now and will not scale; a research-node-level declaration
+  ("Quartz done", "Caterium done") is the obvious next shape and needs the MAM
+  schematic ids, which this module does not currently expose.
+- Whether `tools/progression/` is where the demand expansion module belongs, per
+  18.1.
+- Whether the three `is_alternate=false` research-gated recipes should be corrected
+  in `recipes.csv` rather than reported, per 18.4.
+- No CLI yet. The shape settled with Greg is one entry point with two subcommands,
+  `solve` and `compare`, since costing and comparing are the only two operations and
+  multi-target and multi-axis are parameters rather than separate tools.
+
+---
+
+## 19. Amendment, 2026-09-18 — the hard-drive pool, and P4 resolved
+
+Greg's reframe, and it changes what the tool is for: the recipe set should be what
+is **obtainable**, not what is **held**. An alternate sitting in the hard-drive pool
+is something you can go and get, so a plan that uses one is actionable. Whether you
+have pulled it yet is a separate question, and mostly a to-do.
+
+### 19.1 What exists
+
+    tools/progression/src/progression/pool.py    available_at() -> PoolAvailability
+    tests/test_progression_pool.py               26 tests
+
+`unlocks.at_tier` gains `include_pool=False`. Default off, because it changes what
+the returned set *means* and no existing caller asked for a wider one.
+
+### 19.2 P4 is resolved
+
+The session handoff has carried P4 since it was written: `alternate_recipe_unlocks.csv`
+keys on slugs (`cast_screws`) while `recipes.csv` uses `Recipe_Alternate_Screw_C`,
+and that gap was recorded as blocking progression-gated recipe sets.
+
+It resolves on normalised display names. The unlock table's `recipe_name` is
+"Cast Screws"; the recipe's `display_name` is "Alternate: Cast Screws". Strip the
+prefix, compare alphanumerics only: **79 of 79 rows matched, nothing ambiguous,
+nothing unmatched.** `resolve_slugs` raises on any failure rather than dropping a
+row, so a future game build that breaks the match fails loudly instead of quietly
+shrinking the pool.
+
+P4 was recorded as a Phase 3 blocker. It was one join.
+
+### 19.3 Defect — `alternate_choices.csv`'s progression columns are unusable
+
+This table looks like the better source and was briefly treated as such in session.
+It keys on `recipe_ids` directly — 109 ids, no orphans — and carries `tech_tier` and
+`dependency_schematic_ids`. The ids are sound. The progression columns are not:
+
+    dependency_schematic_ids   98 of 107 recipe rows carry truncated fragments:
+                               '1_C', '2_C', '4_C', '5_C', and values such as
+                               'Research_Quartz_1_1_C;4_C'
+    tech_tier                  places 71 alternates at tier 0 while marking every
+                               one of them dependency-gated, which cannot be true —
+                               there is no MAM at tier 0
+
+Not patched: it is canonical reference data, the fragments are a loss rather than a
+mistake to invert, and the correct values are not recoverable from what remains.
+`pool.py` does not read it, and a test asserts so, because reading it would look
+like an upgrade over the slug join and would silently be wrong.
+
+### 19.4 Scope — automatic entry only, and why MAM is deliberately excluded
+
+Every row in `alternate_recipe_unlocks.csv` carries
+`eligibility_type: automatic_hub` — 79 alternates that enter the pool on reaching a
+tier band, with no research. Bands come from `progression_clusters.csv`, six of them
+in `sort_order`; the band's top tier is read off the identifier (`tier_3_4` -> 4,
+`pre_tier_1_2` -> 0) and `resolve_clusters` asserts the result is monotonic in
+`sort_order`, which is what keeps that from being a guess.
+
+    tier   obtainable   in later bands   research-gated
+       0            2               77               31
+       2            6               73               31
+       4           24               55               31
+       9           79                0               31
+
+The remaining 31 alternates enter the pool only through MAM research, and are
+reported as unaccounted rather than modelled. Greg's reasoning, which is the
+substance of the exclusion:
+
+> those will need to be an additional layer that acts, in the early stages, as a
+> hold suggestion — to not contaminate the pool while the numbers are still low.
+> Later it won't matter.
+
+MAM research *widens* the pool. Early, with few drives found, a wider pool costs odds
+on the specific recipes still wanted; late, with most of them held, dilution stops
+mattering. So a MAM node has a **negative** expected value early and a neutral one
+later. That is an advisory about run state — drives found, drives remaining — not a
+property of a recipe, and it cannot be a filter: it never changes what is reachable,
+only what it costs to reach.
+
+`mam_pool_effects.csv` already carries the raw material for it, in prose:
+`hard_drive_pool_effect_text` per research node, with `planning_note_text` entries
+like "Safe with respect to Hard Drive pool" and "Major early pool-expansion point".
+Turning that into an advisory is a real piece of work and belongs with run state,
+which is Phase 4. Recorded, not built.
+
+### 19.5 The first non-obvious answer
+
+Smart Plating 1/min at tier 2, held-only versus reaching into the pool:
+
+    held only    23.2500 iron                        26.0500 MW
+    pool          9.3333 iron + 7.3333 copper        17.4644 MW
+
+Iron drops 60%, power drops 33%, at the cost of 7.33 copper/min. The solver takes
+Cast Screws, Stitched Iron Plate and Copper Rotor.
+
+**It does not take Iron Wire** — which section 16 measured as worth 3.30 ore/min when
+paired with Stitched Iron Plate alone. Once Copper Rotor puts copper in the chain
+anyway, Iron Wire's entire argument, getting the copper back out, evaporates.
+
+That is 16.2 arriving a second time from a different direction, and more sharply:
+the pairwise analysis at section 16 was itself too narrow. An alternate's value is a
+property of the whole enabled set, and even a two-alternate comparison can mislead
+about a six-alternate pool. Anything in Phase 3 that ranks alternates — pairwise or
+singly — will reproduce this error.
+
+### 19.6 Open
+
+- The MAM pool-dilution advisory, per 19.4. Needs drives found and drives remaining,
+  so it is Phase 4 and it is genuinely useful there.
+- `alternate_choices.csv`'s dependency column, per 19.3 — whether it can be
+  regenerated from the game docs rather than repaired.
+- Whether `include_pool` should become the default once a CLI exists. It is the more
+  useful question to ask, and the less useful one to ask silently.
+
+---
+
+## 20. Amendment, 2026-09-18 — the command line, and Iron Wire corrected
+
+### 20.1 What exists
+
+    tools/production_cli.py          three subcommands
+    tests/test_production_cli.py     29 tests
+
+    tiers     what a tier grants, what it withholds, and --find to look up an id
+    solve     plan a target
+    compare   two or more configurations side by side
+
+**Placement.** A standalone script at `tools/` root, beside
+`check_game_docs_provenance.py` and `regenerate_manifests.py`, which is this
+repository's convention for runnable things. It is not inside either package
+because `solve` and `compare` are adapter operations while `--tier` is a
+progression concept: an entry point inside `production_adapter` would have to
+import `progression`, inverting the direction the boundary exists to protect. It
+sets up `sys.path` itself, since the repo is not installed and a user has no
+`conftest.py`.
+
+**What it refuses.** Four arguments exist purely to be rejected, each naming the
+phase that owns the question:
+
+    --by, --deadline    scheduling is Phase 2 — nothing in this model knows time
+    --inventory         existing stock is Phase 4; existing_inventory already raises
+    --what-next         needs run state; Phase 4
+
+A tool that answers production questions at a prompt will be asked progression
+questions. Declining by name is the structural version of the guardrail; answering
+approximately is how it would drift.
+
+`--pool` is opt-in rather than default, matching `include_pool` at 19.1. The
+completeness report prints above every `solve`, so the withheld counts are never
+absent from an answer a player acts on.
+
+### 20.2 Iron Wire is never selected — and section 16 overstated it
+
+Running the tier-2 pool raised Greg's question: the solver takes Stitched Iron
+Plate but not Iron Wire, which section 16 presented as its natural partner.
+
+It is never selected, and not because of Copper Rotor:
+
+    full tier-2 pool            7.3333 copper +  9.3333 iron   17.4644 MW
+    pool minus Copper Rotor     3.3333 copper + 16.2500 iron   21.4167 MW
+
+Neither takes it. The arithmetic:
+
+    Copper Wire    15.0 Copper Ingot -> 30.0 Wire    0.5000 ingot per wire
+    Iron Wire      12.5 Iron Ingot   -> 22.5 Wire    0.5556 ingot per wire
+
+Both ingots are one ore each, so copper wire is strictly cheaper per wire in raw
+ore. **Iron Wire cannot win against an objective that prices one copper ore at one
+iron ore.**
+
+Section 16.1's figures are correct but its framing was not. It compared
+stitched-plus-iron-wire against *baseline* and reported 3.30 ore/min saved, which is
+true. Against stitched *alone* it is worse on total raw: 19.95 versus 16.25 + 3.33 =
+19.58. Iron Wire's benefit was never a raw-total benefit; it was avoiding copper.
+Section 16 said so — "the pair is 3.30 ore/min and 2.12 MW cheaper than baseline, on
+iron alone" — but reading that as a recommendation over stitched-alone would be
+wrong, and the tier-2 solve makes the error visible.
+
+### 20.3 The consequence: this is section 17's question, on a first-hour decision
+
+Re-running the tier-2 pool under the scarcity weights section 17 derived and
+rejected (copper 2.50, iron 1.00, from purity-weighted node counts):
+
+    unweighted           7.3333 copper +  9.3333 iron    Iron Wire chosen: no
+    scarcity-weighted    4.0000 copper + 13.0370 iron    Iron Wire chosen: yes
+
+So whether Iron Wire is worth taking *is* the per-resource valuation question, and
+it lands on a decision a player faces in the first hours rather than in some late
+edge case.
+
+That does not reopen 17's disposition — a map-wide weight is still the wrong shape
+for a quantity that starts local and expands with transport. What it does is raise
+the cost of 17's conclusion: until reachable availability exists (Phase 5), the tool
+will systematically prefer whichever resource is nearer to hand in *ore terms*, and
+that will sometimes disagree with how the resource is actually valued in a run.
+
+Greg's observation that this plan does not match community consensus is consistent
+with exactly that: a player weighing copper above iron early — fewer nodes, and iron
+is usually running first — would reach a different answer, and would be applying a
+valuation the model has deliberately declined to make.
+
+**Recorded as a known divergence, not a defect.** The model's answer is correct
+under its stated assumption. The assumption is visible, is recorded at 7.4 and 17,
+and is not yet resolvable.
+
+### 20.4 Open
+
+- Nothing new. 17.7's open items are what would close 20.3, and they are unchanged.
+- The CLI has no `--weights` beyond four named presets, deliberately: arbitrary
+  weight tuples belong in a script rather than an argument parser, and the named
+  ones are the Pareto corners section 3.4 of the selection record sweeps.
