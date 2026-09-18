@@ -1,0 +1,15 @@
+resource_id,item_id,display_name,category,rate_unit
+bauxite,Desc_OreBauxite_C,Bauxite,solid,items/min
+caterium,Desc_OreGold_C,Caterium,solid,items/min
+coal,Desc_Coal_C,Coal,solid,items/min
+copper,Desc_OreCopper_C,Copper,solid,items/min
+crude_oil,Desc_LiquidOil_C,Crude Oil,fluid,m3/min
+geothermal_geyser,,Geothermal Geyser,energy,items/min
+iron,Desc_OreIron_C,Iron,solid,items/min
+limestone,Desc_Stone_C,Limestone,solid,items/min
+nitrogen_gas,Desc_NitrogenGas_C,Nitrogen Gas,gas,m3/min
+raw_quartz,Desc_RawQuartz_C,Raw Quartz,solid,items/min
+sam,Desc_SAM_C,Sam,solid,items/min
+sulfur,Desc_Sulfur_C,Sulfur,solid,items/min
+uranium,Desc_OreUranium_C,Uranium,solid,items/min
+water,Desc_Water_C,Water,fluid,m3/min

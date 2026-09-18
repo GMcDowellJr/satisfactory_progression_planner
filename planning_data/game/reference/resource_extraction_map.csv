@@ -1,0 +1,36 @@
+item_id,display_name,form,extractor_class,extractor_name,requires_activator,game_build_id,source_id,verified_on
+Desc_Coal_C,Coal,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Coal_C,Coal,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Coal_C,Coal,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_LiquidOil_C,Crude Oil,liquid,Build_FrackingExtractor_C,Resource Well Extractor,Build_FrackingSmasher_C,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_LiquidOil_C,Crude Oil,liquid,Build_OilPump_C,Oil Extractor,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_NitrogenGas_C,Nitrogen Gas,gas,Build_FrackingExtractor_C,Resource Well Extractor,Build_FrackingSmasher_C,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreBauxite_C,Bauxite,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreBauxite_C,Bauxite,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreBauxite_C,Bauxite,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreCopper_C,Copper Ore,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreCopper_C,Copper Ore,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreCopper_C,Copper Ore,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreGold_C,Caterium Ore,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreGold_C,Caterium Ore,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreGold_C,Caterium Ore,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreIron_C,Iron Ore,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreIron_C,Iron Ore,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreIron_C,Iron Ore,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreUranium_C,Uranium,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreUranium_C,Uranium,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_OreUranium_C,Uranium,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_RawQuartz_C,Raw Quartz,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_RawQuartz_C,Raw Quartz,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_RawQuartz_C,Raw Quartz,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_SAM_C,SAM,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_SAM_C,SAM,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_SAM_C,SAM,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Stone_C,Limestone,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Stone_C,Limestone,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Stone_C,Limestone,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Sulfur_C,Sulfur,solid,Build_MinerMk1_C,Miner Mk.1,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Sulfur_C,Sulfur,solid,Build_MinerMk2_C,Miner Mk.2,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Sulfur_C,Sulfur,solid,Build_MinerMk3_C,Miner Mk.3,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Water_C,Water,liquid,Build_FrackingExtractor_C,Resource Well Extractor,Build_FrackingSmasher_C,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Desc_Water_C,Water,liquid,Build_WaterPump_C,Water Extractor,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18

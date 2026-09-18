@@ -1,0 +1,4 @@
+confidence,meaning
+DEFINED,Directly supported by canonical data or reviewed planning decision.
+PARAMETERIZED,Default strategy choice intended to be overridable.
+PLACEHOLDER,Schema/structure exists but no recommendation is asserted yet.

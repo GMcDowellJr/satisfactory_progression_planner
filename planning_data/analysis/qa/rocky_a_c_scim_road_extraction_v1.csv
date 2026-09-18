@@ -1,0 +1,6 @@
+check,status,notes
+scim_road_image_received,PASS,user-provided screenshot
+road_overlay_segmented,PASS,8445 purple pixels
+map_registered_to_world_extent,PASS,full-world linear registration against local heightfield extent
+vehicle_trunk_rerun_with_road_prior,PASS,A→C road-aware route produced
+source_precision,LIMITED,screenshot-derived; suitable for corridor planning only

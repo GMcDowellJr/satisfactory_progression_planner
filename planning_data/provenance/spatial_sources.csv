@@ -1,0 +1,4 @@
+source_id,source_type,scope,version_or_build,has_xy,has_z,status,notes
+installed_docs_a81d250e96aa,installed_game_docs,classes_recipes_schematics_buildings,docs_a81d250e96aa,false,false,ingested,CommunityResources/Docs/en-US.json. Class defaults/metadata only; not static world-instance placement.
+local_world_collectibles_502094,static_world_collectibles,crash_sites_power_slugs_mercer_spheres_somersloops_loot_caches_support_rows,Satisfactory 1.2.4.0 CL-502094,true,true,ingested,Generated locally from user's installed game with SatisfactoryMCP gen_world_collectibles.py. Static placement only is canonical; source save-state fields excluded.
+local_heightfield_502094,terrain_heightfield,terrain_provenance_density_water,Satisfactory 1.2.4.0 CL-502094,true,true,ingested,"7500x7500, 1 m spacing; terrain/water planes copied intact from user's local generation."

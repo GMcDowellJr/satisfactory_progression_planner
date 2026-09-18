@@ -1,0 +1,4 @@
+placement_policy,meaning
+central_terminal,Storage is clustered at a terminal/storage zone away from production when useful.
+inline,Storage sits directly in the producer-to-consumer flow.
+local_terminal,Storage sits at the end of a local production group or district output.

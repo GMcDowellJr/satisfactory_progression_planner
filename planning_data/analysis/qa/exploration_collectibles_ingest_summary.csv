@@ -1,0 +1,10 @@
+metric,value,status,notes
+source_rows_total,4446,verified,All emitted one-shot collectible/support rows in source.
+planner_primary_poi_rows_expected,1764,verified,Crash sites + three slug tiers + Mercer Spheres + Somersloops.
+crash_sites,118,verified,Drop pods.
+power_slugs_total,1242,verified,Blue + yellow + purple.
+mercer_spheres,298,verified,Shrines excluded from POI count.
+somersloops,106,verified,Shrines excluded from POI count.
+loot_caches,703,supporting_layer,Useful for enriched crash-site/exploration routes.
+coordinate_units,cm,verified,"+X east, -Y north, +Z up."
+row_projection_status,source_pinned_projection_pending,partial,Category/schema/provenance ingested; full 1.8 MB placement array remains referenced by pinned blob and is not duplicated into this package yet.

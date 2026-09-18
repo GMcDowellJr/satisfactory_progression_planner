@@ -1,0 +1,16 @@
+phase,phase_name,item_name,quantity_default_1x,delivery_unlocks,source_id,verified_on
+1,Distribution Platform,Smart Plating,50,Tiers 3 and 4,official_wiki_space_elevator,2026-09-09
+2,Construction Dock,Smart Plating,1000,Tiers 5 and 6,official_wiki_space_elevator,2026-09-09
+2,Construction Dock,Versatile Framework,1000,Tiers 5 and 6,official_wiki_space_elevator,2026-09-09
+2,Construction Dock,Automated Wiring,100,Tiers 5 and 6,official_wiki_space_elevator,2026-09-09
+3,Main Body,Versatile Framework,2500,Tiers 7 and 8,official_wiki_space_elevator,2026-09-09
+3,Main Body,Modular Engine,500,Tiers 7 and 8,official_wiki_space_elevator,2026-09-09
+3,Main Body,Adaptive Control Unit,100,Tiers 7 and 8,official_wiki_space_elevator,2026-09-09
+4,Propulsion,Assembly Director System,500,Tier 9,official_wiki_space_elevator,2026-09-09
+4,Propulsion,Magnetic Field Generator,500,Tier 9,official_wiki_space_elevator,2026-09-09
+4,Propulsion,Thermal Propulsion Rocket,250,Tier 9,official_wiki_space_elevator,2026-09-09
+4,Propulsion,Nuclear Pasta,100,Tier 9,official_wiki_space_elevator,2026-09-09
+5,Assembly,Nuclear Pasta,1000,Project Assembly launch,official_wiki_space_elevator,2026-09-09
+5,Assembly,Biochemical Sculptor,1000,Project Assembly launch,official_wiki_space_elevator,2026-09-09
+5,Assembly,AI Expansion Server,256,Project Assembly launch,official_wiki_space_elevator,2026-09-09
+5,Assembly,Ballistic Warp Drive,200,Project Assembly launch,official_wiki_space_elevator,2026-09-09

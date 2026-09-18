@@ -1,0 +1,7 @@
+strategy_profile_id,cluster_description,default_commitment,eventual_role,parameterized,source_file
+dune_desert_baseline_v1,west/northwest starter basics,use,mall + construction,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,oasis/northern Coal,split,coal power + steel reserve,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,large secondary Iron + Coal,reserve,permanent steel,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,Spire Coast Oil,reserve,petrochem + fuel power,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,central flat desert,reserve_space,HMF + late assembly,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,external Bauxite,reserve_or_import,aluminum,true,dune_desert_factory_district_plan.md

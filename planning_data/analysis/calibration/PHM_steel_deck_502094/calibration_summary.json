@@ -1,0 +1,44 @@
+{
+  "fixture_id": "PHM_steel_deck_502094",
+  "world_extract_id": "world_502094",
+  "game_build": 502094,
+  "foundation_count": 221,
+  "flat_origin_elevation_m": -5.0,
+  "flat_top_elevation_m": -3.0,
+  "foundation_height_m": 4.0,
+  "center_span_m": {
+    "east": 200.0,
+    "north": 88.0
+  },
+  "outer_footprint_span_m": {
+    "east": 208.0,
+    "north": 96.0
+  },
+  "edge_foundation_count": 70,
+  "ground_surface_center_count": 179,
+  "cliff_or_overhead_top_surface_center_count": 42,
+  "unknown_center_count": 0,
+  "ground_surface_relief_m": 2.299999713897705,
+  "ground_top_clearance_m": {
+    "mean": 3.042458124000933,
+    "median": 3.0,
+    "p90": 3.5999999046325684,
+    "p95": 3.8000001907348633,
+    "max": 4.199999809265137,
+    "fraction_within_4m": 0.9888268156424581,
+    "terrain_above_top_count": 0
+  },
+  "ground_edge_top_clearance_m": {
+    "mean": 2.911864410012455,
+    "median": 2.8000001907348633,
+    "p90": 3.5999999046325684,
+    "p95": 3.8000001907348633,
+    "max": 4.099999904632568,
+    "fraction_within_4m": 0.9830508474576272
+  },
+  "interpretation": [
+    "Landscape/fill provenance is treated as the ground-support surface for calibration.",
+    "Cliff provenance can represent an overhead rock/bridge in the 2.5D heightfield and is reported separately rather than interpreted as floor penetration.",
+    "This fixture is empirical calibration evidence from an existing flat 4 m foundation deck, not a universal placement rule."
+  ]
+}

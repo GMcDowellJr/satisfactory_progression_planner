@@ -1,0 +1,4 @@
+site_id,start_area_id,district_id,site_type,name,east_m,north_m,up_m,role,parameterized,provenance
+rocky_caterium_satellite,rocky_desert,,resource_satellite,Caterium Satellite,-1784.91,797.88,,specialty extraction / local preprocessing candidate,true,rocky_desert_functional_district_anchors.csv
+rocky_quartz_satellite,rocky_desert,,resource_satellite,Quartz Satellite,-1778.5866666666668,1434.17,,specialty extraction / local preprocessing candidate,true,rocky_desert_functional_district_anchors.csv
+rocky_sulfur_satellite,rocky_desert,,resource_satellite,Sulfur Satellite,-2130.23,1700.21,,specialty extraction / local preprocessing candidate,true,rocky_desert_functional_district_anchors.csv

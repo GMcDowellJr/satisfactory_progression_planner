@@ -1,0 +1,9 @@
+strategy_profile_id,stage,route_role,preferred_transport,parameterized,source_file
+rocky_desert_baseline_v1,t1_2,local nodes → Starter,belt,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t3,coastal Coal → generators,belt,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t3_4,Steel → Home,tractor,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t5,Oil products → Home/manufacturing,truck,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t6,Home ↔ Steel ↔ Oil,rail,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t7,Aluminum → backbone,rail,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t7_8,HMF district → backbone,rail,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,t9,specialized low-volume flows,rail_or_drone,true,rocky_desert_factory_district_plan(2).md

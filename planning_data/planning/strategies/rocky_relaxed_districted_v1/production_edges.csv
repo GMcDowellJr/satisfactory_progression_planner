@@ -1,0 +1,21 @@
+edge_id,from_module_id,to_module_id,item_name,relationship_type,confidence,rate_min,notes
+edge_001,a_plate,a_rip,Iron Plate,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_002,a_wire,a_rip,Wire,direct,PARAMETERIZED,,Rate derived later from chosen module-phase targets.
+edge_003,a_screw,a_rip,Screws,legacy_or_pre_stitched,PARAMETERIZED,,Rate derived later from chosen module-phase targets.
+edge_004,a_rod,a_screw,Iron Rod,legacy_or_pre_cast,PARAMETERIZED,,Rate derived later from chosen module-phase targets.
+edge_005,a_rod,a_rotor,Iron Rod,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_006,a_screw,a_rotor,Screws,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_007,a_rip,a_modframe,Reinforced Iron Plate,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_008,a_rod,a_modframe,Iron Rod,long_feed_ok,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_009,a_rip,a_smartplate,Reinforced Iron Plate,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_010,a_rotor,a_smartplate,Rotor,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_011,a_wire,a_cable,Wire,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_012,c_steel_ingot,c_pipe,Steel Ingot,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_013,c_steel_ingot,c_beam,Steel Ingot,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_014,c_pipe,c_eib,Steel Pipe,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_015,c_pipe,c_rotor,Steel Pipe,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_016,c_pipe,c_stator,Steel Pipe,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_017,c_rotor,c_motor,Rotor,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_018,c_stator,c_motor,Stator,direct,DEFINED,,Rate derived later from chosen module-phase targets.
+edge_019,c_beam,c_vframe,Steel Beam,direct,PARAMETERIZED,,Rate derived later from chosen module-phase targets.
+edge_020,c_stator,c_auto_wiring,Stator,direct,PARAMETERIZED,,Rate derived later from chosen module-phase targets.

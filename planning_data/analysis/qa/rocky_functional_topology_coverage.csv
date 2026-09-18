@@ -1,0 +1,8 @@
+district_id,district_name,module_count,flow_rule_count,spatial_rule_count,defined_modules,parameterized_modules,placeholder_modules,functional_topology_status,notes
+rocky_desert_a,Western Coast Starter Works / Home Base,11,11,8,10,1,0,covered,Functional pass only; exact machine counts/placement and route geometry deferred.
+rocky_desert_b,Northern / Coastal Coal Power,4,3,2,3,1,0,covered,Functional pass only; exact machine counts/placement and route geometry deferred.
+rocky_desert_c,Southeast / Interior Steel Works,9,8,8,7,2,0,covered,Functional pass only; exact machine counts/placement and route geometry deferred.
+rocky_desert_d,Western Beaches Petrochemical / Fuel,9,11,7,7,2,0,covered,Functional pass only; exact machine counts/placement and route geometry deferred.
+rocky_desert_e,Northwest Structural / HMF Reserve,5,3,3,3,1,1,covered,Functional pass only; exact machine counts/placement and route geometry deferred.
+rocky_desert_f,Bauxite-to-Water Aluminum Works,7,6,6,7,0,0,covered,Functional pass only; exact machine counts/placement and route geometry deferred.
+rocky_desert_g,Advanced Manufacturing / Logistics Junction,6,5,4,1,2,3,covered,Functional pass only; exact machine counts/placement and route geometry deferred.

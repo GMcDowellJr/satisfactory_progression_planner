@@ -1,0 +1,11 @@
+check,status,value,notes
+corridor_graph_connected,PASS,true,A and C snap into the same dominant terrain-corridor component after terminal-spur-only pruning
+corridor_graph_path_length_m,PASS,1520.2,terrain-derived physical corridor before mode-specific refinement
+origin_graph_snap_m,WARN,173.3,endpoint connector should be solved on detailed raster rather than interpreted as corridor absence
+destination_graph_snap_m,PASS,57.3,endpoint connector is short
+tractor_refined_route_length_m,PASS,1447.4,10 m working raster with SCIM roads as preference and bridge-policy forbid
+tractor_road_band_fraction,PASS,0.823,SCIM roads act only as semantic preference
+tractor_deep_water_exposure,PASS,0,no measured or unknown deep-water cells on refined route
+tractor_max_routing_grade_pct,PASS,74.1,smoothed grade field used consistently by search and validation
+raw_height_discontinuity_pct,INFO,588.3,raw 10 m height delta remains unsuitable as vehicle-grade validation because of terrain topology discontinuities
+exploration_in_destination_route,NA,excluded,exploration is treated as a separate activity unless explicitly requested

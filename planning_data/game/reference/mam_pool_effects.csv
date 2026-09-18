@@ -1,0 +1,24 @@
+mam_branch,research_node,hard_drive_pool_effect_text,planning_note_text,provenance
+Caterium,Caterium,Caterium Wire (immediate); Pure Caterium Ingot (Tier 5-6),First Caterium research step.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,Caterium Ingots,"Fused Quickwire; Fused Wire; Quickwire Stator (Tier 3-4); Quickwire Cable (Tier 5-6); Caterium Computer (Tier 5-6); Infused Uranium Cell (Tier 7-8, with Quartz + Sulfur prerequisites)",Major early pool-expansion point.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,Quickwire,None,Safe with respect to Hard Drive pool.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,Caterium Electronics,"Insulated Crystal Oscillator (Tier 5-6, also needs Quartz Crystal Oscillator)",Adds one cross-tree recipe later.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,AI Limiter,Automated Speed Wiring (Tier 3-4); Plastic AI Limiter (Tier 5-6); Electromagnetic Connection Rod (Tier 7-8); Radio Connection Unit (Tier 7-8),Required path toward Smart Splitter; this is where the Smart Splitter route meaningfully widens the pool.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,High-Speed Connector,"Silicon High-Speed Connector (Tier 5-6, also needs Quartz)",Later electronics expansion.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,Smart Splitter,None,Smart Splitter itself does not add a recipe; the prerequisite path already did.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Caterium,Remaining Caterium utility/logistics nodes,None,No further random Hard Drive additions identified in the prior analysis.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Quartz,Quartz,"Fine Concrete (immediate); Silicon Circuit Board (Tier 5-6); Silicon High-Speed Connector (Tier 5-6, also needs Caterium HSC); Infused Uranium Cell (Tier 7-8, with Caterium + Sulfur)",Small initial expansion.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Quartz,Quartz Crystals,Fused Quartz Crystal (Tier 3-4); Rigor Motor (Tier 3-4); Pure Quartz Crystal (Tier 5-6); Crystal Computer (Tier 5-6); Uranium Fuel Unit (Tier 7-8),Major Quartz pool-expansion point.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Quartz,Silica,Cheap Silica (immediate),Adds one early alternate.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Quartz,Crystal Oscillator,"Insulated Crystal Oscillator (Tier 5-6, also needs Caterium Electronics)",Cross-tree prerequisite.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Quartz,Remaining Quartz exploration/equipment nodes,None,No further random Hard Drive additions identified in the prior analysis.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Sulfur,"Infused Uranium Cell (Tier 7-8, with Caterium Ingots + Quartz)",Minimal early pool effect.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Black Powder,None,Safe with respect to random Hard Drive pool.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Experimental Power Generation,None,Safe with respect to random Hard Drive pool.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Compacted Coal,"Fine Black Powder; Compacted Steel Ingot (Tier 3-4); Turbo Heavy Fuel (Tier 5-6). Also directly unlocks Biocoal and Charcoal through MAM, reducing the need to obtain them from Hard Drives.",First significant Sulfur-driven expansion.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Turbofuel,Turbo Diamonds (Tier 9),Late effect only.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Rocket Fuel,Nitro Rocket Fuel,Late power alternate becomes eligible.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Sulfur,Ionized Fuel,Dark-Ion Fuel (Tier 9),Late quantum fuel alternate becomes eligible.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Mycelia,Mycelia tree,No random Hard Drive additions,Polyester Fabric is unlocked directly through research rather than inserted into the random Hard Drive pool.,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+Alien Megafauna,Alien Megafauna tree,No random Hard Drive additions identified,"Primarily protein processing, Power Shards, equipment and inventory improvements.",Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+SAM / Alien Technology,SAM / Alien Technology tree,No random Hard Drive additions identified,"Reanimated SAM, SAM Fluctuator, Dimensional Depot and related upgrades can be pursued without widening the random alternate pool in the prior analysis.",Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md

@@ -1,0 +1,8 @@
+flow_relationship,meaning
+upstream_of,Output of one module feeds another.
+upstream_of_initial,Feeds another module in an earlier phase before a recipe/topology transition.
+upstream_of_after_transition,Feeds another module after a recipe/topology transition.
+converges_with,Two or more upstream streams converge at a downstream module.
+branch_after_consumers,A branch is taken after higher-priority downstream consumers.
+overflow_from,Flow occurs only after retained/storage capacity is saturated.
+between,Entity is intentionally placed in the process flow between producer and consumer.

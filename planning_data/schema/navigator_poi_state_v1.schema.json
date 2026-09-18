@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "satisfactory_navigator_poi_state_v1",
+  "title": "Satisfactory Navigator POI State v1",
+  "description": "Per-save collected state, joined to catalog v2 by POI id. Sparse: any catalog POI not listed in 'collected' is available as of the named save. File name: poi_state.<session_file_token>.json.",
+  "type": "object",
+  "required": ["schema_version", "state_kind", "world_build_cl", "pois_source_sha256", "save", "rules", "notes", "collected", "collected_reason", "opened_not_looted", "counts", "diagnostics"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "state_kind": {"const": "satisfactory_navigator_poi_state"},
+    "world_build_cl": {"type": "integer", "description": "Should match the CL suffix of catalog world_build."},
+    "pois_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Should equal the catalog's sources[role=pois].sha256."},
+    "save": {
+      "type": "object",
+      "required": ["file_name", "session_name", "session_file_token", "save_identifier", "save_time_utc", "play_duration_s", "selection"],
+      "additionalProperties": false,
+      "properties": {
+        "file_name": {"type": "string"},
+        "session_name": {"type": "string"},
+        "session_file_token": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$", "description": "session_name with every char outside [A-Za-z0-9_-] replaced by '_'."},
+        "save_identifier": {"type": "string"},
+        "save_time_utc": {"type": "string"},
+        "play_duration_s": {"type": "integer"},
+        "selection": {"type": "string"}
+      }
+    },
+    "rules": {"type": "object", "additionalProperties": {"type": "string"}},
+    "notes": {"type": "array", "items": {"type": "string"}},
+    "collected": {"type": "array", "items": {"type": "string", "pattern": "^poi_[0-9]+_[0-9]+$"}, "uniqueItems": true},
+    "collected_reason": {"type": "object", "additionalProperties": {"enum": ["destroyed", "looted_flag"]}},
+    "opened_not_looted": {"type": "array", "items": {"type": "string"}, "description": "Informational: pod opened, hard drive apparently still inside."},
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["total", "collected", "available"],
+        "additionalProperties": false,
+        "properties": {"total": {"type": "integer"}, "collected": {"type": "integer"}, "available": {"type": "integer"}}
+      }
+    },
+    "diagnostics": {"type": "object", "additionalProperties": {"type": "integer"}}
+  }
+}

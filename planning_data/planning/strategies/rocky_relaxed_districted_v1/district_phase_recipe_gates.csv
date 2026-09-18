@@ -1,0 +1,19 @@
+district_phase_recipe_gate_id,district_phase_id,recipe_id,recipe_name,priority_class,required_before_commit,confidence,notes
+rocky_a1_cast_screw,rocky_a1,cast_screw,Cast Screw,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_a1_stitched_iron_plate,rocky_a1,stitched_iron_plate,Stitched Iron Plate,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_a1_iron_wire,rocky_a1,iron_wire,Iron Wire,TARGET,false,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_c1_solid_steel_ingot,rocky_c3,solid_steel_ingot,Solid Steel Ingot,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_c1_encased_industrial_pipe,rocky_c2,encased_industrial_pipe,Encased Industrial Pipe,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_c1_steel_rotor,rocky_c3,steel_rotor,Steel Rotor,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_c1_molded_steel_pipe,rocky_c3,molded_steel_pipe,Molded Steel Pipe,TARGET,false,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_d1_heavy_oil_residue,rocky_d1,heavy_oil_residue,Heavy Oil Residue,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_d1_recycled_plastic,rocky_d1,recycled_plastic,Recycled Plastic,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_d1_recycled_rubber,rocky_d1,recycled_rubber,Recycled Rubber,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_e1_heavy_encased_frame,rocky_e1,heavy_encased_frame,Heavy Encased Frame,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_g1_silicon_circuit_board,rocky_g1,silicon_circuit_board,Silicon Circuit Board,TARGET,false,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_g1_caterium_computer,rocky_g1,caterium_computer,Caterium Computer,TARGET,false,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_g1_pure_copper_ingot,rocky_g1,pure_copper_ingot,Pure Copper Ingot,TARGET,false,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_f1_sloppy_alumina,rocky_f1,sloppy_alumina,Sloppy Alumina,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_f1_pure_aluminum_ingot,rocky_f1,pure_aluminum_ingot,Pure Aluminum Ingot,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_d2_diluted_fuel,rocky_d2,diluted_fuel,Diluted Fuel,GET,true,DEFINED,Mapped from existing Rocky recipe-gate strategy.
+rocky_f1_electrode_aluminum_scrap,rocky_f1,electrode_aluminum_scrap,Electrode Aluminum Scrap,TARGET,false,DEFINED,Mapped from existing Rocky recipe-gate strategy.

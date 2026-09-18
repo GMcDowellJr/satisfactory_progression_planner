@@ -1,0 +1,12 @@
+{
+  "fixture_id": "PHM_steel_deck_502094",
+  "foundation_count": 221,
+  "flat_origin_elevation_m": -5.0,
+  "flat_top_elevation_m": -3.0,
+  "foundation_height_m": 4.0,
+  "known_ground_relief_m_max": 4.0,
+  "known_ground_p95_top_clearance_m_max": 4.0,
+  "known_edge_p95_top_clearance_m_max": 4.0,
+  "minimum_known_ground_fraction": 0.75,
+  "expected_result": "PASS"
+}

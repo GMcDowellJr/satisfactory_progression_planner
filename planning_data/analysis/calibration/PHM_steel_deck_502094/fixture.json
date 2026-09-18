@@ -1,0 +1,14 @@
+{
+  "source_save_name": "PHM_autosave_0.sav",
+  "save_build": 502094,
+  "selection": {
+    "class": "Build_Foundation_8x4_01",
+    "origin_z_m": -5.0,
+    "largest_edge_connected_component": true,
+    "spacing_m": 8.0
+  },
+  "foundation_count": 221,
+  "foundation_height_m": 4.0,
+  "source_save_sha256": "d00c6b672c1225201a442bb8c60d40d0ee1389e38f9df6b2745ba35b46127ae7",
+  "source_save_committed": false
+}

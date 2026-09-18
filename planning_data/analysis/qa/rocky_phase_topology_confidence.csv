@@ -1,0 +1,65 @@
+entity_type,entity_id,confidence,source_basis,review_needed
+district_phase,rocky_a0,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_a1,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_a2,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_a3,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_b0,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_b1,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_b2,PLACEHOLDER,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_c0,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_c1,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_c2,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_c3,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_d0,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_d1,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_d2,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_e0,PLACEHOLDER,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_e1,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_e2,PLACEHOLDER,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_f0,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_f1,PARAMETERIZED,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_f2,PLACEHOLDER,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_g0,DEFINED,existing Rocky district plan + prior phasing discussion,false
+district_phase,rocky_g1,PLACEHOLDER,existing Rocky district plan + prior phasing discussion,true
+district_phase,rocky_g2,PLACEHOLDER,existing Rocky district plan + prior phasing discussion,true
+production_module,a_plate,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_rod,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_screw,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_rip,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_rotor,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_modframe,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_smartplate,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_wire,PARAMETERIZED,existing Rocky production scope / prior topology discussion,true
+production_module,a_cable,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_coppersheet,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,a_concrete,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_steel_ingot,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_pipe,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_beam,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_eib,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_rotor,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_stator,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_motor,DEFINED,existing Rocky production scope / prior topology discussion,false
+production_module,c_vframe,PARAMETERIZED,existing Rocky production scope / prior topology discussion,true
+production_module,c_auto_wiring,PARAMETERIZED,existing Rocky production scope / prior topology discussion,true
+adjacency_rule,adj_001,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_002,PARAMETERIZED,prior adjacency/expansion discussion,true
+adjacency_rule,adj_003,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_004,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_005,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_006,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_007,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_008,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_009,PARAMETERIZED,prior adjacency/expansion discussion,true
+adjacency_rule,adj_010,PARAMETERIZED,prior adjacency/expansion discussion,true
+adjacency_rule,adj_011,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_012,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_013,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_014,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_015,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_016,DEFINED,prior adjacency/expansion discussion,false
+adjacency_rule,adj_017,DEFINED,prior adjacency/expansion discussion,false
+storage_strategy,central_terminal_default,DEFINED,user-reviewed planning decision,false
+expansion_strategy,extend_line_then_duplicate_if_constrained,DEFINED,user-reviewed planning decision,false
+district_phase,rocky_c1,DEFINED,user-reviewed District C transition requirement,false
+topology_schema,flow_vs_spatial_split,DEFINED,user-reviewed modeling refinement,false

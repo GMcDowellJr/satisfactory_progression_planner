@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "satisfactory_navigator_poi_catalog_v2",
+  "title": "Satisfactory Navigator POI Catalog v2",
+  "description": "Planner -> mod contract. Supersedes SatisfactoryNavigator/Data/poi_catalog.schema.json (v1). Locations are Unreal world cm. No ordering, routing, reachability, or collected-state claims.",
+  "type": "object",
+  "required": ["schema_version", "catalog_kind", "world_build", "coord_frame", "match_key_rule", "state_source", "runtime_verification", "sources", "counts", "pois"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 2},
+    "catalog_kind": {"const": "satisfactory_navigator_poi_catalog"},
+    "world_build": {"type": "string", "minLength": 1, "description": "Mod should refuse the catalog when this differs from the running build."},
+    "coord_frame": {
+      "type": "object",
+      "required": ["name", "x", "y", "z"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"const": "ue_world_cm"},
+        "x": {"type": "string"},
+        "y": {"type": "string"},
+        "z": {"type": "string"}
+      }
+    },
+    "match_key_rule": {"type": "string"},
+    "state_source": {"type": ["string", "null"], "description": "null = no save reader; every POI state is 'unknown'."},
+    "runtime_verification": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "game_build", "evidence"],
+        "properties": {
+          "status": {"enum": ["verified"]},
+          "game_build": {"type": "string"},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "foot_topology_facts_note": {"type": ["string", "null"]},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "path", "sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "role": {"type": "string"},
+          "path": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}},
+    "pois": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "label", "match_key", "source_object_id", "source_class", "location_cm", "match_verified", "state"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^poi_[0-9]+_[0-9]+$"},
+          "type": {"enum": ["crash_site", "somersloop", "mercer_sphere", "power_slug_blue", "power_slug_yellow", "power_slug_purple"]},
+          "label": {"type": "string"},
+          "match_key": {"type": "string", "minLength": 1},
+          "source_object_id": {"type": "string", "minLength": 1},
+          "source_class": {"type": "string", "minLength": 1},
+          "location_cm": {
+            "type": "object",
+            "required": ["x", "y", "z"],
+            "additionalProperties": false,
+            "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}
+          },
+          "match_verified": {"type": "boolean", "description": "true only for types listed in runtime_verification."},
+          "state": {"enum": ["unknown", "available", "collected"]},
+          "foot_topology_facts": {
+            "type": "object",
+            "required": ["snap_status"],
+            "additionalProperties": false,
+            "properties": {
+              "snap_status": {"type": "string"},
+              "global_component_rank": {"type": "integer"},
+              "primary_network_member": {"type": "boolean"},
+              "snap_spatial_distance_m": {"type": "number"},
+              "snap_dz_m": {"type": "number"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+route_request_id,origin,destination,purpose,mode,priority_pois,status,notes
+rr_a_c_first,rocky_desert_a,rocky_desert_c,first_trip,foot_then_tractor,crash_site;power_slugs;mercer_sphere,ready_when_pois_ingested,Enrich first steel-establishment trip.
+rr_a_d_first,rocky_desert_a,rocky_desert_d,first_trip,foot_then_truck,crash_site;power_slugs;mercer_sphere;somersloop,ready_when_pois_ingested,Enrich first oil-establishment trip.
+rr_a_g_specialty,rocky_desert_a,rocky_desert_g,resource_recon,foot,crash_site;power_slugs;mercer_sphere;specialty_resource,ready_when_pois_ingested,Caterium/Quartz/Sulfur/SAM reconnaissance and exploration enrichment.
+rr_f_water_recon,rocky_desert_f,water_side_aluminum_candidate,resource_recon,foot_then_vehicle,crash_site;power_slugs;mercer_sphere;somersloop,endpoint_needs_water_site,Combines future aluminum siting reconnaissance with exploration.

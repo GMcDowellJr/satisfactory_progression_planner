@@ -1,0 +1,7 @@
+phase_archetype_id,district_type,phase_order,name,current_belt_capability,design_belt_capability,current_miner_capability,design_miner_capability,permanent_layout_default,parameterized,notes
+starter_bootstrap,starter_home,0,Bootstrap,belt_mk1,belt_mk2,miner_mk1,miner_mk1,false,true,Default design-ahead heuristic: initial 60/min operation may reserve physical lanes for 120/min. Override per start/playthrough.
+starter_120_baseline,starter_home,1,120/min Starter Baseline,belt_mk2,belt_mk2,miner_mk1,miner_mk2,true,true,Represents the near-term starter planning basis; miner upgrade remains an expansion parameter.
+steel_commission,steel,0,Steel Commissioning,belt_mk2,belt_mk3,miner_mk1,miner_mk2,true,true,Default heuristic: commission at 120/min but reserve geometry for 270/min lanes and Mk.2 extraction. Override if progression timing differs.
+steel_270_operation,steel,1,270/min Steel Operation,belt_mk3,belt_mk3,miner_mk2,miner_mk2,true,true,Operational state after the near-term belt/miner upgrade.
+oil_temporary,oil,0,Temporary Oil,,,,,false,true,Recipe/process-driven placeholder phase; specific permanent recipe gates belong in strategy profiles.
+oil_permanent,oil,1,Permanent Petrochemical,,,,,true,true,Permanent oil architecture after strategy-selected recipe gates are satisfied.

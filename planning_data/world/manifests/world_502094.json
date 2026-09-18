@@ -1,0 +1,87 @@
+{
+  "world_extract_id": "world_502094",
+  "game": {
+    "version": "1.2.4.0",
+    "build": 502094,
+    "branch": "++FactoryGame+rel-main-anniversary-2026"
+  },
+  "coordinate_frame": {
+    "canonical_units": "metres",
+    "east": "+X",
+    "north": "-Y",
+    "up": "+Z",
+    "source_units": "centimetres where applicable"
+  },
+  "layers": {
+    "resource_nodes": {
+      "raw": "world/source_snapshots/build_502094/world_resource_nodes.json",
+      "sha256": "1b6d2b740081eb56c0d77136aed0d330ea4696dee13d1075fc231574ee7552b0",
+      "count": 625,
+      "canonical_sockets": "world/canonical/world_resource_sockets.csv",
+      "default_assignments": "world/configurations/default_502094/resource_assignments.csv",
+      "qa": "analysis/qa/world_resource_ingest_502094.csv",
+      "status": "ready"
+    },
+    "collectibles": {
+      "raw": "world/source_snapshots/build_502094/world_collectibles.json",
+      "sha256": "2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337",
+      "canonical": "world/canonical/world_collectibles_static.csv",
+      "status": "ready"
+    },
+    "exploration_pois": {
+      "canonical": "world/canonical/exploration_pois.csv",
+      "count": 1764,
+      "status": "ready"
+    },
+    "terrain_water": {
+      "path": "world/spatial/heightmap_build_502094",
+      "grid": {
+        "width": 7500,
+        "height": 7500,
+        "spacing_cm": 100.0,
+        "x0_cm": -324700.0,
+        "y0_cm": -375000.0,
+        "georeference": "x_cm = -324700 + col*100, y_cm = -375000 + row*100",
+        "alignment": "vertex-aligned: a texel's height belongs to that point exactly, not to a cell around it, so a reader rounds to the nearest vertex rather than flooring into a cell",
+        "axes": "game axes -- +X east, +Y south, so row 0 is the northern edge"
+      },
+      "spacing_m": 1.0,
+      "status": "ready"
+    },
+    "buildable_areas": {
+      "status": "tooling_ready",
+      "policy": "analysis/policies/build_surfaces_v9.json",
+      "source_terrain": "world/spatial/heightmap_build_502094",
+      "outputs": "analysis/derived/build_surfaces/build_502094/build_surfaces_v9",
+      "tool": "tools/build_surface_tool",
+      "runner": "scripts/generate_build_surfaces.py",
+      "current_scope": "primary v9 variable-rectangle flat-pad support fit with class-specific coverage rasters; PHM steel-deck Medium calibration; ground provenance with cliff/overhang ambiguity; district capacity remains downstream aggregation",
+      "policy_id": "build_surfaces_v9",
+      "rectangle_output": "analysis/derived/build_surfaces/build_502094/build_surfaces_v9/build_surface_rectangles.csv",
+      "calibration_fixture": "analysis/calibration/PHM_steel_deck_502094/calibration_summary.json"
+    },
+    "corridor_topology": {
+      "status": "tooling_ready",
+      "policy": "analysis/policies/corridors_v1.json",
+      "source_terrain": "world/spatial/heightmap_build_502094",
+      "outputs": "analysis/derived/corridors/build_502094/corridors_v1",
+      "tool": "tools/corridor_tool",
+      "runner": "scripts/generate_corridors.py",
+      "current_scope": "terrain-derived physical connectivity substrate; transport-mode routing remains downstream"
+    },
+    "default_world_configuration": {
+      "id": "default_502094",
+      "resource_assignments": "world/configurations/default_502094/resource_assignments.csv",
+      "resource_totals": "world/configurations/default_502094/resource_totals.csv",
+      "status": "ready"
+    }
+  },
+  "alignment": {
+    "required_build": 502094,
+    "resources": 502094,
+    "terrain": 502094,
+    "collectibles": 502094,
+    "status": "PASS"
+  },
+  "design_boundary": "World extraction records what the world contains. Buildable areas and corridor topology are derived world analysis. Factory/site suitability and progression recommendations are downstream planning concerns."
+}

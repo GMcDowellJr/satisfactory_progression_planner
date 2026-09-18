@@ -1,0 +1,8 @@
+check,expected,actual,status
+row_count,625,625,PASS
+fracking_cores,17,17,PASS
+fracking_satellites,118,118,PASS
+geysers,31,31,PASS
+resource_nodes,459,459,PASS
+satellites_with_core,118,118,PASS
+unique_ids,625,625,PASS

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "satisfactory-build-surface-tool"
+version = "0.9.0"
+description = "Repeatable terrain-derived industrial build-surface analysis for Satisfactory world extracts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "scipy>=1.11",
+]
+
+[project.scripts]
+satisfactory-build-surfaces = "build_surface_tool.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

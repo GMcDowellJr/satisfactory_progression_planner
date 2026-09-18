@@ -1,0 +1,8 @@
+storage_role,meaning
+construction_reserve,Retained because the player consumes the item directly for building.
+retained_inventory,General retained stock even when also used downstream.
+downstream_buffer,Inventory intended primarily to smooth downstream production.
+dimensional_supply,Inventory intended to feed a Dimensional Depot.
+project_buffer,Project/Elevator part waiting for delivery or later use.
+logistics_buffer,Staging inventory for truck/train/drone movement.
+overflow_control,Storage participates in overflow-to-sink behavior.

@@ -1,0 +1,8 @@
+extractor_class,display_name,native_class,role,base_power_mw,power_exponent,game_build_id,source_id,verified_on
+Build_FrackingSmasher_C,Resource Well Pressurizer,FGBuildableFrackingActivator,activator,150,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_FrackingExtractor_C,Resource Well Extractor,FGBuildableFrackingExtractor,extractor,0,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk1_C,Miner Mk.1,FGBuildableResourceExtractor,extractor,5,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk2_C,Miner Mk.2,FGBuildableResourceExtractor,extractor,15,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk3_C,Miner Mk.3,FGBuildableResourceExtractor,extractor,45,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_OilPump_C,Oil Extractor,FGBuildableResourceExtractor,extractor,40,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_WaterPump_C,Water Extractor,FGBuildableWaterPump,extractor,20,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18

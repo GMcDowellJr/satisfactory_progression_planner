@@ -1,0 +1,37 @@
+{
+  "schema_name": "satisfactory_world_analysis_and_planning_data",
+  "schema_version": "2.0.0",
+  "principles": [
+    "Separate game rules, world extraction, derived world analysis, planning strategy, and playthrough state.",
+    "Treat the default resource map as one world configuration, not immutable geometry.",
+    "Use extracted resource actor id as stable socket_id and save join key.",
+    "Keep raw build-pinned extraction artifacts immutable; canonical tables are projections.",
+    "Derived analysis must be regenerable from canonical world/game inputs.",
+    "Rocky Desert is a validation/reference plan, not the definition of world-analysis logic."
+  ],
+  "layers": {
+    "game/reference": "build-pinned gameplay facts",
+    "world": "build-pinned world extraction and materialized world configurations",
+    "analysis": "derived world/planning analysis and QA",
+    "planning": "planner semantics, plans, strategies and mutable run state"
+  },
+  "world_contract": {
+    "manifest": "world/manifests/world_502094.json",
+    "resource_sockets": "world/canonical/world_resource_sockets.csv",
+    "default_resource_assignments": "world/configurations/default_502094/resource_assignments.csv",
+    "exploration_pois": "world/canonical/exploration_pois.csv",
+    "terrain_water": "world/spatial/heightmap_build_502094",
+    "raw_resources": "world/source_snapshots/build_502094/world_resource_nodes.json",
+    "join_policy": "socket_id equals extracted world actor id; save instanceName is Persistent_Level:PersistentLevel.<socket_id>"
+  },
+  "analysis_status": {
+    "resource_socket_ingest": "complete",
+    "default_assignment_projection": "complete",
+    "terrain_water": "complete_for_build_502094",
+    "exploration_pois": "complete_for_build_502094",
+    "buildable_areas": "not_started",
+    "corridor_topology": "prototype_route_derived",
+    "site_suitability": "not_started"
+  },
+  "client_boundary": "UI/mod clients consume normalized contracts; planner logic stays outside clients."
+}

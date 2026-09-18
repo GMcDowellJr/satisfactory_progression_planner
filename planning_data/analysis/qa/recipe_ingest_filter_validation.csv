@@ -1,0 +1,7 @@
+metric,value,notes
+previous_recipe_part_filter_count,288,v1.2 selected recipes using Recipe.Part gameplay tag.
+corrected_factory_recipe_count,291,v1.2.1 selects recipes by automated production-building producer class.
+factory_recipes_without_recipe_part_tag,25,24 packaging/unpackaging recipes plus Alternate: Diluted Packaged Fuel.
+recipe_part_rows_excluded_as_nonfactory,22,Workshop/equipment recipes excluded from factory-production tables.
+rocky_strategy_rows,79,
+rocky_strategy_exact_matches,79,All strategy recipe names now reconcile to installed factory recipes.

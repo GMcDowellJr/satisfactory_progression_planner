@@ -1,0 +1,5 @@
+requirement_type,applies_to,evaluation,notes
+item,crash_site,inventory_or_dimensional_access,Required item(s) to open a pod.
+power,crash_site,portable_generation_or_local_grid,Required MW to open a pod.
+equipment,all,loadout_capability,"Jetpack, explosives, gas protection, weapon, etc."
+terrain_access,all,route_and_vertical_access,"Cliffs, caves, high ledges, deep water, etc."

@@ -1,0 +1,31 @@
+[project]
+name = "satisfactory-progression-planner"
+version = "0.1.0"
+description = "Satisfactory progression and production planning tooling."
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+# Everything needed to run the full test suite from a clean machine.
+#   pytest  the runner
+#   numpy   scripts/build_travel_topology.py and scripts/build_foot_exploration_data.py
+#           import it; tests/test_foot_exploration_data_separation.py loads those
+#           scripts, so the suite cannot go green without it.
+# scipy is NOT here yet. It arrives with the production LP backend
+# (docs/decisions/production_lp_formulation.md) and with build_surface_tool and
+# corridor_tool, which declare it themselves.
+dev = ["pytest>=8", "numpy>=1.26"]
+
+[tool.uv]
+# Not an installable package — the repo is a collection of tools under tools/,
+# each with its own pyproject. tests/conftest.py puts what the tests need on
+# sys.path, so nothing here has to be built or installed to run the suite.
+package = false
+
+[tool.pytest.ini_options]
+# This section is load-bearing beyond configuration: without a pyproject at the
+# repo root carrying it, pytest anchors rootdir at tools/production_adapter and
+# then reports every path in tests/ as though it lived under that directory —
+# e.g. "tools\production_adapter\test_demand_oracle.py" for a file that is
+# actually tests/test_demand_oracle.py. Observed 2026-09-18.
+testpaths = ["tests", "tools/production_adapter/tests"]

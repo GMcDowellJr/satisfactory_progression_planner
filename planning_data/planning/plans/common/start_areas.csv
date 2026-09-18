@@ -1,0 +1,5 @@
+start_area_id,name,planning_character,source_file
+rocky_desert,Rocky Desert,"Balanced; good building space, diverse resources, coastal water access.",rocky_desert_factory_district_plan(2).md
+grass_fields,Grass Fields,"Easy terrain, dispersed resources, strong case for early outposts and transport.",grass_fields_factory_district_plan.md
+northern_forest,Northern Forest,"Resource-rich, build-space constrained; favors vertical/terrace development.",northern_forest_factory_district_plan.md
+dune_desert,Dune Desert,Large buildable area and abundant basics; water/biomass/external links are key constraints.,dune_desert_factory_district_plan.md

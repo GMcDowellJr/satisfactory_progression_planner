@@ -1,0 +1,39 @@
+spatial_rule_id,module_a_id,module_b_id,spatial_preference,weight,confidence,reason
+spatial_001,a_plate,a_rip,prefer_adjacent,9,DEFINED,Strong direct material relationship.
+spatial_002,a_wire,a_rip,prefer_adjacent,8,PARAMETERIZED,Strong when Stitched Iron Plate is active.
+spatial_003,a_screw,a_rotor,prefer_adjacent,8,DEFINED,Screw-heavy Rotor input.
+spatial_004,a_rip,a_smartplate,prefer_adjacent,10,DEFINED,Direct Smart Plating input.
+spatial_005,a_rotor,a_smartplate,prefer_adjacent,10,DEFINED,Direct Smart Plating input.
+spatial_006,a_rip,a_modframe,prefer_adjacent,8,DEFINED,Direct Modular Frame input.
+spatial_007,a_rod,a_modframe,distance_tolerant,4,DEFINED,Longer feed acceptable to preserve stronger adjacencies.
+spatial_008,a_rip,a_rotor,prefer_near,7,DEFINED,Both converge on Smart Plating.
+spatial_009,c_beam,c_eib,prefer_adjacent_initial,9,DEFINED,Important before EIP transition.
+spatial_010,c_pipe,c_eib,prefer_adjacent_after_transition,10,DEFINED,Dominant EIB relationship after EIP.
+spatial_011,c_pipe,c_rotor,prefer_adjacent,9,DEFINED,Pipe-heavy rotor line.
+spatial_012,c_pipe,c_stator,prefer_adjacent,9,DEFINED,Pipe-heavy stator line.
+spatial_013,c_rotor,c_motor,prefer_adjacent,10,DEFINED,Motor convergence.
+spatial_014,c_stator,c_motor,prefer_adjacent,10,DEFINED,Motor convergence.
+spatial_015,c_eib,c_rotor,separate_lane,6,DEFINED,Independent extendable lines.
+spatial_016,c_eib,c_stator,separate_lane,6,DEFINED,Independent extendable lines.
+spatial_017,b_coal_supply,b_coal_power,prefer_near,8,DEFINED,Short simple coal feed.
+spatial_018,b_water_supply,b_coal_power,prefer_adjacent,10,DEFINED,Water availability is a strong siting constraint.
+spatial_019,d_plastic,d_hor,prefer_near,9,DEFINED,Residue management must stay simple.
+spatial_020,d_rubber,d_hor,prefer_near,9,DEFINED,Residue management must stay simple.
+spatial_021,d_hor,d_pet_coke,prefer_adjacent_initial,10,DEFINED,Safety valve must reliably drain HOR.
+spatial_022,d_hor,d_fuel,prefer_adjacent_after_transition,10,DEFINED,Permanent residue/fuel relationship.
+spatial_023,d_plastic,d_rubber,separate_module,8,DEFINED,Independent demand and expansion.
+spatial_024,d_recycled_plastic,d_recycled_rubber,prefer_near,9,DEFINED,Tightly coupled recycle loop.
+spatial_025,d_fuel,d_fuel_power,prefer_near,8,PARAMETERIZED,Fuel power benefits from simple fluid routing.
+spatial_026,e_modframe,e_hmf,prefer_adjacent,9,DEFINED,Direct high-volume HMF input.
+spatial_027,e_concrete,e_hmf,prefer_adjacent,8,DEFINED,Direct HMF input.
+spatial_028,e_hmf,e_fused_frame,prefer_near_late,6,PLACEHOLDER,Late extension.
+spatial_029,f_bauxite_supply,f_alumina,distance_tolerant_with_transport,5,DEFINED,Extraction can be remote from water-side processing.
+spatial_030,f_water_supply,f_alumina,prefer_adjacent,10,DEFINED,Wet processing sits near water.
+spatial_031,f_alumina,f_scrap,prefer_adjacent,10,DEFINED,Fluid-heavy intermediate relationship.
+spatial_032,f_scrap,f_al_ingot,prefer_adjacent,9,DEFINED,High-throughput material flow.
+spatial_033,f_al_ingot,f_al_sheet,prefer_near,8,DEFINED,Shared ingot source.
+spatial_034,f_al_ingot,f_al_casing,prefer_near,8,DEFINED,Shared ingot source.
+spatial_035,g_logistics_hub,g_circuit_board,prefer_near,8,PARAMETERIZED,Imported-material manufacturing.
+spatial_036,g_logistics_hub,g_computer,prefer_near,8,PARAMETERIZED,Imported-material manufacturing.
+spatial_037,g_circuit_board,g_computer,prefer_adjacent,8,PARAMETERIZED,Shared electronics chain.
+spatial_038,g_logistics_hub,g_high_speed_connector,prefer_near_late,7,PLACEHOLDER,Late import-heavy module.

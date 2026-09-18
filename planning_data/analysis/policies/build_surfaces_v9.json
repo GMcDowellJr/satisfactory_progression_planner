@@ -1,0 +1,395 @@
+{
+  "policy_id": "build_surfaces_v9",
+  "status": "calibration_defaults_horizontal_plane_support_variable_footprints_class_specific_coverage",
+  "analysis_model": "horizontal_plane_fit",
+  "foundation_size_m": 8.0,
+  "classification_basis": "variable rectangular flat-pad footprints fitted to one horizontal platform plane using known ground-support provenance; PHM steel deck anchors Medium; district capacity remains a later aggregation concept; class-specific footprint-union rasters emitted for exclusive viewer display",
+  "size_classes": {
+    "small": {
+      "minimum_short_span_foundations": 8,
+      "minimum_short_span_m": 64,
+      "reference_span_foundations": [
+        8,
+        12
+      ],
+      "reference_span_m": [
+        64,
+        96
+      ],
+      "reference_core_area_m2": 6144,
+      "intent": "compact local/satellite flat pad",
+      "footprint_family_foundations": [
+        [
+          8,
+          8
+        ],
+        [
+          8,
+          12
+        ],
+        [
+          8,
+          16
+        ],
+        [
+          10,
+          16
+        ],
+        [
+          10,
+          20
+        ]
+      ],
+      "footprint_family_m": [
+        [
+          64,
+          64
+        ],
+        [
+          64,
+          96
+        ],
+        [
+          64,
+          128
+        ],
+        [
+          80,
+          128
+        ],
+        [
+          80,
+          160
+        ]
+      ],
+      "classification_rule": "qualifies if any configured flat-pad footprint in this class fits; highest supported class wins; within class prefer largest area then lowest perimeter/mean clearance"
+    },
+    "medium": {
+      "minimum_short_span_foundations": 12,
+      "minimum_short_span_m": 96,
+      "reference_span_foundations": [
+        12,
+        26
+      ],
+      "reference_span_m": [
+        96,
+        208
+      ],
+      "reference_core_area_m2": 19968,
+      "intent": "substantial dedicated flat pad; PHM steel deck is the calibration anchor",
+      "footprint_family_foundations": [
+        [
+          12,
+          20
+        ],
+        [
+          12,
+          24
+        ],
+        [
+          12,
+          26
+        ],
+        [
+          12,
+          28
+        ],
+        [
+          14,
+          24
+        ],
+        [
+          14,
+          28
+        ],
+        [
+          16,
+          24
+        ],
+        [
+          16,
+          32
+        ]
+      ],
+      "footprint_family_m": [
+        [
+          96,
+          160
+        ],
+        [
+          96,
+          192
+        ],
+        [
+          96,
+          208
+        ],
+        [
+          96,
+          224
+        ],
+        [
+          112,
+          192
+        ],
+        [
+          112,
+          224
+        ],
+        [
+          128,
+          192
+        ],
+        [
+          128,
+          256
+        ]
+      ],
+      "classification_rule": "qualifies if any configured flat-pad footprint in this class fits; highest supported class wins; within class prefer largest area then lowest perimeter/mean clearance"
+    },
+    "large": {
+      "minimum_short_span_foundations": 20,
+      "minimum_short_span_m": 160,
+      "reference_span_foundations": [
+        24,
+        40
+      ],
+      "reference_span_m": [
+        192,
+        320
+      ],
+      "reference_core_area_m2": 61440,
+      "intent": "large single flat industrial pad; district growth may combine several pads",
+      "footprint_family_foundations": [
+        [
+          20,
+          32
+        ],
+        [
+          20,
+          40
+        ],
+        [
+          24,
+          32
+        ],
+        [
+          24,
+          40
+        ],
+        [
+          24,
+          48
+        ],
+        [
+          28,
+          40
+        ],
+        [
+          28,
+          48
+        ],
+        [
+          32,
+          48
+        ]
+      ],
+      "footprint_family_m": [
+        [
+          160,
+          256
+        ],
+        [
+          160,
+          320
+        ],
+        [
+          192,
+          256
+        ],
+        [
+          192,
+          320
+        ],
+        [
+          192,
+          384
+        ],
+        [
+          224,
+          320
+        ],
+        [
+          224,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "classification_rule": "qualifies if any configured flat-pad footprint in this class fits; highest supported class wins; within class prefer largest area then lowest perimeter/mean clearance"
+    },
+    "very_large": {
+      "minimum_short_span_foundations": 32,
+      "minimum_short_span_m": 256,
+      "reference_span_foundations": [
+        40,
+        64
+      ],
+      "reference_span_m": [
+        320,
+        512
+      ],
+      "reference_core_area_m2": 163840,
+      "intent": "exceptionally broad single flat industrial pad; not the same as regional district capacity",
+      "footprint_family_foundations": [
+        [
+          32,
+          56
+        ],
+        [
+          32,
+          64
+        ],
+        [
+          36,
+          56
+        ],
+        [
+          40,
+          56
+        ],
+        [
+          40,
+          64
+        ],
+        [
+          48,
+          64
+        ],
+        [
+          48,
+          80
+        ],
+        [
+          56,
+          80
+        ]
+      ],
+      "footprint_family_m": [
+        [
+          256,
+          448
+        ],
+        [
+          256,
+          512
+        ],
+        [
+          288,
+          448
+        ],
+        [
+          320,
+          448
+        ],
+        [
+          320,
+          512
+        ],
+        [
+          384,
+          512
+        ],
+        [
+          384,
+          640
+        ],
+        [
+          448,
+          640
+        ]
+      ],
+      "classification_rule": "qualifies if any configured flat-pad footprint in this class fits; highest supported class wins; within class prefer largest area then lowest perimeter/mean clearance"
+    }
+  },
+  "shape_classes": {
+    "good": {
+      "max_aspect_ratio": 1.5,
+      "interpretation": "general-purpose placement zone"
+    },
+    "workable": {
+      "min_aspect_ratio_exclusive": 1.5,
+      "max_aspect_ratio": 2.0,
+      "interpretation": "placement zone with some directional constraint"
+    },
+    "linear": {
+      "min_aspect_ratio_exclusive": 2.0,
+      "max_aspect_ratio": 3.0,
+      "interpretation": "elongated placement zone"
+    },
+    "poor": {
+      "min_aspect_ratio_exclusive": 3.0,
+      "interpretation": "highly elongated placement zone; rectangle location is more informative than region shape"
+    }
+  },
+  "analysis_parameters": {
+    "terrain_source_resolution_m": 1.0,
+    "working_resolutions_m": [
+      16
+    ],
+    "clearance_tolerances_m": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "cell_surface_percentile": 50,
+    "max_clearance_factor": 1.0,
+    "minimum_valid_fraction": 0.95,
+    "water_mode": "exclude",
+    "minimum_terrain_confidence": null,
+    "footprint_orientations_deg": [
+      0,
+      90
+    ],
+    "rectangle_candidates_per_region": 3,
+    "rectangle_non_overlap_fraction": 0.15,
+    "max_mean_clearance_factor": 1.0,
+    "max_edge_mean_clearance_factor": 1.0,
+    "terrain_surface_mode": "prefer_ground_provenance",
+    "ground_provenance_codes": [
+      1,
+      3
+    ],
+    "overhead_surface_codes": [
+      4,
+      5
+    ],
+    "minimum_ground_samples_per_cell": 1,
+    "minimum_fit_known_fraction": 0.8,
+    "minimum_edge_known_fraction": 0.75
+  },
+  "notes": [
+    "V8 recalibrates physical flat-pad classes separately from later district-capacity aggregation: Small short side >=8 foundations, Medium >=12 (PHM 12x26 steel deck anchor), Large >=20, Very Large >=32.",
+    "Size-class hotkeys in the viewer are S/M/L/V; numeric 3 is intentionally not used because VTK reserves it for stereo/CrystalEyes display mode.",
+    "V8 lowers minimum known-ground footprint coverage to 80%, matching the PHM steel-deck calibration where ~81% of foundation centers resolve to landscape/fill and the remainder is cliff/overhead ambiguity.",
+    "Clearance variants extend through 32/64 m for diagnostic exploration; these loose settings are not recommended grounded-build defaults, but they expose the expected Large/Very Large progression.",
+    "V7 replaces one fixed square/rectangle per size class with an editable footprint family. Size class describes capacity band, not a required aspect ratio.",
+    "Viewer rectangle dimensions are always physical foundation dimensions: width_foundations * 8 m and length_foundations * 8 m, independent of analysis resolution.",
+    "The contextual suitability fill is emitted from the union of qualifying footprint coverage, while center-membership remains available for region identity/debugging.",
+    "Every qualifying rectangle is one flat horizontal platform. Its Z is fitted to the highest known ground-support cell in the footprint.",
+    "Landscape (provenance 1) and fill (3) are treated as ground support. Cliff surfaces (4/5) are not assumed to be ground because the 2.5D heightfield may be showing an overhead rock or natural bridge instead of the usable floor beneath.",
+    "A footprint may contain a limited fraction of cliff-only/unknown ground cells. Defaults require at least 85% known ground across the footprint and 75% around the perimeter; ambiguity is emitted as a metric rather than silently interpreted.",
+    "At 16 m working resolution each support cell uses the median of its underlying known-ground samples. Decrease working resolution to make smaller terrain details matter.",
+    "For a tolerance T, the lowest no-penetration platform is fitted at the highest known ground cell and known-ground maximum clearance must also be <= T. At T=4 m this approximates a 4 m foundation remaining terrain-supported rather than visibly floating.",
+    "The PHM_steel_deck_502094 calibration fixture is a 221-foundation flat 4 m deck. On known landscape/fill centers its top is ~3.0 m above terrain median, 3.8 m at p95; 42 centers coincide with cliff/overhead top-surface provenance and are kept separate from support clearance.",
+    "The irregular region is only the connected zone of qualifying rectangle centers. Emitted rectangles and fitted platform elevations are the primary planning geometry.",
+    "build_surfaces_v5 remains available as the all-top-surface plane-fit baseline; v4 and v3 remain alternate analyses.",
+    "V6 remains available as the single-reference-footprint baseline."
+  ]
+}

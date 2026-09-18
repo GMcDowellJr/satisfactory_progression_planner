@@ -1,0 +1,9 @@
+strategy_profile_id,stage,route_role,preferred_transport,parameterized,source_file
+grass_fields_baseline_v1,t1_2,dispersed local nodes → mall,belt,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t3,coal-water outpost,local_belts_plus_power,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t3_4,Steel → Home,tractor,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t5,Oil → Home/central manufacturing,truck_then_rail,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t6,Grass Fields ↔ Steel ↔ Oil,rail,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t7,highland Bauxite → water-side aluminum,train_or_long_downhill_belt,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t7_8,Aluminum → central manufacturing,rail,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,t9,specialist flows,rail_or_drone,true,grass_fields_factory_district_plan.md

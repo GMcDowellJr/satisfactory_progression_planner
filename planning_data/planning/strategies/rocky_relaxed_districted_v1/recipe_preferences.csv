@@ -1,0 +1,80 @@
+strategy_profile_id,recipe_id,recipe_name,progression_cluster_id,rank,rationale,parameterized,provenance
+rocky_relaxed_districted_v1,cast_screws,Cast Screws,pre_tier_1_2,S,Excellent early simplification; removes the Rod-to-Screw step.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,iron_wire,Iron Wire,pre_tier_1_2,A,Uses abundant Iron for Wire and preserves Copper for Sheets/electronics.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,stitched_iron_plate,Stitched Iron Plate,tier_1_2,S,Removes Screws from Reinforced Iron Plates; especially strong with Iron Wire.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,bolted_iron_plate,Bolted Iron Plate,tier_1_2,A,"Very high RIP throughput, but consumes many Screws.",true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,bolted_frame,Bolted Frame,tier_1_2,B,Fast Modular Frames; substantial Screw demand.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,copper_rotor,Copper Rotor,tier_1_2,C,"Good output, but consumes Copper Sheets and many Screws.",true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,wet_concrete,Wet Concrete,tier_3_4,A,Excellent Concrete efficiency when Water is convenient.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steamed_copper_sheet,Steamed Copper Sheet,tier_3_4,B,Improves Copper Sheet yield but introduces Refinery/Water infrastructure.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,charcoal,Charcoal,tier_3_4,D,Converts finite Wood to Coal; niche/emergency use.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,biocoal,Biocoal,tier_3_4,D,Converts Biomass to Coal; niche/emergency use.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,solid_steel_ingot,Solid Steel Ingot,tier_3_4,S,Core permanent-steel recipe; +50% Steel output from equivalent Iron/Coal inputs.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,molded_steel_pipe,Molded Steel Pipe,tier_3_4,S/A,Strong fit for a pipe-heavy steel district; trades Limestone for steel efficiency.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steel_rotor,Steel Rotor,tier_3_4,A,Aligns Rotor and Stator inputs around Steel Pipe + Wire; simplifies Motors.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steeled_frame,Steeled Frame,tier_3_4,A,Excellent with Stitched Iron Plate and Steel Pipe production.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,copper_alloy_ingot,Copper Alloy Ingot,tier_3_4,A,Stretches Copper using abundant Iron.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steel_screws,Steel Screws,tier_3_4,A,Produces very large Screw throughput when a later recipe still needs Screws.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,molded_beam,Molded Beam,tier_3_4,A/B,Saves Steel by adding Concrete.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steel_rod,Steel Rod,tier_3_4,A/B,Efficient Iron Rod production once Steel is abundant.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,iron_pipe,Iron Pipe,tier_3_4,B,Lets Iron substitute for Coal/Steel where Coal is constrained.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,basic_iron_ingot,Basic Iron Ingot,tier_3_4,B,Uses Limestone to stretch Iron; less valuable in Iron-rich Rocky Desert.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,iron_alloy_ingot,Iron Alloy Ingot,tier_3_4,B,Raises Iron output at the cost of Copper.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steel_cast_plate,Steel Cast Plate,tier_3_4,B,Fast Iron Plate recipe using Iron + Steel.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,automated_miner,Automated Miner,tier_3_4,C,Convenience recipe for Portable Miners rather than factory economics.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,encased_industrial_pipe,Encased Industrial Pipe,tier_3_4,S,Replaces Steel Beams with Pipes in Encased Industrial Beams; ideal for pipe-centric steel.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,heavy_oil_residue,Heavy Oil Residue,tier_5_6,S,Foundation of the high-yield oil chain.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,recycled_plastic,Recycled Plastic,tier_5_6,S,Core oil optimization; converts Rubber + Fuel to Plastic.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,recycled_rubber,Recycled Rubber,tier_5_6,S,Core oil optimization; converts Plastic + Fuel to Rubber.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,diluted_packaged_fuel,Diluted Packaged Fuel,tier_5_6,S/A,High-yield Fuel before Blender Diluted Fuel; packaging loop adds complexity.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,pure_copper_ingot,Pure Copper Ingot,tier_5_6,A,Excellent Copper yield with Refinery + Water cost.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,pure_iron_ingot,Pure Iron Ingot,tier_5_6,A,"Excellent Iron yield, though Iron is rarely the limiting Rocky Desert resource.",true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,electrode_circuit_board,Electrode Circuit Board,tier_5_6,A,Rubber + Petroleum Coke circuit-board route; useful for oil-centric electronics.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,coke_steel_ingot,Coke Steel Ingot,tier_5_6,A/B,Allows oil byproducts to substitute for Coal in Steel.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,coated_cable,Coated Cable,tier_5_6,A/B,Very high Cable output using oil products.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,insulated_cable,Insulated Cable,tier_5_6,A/B,High Cable throughput using Rubber.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,adhered_iron_plate,Adhered Iron Plate,tier_5_6,B,Rubber-based RIP; Stitched Iron Plate is generally cleaner for this plan.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,flexible_framework,Flexible Framework,tier_5_6,B,Higher Versatile Framework throughput using Rubber.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,coated_iron_plate,Coated Iron Plate,tier_5_6,B,Fast Plate production at the cost of Plastic.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,rubber_concrete,Rubber Concrete,tier_5_6,B,Fast Concrete using Rubber; situational.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,tempered_caterium_ingot,Tempered Caterium Ingot,tier_5_6,B,Caterium Ore + Petroleum Coke; can appear without Caterium MAM research.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,tempered_copper_ingot,Tempered Copper Ingot,tier_5_6,B,Good Copper yield using Petroleum Coke.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,plastic_smart_plating,Plastic Smart Plating,tier_5_6,B/C,Faster Smart Plating using Plastic.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,polymer_resin,Polymer Resin,tier_5_6,C,Optimizes Polymer Resin instead of Heavy Oil Residue; opposite the preferred oil architecture.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,steel_canister,Steel Canister,tier_5_6,B,Simple canister production where Steel is plentiful.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,coated_iron_canister,Coated Iron Canister,tier_5_6,B/C,Alternative canister route using Iron Plate + Copper Sheet.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,heavy_encased_frame,Heavy Encased Frame,tier_5_6,S,Eliminates HMF Screws and synergizes strongly with Encased Industrial Pipe.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,heavy_flexible_frame,Heavy Flexible Frame,tier_5_6,B,High HMF throughput but retains huge Screw demand and adds Rubber.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,sloppy_alumina,Sloppy Alumina,tier_7_8,S,Simplifies aluminum and removes Silica input from Alumina Solution.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,pure_aluminum_ingot,Pure Aluminum Ingot,tier_7_8,S,Scrap to Ingots directly; removes Silica from main Aluminum Ingot chain.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,electrode_aluminum_scrap,Electrode Aluminum Scrap,tier_7_8,A,Replaces Coal with Petroleum Coke; useful for oil-integrated aluminum.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,alclad_casing,Alclad Casing,tier_7_8,A,High Aluminum Casing throughput.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,aluminum_rod,Aluminum Rod,tier_7_8,B,Turns Aluminum into very large Iron Rod output.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,aluminum_beam,Aluminum Beam,tier_7_8,B,Alternative Beam production using Aluminum.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,instant_scrap,Instant Scrap,tier_7_8,B,Direct Scrap route using Sulfuric Acid; more complex than Sloppy Alumina.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,diluted_fuel,Diluted Fuel,tier_7_8,S,Blender Fuel route using HOR + Water directly; removes packaging loop.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,classic_battery,Classic Battery,tier_7_8,A,Fluid-free Battery production; logistics friendly.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,oc_supercomputer,OC Supercomputer,tier_7_8,A,Compact Supercomputer chain using late components.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,radio_control_system,Radio Control System,tier_7_8,A,Strong RCU alternative depending on electronics chain.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,super_state_computer,Super-State Computer,tier_7_8,A,Alternative Supercomputer chain.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,leached_copper_ingot,Leached Copper Ingot,tier_7_8,A/B,Excellent Copper yield using Sulfuric Acid.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,leached_caterium_ingot,Leached Caterium Ingot,tier_7_8,A/B,Excellent Caterium yield using Sulfuric Acid.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,leached_iron_ingot,Leached Iron Ingot,tier_7_8,B,Efficient Iron yield; Iron usually not the primary constraint.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,quartz_purification,Quartz Purification,tier_7_8,B,High-yield Quartz processing.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,distilled_silica,Distilled Silica,tier_7_8,B,Unlocked with Quartz Purification rather than as a separate Hard Drive choice.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,turbo_blend_fuel,Turbo Blend Fuel,tier_7_8,B,Useful Turbofuel route; less compelling once Rocket Fuel is the goal.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,cooling_device,Cooling Device,tier_7_8,A,Good Cooling System alternative.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,heat_exchanger,Heat Exchanger,tier_7_8,A,Attractive Heat Sink recipe using Casings + Rubber.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,heat_fused_frame,Heat-Fused Frame,tier_7_8,A,Strong Fused Modular Frame alternative.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,electric_motor,Electric Motor,tier_7_8,A/B,High-output Motor recipe using late components.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,turbo_electric_motor,Turbo Electric Motor,tier_7_8,B,Alternative Turbo Motor route.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,turbo_pressure_motor,Turbo Pressure Motor,tier_7_8,B,Alternative Turbo Motor route.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,fertile_uranium,Fertile Uranium,tier_7_8,B,Nuclear recycling optimization.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,instant_plutonium_cell,Instant Plutonium Cell,tier_7_8,B,Nuclear waste-chain optimization.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,plutonium_fuel_unit,Plutonium Fuel Unit,tier_7_8,B,Plutonium production optimization.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,oil_based_diamonds,Oil-Based Diamonds,tier_9,S/A,Strong Diamond route where Oil capacity is convenient.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,cloudy_diamonds,Cloudy Diamonds,tier_9,A,Coal + Limestone Diamond route.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,petroleum_diamonds,Petroleum Diamonds,tier_9,A/B,Converts Petroleum Coke into Diamonds.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,pink_diamonds,Pink Diamonds,tier_9,B,Coal + Quartz Crystal route.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,dark_matter_trap,Dark Matter Trap,tier_9,S/A,Strong Dark Matter Crystal option using late quantum inputs.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+rocky_relaxed_districted_v1,dark_matter_crystallization,Dark Matter Crystallization,tier_9,A,Straightforward Dark Matter Residue to Crystal route.,true,Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md

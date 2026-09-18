@@ -1,0 +1,2 @@
+strategy_profile_id,display_name,scope,layout_bias,storage_default,consumer_priority_default,overflow_default,expansion_default,recipe_strategy,notes
+rocky_relaxed_districted_v1,Rocky Relaxed Districted,Reference strategy profile derived from reviewed Rocky Desert planning decisions.,clean;expandable,central_terminal,before_storage,storage_full_to_shared_sink,extend_line_then_duplicate_if_constrained,GET/TARGET priorities from Rocky planning,This profile expresses one player strategy. It is not planner-engine behavior.

@@ -1,0 +1,133 @@
+{
+  "policy_id": "build_surfaces_v6",
+  "status": "calibration_defaults_horizontal_plane_support_with_vertical_layer_ambiguity",
+  "analysis_model": "horizontal_plane_fit",
+  "foundation_size_m": 8.0,
+  "classification_basis": "reference factory rectangle fitted to one horizontal platform plane using known ground-support provenance; qualify by footprint/perimeter clearance while reporting cliff-only vertical-layer ambiguity",
+  "size_classes": {
+    "small": {
+      "minimum_short_span_foundations": 8,
+      "minimum_short_span_m": 64,
+      "reference_span_foundations": [
+        8,
+        8
+      ],
+      "reference_span_m": [
+        64,
+        64
+      ],
+      "reference_core_area_m2": 4096,
+      "intent": "local or satellite production; limited expansion"
+    },
+    "medium": {
+      "minimum_short_span_foundations": 24,
+      "minimum_short_span_m": 192,
+      "reference_span_foundations": [
+        24,
+        32
+      ],
+      "reference_span_m": [
+        192,
+        256
+      ],
+      "reference_core_area_m2": 49152,
+      "intent": "dedicated factory with meaningful miner/belt upgrade headroom"
+    },
+    "large": {
+      "minimum_short_span_foundations": 48,
+      "minimum_short_span_m": 384,
+      "reference_span_foundations": [
+        48,
+        64
+      ],
+      "reference_span_m": [
+        384,
+        512
+      ],
+      "reference_core_area_m2": 196608,
+      "intent": "major production district intended to survive multiple throughput upgrades"
+    },
+    "very_large": {
+      "minimum_short_span_foundations": 80,
+      "minimum_short_span_m": 640,
+      "reference_span_foundations": [
+        80,
+        80
+      ],
+      "reference_span_m": [
+        640,
+        640
+      ],
+      "reference_core_area_m2": 409600,
+      "intent": "regional or late-game industrial campus where terrain should not be the primary growth constraint"
+    }
+  },
+  "shape_classes": {
+    "good": {
+      "max_aspect_ratio": 1.5,
+      "interpretation": "general-purpose placement zone"
+    },
+    "workable": {
+      "min_aspect_ratio_exclusive": 1.5,
+      "max_aspect_ratio": 2.0,
+      "interpretation": "placement zone with some directional constraint"
+    },
+    "linear": {
+      "min_aspect_ratio_exclusive": 2.0,
+      "max_aspect_ratio": 3.0,
+      "interpretation": "elongated placement zone"
+    },
+    "poor": {
+      "min_aspect_ratio_exclusive": 3.0,
+      "interpretation": "highly elongated placement zone; rectangle location is more informative than region shape"
+    }
+  },
+  "analysis_parameters": {
+    "terrain_source_resolution_m": 1.0,
+    "working_resolutions_m": [
+      16
+    ],
+    "clearance_tolerances_m": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "cell_surface_percentile": 50,
+    "max_clearance_factor": 1.0,
+    "minimum_valid_fraction": 0.95,
+    "water_mode": "exclude",
+    "minimum_terrain_confidence": null,
+    "footprint_orientations_deg": [
+      0,
+      90
+    ],
+    "rectangle_candidates_per_region": 3,
+    "rectangle_non_overlap_fraction": 0.15,
+    "max_mean_clearance_factor": 1.0,
+    "max_edge_mean_clearance_factor": 1.0,
+    "terrain_surface_mode": "prefer_ground_provenance",
+    "ground_provenance_codes": [
+      1,
+      3
+    ],
+    "overhead_surface_codes": [
+      4,
+      5
+    ],
+    "minimum_ground_samples_per_cell": 1,
+    "minimum_fit_known_fraction": 0.85,
+    "minimum_edge_known_fraction": 0.75
+  },
+  "notes": [
+    "Every qualifying rectangle is one flat horizontal platform. Its Z is fitted to the highest known ground-support cell in the footprint.",
+    "Landscape (provenance 1) and fill (3) are treated as ground support. Cliff surfaces (4/5) are not assumed to be ground because the 2.5D heightfield may be showing an overhead rock or natural bridge instead of the usable floor beneath.",
+    "A footprint may contain a limited fraction of cliff-only/unknown ground cells. Defaults require at least 85% known ground across the footprint and 75% around the perimeter; ambiguity is emitted as a metric rather than silently interpreted.",
+    "At 16 m working resolution each support cell uses the median of its underlying known-ground samples. Decrease working resolution to make smaller terrain details matter.",
+    "For a tolerance T, the lowest no-penetration platform is fitted at the highest known ground cell and known-ground maximum clearance must also be <= T. At T=4 m this approximates a 4 m foundation remaining terrain-supported rather than visibly floating.",
+    "The PHM_steel_deck_502094 calibration fixture is a 221-foundation flat 4 m deck. On known landscape/fill centers its top is ~3.0 m above terrain median, 3.8 m at p95; 42 centers coincide with cliff/overhead top-surface provenance and are kept separate from support clearance.",
+    "The irregular region is only the connected zone of qualifying rectangle centers. Emitted rectangles and fitted platform elevations are the primary planning geometry.",
+    "build_surfaces_v5 remains available as the all-top-surface plane-fit baseline; v4 and v3 remain alternate analyses."
+  ]
+}

@@ -1,0 +1,29 @@
+district_id,start_area_id,display_code,name,district_type,primary_role,is_template
+rocky_desert_a,rocky_desert,A,Western Coast Starter Works / Home Base,starter_home,"T0-T4 construction materials, HUB, Space Elevator, storage/mall, later logistics interchange.",true
+rocky_desert_b,rocky_desert,B,Northern / Coastal Coal Power,power,First autonomous coal grid.,true
+rocky_desert_c,rocky_desert,C,Southeast / Interior Steel Works,steel,Permanent steel economy.,true
+rocky_desert_d,rocky_desert,D,Western Beaches Petrochemical / Fuel,oil,Permanent oil processing and later major power production.,true
+rocky_desert_e,rocky_desert,E,Northwest Structural / HMF Reserve,structural,Heavy Modular Frame and later Fused Modular Frame production.,true
+rocky_desert_f,rocky_desert,F,Bauxite-to-Water Aluminum Works,aluminum,"Aluminum processing; mine high, process near water.",true
+rocky_desert_g,rocky_desert,G,Advanced Manufacturing / Logistics Junction,advanced_logistics,T7-T9 high-value manufacturing selected for rail access/buildable space.,true
+grass_fields_a,grass_fields,A,Southwest / Central Grass Fields Starter Works,starter_home,Permanent construction-material mall and Project Assembly starter production.,true
+grass_fields_b,grass_fields,B,Northwest Coal / Lake Power,power,First coal-power outpost at coal + water.,true
+grass_fields_c,grass_fields,C,Western / Northwestern Steel Works,steel,Permanent Steel Pipe/Beam/EIB district.,true
+grass_fields_d,grass_fields,D,Western Beaches or Blue Crater Oil,oil,Petrochemical + fuel-power district; direction depends on network expansion.,true
+grass_fields_e,grass_fields,E,Grass Fields–Western Dune Forest Structural / HMF Works,structural,Modular Frame → Heavy Encased Frame production.,true
+grass_fields_f,grass_fields,F,Red Jungle / Bamboo Highlands Bauxite → Low Water Processing,aluminum,Bauxite moved to water-side aluminum works.,true
+grass_fields_g,grass_fields,G,Central Grass Fields Advanced Manufacturing / Rail Yard,advanced_logistics,Late-game assembly/logistics using flat central plains.,true
+northern_forest_a,northern_forest,A,Northern Cliff Starter Works,starter_home,"Compact vertical starter factory, HUB, mall.",true
+northern_forest_b,northern_forest,B,West-of-River Coal Lake Power,power,Coal generation at lake.,true
+northern_forest_c,northern_forest,C,Coal / Iron Steel Terrace,steel,Permanent steel on a terrace/common elevation.,true
+northern_forest_d,northern_forest,D,North / Spire Coast Oil,oil,Oil and fuel processing near coast.,true
+northern_forest_e,northern_forest,E,Forest / Desert-Canyon Structural Works,structural,HMF and later Fused Frames on larger terrace away from starter.,true
+northern_forest_f,northern_forest,F,Red Bamboo / Red Jungle Bauxite → Lower Water,aluminum,Bauxite down to dependable water for aluminum.,true
+northern_forest_g,northern_forest,G,Canyon-Spanning Advanced Manufacturing / Rail Hub,advanced_logistics,Late advanced parts and network consolidation.,true
+dune_desert_a,dune_desert,A,Western Oasis / Northwest Dunes Starter Works,starter_home,Starter mall and future desert logistics center.,true
+dune_desert_b,dune_desert,B,Oasis / Northern Coal-Water Power,power,First autonomous grid at localized water.,true
+dune_desert_c,dune_desert,C,North / West Desert Steel Works,steel,Large permanent steel complex with expansion room.,true
+dune_desert_d,dune_desert,D,Spire Coast Oil,oil,Petrochemicals and fuel power.,true
+dune_desert_e,dune_desert,E,Central / South Desert Structural Works,structural,HMF and later Fused Frames on large flat footprint.,true
+dune_desert_f,dune_desert,F,Imported Bauxite → Water-Side Aluminum,aluminum,Water-side aluminum fed by imported Bauxite.,true
+dune_desert_g,dune_desert,G,Central Dune Advanced Manufacturing Megadistrict,advanced_logistics,Late-game central assembly and rail campus.,true

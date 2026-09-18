@@ -1,0 +1,23 @@
+{
+  "planning_data": {
+    "version": "2.0.0",
+    "folder": "planning_data/",
+    "breaking_change": "world extraction and planning layers reorganized; resource sockets separated from world configuration assignments"
+  },
+  "route_tool": {
+    "version": "0.2.0",
+    "folder": "tools/satisfactory_route_tool/",
+    "breaking_change": "planner package paths updated for v2 world/game layout"
+  },
+  "build_surface_tool": {
+    "version": "0.8.0",
+    "folder": "tools/build_surface_tool/",
+    "status": "v9 class-specific footprint-union rasters, safe NaN diagnostics, PHM-calibrated variable flat pads; prior policies retained"
+  },
+  "world_viewer": {
+    "version": "0.7.0",
+    "folder": "tools/world_viewer/",
+    "status": "v9 exclusive S/M/L/V display, no forced Z-up, smaller sliders, high-contrast bounded overlays, class-specific coverage rendering"
+  },
+  "corridor_tool": "0.1.0"
+}

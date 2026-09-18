@@ -1,0 +1,54 @@
+module_phase_id,module_id,district_phase_id,recipe_id,target_output_min,machine_count,design_lane_capacity,active_fraction,confidence,notes
+a_plate_rocky_a0,a_plate,rocky_a0,Recipe_IronPlate_C,,,,,PARAMETERIZED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_plate_rocky_a1,a_plate,rocky_a1,Recipe_IronPlate_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_rod_rocky_a0,a_rod,rocky_a0,Recipe_IronRod_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_rod_rocky_a1,a_rod,rocky_a1,Recipe_IronRod_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_screw_rocky_a0,a_screw,rocky_a0,Recipe_Alternate_Screw_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_screw_rocky_a1,a_screw,rocky_a1,Recipe_Alternate_Screw_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_rip_rocky_a1,a_rip,rocky_a1,Recipe_Alternate_ReinforcedIronPlate_2_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_rotor_rocky_a1,a_rotor,rocky_a1,Recipe_Rotor_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_modframe_rocky_a1,a_modframe,rocky_a1,Recipe_ModularFrame_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_smartplate_rocky_a1,a_smartplate,rocky_a1,Recipe_SpaceElevatorPart_1_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_wire_rocky_a1,a_wire,rocky_a1,Recipe_Alternate_Wire_1_C,,,,,PARAMETERIZED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_cable_rocky_a1,a_cable,rocky_a1,Recipe_Cable_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_coppersheet_rocky_a1,a_coppersheet,rocky_a1,Recipe_CopperSheet_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+a_concrete_rocky_a1,a_concrete,rocky_a1,Recipe_Concrete_C,,,,,DEFINED,Exact machine count/output intentionally deferred unless needed by phase target.
+c_steel_ingot_rocky_c0,c_steel_ingot,rocky_c0,Recipe_IngotSteel_C,,,,,DEFINED,Basic commissioning recipe; permanent line may later convert to Solid Steel.
+c_pipe_rocky_c0,c_pipe,rocky_c0,Recipe_SteelPipe_C,,,,,DEFINED,Initial construction supply.
+c_beam_rocky_c0,c_beam,rocky_c0,Recipe_SteelBeam_C,,,,,DEFINED,Initial construction supply.
+c_eib_rocky_c1,c_eib,rocky_c1,Recipe_EncasedIndustrialBeam_C,,,,,DEFINED,Default Beam + Concrete recipe.
+c_pipe_rocky_c1,c_pipe,rocky_c1,Recipe_SteelPipe_C,,,,,DEFINED,Continue Pipe production while Beam feeds EIB.
+c_beam_rocky_c1,c_beam,rocky_c1,Recipe_SteelBeam_C,,,,,DEFINED,Feeds initial EIB production.
+c_eib_rocky_c2,c_eib,rocky_c2,Recipe_Alternate_EncasedIndustrialBeam_C,,,,,DEFINED,Transition EIB input from Beam to Pipe.
+c_pipe_rocky_c2,c_pipe,rocky_c2,Recipe_SteelPipe_C,,,,,DEFINED,Becomes dominant shared steel intermediate.
+c_beam_rocky_c2,c_beam,rocky_c2,Recipe_SteelBeam_C,,,,,DEFINED,Retained for construction/project demand.
+c_steel_ingot_rocky_c3,c_steel_ingot,rocky_c3,Recipe_Alternate_IngotSteel_1_C,,,,,DEFINED,Mature preferred ingot recipe.
+c_pipe_rocky_c3,c_pipe,rocky_c3,Recipe_SteelPipe_C,,,,,DEFINED,Primary steel spine.
+c_beam_rocky_c3,c_beam,rocky_c3,Recipe_SteelBeam_C,,,,,DEFINED,Construction/project output.
+c_eib_rocky_c3,c_eib,rocky_c3,Recipe_Alternate_EncasedIndustrialBeam_C,,,,,DEFINED,Permanent EIB recipe.
+c_rotor_rocky_c3,c_rotor,rocky_c3,Recipe_Alternate_Rotor_C,,,,,DEFINED,Preferred Rotor recipe.
+c_stator_rocky_c3,c_stator,rocky_c3,Recipe_Stator_C,,,,,DEFINED,Dedicated stator line.
+c_motor_rocky_c3,c_motor,rocky_c3,Recipe_Motor_C,,,,,DEFINED,Rotor + Stator convergence.
+c_vframe_rocky_c3,c_vframe,rocky_c3,Recipe_SpaceElevatorPart_2_C,,,,,PARAMETERIZED,Project-part production near beam/logistics side.
+c_auto_wiring_rocky_c3,c_auto_wiring,rocky_c3,Recipe_SpaceElevatorPart_3_C,,,,,PARAMETERIZED,Project-part production near stator/logistics side.
+b_compacted_coal_rocky_b1,b_compacted_coal,rocky_b1,Recipe_Alternate_EnrichedCoal_C,,,,,PARAMETERIZED,Optional sulfur/coal branch.
+d_plastic_rocky_d0,d_plastic,rocky_d0,Recipe_Plastic_C,,,,,DEFINED,Default early Plastic.
+d_rubber_rocky_d0,d_rubber,rocky_d0,Recipe_Rubber_C,,,,,DEFINED,Default early Rubber.
+d_pet_coke_rocky_d0,d_pet_coke,rocky_d0,Recipe_PetroleumCoke_C,,,,,DEFINED,Early residue safety valve.
+d_hor_rocky_d1,d_hor,rocky_d1,Recipe_Alternate_HeavyOilResidue_C,,,,,DEFINED,Permanent residue-first architecture.
+d_recycled_plastic_rocky_d1,d_recycled_plastic,rocky_d1,Recipe_Alternate_Plastic_1_C,,,,,DEFINED,Permanent recycle loop.
+d_recycled_rubber_rocky_d1,d_recycled_rubber,rocky_d1,Recipe_Alternate_RecycledRubber_C,,,,,DEFINED,Permanent recycle loop.
+d_fuel_rocky_d2,d_fuel,rocky_d2,Recipe_Alternate_DilutedFuel_C,,,,,DEFINED,Preferred mature fuel recipe.
+e_concrete_rocky_e1,e_concrete,rocky_e1,Recipe_Concrete_C,,,,,DEFINED,Local concrete.
+e_modframe_rocky_e1,e_modframe,rocky_e1,Recipe_ModularFrame_C,,,,,PARAMETERIZED,Exact local/import split remains strategy dependent.
+e_hmf_rocky_e1,e_hmf,rocky_e1,Recipe_Alternate_ModularFrameHeavy_C,,,,,DEFINED,Preferred HMF recipe.
+f_alumina_rocky_f1,f_alumina,rocky_f1,Recipe_Alternate_SloppyAlumina_C,,,,,DEFINED,Preferred alumina recipe.
+f_scrap_rocky_f1,f_scrap,rocky_f1,Recipe_AluminumScrap_C,,,,,PARAMETERIZED,Default scrap unless electrode route is selected.
+f_al_ingot_rocky_f1,f_al_ingot,rocky_f1,Recipe_PureAluminumIngot_C,,,,,DEFINED,Preferred ingot recipe.
+f_al_sheet_rocky_f1,f_al_sheet,rocky_f1,Recipe_AluminumSheet_C,,,,,DEFINED,Construction/logistics output.
+f_al_casing_rocky_f1,f_al_casing,rocky_f1,Recipe_AluminumCasing_C,,,,,DEFINED,Construction/advanced output.
+g_circuit_board_rocky_g1,g_circuit_board,rocky_g1,Recipe_Alternate_CircuitBoard_1_C,,,,,PARAMETERIZED,Preferred candidate; depends on quartz logistics.
+g_computer_rocky_g1,g_computer,rocky_g1,Recipe_Alternate_Computer_1_C,,,,,PARAMETERIZED,Preferred candidate; depends on Caterium/plastic logistics.
+g_high_speed_connector_rocky_g2,g_high_speed_connector,rocky_g2,Recipe_HighSpeedConnector_C,,,,,PLACEHOLDER,Late electronics module.
+g_supercomputer_rocky_g2,g_supercomputer,rocky_g2,Recipe_ComputerSuper_C,,,,,PLACEHOLDER,Late advanced manufacturing.
+g_radio_control_rocky_g2,g_radio_control,rocky_g2,Recipe_RadioControlUnit_C,,,,,PLACEHOLDER,Late advanced manufacturing.

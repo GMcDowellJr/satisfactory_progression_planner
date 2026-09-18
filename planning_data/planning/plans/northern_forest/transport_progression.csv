@@ -1,0 +1,9 @@
+strategy_profile_id,stage,route_role,preferred_transport,parameterized,source_file
+northern_forest_baseline_v1,t1_2,dense local nodes → vertical starter,short_belts_and_lifts,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t3,Coal lake → power,belt,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t3_4,Steel terrace → starter,belt_or_tractor,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t5,Spire Coast Oil → manufacturing,truck_or_early_rail,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t6,Forest ↔ Spire Coast ↔ steel,rail,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t7,highland Bauxite → water/aluminum,train_or_downhill_belt,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t7_8,aluminum/HMF → advanced hub,rail,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,t9,low-volume specialist parts,drone_optional,true,northern_forest_factory_district_plan.md

@@ -1,0 +1,14 @@
+resource_id,impure_count,normal_count,pure_count,total_count,source_kind,source_id,verified_on
+iron,39,42,46,127,solid_node,official_wiki_resource_node,2026-09-09
+copper,13,29,13,55,solid_node,official_wiki_resource_node,2026-09-09
+limestone,15,50,29,94,solid_node,official_wiki_resource_node,2026-09-09
+coal,15,31,16,62,solid_node,official_wiki_resource_node,2026-09-09
+caterium,0,9,8,17,solid_node,official_wiki_resource_node,2026-09-09
+raw_quartz,3,7,7,17,solid_node,official_wiki_resource_node,2026-09-09
+sulfur,6,5,5,16,solid_node,official_wiki_resource_node,2026-09-09
+uranium,3,2,0,5,solid_node,official_wiki_resource_node,2026-09-09
+bauxite,5,6,6,17,solid_node,official_wiki_resource_node,2026-09-09
+sam,10,6,3,19,solid_node,official_wiki_resource_node,2026-09-09
+crude_oil_nodes,10,12,8,30,oil_node,official_wiki_resource_node,2026-09-09
+crude_oil_wells,8,6,4,18,resource_well,official_wiki_resource_node,2026-09-09
+geyser,9,13,9,31,geyser,official_wiki_resource_node,2026-09-09

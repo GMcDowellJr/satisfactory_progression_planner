@@ -1,0 +1,166 @@
+{
+  "schema_name": "satisfactory_planning_data",
+  "schema_version": "1.14.0",
+  "principles": [
+    "Separate game/world facts from planning profiles, playthrough state, and derived analytics.",
+    "Treat district display letters as labels, never primary keys.",
+    "Represent recommendations as parameterized strategy-profile defaults, not game facts.",
+    "Keep playthrough state empty in the reusable package.",
+    "Do not use image-derived coordinate/proximity datasets in v1.",
+    "Derived summaries/checks must be regenerated from canonical/reference + plan inputs."
+  ],
+  "layers": [
+    "reference",
+    "plans",
+    "templates",
+    "playthroughs",
+    "derived"
+  ],
+  "tables": {
+    "planning/legacy/rocky_desert/resource_sources.csv": "Known non-image-derived world resource-source facts currently available for Rocky Desert analysis.",
+    "game/reference/resources.csv": "Resource vocabulary.",
+    "game/reference/progression_clusters.csv": "Progression-band vocabulary.",
+    "game/reference/logistics_capabilities.csv": "Known logistics capability facts used by parameterized phase templates.",
+    "game/reference/alternate_recipe_unlocks.csv": "Automatic alternate-recipe eligibility rows extracted from the supplied progression document.",
+    "game/reference/mam_pool_effects.csv": "MAM research-node pool effects preserved as source text.",
+    "planning/plans/common/start_areas.csv": "Starting-area templates.",
+    "planning/plans/common/districts.csv": "District template definitions across four starts.",
+    "planning/plans/common/capacity_targets.csv": "Shared relaxed-playthrough planning targets; parameterized, not playthrough state.",
+    "planning/plans/rocky_desert/resource_assignments.csv": "Rocky baseline planning-profile assignments; world facts removed.",
+    "planning/plans/rocky_desert/sites.csv": "Rocky specialty satellite sites separated from District G.",
+    "planning/plans/rocky_desert/capacity_targets.csv": "Rocky district-level target inputs only.",
+    "planning/plans/rocky_desert/recipe_preferences.csv": "Rocky recipe ranking strategy profile; explicitly parameterized.",
+    "planning/plans/rocky_desert/recipe_gates.csv": "Rocky recipe-gate defaults; explicitly parameterized.",
+    "planning/templates/district_phase_archetypes.csv": "Reusable, overridable phase archetypes.",
+    "planning/playthroughs/template/*": "Empty state tables so no current-playthrough decisions are embedded.",
+    "analysis/derived/rocky_desert/*": "Generated/validation views, never source-of-truth edits."
+  },
+  "online_population_pass": {
+    "verified_on": "2026-09-09",
+    "policy": "Authoritative online facts are stored separately from parameterized strategy. Conflicts are logged in analysis/qa/discrepancies.csv rather than silently reconciled.",
+    "added_tables": [
+      "game/reference/miner_extraction_rates.csv",
+      "world/configurations/default_502094/resource_totals.csv",
+      "game/reference/buildings.csv",
+      "game/reference/route_constraints.csv",
+      "game/reference/project_assembly_requirements.csv",
+      "game/reference/hard_drive_system.csv",
+      "game/reference/online_recipe_checks.csv",
+      "provenance/online_sources.csv",
+      "analysis/qa/discrepancies.csv"
+    ]
+  },
+  "canonical_game_data": {
+    "game_build_id": "docs_a81d250e96aa",
+    "docs_filename": "en-US.json",
+    "sha256": "a81d250e96aa13db3c0bf8c332c199ad930b2f15323e2c1a069afa4c07f971bb",
+    "encoding": "UTF-16",
+    "authority": "user-installed game data",
+    "policy": "For this exact hash, installed Docs data supersedes wiki/community recipe and schematic-unlock claims.",
+    "recipe_inclusion_rule": "Recipe is included in factory-production tables when mProducedIn contains a supported automated production building class; gameplay tags are not used as the inclusion criterion."
+  },
+  "rocky_phase_topology_v1": {
+    "scope": "district phases A-G; production topology and adjacency for A/C; conservative scaffolding for B/D/E/F/G",
+    "placement_policy": "No exact machine coordinates. Layout guidance stops at module adjacency, lane separation, storage relationship, and expansion intent.",
+    "confidence_states": [
+      "DEFINED",
+      "PARAMETERIZED",
+      "PLACEHOLDER"
+    ]
+  },
+  "rocky_phase_topology_v1_1": {
+    "storage_default": "central_terminal with consumer priority before storage and overflow-to-shared-sink",
+    "topology_semantics": "flow relationships and spatial preferences stored separately",
+    "expansion_default": "extend existing manifold/line before duplicating/parallelizing",
+    "district_c_transition": "default beam-based EIB phase precedes Encased Industrial Pipe transition"
+  },
+  "architecture_layers": {
+    "reference": "canonical game data",
+    "planner_model": "generic reusable planner semantics",
+    "strategy_profiles": "player/build-style strategy overlays",
+    "plans": "location/world-specific planning inputs",
+    "playthroughs": "mutable run state"
+  },
+  "rocky_functional_topology_v1": {
+    "coverage": "districts A-G",
+    "reference_implementation": "A/C detailed; B/D/E/F/G functional/shallow",
+    "new_interface_table": "planning/strategies/rocky_relaxed_districted_v1/district_interfaces.csv",
+    "next_major_capability": "terrain/pathing using district/resource/logistics endpoints"
+  },
+  "exploration_routing_v1": {
+    "poi_table": "world/canonical/exploration_pois.csv",
+    "poi_status": "schema_ready_static_world_ingest_pending",
+    "installed_docs_has_world_elevation": false,
+    "static_world_source_required": true,
+    "route_enrichment": "progression-aware detour scoring"
+  },
+  "exploration_static_source_v1": {
+    "source": "SatisfactoryMCP world_collectibles.json",
+    "source_game_build": "495413",
+    "primary_poi_expected": 1764,
+    "coordinate_frame": "+X east, -Y north, +Z up, centimetres",
+    "full_row_projection": "pending source materialization",
+    "source_state_excluded": true
+  },
+  "spatial_ingest_502094": {
+    "game_version": "1.2.4.0",
+    "game_build": 502094,
+    "primary_exploration_pois": 1764,
+    "static_collectible_rows": 4446,
+    "terrain_grid": [
+      7500,
+      7500
+    ],
+    "terrain_spacing_m": 1.0,
+    "same_build_alignment": true,
+    "source_save_state_excluded": true
+  },
+  "rocky_exploration_route_v1": {
+    "route": "A_to_C",
+    "purpose": "first_trip_steel",
+    "analysis_grid_m": 5,
+    "trunk_mode": "tractor_biased_heuristic",
+    "poi_spur_mode": "foot_terrain_weighted",
+    "exact_drivability_asserted": false
+  },
+  "movement_mode_routing_v1": {
+    "foot": {
+      "road_preference": false,
+      "terrain_role": "soft_accessibility_modifier"
+    },
+    "tractor_truck": {
+      "road_preference": true,
+      "terrain_role": "drivability_constraint"
+    },
+    "rail": {
+      "road_preference": "weak_hint",
+      "terrain_role": "grade_curvature_construction_constraint"
+    },
+    "a_to_c_vehicle_trunk_status": "reroute_required"
+  },
+  "scim_road_overlay_v1": {
+    "source": "user-provided SCIM screenshot with Roads layer visible",
+    "extraction": "purple overlay segmentation and skeletonization",
+    "registration": "full-world affine-by-extent linear mapping",
+    "precision": "coarse corridor planning",
+    "a_to_c_vehicle_route_rerun": true
+  },
+  "rocky_a_to_d_road_route_v1": {
+    "purpose": "first_oil_trip / Oil\u2192Home truck corridor",
+    "source": "SCIM visible road overlay screenshot",
+    "straight_line_m": 1115.9,
+    "road_aware_length_m": 1499.4,
+    "road_mask_adherence_pct": 14.7,
+    "terrain_grade_validation": "pending"
+  },
+  "rocky_a_to_d_validation_v2": {
+    "water_source": "local build-502094 waterq/water planes",
+    "grade_source": "local build-502094 height plane",
+    "sample_spacing_m": 1,
+    "grade_window_m": 20,
+    "route_status": "invalid",
+    "major_water_approx_m": 230.2,
+    "deepest_water_m": 22.1,
+    "grade_blocker_zones_gt100pct": 11
+  }
+}

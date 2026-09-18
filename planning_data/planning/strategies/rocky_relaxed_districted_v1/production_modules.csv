@@ -1,0 +1,52 @@
+module_id,district_id,primary_item_name,module_type,active_phase_ids,confidence,notes,strategy_profile_id
+a_plate,rocky_desert_a,Iron Plate,starter_basic,rocky_a0;rocky_a1;rocky_a2,DEFINED,Permanent construction supply; adjacent to RIP chain.,rocky_relaxed_districted_v1
+a_rod,rocky_desert_a,Iron Rod,starter_basic,rocky_a0;rocky_a1;rocky_a2,DEFINED,"Feeds construction, Modular Frames, and Screw/Rotor chain where applicable.",rocky_relaxed_districted_v1
+a_screw,rocky_desert_a,Screws,starter_intermediate,rocky_a0;rocky_a1,DEFINED,Primarily early topology; may shrink in importance after Stitched Iron Plate.,rocky_relaxed_districted_v1
+a_rip,rocky_desert_a,Reinforced Iron Plate,starter_intermediate,rocky_a1;rocky_a2,DEFINED,Shared intermediate for Modular Frames and Smart Plating; storage-worthy.,rocky_relaxed_districted_v1
+a_rotor,rocky_desert_a,Rotor,starter_intermediate,rocky_a1;rocky_a2,DEFINED,Feeds Smart Plating and later motor-related demand.,rocky_relaxed_districted_v1
+a_modframe,rocky_desert_a,Modular Frame,starter_finished,rocky_a1;rocky_a2,DEFINED,Longer rod feed acceptable to preserve RIP/Smart Plating adjacency.,rocky_relaxed_districted_v1
+a_smartplate,rocky_desert_a,Smart Plating,project_part,rocky_a1;rocky_a2,DEFINED,Convergence of RIP + Rotor; keep near those modules.,rocky_relaxed_districted_v1
+a_wire,rocky_desert_a,Wire,starter_basic,rocky_a1;rocky_a2,PARAMETERIZED,Iron Wire preferred strategy can make this part of all-Iron topology.,rocky_relaxed_districted_v1
+a_cable,rocky_desert_a,Cable,starter_basic,rocky_a1;rocky_a2,DEFINED,Construction and later Automated Wiring feed.,rocky_relaxed_districted_v1
+a_coppersheet,rocky_desert_a,Copper Sheet,starter_basic,rocky_a1;rocky_a2,DEFINED,Construction/electronics support.,rocky_relaxed_districted_v1
+a_concrete,rocky_desert_a,Concrete,starter_basic,rocky_a0;rocky_a1;rocky_a2,DEFINED,High-priority construction supply.,rocky_relaxed_districted_v1
+c_steel_ingot,rocky_desert_c,Steel Ingot,steel_primary,rocky_c0;rocky_c1;rocky_c2,DEFINED,Primary steel feed; permanent modular backbone.,rocky_relaxed_districted_v1
+c_pipe,rocky_desert_c,Steel Pipe,steel_primary,rocky_c0;rocky_c1;rocky_c2,DEFINED,"Primary steel output; shared by EIB, Rotor, Stator.",rocky_relaxed_districted_v1
+c_beam,rocky_desert_c,Steel Beam,steel_primary,rocky_c0;rocky_c1;rocky_c2,DEFINED,Construction and Versatile Framework support.,rocky_relaxed_districted_v1
+c_eib,rocky_desert_c,Encased Industrial Beam,steel_intermediate,rocky_c1;rocky_c2,DEFINED,Dedicated lane preferred; concrete + pipe convergence.,rocky_relaxed_districted_v1
+c_rotor,rocky_desert_c,Rotor,steel_intermediate,rocky_c1;rocky_c2,DEFINED,Steel Rotor strategy; dedicated rotor lane.,rocky_relaxed_districted_v1
+c_stator,rocky_desert_c,Stator,steel_intermediate,rocky_c1;rocky_c2,DEFINED,Dedicated stator lane; pipe + wire convergence.,rocky_relaxed_districted_v1
+c_motor,rocky_desert_c,Motor,steel_finished,rocky_c2,DEFINED,Rotor + Stator convergence.,rocky_relaxed_districted_v1
+c_vframe,rocky_desert_c,Versatile Framework,project_part,rocky_c2,PARAMETERIZED,Consumes Modular Frames + Steel Beam; may be colocated on steel export side.,rocky_relaxed_districted_v1
+c_auto_wiring,rocky_desert_c,Automated Wiring,project_part,rocky_c2,PARAMETERIZED,Consumes Stator + Cable; place near stator/logistics edge.,rocky_relaxed_districted_v1
+b_coal_supply,rocky_desert_b,Coal,resource_feed,rocky_b0;rocky_b1,DEFINED,Local coal feed dedicated to power until later reserve-release decisions.,rocky_relaxed_districted_v1
+b_water_supply,rocky_desert_b,Water,resource_feed,rocky_b0;rocky_b1,DEFINED,Local water extraction/manifold for coal generators.,rocky_relaxed_districted_v1
+b_coal_power,rocky_desert_b,Power,power_generation,rocky_b0;rocky_b1,DEFINED,Coal generation block; autonomous regional power.,rocky_relaxed_districted_v1
+b_compacted_coal,rocky_desert_b,Compacted Coal,fuel_intermediate,rocky_b1,PARAMETERIZED,Optional local coal/sulfur conversion if compacted-coal strategy is useful.,rocky_relaxed_districted_v1
+d_crude_supply,rocky_desert_d,Crude Oil,resource_feed,rocky_d0;rocky_d1;rocky_d2,DEFINED,Local crude intake retained as expandable feed.,rocky_relaxed_districted_v1
+d_plastic,rocky_desert_d,Plastic,petrochemical_output,rocky_d0;rocky_d1;rocky_d2,DEFINED,Separate plastic module with construction reserve.,rocky_relaxed_districted_v1
+d_rubber,rocky_desert_d,Rubber,petrochemical_output,rocky_d0;rocky_d1;rocky_d2,DEFINED,Separate rubber module with construction reserve.,rocky_relaxed_districted_v1
+d_hor,rocky_desert_d,Heavy Oil Residue,petrochemical_intermediate,rocky_d0;rocky_d1;rocky_d2,DEFINED,Residue handling is a first-class output to prevent refinery backup.,rocky_relaxed_districted_v1
+d_pet_coke,rocky_desert_d,Petroleum Coke,safety_valve,rocky_d0,DEFINED,"Early residue safety valve; may be burned, used, or sunk.",rocky_relaxed_districted_v1
+d_fuel,rocky_desert_d,Fuel,fuel_output,rocky_d1;rocky_d2,PARAMETERIZED,Permanent fuel branch after preferred oil recipes.,rocky_relaxed_districted_v1
+d_recycled_plastic,rocky_desert_d,Plastic,recycle_loop,rocky_d1;rocky_d2,DEFINED,Recycled Plastic branch in permanent petrochemical architecture.,rocky_relaxed_districted_v1
+d_recycled_rubber,rocky_desert_d,Rubber,recycle_loop,rocky_d1;rocky_d2,DEFINED,Recycled Rubber branch in permanent petrochemical architecture.,rocky_relaxed_districted_v1
+d_fuel_power,rocky_desert_d,Power,power_generation,rocky_d2,PARAMETERIZED,Fuel generator expansion supplied by mature fuel module.,rocky_relaxed_districted_v1
+e_iron_feed,rocky_desert_e,Iron Ore,resource_feed,rocky_e0;rocky_e1;rocky_e2,PARAMETERIZED,Local iron resource base for structural production.,rocky_relaxed_districted_v1
+e_concrete,rocky_desert_e,Concrete,structural_basic,rocky_e1;rocky_e2,DEFINED,Local concrete construction and HMF-chain input.,rocky_relaxed_districted_v1
+e_modframe,rocky_desert_e,Modular Frame,structural_intermediate,rocky_e1;rocky_e2,DEFINED,Primary structural intermediate feeding HMF.,rocky_relaxed_districted_v1
+e_hmf,rocky_desert_e,Heavy Modular Frame,structural_finished,rocky_e1;rocky_e2,DEFINED,District anchor output using preferred Heavy Encased Frame strategy.,rocky_relaxed_districted_v1
+e_fused_frame,rocky_desert_e,Fused Modular Frame,advanced_structural,rocky_e2,PLACEHOLDER,Late extension from HMF output once aluminum/nitrogen logistics exist.,rocky_relaxed_districted_v1
+f_bauxite_supply,rocky_desert_f,Bauxite,resource_feed,rocky_f0;rocky_f1;rocky_f2,DEFINED,Highland bauxite extraction and export toward water-side processing.,rocky_relaxed_districted_v1
+f_water_supply,rocky_desert_f,Water,resource_feed,rocky_f1;rocky_f2,DEFINED,Water-side wet-process feed.,rocky_relaxed_districted_v1
+f_alumina,rocky_desert_f,Alumina Solution,aluminum_wet_process,rocky_f1;rocky_f2,DEFINED,Wet process using preferred Sloppy Alumina when available.,rocky_relaxed_districted_v1
+f_scrap,rocky_desert_f,Aluminum Scrap,aluminum_intermediate,rocky_f1;rocky_f2,DEFINED,Scrap stage between alumina and ingots.,rocky_relaxed_districted_v1
+f_al_ingot,rocky_desert_f,Aluminum Ingot,aluminum_primary,rocky_f1;rocky_f2,DEFINED,Preferred Pure Aluminum Ingot branch.,rocky_relaxed_districted_v1
+f_al_sheet,rocky_desert_f,Alclad Aluminum Sheet,aluminum_output,rocky_f1;rocky_f2,DEFINED,Construction/logistics aluminum output.,rocky_relaxed_districted_v1
+f_al_casing,rocky_desert_f,Aluminum Casing,aluminum_output,rocky_f1;rocky_f2,DEFINED,Construction/advanced manufacturing aluminum output.,rocky_relaxed_districted_v1
+g_logistics_hub,rocky_desert_g,Logistics Hub,logistics_interface,rocky_g0;rocky_g1;rocky_g2,DEFINED,Rail-oriented import/export junction; not a production machine module.,rocky_relaxed_districted_v1
+g_computer,rocky_desert_g,Computer,advanced_electronics,rocky_g1;rocky_g2,PARAMETERIZED,Imported-material advanced electronics module; recipe choice strategy dependent.,rocky_relaxed_districted_v1
+g_circuit_board,rocky_desert_g,Circuit Board,advanced_electronics,rocky_g1;rocky_g2,PARAMETERIZED,Shared electronics intermediate for computers and later parts.,rocky_relaxed_districted_v1
+g_high_speed_connector,rocky_desert_g,High-Speed Connector,advanced_electronics,rocky_g1;rocky_g2,PLACEHOLDER,Late electronics module when Caterium/Quartz logistics are established.,rocky_relaxed_districted_v1
+g_supercomputer,rocky_desert_g,Supercomputer,advanced_electronics,rocky_g2,PLACEHOLDER,Late advanced manufacturing.,rocky_relaxed_districted_v1
+g_radio_control,rocky_desert_g,Radio Control Unit,advanced_electronics,rocky_g2,PLACEHOLDER,Late advanced manufacturing.,rocky_relaxed_districted_v1

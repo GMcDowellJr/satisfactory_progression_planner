@@ -1,0 +1,27 @@
+{
+  "policy_id": "corridors_v1",
+  "description": "Terrain-derived connectivity/corridor defaults. All thresholds are policy parameters and may be recalibrated without changing the generator.",
+  "analysis_step_m": 16.0,
+  "terrain": {
+    "grade_neighborhood_m": 32.0,
+    "grade_soft_start": 0.35,
+    "grade_hard_block": 1.0,
+    "cliff_provenance_block": false,
+    "unknown_terrain_block": true
+  },
+  "water": {
+    "block_any_water": false,
+    "deep_water_depth_m": 3.0,
+    "block_deep_or_unknown_depth": true
+  },
+  "corridor": {
+    "maximum_constrained_half_width_m": 256.0,
+    "chokepoint_half_width_m": 96.0,
+    "minimum_branch_length_m": 64.0,
+    "simplify_tolerance_m": 8.0
+  },
+  "notes": {
+    "scope": "This is physical terrain connectivity, not a vehicle/rail/belt route policy. Mode-specific routing remains downstream.",
+    "open_regions": "Skeleton lines in very broad open terrain are retained as topology evidence but are not labeled constrained corridors unless clearance is below maximum_constrained_half_width_m."
+  }
+}

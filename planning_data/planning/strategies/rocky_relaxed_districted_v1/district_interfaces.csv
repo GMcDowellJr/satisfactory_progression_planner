@@ -1,0 +1,12 @@
+interface_id,district_id,direction,material_or_service,preferred_transport,counterparty,notes,confidence
+b_power_export,rocky_desert_b,export,Power,grid,rocky_desert_a;rocky_desert_c;regional,B supplies early autonomous regional power.,DEFINED
+b_coal_release,rocky_desert_b,conditional_export,Coal,belt/vehicle/rail_later,regional,Only after power reserve is no longer needed.,PLACEHOLDER
+d_plastic_export,rocky_desert_d,export,Plastic,truck_then_rail,rocky_desert_a;rocky_desert_g,Construction and electronics supply.,DEFINED
+d_rubber_export,rocky_desert_d,export,Rubber,truck_then_rail,rocky_desert_a;rocky_desert_g,Construction and advanced production.,DEFINED
+d_fuel_export,rocky_desert_d,local_use_or_export,Fuel,pipeline/local_generation,rocky_desert_d;regional,Primarily power/fuel use.,PARAMETERIZED
+e_steel_import,rocky_desert_e,import,Steel Pipe / steel products,truck_then_rail,rocky_desert_c,HMF chain depends on steel-side inputs.,PARAMETERIZED
+e_hmf_export,rocky_desert_e,export,Heavy Modular Frame,truck_then_rail,rocky_desert_a;rocky_desert_g,Construction and advanced manufacturing.,DEFINED
+f_bauxite_internal,rocky_desert_f,internal_transfer,Bauxite,belt/truck_then_rail_candidate,highland_to_water,Critical pathing problem: highland extraction to water-side process.,DEFINED
+f_aluminum_export,rocky_desert_f,export,Aluminum products,rail,rocky_desert_g;regional,Primary late regional export.,DEFINED
+g_multi_import,rocky_desert_g,import,Advanced intermediates,rail,rocky_desert_c;rocky_desert_d;rocky_desert_e;rocky_desert_f,G depends on multi-district convergence.,DEFINED
+g_advanced_export,rocky_desert_g,export,Advanced manufactured parts,rail/drone,regional,Late-game distribution.,PLACEHOLDER

@@ -1,0 +1,8 @@
+poi_type,category,default_value_dimension,stateful,notes
+crash_site,exploration,alternate_recipe_opportunity,true,Drop pod / Hard Drive location; accessibility requirements may apply.
+power_slug_blue,exploration,power_shard,true,Blue Power Slug.
+power_slug_yellow,exploration,power_shard,true,Yellow Power Slug.
+power_slug_purple,exploration,power_shard,true,Purple Power Slug.
+mercer_sphere,exploration,dimensional_depot_progression,true,Mercer Sphere collectible.
+somersloop,exploration,production_amplification,true,Somersloop collectible.
+specialty_resource,resource_detour,progression_unlock,false,"Caterium, Quartz, Sulfur, SAM, etc. may enrich first-trip routes."

@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local route-tool outputs
+data/local/
+routes/
+spatial/scim_roads/
+*.log
+
+# Scratch / temporary
+scratch/
+scratchpad/
+tmp/
+temp/
+*.tmp
+
+# Do not accidentally add old release archives
+satisfactory_planning_data_v*.zip
+satisfactory_route_tool_v*.zip
+
+# Derived analysis products — working state, not canon.
+# Out of both repository manifests as of 2026-09-18, ~1.2 GB on disk, and far
+# past what GitHub will take. Regenerated from declared inputs, not versioned.
+planning_data/analysis/derived/
+
+# uv
+.uv/
+uv.lock.bak
+
+# Working data for the route and terrain tools.
+# Not in REPO_MANIFEST.csv (485 MB). Canonical heightmap and snapshots live
+# under planning_data/world/. Regenerated, not versioned.
+data/

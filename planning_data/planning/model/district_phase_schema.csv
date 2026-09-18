@@ -1,0 +1,13 @@
+field,purpose
+district_phase_id,Stable phase identifier.
+district_id,District being phased.
+phase_order,Ordered progression within district.
+phase_role,Operational responsibility of this phase.
+current_belt_capability,Capability expected when phase operates.
+design_belt_capability,Physical design basis for later growth.
+current_miner_capability,Extraction capability expected when phase operates.
+design_miner_capability,Extraction capability the footprint anticipates.
+permanent_layout,Whether the layout is intended to persist.
+expansion_intent,How growth should occur spatially.
+transition_trigger,Condition for moving to the next phase.
+confidence,DEFINED / PARAMETERIZED / PLACEHOLDER.

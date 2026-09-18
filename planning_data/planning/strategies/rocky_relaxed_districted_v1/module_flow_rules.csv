@@ -1,0 +1,48 @@
+flow_rule_id,from_module_id,to_module_id,item_name,flow_relationship,confidence,notes
+flow_001,a_plate,a_rip,Iron Plate,upstream_of,DEFINED,Plate feeds RIP.
+flow_002,a_wire,a_rip,Wire,upstream_of,PARAMETERIZED,With Stitched Iron Plate.
+flow_003,a_screw,a_rip,Screws,upstream_of,PARAMETERIZED,Default/pre-Stitched route only.
+flow_004,a_rod,a_screw,Iron Rod,upstream_of,PARAMETERIZED,Default/pre-Cast route only.
+flow_005,a_rod,a_rotor,Iron Rod,upstream_of,DEFINED,Default Rotor input.
+flow_006,a_screw,a_rotor,Screws,upstream_of,DEFINED,Default Rotor input.
+flow_007,a_rip,a_modframe,Reinforced Iron Plate,upstream_of,DEFINED,Feeds Modular Frame.
+flow_008,a_rod,a_modframe,Iron Rod,upstream_of,DEFINED,Feeds Modular Frame.
+flow_009,a_rip,a_smartplate,Reinforced Iron Plate,upstream_of,DEFINED,Feeds Smart Plating.
+flow_010,a_rotor,a_smartplate,Rotor,upstream_of,DEFINED,Feeds Smart Plating.
+flow_011,a_wire,a_cable,Wire,upstream_of,DEFINED,Feeds Cable.
+flow_012,c_beam,c_eib,Steel Beam,upstream_of_initial,DEFINED,Initial default EIB recipe.
+flow_013,c_pipe,c_eib,Steel Pipe,upstream_of_after_transition,DEFINED,Encased Industrial Pipe alternate.
+flow_014,c_pipe,c_rotor,Steel Pipe,upstream_of,DEFINED,Steel Rotor route.
+flow_015,c_pipe,c_stator,Steel Pipe,upstream_of,DEFINED,Stator pipe input.
+flow_016,c_rotor,c_motor,Rotor,converges_with,DEFINED,Motor convergence.
+flow_017,c_stator,c_motor,Stator,converges_with,DEFINED,Motor convergence.
+flow_018,c_beam,c_vframe,Steel Beam,upstream_of,PARAMETERIZED,Versatile Framework.
+flow_019,c_stator,c_auto_wiring,Stator,upstream_of,PARAMETERIZED,Automated Wiring.
+flow_020,b_coal_supply,b_coal_power,Coal,upstream_of,DEFINED,Coal feeds generators.
+flow_021,b_water_supply,b_coal_power,Water,upstream_of,DEFINED,Water feeds generators.
+flow_022,b_coal_supply,b_compacted_coal,Coal,upstream_of_optional,PARAMETERIZED,Optional Compacted Coal branch.
+flow_023,d_crude_supply,d_plastic,Crude Oil,upstream_of_initial,DEFINED,Default Plastic production.
+flow_024,d_crude_supply,d_rubber,Crude Oil,upstream_of_initial,DEFINED,Default Rubber production.
+flow_025,d_plastic,d_hor,Heavy Oil Residue,byproduct_generates,DEFINED,Default Plastic creates HOR.
+flow_026,d_rubber,d_hor,Heavy Oil Residue,byproduct_generates,DEFINED,Default Rubber creates HOR.
+flow_027,d_hor,d_pet_coke,Heavy Oil Residue,upstream_of_initial_safety,DEFINED,Early safety valve.
+flow_028,d_hor,d_fuel,Heavy Oil Residue,upstream_of_after_transition,DEFINED,Permanent fuel branch.
+flow_029,d_fuel,d_recycled_plastic,Fuel,upstream_of,DEFINED,Recycle loop input.
+flow_030,d_fuel,d_recycled_rubber,Fuel,upstream_of,DEFINED,Recycle loop input.
+flow_031,d_recycled_rubber,d_recycled_plastic,Rubber,cycle_partner,DEFINED,Recycle pair.
+flow_032,d_recycled_plastic,d_recycled_rubber,Plastic,cycle_partner,DEFINED,Recycle pair.
+flow_033,d_fuel,d_fuel_power,Fuel,upstream_of,PARAMETERIZED,Mature power generation.
+flow_034,e_concrete,e_hmf,Concrete,upstream_of,DEFINED,Heavy Encased Frame input.
+flow_035,e_modframe,e_hmf,Modular Frame,upstream_of,DEFINED,HMF input.
+flow_036,e_hmf,e_fused_frame,Heavy Modular Frame,upstream_of_late,PLACEHOLDER,Late fused-frame extension.
+flow_037,f_bauxite_supply,f_alumina,Bauxite,upstream_of,DEFINED,Bauxite to wet processing.
+flow_038,f_water_supply,f_alumina,Water,upstream_of,DEFINED,Water to alumina.
+flow_039,f_alumina,f_scrap,Alumina Solution,upstream_of,DEFINED,Wet chain.
+flow_040,f_scrap,f_al_ingot,Aluminum Scrap,upstream_of,DEFINED,Scrap to ingot.
+flow_041,f_al_ingot,f_al_sheet,Aluminum Ingot,upstream_of,DEFINED,Sheet output.
+flow_042,f_al_ingot,f_al_casing,Aluminum Ingot,upstream_of,DEFINED,Casing output.
+flow_043,g_logistics_hub,g_circuit_board,import_supplies,feeds_imports_to,PARAMETERIZED,Multiple imported inputs.
+flow_044,g_logistics_hub,g_computer,import_supplies,feeds_imports_to,PARAMETERIZED,Multiple imported inputs.
+flow_045,g_circuit_board,g_computer,Circuit Board,upstream_of,PARAMETERIZED,Computer chain.
+flow_046,g_circuit_board,g_high_speed_connector,Circuit Board,upstream_of_late,PLACEHOLDER,Advanced electronics.
+flow_047,g_computer,g_supercomputer,Computer,upstream_of_late,PLACEHOLDER,Advanced electronics.

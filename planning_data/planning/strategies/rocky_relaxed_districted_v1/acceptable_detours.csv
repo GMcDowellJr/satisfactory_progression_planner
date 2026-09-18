@@ -1,0 +1,5 @@
+route_purpose,detour_tolerance,max_extra_distance_pct,notes
+first_trip,moderate,25,Prefer exploration value when establishing a district/corridor for the first time.
+hard_drive_hunt,high,60,Route purpose is exploration; large detours acceptable when accessible sites cluster.
+resource_recon,moderate,30,Allow collectibles that lie near specialty-resource reconnaissance.
+routine_logistics,low,5,"Once corridor is established and POIs cleared, prioritize repeatability."

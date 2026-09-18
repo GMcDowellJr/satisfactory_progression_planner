@@ -1,0 +1,13 @@
+source_category,placed_count,planner_primary_poi,planner_poi_type,source_game_build,source_sha256,source_origin
+crashed_drop_pod,118,true,crash_site,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+customization_unlock_pickup,1,false,supporting_or_optional,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+loot_cache,703,false,supporting_or_optional,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+mercer_shrine,298,false,supporting_or_optional,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+mercer_sphere,298,true,mercer_sphere,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+mushroom,1615,false,supporting_or_optional,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+power_slug_blue,596,true,power_slug_blue,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+power_slug_purple,257,true,power_slug_purple,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+power_slug_yellow,389,true,power_slug_yellow,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+somersloop,106,true,somersloop,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+somersloop_shrine,62,false,supporting_or_optional,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction
+tape_pickup,3,false,supporting_or_optional,++FactoryGame+rel-main-anniversary-2026-CL-502094,2c1ba76bf6aeb7593d53fb8278c48df9a639f7002d1cc09eeb4024fb67406337,user-local installed game extraction

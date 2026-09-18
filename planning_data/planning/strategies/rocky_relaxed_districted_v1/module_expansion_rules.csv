@@ -1,0 +1,23 @@
+district_id,module_id,expansion_pattern,confidence,notes
+rocky_desert_a,a_plate,extend_existing_line,DEFINED,Keep Plate capacity expandable without relocating RIP. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_a,a_rip,extend_existing_line,DEFINED,Shared intermediate; preserve one edge for additional assemblers/storage. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_a,a_rotor,extend_existing_line,DEFINED,Preserve growth toward Smart Plating / later motor demand. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_a,a_modframe,extend_existing_line,DEFINED,Allow peripheral growth; do not force centrality. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_c,c_pipe,extend_existing_line,DEFINED,Primary expandable steel spine. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_c,c_eib,extend_existing_line,DEFINED,Add machines along dedicated EIB lane. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_c,c_rotor,extend_existing_line,DEFINED,Add machines along dedicated Rotor lane. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_c,c_stator,extend_existing_line,DEFINED,Add machines along dedicated Stator lane. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_c,c_motor,extend_downstream_line,DEFINED,Keep downstream convergence on export/logistics side. Default expansion is to lengthen the existing manifold/line first.
+rocky_desert_all,*,extend_line_then_duplicate_if_constrained,DEFINED,"Default strategy: increase machine count along the same manifold as belt/miner capacity rises (e.g. 2 machines on 60/min becomes 4 on 120/min). Duplicate/parallel lines only after throughput, footprint, or logistics constraints justify it."
+rocky_desert_b,b_coal_power,extend_generator_block,DEFINED,Extend generator/water/coal manifold in the same direction first.
+rocky_desert_d,d_plastic,extend_existing_line,DEFINED,Extend Plastic refinery line first.
+rocky_desert_d,d_rubber,extend_existing_line,DEFINED,Extend Rubber refinery line first.
+rocky_desert_d,d_fuel,extend_existing_line,DEFINED,Extend fuel processing line first.
+rocky_desert_d,d_fuel_power,extend_generator_block,DEFINED,Extend generator block along fuel manifold.
+rocky_desert_e,e_hmf,extend_existing_line,DEFINED,Extend HMF chain in place before duplicating.
+rocky_desert_f,f_alumina,extend_existing_line,DEFINED,Extend wet process along water-side corridor.
+rocky_desert_f,f_scrap,extend_existing_line,DEFINED,Extend scrap process in place.
+rocky_desert_f,f_al_ingot,extend_existing_line,DEFINED,Extend ingot block in place.
+rocky_desert_g,g_logistics_hub,add_logistics_bay,PARAMETERIZED,Expand stations/bays outward without blocking trunk approach.
+rocky_desert_g,g_circuit_board,add_independent_module,PARAMETERIZED,Advanced modules may be added independently around logistics frontage.
+rocky_desert_g,g_computer,add_independent_module,PARAMETERIZED,Advanced modules may be added independently around logistics frontage.

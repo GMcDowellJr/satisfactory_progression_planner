@@ -1,0 +1,5 @@
+storage_topology_rule_id,scope,relationship,from_entity,to_entity,confidence,notes
+storage_cluster_001,district,prefer_clustered,all_non_project_storage,district_storage_zone,DEFINED,"Centralized storage improves manual access, dimensional-depot organization, and common overflow routing."
+storage_sink_001,district,converges_to,storage_overflow_outputs,shared_sink_manifold,DEFINED,Overflow from retained items should combine before one or more AWESOME Sinks.
+storage_flow_001,module,branch_after_consumers,production_output,central_terminal_storage,DEFINED,Downstream production has priority; storage receives surplus from the same stream.
+storage_buffer_001,module,becomes_backpressure_buffer,central_terminal_storage,production_stream,DEFINED,"Central storage is not inline, but once full it creates reserve/backpressure behavior."

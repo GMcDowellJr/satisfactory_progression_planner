@@ -1,0 +1,119 @@
+{
+  "policy_id": "build_surfaces_v5",
+  "status": "calibration_defaults_horizontal_plane_fit",
+  "analysis_model": "horizontal_plane_fit",
+  "foundation_size_m": 8.0,
+  "classification_basis": "reference factory rectangle fitted to one horizontal platform plane; qualify by footprint and perimeter clearance from terrain",
+  "size_classes": {
+    "small": {
+      "minimum_short_span_foundations": 8,
+      "minimum_short_span_m": 64,
+      "reference_span_foundations": [
+        8,
+        8
+      ],
+      "reference_span_m": [
+        64,
+        64
+      ],
+      "reference_core_area_m2": 4096,
+      "intent": "local or satellite production; limited expansion"
+    },
+    "medium": {
+      "minimum_short_span_foundations": 24,
+      "minimum_short_span_m": 192,
+      "reference_span_foundations": [
+        24,
+        32
+      ],
+      "reference_span_m": [
+        192,
+        256
+      ],
+      "reference_core_area_m2": 49152,
+      "intent": "dedicated factory with meaningful miner/belt upgrade headroom"
+    },
+    "large": {
+      "minimum_short_span_foundations": 48,
+      "minimum_short_span_m": 384,
+      "reference_span_foundations": [
+        48,
+        64
+      ],
+      "reference_span_m": [
+        384,
+        512
+      ],
+      "reference_core_area_m2": 196608,
+      "intent": "major production district intended to survive multiple throughput upgrades"
+    },
+    "very_large": {
+      "minimum_short_span_foundations": 80,
+      "minimum_short_span_m": 640,
+      "reference_span_foundations": [
+        80,
+        80
+      ],
+      "reference_span_m": [
+        640,
+        640
+      ],
+      "reference_core_area_m2": 409600,
+      "intent": "regional or late-game industrial campus where terrain should not be the primary growth constraint"
+    }
+  },
+  "shape_classes": {
+    "good": {
+      "max_aspect_ratio": 1.5,
+      "interpretation": "general-purpose placement zone"
+    },
+    "workable": {
+      "min_aspect_ratio_exclusive": 1.5,
+      "max_aspect_ratio": 2.0,
+      "interpretation": "placement zone with some directional constraint"
+    },
+    "linear": {
+      "min_aspect_ratio_exclusive": 2.0,
+      "max_aspect_ratio": 3.0,
+      "interpretation": "elongated placement zone"
+    },
+    "poor": {
+      "min_aspect_ratio_exclusive": 3.0,
+      "interpretation": "highly elongated placement zone; rectangle location is more informative than region shape"
+    }
+  },
+  "analysis_parameters": {
+    "terrain_source_resolution_m": 1.0,
+    "working_resolutions_m": [
+      16
+    ],
+    "clearance_tolerances_m": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "cell_surface_percentile": 50,
+    "max_clearance_factor": 3.0,
+    "minimum_valid_fraction": 0.95,
+    "water_mode": "exclude",
+    "minimum_terrain_confidence": null,
+    "footprint_orientations_deg": [
+      0,
+      90
+    ],
+    "rectangle_candidates_per_region": 3,
+    "rectangle_non_overlap_fraction": 0.15,
+    "max_mean_clearance_factor": 1.0,
+    "max_edge_mean_clearance_factor": 1.0
+  },
+  "notes": [
+    "Every qualifying rectangle is one flat horizontal platform. Its Z is the highest representative terrain cell in that footprint, preventing representative terrain from poking through.",
+    "At the working resolution, each cell uses the median of its underlying 1 m terrain samples. This intentionally treats sub-cell rocks/spikes as edge detail rather than allowing one small feature to lift an entire factory platform; decrease the working resolution for a stricter geometric test.",
+    "A tolerance of 4 m means both footprint-wide mean clearance and perimeter mean clearance must be <=4 m. Maximum clearance is limited separately to 3x tolerance by default, allowing isolated terrain depressions without treating a broadly grounded platform as floating.",
+    "Horizontal sampling resolution and clearance tolerance are independent. Smaller resolution captures more detailed edge conditions; larger clearance tolerance permits more visible foundation exposure/floating.",
+    "The irregular region is only the connected zone of rectangle centers that qualify. The emitted rectangles and their fitted platform elevations are the primary planning geometry.",
+    "build_surfaces_v4 remains available as the terrain-relief alternative and build_surfaces_v3 as the global elevation-sweep alternative."
+  ]
+}

@@ -1,0 +1,23 @@
+recipe_id,recipe_name,unlock_method,prerequisite_type,verified_prerequisites,verification_text,source_url,verified_on
+cast_screws,Cast Screws,hard_drive,none,,Hard Drive scanning,https://satisfactory.wiki.gg/wiki/Iron_Ingot,2026-09-09
+iron_wire,Iron Wire,hard_drive,none,,Hard Drive scanning,https://satisfactory.wiki.gg/wiki/Wire,2026-09-09
+stitched_iron_plate,Stitched Iron Plate,hard_drive,hub,Tier 2 - Part Assembly,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Reinforced_Iron_Plate,2026-09-09
+solid_steel_ingot,Solid Steel Ingot,hard_drive,hub,Tier 3 - Basic Steel Production,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Hard_Drive,2026-09-09
+steel_rotor,Steel Rotor,hard_drive,hub,Tier 3 - Basic Steel Production,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Rotor,2026-09-09
+encased_industrial_pipe,Encased Industrial Pipe,hard_drive,hub,Tier 4 - Advanced Steel Production,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Steel_Pipe,2026-09-09
+molded_steel_pipe,Molded Steel Pipe,hard_drive,hub,Tier 3 - Basic Steel Production,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Hard_Drive,2026-09-09
+heavy_oil_residue,Heavy Oil Residue,hard_drive,hub,Tier 5 - Oil Processing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Crude_Oil,2026-09-09
+recycled_plastic,Recycled Plastic,hard_drive,hub,Tier 5 - Oil Processing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Plastic,2026-09-09
+recycled_rubber,Recycled Rubber,hard_drive,hub,Tier 5 - Oil Processing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Rubber,2026-09-09
+heavy_encased_frame,Heavy Encased Frame,hard_drive,hub,Tier 6 - Industrial Manufacturing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Manufacturer,2026-09-09
+sloppy_alumina,Sloppy Alumina,hard_drive,hub,Tier 7 - Bauxite Refinement,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Refinery,2026-09-09
+diluted_fuel,Diluted Fuel,hard_drive,hub,Tier 7 - Control System Development,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Fuel,2026-09-09
+caterium_wire,Caterium Wire,hard_drive,mam,MAM Caterium Research - Caterium,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Wire,2026-09-09
+fused_wire,Fused Wire,hard_drive,mam,MAM Caterium Research - Caterium,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Wire,2026-09-09
+fused_quickwire,Fused Quickwire,hard_drive,mam,MAM Caterium Research - Caterium Ingots,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Hard_Drive,2026-09-09
+caterium_circuit_board,Caterium Circuit Board,hard_drive,mam+hub,MAM Caterium Research - Caterium Ingots + Tier 5 - Oil Processing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Circuit_Board,2026-09-09
+silicon_circuit_board,Silicon Circuit Board,hard_drive,mam+hub,MAM Quartz Research - Quartz + Tier 5 - Oil Processing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Circuit_Board,2026-09-09
+caterium_computer,Caterium Computer,hard_drive,mam+hub,MAM Caterium Research - Caterium Ingots + Tier 6 - Industrial Manufacturing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Circuit_Board,2026-09-09
+silicon_high_speed_connector,Silicon High-Speed Connector,hard_drive,mam+hub,MAM Caterium Research - High-Speed Connector + MAM Quartz Research - Quartz + Tier 5 - Oil Processing,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Circuit_Board,2026-09-09
+fine_black_powder,Fine Black Powder,hard_drive,mam,MAM Sulfur Research - Compacted Coal,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Compacted_Coal,2026-09-09
+compacted_steel_ingot,Compacted Steel Ingot,hard_drive,mam+hub,MAM Sulfur Research - Compacted Coal + Tier 3 - Basic Steel Production,Hard Drive scanning after unlocking,https://satisfactory.wiki.gg/wiki/Compacted_Coal,2026-09-09

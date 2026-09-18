@@ -1,0 +1,7 @@
+check,status,value,notes
+same_build_spatial_inputs,PASS,502094,terrain and POIs
+endpoint_A_source,PASS,resource centroid,proxy anchor
+endpoint_C_source,PASS,resource centroid snapped 5 m dry,proxy anchor
+primary_candidates_within_300m_trunk,PASS,33,terrain spur evaluated
+non_deferred_candidates,PASS,11,current heuristic bands
+exact_vehicle_drivability,NOT_ASSERTED,,requires road/cave/topology layers or play validation

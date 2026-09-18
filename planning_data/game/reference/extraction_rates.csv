@@ -1,0 +1,17 @@
+extractor_class,purity,clock_percent,items_per_cycle_raw,extract_cycle_time_sec,purity_multiplier,nominal_rate_min,max_250_rate_min,unit,game_build_id,source_id,verified_on
+Build_FrackingExtractor_C,impure,100,1000,1,0.5,30,75,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_FrackingExtractor_C,normal,100,1000,1,1,60,150,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_FrackingExtractor_C,pure,100,1000,1,2,120,300,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk1_C,impure,100,1,1,0.5,30,75,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk1_C,normal,100,1,1,1,60,150,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk1_C,pure,100,1,1,2,120,300,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk2_C,impure,100,1,0.5,0.5,60,150,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk2_C,normal,100,1,0.5,1,120,300,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk2_C,pure,100,1,0.5,2,240,600,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk3_C,impure,100,1,0.25,0.5,120,300,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk3_C,normal,100,1,0.25,1,240,600,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_MinerMk3_C,pure,100,1,0.25,2,480,1200,items/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_OilPump_C,impure,100,2000,1,0.5,60,150,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_OilPump_C,normal,100,2000,1,1,120,300,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_OilPump_C,pure,100,2000,1,2,240,600,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_WaterPump_C,none,100,2000,1,1,120,300,m3/min,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18

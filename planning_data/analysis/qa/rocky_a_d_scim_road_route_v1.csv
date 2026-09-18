@@ -1,0 +1,5 @@
+check,status,notes
+same_scim_road_segmentation_as_v1_12,PASS,same user-provided screenshot and thresholds
+A_to_D_road_aware_route_generated,PASS,1499.4 m
+mode_separation_preserved,PASS,"roads affect vehicle trunk, not foot detours"
+terrain_grade_validation,PENDING,road corridor still needs direct heightfield grade audit

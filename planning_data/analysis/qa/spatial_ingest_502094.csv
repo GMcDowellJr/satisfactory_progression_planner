@@ -1,0 +1,10 @@
+check,value,status,notes
+game_build_alignment,502094,PASS,collectibles and heightfield derive from same installed build
+game_version,1.2.4.0,PASS,anniversary-2026 branch
+collectible_rows_total,4446,PASS,all static rows retained in world_collectibles_static.csv
+primary_route_pois,1764,PASS,crash sites + slugs + Mercer Spheres + Somersloops
+crash_sites,118,PASS,
+terrain_grid,7500x7500,PASS,1 m spacing
+terrain_known_fraction,0.804669,PASS,known terrain fraction of full bounding grid
+terrain_validation_trim90_rms_m,0.3692,PASS,against 625 static resource nodes
+source_save_state_ingested,false,PASS,state/looted belong to source-selected save session and were intentionally excluded

@@ -1,0 +1,2 @@
+game_build_id,docs_filename,source_kind,source_path,repo_copy_path,path_note,bytes,sha256,encoding,mtime_utc,captured_on,checker
+docs_a81d250e96aa,en-US.json,game_install,C:\Program Files (x86)\Steam\steamapps\common\Satisfactory\CommunityResources\Docs\en-US.json,planning_data/game/source_snapshots/docs_a81d250e96aa/en-US.json,Steam default library; overwritten in place by game updates,10640180,a81d250e96aa13db3c0bf8c332c199ad930b2f15323e2c1a069afa4c07f971bb,UTF-16,2026-09-09T22:12:38Z,2026-09-18,tools/check_game_docs_provenance.py

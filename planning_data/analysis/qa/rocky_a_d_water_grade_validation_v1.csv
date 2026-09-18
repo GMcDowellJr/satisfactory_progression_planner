@@ -1,0 +1,5 @@
+check,status,notes
+v1_13_zero_water_claim,CORRECTED,screenshot color classifier was not authoritative
+local_water_plane_validation,FAIL_ROUTE,230.2 m across major water intervals; deepest 22.1 m
+20m_grade_validation,FAIL_ROUTE,max 959.0%; 11 >100% blocker zones
+a_to_d_vehicle_route_status,INVALID,requires reroute or explicit bridge/construction decisions

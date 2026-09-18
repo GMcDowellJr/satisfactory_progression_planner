@@ -1,0 +1,1 @@
+district_phase_id,district_id,phase_order,phase_code,name,confidence,phase_role,current_belt_capability,design_belt_capability,current_miner_capability,design_miner_capability,permanent_layout,expansion_intent,transition_trigger,strategy_profile_id

@@ -1,0 +1,9 @@
+spatial_preference,meaning
+required_adjacent,Should be immediately adjacent unless physically impossible.
+prefer_adjacent,Strong preference for direct adjacency.
+prefer_adjacent_initial,Adjacency is important in the initial/pre-transition state.
+prefer_adjacent_after_transition,Adjacency is important after a recipe/topology transition.
+prefer_near,Keep in the same local cluster but not necessarily touching.
+distance_tolerant,Longer routing is acceptable.
+separate_lane,Keep on independent expandable production lanes.
+prefer_clustered,Cluster peers for access/logistics rather than production adjacency.

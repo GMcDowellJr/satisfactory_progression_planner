@@ -1,0 +1,6 @@
+expansion_pattern,meaning
+extend_existing_line,Add machines to the same manifold/line first.
+extend_downstream_line,Extend an existing downstream convergence line.
+duplicate_line,Create a second equivalent line when extension is constrained.
+add_parallel_module,Replicate a larger module in parallel.
+extend_line_then_duplicate_if_constrained,"Default generic policy: extend first, duplicate only after throughput/footprint/logistics constraints."

@@ -1,0 +1,14 @@
+source,used,destination,notes
+rocky_desert_functional_district_assignments.csv,yes,planning/legacy/rocky_desert/resource_sources.csv; planning/plans/rocky_desert/resource_assignments.csv,Split world facts from planning decisions.
+rocky_desert_functional_district_anchors.csv,yes,planning/plans/rocky_desert/sites.csv; analysis/derived/rocky_desert/district_anchors.csv,Satellite coordinates retained; district anchors regenerated from assignments.
+rocky_desert_functional_district_resource_summary.csv,validation_only,analysis/derived/rocky_desert/resource_summary.csv,Recomputed from normalized inputs rather than copied as source truth.
+rocky_desert_functional_district_rollup.csv,no_source_import,derived (future),Redundant derived rollup; schema supports regeneration.
+rocky_desert_guide_target_checks.csv,yes,planning/plans/rocky_desert/capacity_targets.csv; analysis/derived/.../capacity_target_checks_legacy.csv,Targets split from result columns.
+rocky_desert_district_nearby_inventory_800m.csv,yes,planning/legacy/rocky_desert/resource_sources.csv,Used only to expand canonical known source set; 800m spatial join itself not retained as source truth.
+rocky_desert_factory_district_plan(2).md,yes,planning/plans/common/districts.csv; planning/plans/rocky_desert/*,Current-playthrough checkpoint excluded.
+Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md,yes,game/reference/alternate_recipe_unlocks.csv; game/reference/mam_pool_effects.csv; planning/plans/rocky_desert/recipe_preferences.csv,Eligibility split from plan ranking/rationale.
+grass_fields_factory_district_plan.md,yes,planning/plans/common/districts.csv; planning/plans/grass_fields/*,No exact node coordinates/assignments inferred.
+northern_forest_factory_district_plan.md,yes,planning/plans/common/districts.csv; planning/plans/northern_forest/*,No exact node coordinates/assignments inferred.
+dune_desert_factory_district_plan.md,yes,planning/plans/common/districts.csv; planning/plans/dune_desert/*,No exact node coordinates/assignments inferred.
+Satisfactory.zip image-derived coordinate/proximity CSVs,no,,Explicitly excluded per request.
+game/reference/miner_extraction_rates.csv,superseded,game/reference/extraction_rates.csv,"Wiki-sourced miner table retired 2026-09-18. Reconciled against the pinned game Docs with 0 mismatches across 9 rows x 2 rate columns, then replaced by a Docs-derived table keyed by Build_*_C instead of the Mk.1 display string and covering fluid extractors as well. No code consumed the old file."

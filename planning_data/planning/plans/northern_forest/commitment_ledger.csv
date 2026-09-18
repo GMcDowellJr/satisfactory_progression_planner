@@ -1,0 +1,7 @@
+strategy_profile_id,cluster_description,default_commitment,eventual_role,parameterized,source_file
+northern_forest_baseline_v1,northern cliff Iron/Copper/Limestone,use,starter + construction,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,west coal lake,split,power + possible steel reserve,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,additional Iron + Coal terraces,reserve,steel,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,Spire Coast Oil,reserve,petrochem + fuel power,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,larger terrace/canyon edge,reserve_space,HMF / advanced production,true,northern_forest_factory_district_plan.md
+northern_forest_baseline_v1,southern highland Bauxite,reserve,aluminum,true,northern_forest_factory_district_plan.md

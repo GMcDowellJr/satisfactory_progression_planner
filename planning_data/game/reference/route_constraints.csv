@@ -1,0 +1,10 @@
+constraint_id,route_type,parameter,value,unit,notes,source_url,verified_on
+foundation_grid,foundation,grid_width_m,8,m,Foundations use 8 m width/length modules; useful route/site grid basis.,https://satisfactory.wiki.gg/wiki/Foundations,2026-09-09
+zoop_limit,foundation,max_zoop_count,10,pieces,Zoop places up to 10 pieces in one dimension.,https://satisfactory.wiki.gg/wiki/Build_Gun,2026-09-09
+lift_vertical_limit,belt,max_single_lift_vertical_m,48,m,Single Conveyor Lift vertical distance; floor-hole construction can bypass.,https://satisfactory.wiki.gg/wiki/Conveyor_Lifts,2026-09-09
+pipeline_segment_max,pipeline,max_segment_length_m,56,m,Pipeline length range is 1-56 m.,https://satisfactory.wiki.gg/wiki/Pipelines,2026-09-09
+rail_segment_min,rail,min_segment_length_m,12,m,Minimum railway segment length.,https://satisfactory.wiki.gg/wiki/Railway,2026-09-09
+rail_segment_max,rail,max_segment_length_m,100,m,Maximum railway segment length.,https://satisfactory.wiki.gg/wiki/Railway,2026-09-09
+rail_turn_radius,rail,min_90_turn_radius_m,17,m,"Minimum radius for a perfect 90-degree foundation turn, centerline basis.",https://satisfactory.wiki.gg/wiki/Railway,2026-09-09
+rail_flat_endpoint_grade,rail,max_rise_flat_endpoints_m,28,m per 94.5 m,Maximum rise cited for segment whose endpoints are flat.,https://satisfactory.wiki.gg/wiki/Railway,2026-09-09
+rail_flat_endpoint_run,rail,grade_reference_run_m,94.5,m,Reference run associated with 28 m rise.,https://satisfactory.wiki.gg/wiki/Railway,2026-09-09

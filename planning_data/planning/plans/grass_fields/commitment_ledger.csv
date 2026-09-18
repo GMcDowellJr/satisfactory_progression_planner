@@ -1,0 +1,8 @@
+strategy_profile_id,cluster_description,default_commitment,eventual_role,parameterized,source_file
+grass_fields_baseline_v1,southwest/central low-normal Iron,use,permanent construction supply,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,local Copper/Limestone,use,early mall,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,NW coal-water,use,power,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,stronger western Iron + Coal,reserve,steel,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,Western Beaches / Blue Crater Oil,reserve,petrochem,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,northern highland Bauxite,reserve,aluminum,true,grass_fields_factory_district_plan.md
+grass_fields_baseline_v1,central flat plains,reserve_space,advanced manufacturing/logistics,true,grass_fields_factory_district_plan.md

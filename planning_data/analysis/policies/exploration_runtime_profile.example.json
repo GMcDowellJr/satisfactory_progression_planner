@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "profile_name": "early_foot_example",
+  "note": "Runtime interpretation only. Do not use this file when generating canonical topology or POI snap data.",
+  "capabilities": {
+    "ramps_available": true,
+    "ramp_height_m": 4.0,
+    "blade_runners": false,
+    "jetpack": false
+  },
+  "hazards": {
+    "alpha_hostile": "exclude",
+    "spore_flower_damage_sphere": "exclude",
+    "gas": "exclude",
+    "uranium": "exclude",
+    "nuclear_hog": "exclude"
+  },
+  "weights": {
+    "horizontal_distance": 1.0,
+    "uphill": 1.0,
+    "downhill": 0.25,
+    "grade_soft_start": 0.75,
+    "grade_penalty": 1.5,
+    "ramp_equivalent_distance_m": 8.0
+  }
+}

@@ -1,0 +1,8 @@
+poi_type,priority_weight,progression_context,notes
+crash_site,10,all; especially before permanent recipe-gated districts,Primary exploration objective because recipe unlocks alter factory topology.
+mercer_sphere,8,early-mid,High value for Dimensional Depot progression and uploader expansion.
+power_slug_blue,4,all,Useful opportunistically.
+power_slug_yellow,6,all,Useful opportunistically.
+power_slug_purple,8,all,Higher power-shard value; worth larger detour.
+somersloop,7,mid-late,Valuable but normally secondary to recipe-gating Hard Drives.
+specialty_resource,7,progression-dependent,Raise value when Caterium/Sulfur/SAM/Quartz is a current progression objective.

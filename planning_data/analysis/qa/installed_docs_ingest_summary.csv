@@ -1,0 +1,15 @@
+metric,value
+docs_sha256,a81d250e96aa13db3c0bf8c332c199ad930b2f15323e2c1a069afa4c07f971bb
+native_class_blocks,114
+items_resources,162
+production_recipes,291
+recipe_io_rows,919
+schematics,574
+schematic_recipe_unlock_links,1016
+schematic_dependency_links,372
+est_alternate_schematics,109
+hard_drive_recipe_choices,107
+hard_drive_inventory_expansions,2
+non_hard_drive_alternate_unlock_rows,6
+rocky_strategy_rows,79
+rocky_strategy_exact_matches,79

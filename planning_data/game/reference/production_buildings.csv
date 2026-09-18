@@ -1,0 +1,12 @@
+producer_class,display_name,native_class,power_model,base_power_mw,power_exponent,game_build_id,source_id,verified_on
+Build_AssemblerMk1_C,Assembler,FGBuildableManufacturer,fixed,15,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_Blender_C,Blender,FGBuildableManufacturer,fixed,75,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_ConstructorMk1_C,Constructor,FGBuildableManufacturer,fixed,4,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_Converter_C,Converter,FGBuildableManufacturerVariablePower,variable,0,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_FoundryMk1_C,Foundry,FGBuildableManufacturer,fixed,16,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_HadronCollider_C,Particle Accelerator,FGBuildableManufacturerVariablePower,variable,0,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_ManufacturerMk1_C,Manufacturer,FGBuildableManufacturer,fixed,55,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_OilRefinery_C,Refinery,FGBuildableManufacturer,fixed,30,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_Packager_C,Packager,FGBuildableManufacturer,fixed,10,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_QuantumEncoder_C,Quantum Encoder,FGBuildableManufacturerVariablePower,variable,0,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18
+Build_SmelterMk1_C,Smelter,FGBuildableManufacturer,fixed,4,1.321929,docs_a81d250e96aa,local_game_docs_en_us,2026-09-18

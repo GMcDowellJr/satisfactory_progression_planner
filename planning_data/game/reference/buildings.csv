@@ -1,0 +1,11 @@
+building_id,name,class_name,building_type,width_m,length_m,height_m,power_mw,conveyor_inputs,conveyor_outputs,pipeline_inputs,pipeline_outputs,unlock,source_url,verified_on
+constructor,Constructor,Desc_ConstructorMk1_C,production,7.9,9.9,8,4,1,1,0,0,Tier 0 - HUB Upgrade 3,https://satisfactory.wiki.gg/wiki/Constructor,2026-09-09
+assembler,Assembler,Desc_AssemblerMk1_C,production,9,16,11,15,2,1,0,0,Tier 2 - Part Assembly,https://satisfactory.wiki.gg/wiki/Assembler,2026-09-09
+foundry,Foundry,Desc_FoundryMk1_C,production,10,9,9,16,2,1,0,0,Tier 3 - Basic Steel Production,https://satisfactory.wiki.gg/wiki/Foundry,2026-09-09
+refinery,Refinery,Desc_OilRefinery_C,production,10,22,30,30,1,1,1,1,Tier 5 - Oil Processing,https://satisfactory.wiki.gg/wiki/Refinery,2026-09-09
+manufacturer,Manufacturer,Desc_ManufacturerMk1_C,production,18,20,12,55,4,1,0,0,Tier 6 - Industrial Manufacturing,https://satisfactory.wiki.gg/wiki/Manufacturer,2026-09-09
+blender,Blender,Desc_Blender_C,production,18,16,15,75,2,1,2,1,Tier 7 - Control System Development,https://satisfactory.wiki.gg/wiki/Blender,2026-09-09
+miner_mk1,Miner Mk.1,Desc_MinerMk1_C,extractor,6,14,18,5,0,1,0,0,Tier 0 - HUB Upgrade 5,https://satisfactory.wiki.gg/wiki/Miner_Mk.3,2026-09-09
+miner_mk2,Miner Mk.2,Desc_MinerMk2_C,extractor,6,14,18,15,0,1,0,0,Tier 4 - Advanced Steel Production,https://satisfactory.wiki.gg/wiki/Miner_Mk.3,2026-09-09
+miner_mk3,Miner Mk.3,Desc_MinerMk3_C,extractor,6,14,18,45,0,1,0,0,Tier 8 - Leading-Edge Production,https://satisfactory.wiki.gg/wiki/Miner_Mk.3,2026-09-09
+space_elevator,Space Elevator,Desc_SpaceElevator_C,special,48,54,118,,6,0,0,0,Tier 0 - HUB Upgrade 6,https://satisfactory.wiki.gg/wiki/Space_Elevator,2026-09-09

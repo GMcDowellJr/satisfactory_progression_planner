@@ -1,0 +1,11 @@
+component,direction,applies_to,notes
+base_route_distance,minimize,all,Direct travel cost.
+detour_distance,minimize,enriched_route,Added distance versus base corridor.
+elevation_change,minimize,all,Requires Z/elevation-capable spatial source.
+terrain_difficulty,minimize,all,Future terrain layer.
+hard_drive_value,maximize,exploration,Progression-aware value of reachable crash sites.
+slug_value,maximize,exploration,Power-shard value.
+mercer_value,maximize,exploration,Dimensional Depot research/build value.
+sloop_value,maximize,exploration,Production amplification / alien power value.
+specialty_resource_value,maximize,exploration,"Caterium, Quartz, Sulfur, SAM detour value."
+future_corridor_value,maximize,planner,Does this trip establish knowledge/access along a later logistics corridor?

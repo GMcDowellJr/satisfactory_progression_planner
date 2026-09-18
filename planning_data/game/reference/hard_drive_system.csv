@@ -1,0 +1,7 @@
+metric,value,unit,source_id,verified_on
+crash_sites,118,count,official_wiki_hard_drive,2026-09-09
+alternate_recipes,106,count,official_wiki_hard_drive,2026-09-09
+inventory_expansions,2,count,official_wiki_hard_drive,2026-09-09
+needed_scans,107,count,official_wiki_hard_drive,2026-09-09
+mam_hard_drives,4,count,official_wiki_hard_drive,2026-09-09
+max_hd_used,111,count,official_wiki_hard_drive,2026-09-09

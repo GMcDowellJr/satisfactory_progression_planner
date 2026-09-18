@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "known_ground_fraction": 0.8099547511312217,
+  "checks": {
+    "foundation_count": true,
+    "flat_origin_elevation_m": true,
+    "flat_top_elevation_m": true,
+    "known_ground_fraction": true,
+    "known_ground_relief": true,
+    "known_ground_p95_top_clearance": true,
+    "known_edge_p95_top_clearance": true,
+    "known_ground_no_top_penetration": true
+  }
+}

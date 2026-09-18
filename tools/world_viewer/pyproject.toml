@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "satisfactory-world-viewer"
+version = "0.9.0"
+description = "Interactive 3D QA viewer and portable scene exporter for Satisfactory world-analysis artifacts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "vtk>=9.3",
+]
+
+[project.optional-dependencies]
+export = ["trimesh>=4.0"]
+all = ["trimesh>=4.0"]
+
+[project.scripts]
+satisfactory-world-viewer = "world_viewer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

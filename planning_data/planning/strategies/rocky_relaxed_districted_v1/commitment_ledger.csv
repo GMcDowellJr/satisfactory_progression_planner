@@ -1,0 +1,7 @@
+strategy_profile_id,cluster_description,default_commitment,eventual_role,parameterized,source_file
+rocky_desert_baseline_v1,West starter Iron/Copper/Limestone,use,construction + early parts,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,North/coastal Coal,use,coal power,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,strong interior Iron + Coal,reserve,permanent steel,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,NW Iron/Limestone,reserve,HMF / Fused Frames,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,Western Beaches Oil,reserve,petrochem + fuel power,true,rocky_desert_factory_district_plan(2).md
+rocky_desert_baseline_v1,southern/highland Bauxite,reserve,aluminum,true,rocky_desert_factory_district_plan(2).md

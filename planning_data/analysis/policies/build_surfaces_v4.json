@@ -1,0 +1,120 @@
+{
+  "policy_id": "build_surfaces_v4",
+  "status": "calibration_defaults_local_multiscale_relief",
+  "analysis_model": "local_multiscale_relief",
+  "foundation_size_m": 8.0,
+  "classification_basis": "highest reference factory footprint whose local terrain relief stays within the configured tolerance at a candidate center",
+  "size_classes": {
+    "small": {
+      "minimum_short_span_foundations": 8,
+      "minimum_short_span_m": 64,
+      "reference_span_foundations": [
+        8,
+        8
+      ],
+      "reference_span_m": [
+        64,
+        64
+      ],
+      "reference_core_area_m2": 4096,
+      "intent": "local or satellite production; limited expansion"
+    },
+    "medium": {
+      "minimum_short_span_foundations": 24,
+      "minimum_short_span_m": 192,
+      "reference_span_foundations": [
+        24,
+        32
+      ],
+      "reference_span_m": [
+        192,
+        256
+      ],
+      "reference_core_area_m2": 49152,
+      "intent": "dedicated factory with meaningful miner/belt upgrade headroom"
+    },
+    "large": {
+      "minimum_short_span_foundations": 48,
+      "minimum_short_span_m": 384,
+      "reference_span_foundations": [
+        48,
+        64
+      ],
+      "reference_span_m": [
+        384,
+        512
+      ],
+      "reference_core_area_m2": 196608,
+      "intent": "major production district intended to survive multiple throughput upgrades"
+    },
+    "very_large": {
+      "minimum_short_span_foundations": 80,
+      "minimum_short_span_m": 640,
+      "reference_span_foundations": [
+        80,
+        80
+      ],
+      "reference_span_m": [
+        640,
+        640
+      ],
+      "reference_core_area_m2": 409600,
+      "intent": "regional or late-game industrial campus where terrain should not be the primary growth constraint"
+    }
+  },
+  "shape_classes": {
+    "good": {
+      "max_aspect_ratio": 1.5,
+      "interpretation": "general-purpose placement zone"
+    },
+    "workable": {
+      "min_aspect_ratio_exclusive": 1.5,
+      "max_aspect_ratio": 2.0,
+      "interpretation": "placement zone with some directional constraint"
+    },
+    "linear": {
+      "min_aspect_ratio_exclusive": 2.0,
+      "max_aspect_ratio": 3.0,
+      "interpretation": "elongated placement zone"
+    },
+    "poor": {
+      "min_aspect_ratio_exclusive": 3.0,
+      "interpretation": "highly elongated placement zone; rectangle location is more informative than region shape"
+    }
+  },
+  "analysis_parameters": {
+    "terrain_source_resolution_m": 1.0,
+    "working_resolutions_m": [
+      16
+    ],
+    "local_relief_tolerances_m": [
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "minimum_valid_fraction": 0.95,
+    "water_mode": "exclude",
+    "minimum_terrain_confidence": null,
+    "max_local_grade": null,
+    "roughness_threshold_m": null,
+    "footprint_orientations_deg": [
+      0,
+      90
+    ],
+    "rectangle_candidates_per_region": 3,
+    "rectangle_non_overlap_fraction": 0.15
+  },
+  "notes": [
+    "Horizontal sampling resolution and allowed local relief are independent. Smaller resolution preserves more edge detail; larger relief tolerance allows more candidate placement centers to qualify.",
+    "Each size class is evaluated at its own reference footprint scale. A Medium center qualifies only when the terrain inside a Medium 24x32-foundation footprint stays within the active relief tolerance.",
+    "The displayed irregular region is a connected zone of qualifying footprint centers. It is not itself the proposed factory outline.",
+    "build_surface_rectangles.csv records the concrete reference rectangles that demonstrate why each region qualifies. The viewer emphasizes those rectangles over the ambiguous region shape.",
+    "The initial footprint search tests orthogonal 0/90-degree orientations. Additional rotated-footprint kernels can be added later without changing the output contract.",
+    "Water is excluded by default for natural terrain-following site analysis. Elevated-over-water platform opportunity remains a separate elevation-sweep analysis in build_surfaces_v3.",
+    "Grade, roughness and terrain confidence remain diagnostics unless explicit gates are configured.",
+    "build_surfaces_v1/v2/v3 remain historical or alternate policies for reproducibility."
+  ]
+}

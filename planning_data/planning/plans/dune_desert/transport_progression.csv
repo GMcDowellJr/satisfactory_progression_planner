@@ -1,0 +1,9 @@
+strategy_profile_id,stage,route_role,preferred_transport,parameterized,source_file
+dune_desert_baseline_v1,t1_2,starter clusters → oasis base,belt,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t3,coal-water → power,belt,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t3_4,Steel → Home,tractor,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t5,Spire Coast Oil → desert,truck_then_rail,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t6,central desert ↔ steel ↔ Spire Coast,rail,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t7,imported Bauxite → aluminum,rail,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t7_8,aluminum/advanced resources → central campus,rail,true,dune_desert_factory_district_plan.md
+dune_desert_baseline_v1,t9,specialist low-volume items,drone_or_rail,true,dune_desert_factory_district_plan.md

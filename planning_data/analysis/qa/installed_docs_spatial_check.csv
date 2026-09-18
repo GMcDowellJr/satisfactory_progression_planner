@@ -1,0 +1,7 @@
+field_or_pattern,occurrences,world_spatial_data,interpretation
+mElevation,328,false,Building/class property such as lightweight wall elevation; not terrain/world-instance elevation.
+OriginOffset,546,false,Class/building origin offset; not world placement.
+mCustomLocation,5,false,Descriptor/view-model offset; not world placement.
+"""x""",0,false,No SCIM-style lowercase world marker coordinate field detected.
+"""y""",0,false,No SCIM-style lowercase world marker coordinate field detected.
+"""z""",0,false,No SCIM-style lowercase world marker coordinate field detected.

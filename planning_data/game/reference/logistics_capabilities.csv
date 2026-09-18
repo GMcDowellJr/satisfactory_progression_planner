@@ -1,0 +1,18 @@
+capability_id,capability_type,mark,capacity_per_min,unit,unlock,width_m,length_min_m,length_max_m,height_min_m,height_max_m,source_id,verified_on
+belt_mk1,belt,Mk.1,60,items/min,Tier 0 - HUB Upgrade 4,,,,,,official_wiki_conveyor_belts,2026-09-09
+belt_mk2,belt,Mk.2,120,items/min,Tier 2 - Logistics Mk.2,,,,,,official_wiki_conveyor_belts,2026-09-09
+belt_mk3,belt,Mk.3,270,items/min,Tier 4 - Logistics Mk.3,,,,,,official_wiki_conveyor_belts,2026-09-09
+belt_mk4,belt,Mk.4,480,items/min,Tier 5 - Logistics Mk.4,,,,,,official_wiki_conveyor_belts,2026-09-09
+belt_mk5,belt,Mk.5,780,items/min,Tier 7 - Logistics Mk.5,,,,,,official_wiki_conveyor_belts,2026-09-09
+belt_mk6,belt,Mk.6,1200,items/min,Tier 9 - Peak Efficiency,,,,,,official_wiki_conveyor_belts,2026-09-09
+lift_mk1,conveyor_lift,Mk.1,60,items/min,Tier 1 - Logistics,2,2,2,7,51,official_wiki_conveyor_lifts,2026-09-09
+lift_mk2,conveyor_lift,Mk.2,120,items/min,Tier 2 - Logistics Mk.2,2,2,2,7,51,official_wiki_conveyor_lifts,2026-09-09
+lift_mk3,conveyor_lift,Mk.3,270,items/min,Tier 4 - Logistics Mk.3,2,2,2,7,51,official_wiki_conveyor_lifts,2026-09-09
+lift_mk4,conveyor_lift,Mk.4,480,items/min,Tier 5 - Logistics Mk.4,2,2,2,7,51,official_wiki_conveyor_lifts,2026-09-09
+lift_mk5,conveyor_lift,Mk.5,780,items/min,Tier 7 - Logistics Mk.5,2,2,2,7,51,official_wiki_conveyor_lifts,2026-09-09
+lift_mk6,conveyor_lift,Mk.6,1200,items/min,Tier 9 - Peak Efficiency,2,2,2,7,51,official_wiki_conveyor_lifts,2026-09-09
+pipeline_mk1,pipeline,Mk.1,300,m3/min,Tier 3 - Coal Power,2,1,56,2,2,official_wiki_pipelines,2026-09-09
+pipeline_mk2,pipeline,Mk.2,600,m3/min,Tier 6 - Pipeline Engineering Mk.2,2,1,56,2,2,official_wiki_pipelines,2026-09-09
+miner_mk1,miner,Mk.1,60,normal-node items/min,Tier 0 - HUB Upgrade 5,6,14,14,18,18,official_wiki_miner,2026-09-09
+miner_mk2,miner,Mk.2,120,normal-node items/min,Tier 4 - Advanced Steel Production,6,14,14,18,18,official_wiki_miner,2026-09-09
+miner_mk3,miner,Mk.3,240,normal-node items/min,Tier 8 - Leading-Edge Production,6,14,14,18,18,official_wiki_miner,2026-09-09

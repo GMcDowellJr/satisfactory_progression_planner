@@ -1,0 +1,71 @@
+{
+  "policy_id": "build_surfaces_v3",
+  "status": "calibration_defaults_elevation_sweep",
+  "analysis_model": "elevation_sweep",
+  "foundation_size_m": 8.0,
+  "classification_basis": "largest contiguous usable foundation-equivalent core at a sampled horizontal platform elevation; total connected area is secondary",
+  "size_classes": {
+    "small": {
+      "minimum_short_span_foundations": 8,
+      "minimum_short_span_m": 64,
+      "reference_span_foundations": [8, 8],
+      "reference_span_m": [64, 64],
+      "reference_core_area_m2": 4096,
+      "intent": "local or satellite production; limited expansion"
+    },
+    "medium": {
+      "minimum_short_span_foundations": 24,
+      "minimum_short_span_m": 192,
+      "reference_span_foundations": [24, 32],
+      "reference_span_m": [192, 256],
+      "reference_core_area_m2": 49152,
+      "intent": "dedicated factory with meaningful miner/belt upgrade headroom"
+    },
+    "large": {
+      "minimum_short_span_foundations": 48,
+      "minimum_short_span_m": 384,
+      "reference_span_foundations": [48, 64],
+      "reference_span_m": [384, 512],
+      "reference_core_area_m2": 196608,
+      "intent": "major production district intended to survive multiple throughput upgrades"
+    },
+    "very_large": {
+      "minimum_short_span_foundations": 80,
+      "minimum_short_span_m": 640,
+      "reference_span_foundations": [80, 80],
+      "reference_span_m": [640, 640],
+      "reference_core_area_m2": 409600,
+      "intent": "regional or late-game industrial campus where terrain should not be the primary growth constraint"
+    }
+  },
+  "shape_classes": {
+    "good": {"max_aspect_ratio": 1.5, "interpretation": "general-purpose industrial core"},
+    "workable": {"min_aspect_ratio_exclusive": 1.5, "max_aspect_ratio": 2.0, "interpretation": "usable for most factories with some layout constraint"},
+    "linear": {"min_aspect_ratio_exclusive": 2.0, "max_aspect_ratio": 3.0, "interpretation": "long/narrow surface; potentially useful for linear production but not general-purpose"},
+    "poor": {"min_aspect_ratio_exclusive": 3.0, "interpretation": "too elongated to treat raw area as equivalent general-purpose industrial capacity"}
+  },
+  "analysis_parameters": {
+    "terrain_source_resolution_m": 1.0,
+    "working_resolutions_m": [16],
+    "vertical_step_m": 16.0,
+    "plane_min_m": "auto",
+    "plane_max_m": "auto",
+    "plane_origin_m": "auto_aligned",
+    "minimum_valid_fraction": 0.5,
+    "water_obstruction_mode": "surface",
+    "max_local_grade": null,
+    "roughness_threshold_m": null,
+    "minimum_terrain_confidence": null,
+    "core_rotation_angles_deg": [0, 15, 30, 45, 60, 75]
+  },
+  "notes": [
+    "Horizontal resolution and vertical step are independent. Resolution controls boundary/detail fidelity; step controls which horizontal platform elevations are sampled.",
+    "Each coarse horizontal cell is obstructed until the platform plane reaches the maximum terrain elevation within that cell. This preserves small ridges at coarse resolution instead of erasing them with a median.",
+    "Water is treated as a temporary height obstruction by default: a cell with water becomes available once the platform plane rises above the water surface. It is not permanently excluded.",
+    "At a fixed platform elevation, changing vertical step does not change geometry; step only changes the sampled elevations included in a run.",
+    "Usable area is monotonic with platform elevation: higher planes can add or merge cells but cannot remove previously usable cells.",
+    "Grade, roughness and confidence remain diagnostics unless explicit gates are configured.",
+    "Size thresholds remain parameterized calibration defaults and are expected to change after in-game validation.",
+    "build_surfaces_v1.json and build_surfaces_v2.json are retained as historical policies for reproducibility."
+  ]
+}

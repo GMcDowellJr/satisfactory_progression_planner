@@ -1,0 +1,8 @@
+entity,layer,primary_key,meaning,mutable_by_save
+resource_socket,world/canonical,socket_id,Fixed build-versioned placement/identity of an extractable resource actor.,false
+resource_assignment,world/canonical,world_config_id + socket_id,Resource type and purity assigned to a socket for one world configuration.,true
+exploration_poi,world/canonical,poi_id,Build-versioned static exploration object projected to canonical metres.,state_only
+terrain_cell,world/spatial,grid coordinate,Terrain/water raster sample for the pinned game build.,false
+district,planning/plans/common,district_id,Functional planning district template; display letters are labels only.,false
+strategy_profile,planning/strategies,strategy_profile_id,Parameterized player/build-style preferences.,false
+playthrough,planning/playthroughs,playthrough_id,Mutable current-run state and overrides.,true

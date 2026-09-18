@@ -1,0 +1,471 @@
+{
+ "description": "A 1 m terrain heightfield of the Satisfactory world, cut from the reader's own installed game by tools/gen_world_heightmap.py. All of it is local: data/local/ is gitignored and no terrain raster is ever committed to this repository.",
+ "generator": "tools/gen_world_heightmap.py",
+ "generator_version": 3,
+ "transcribed": "2026-09-09",
+ "grid": {
+  "width": 7500,
+  "height": 7500,
+  "spacing_cm": 100.0,
+  "x0_cm": -324700.0,
+  "y0_cm": -375000.0,
+  "georeference": "x_cm = -324700 + col*100, y_cm = -375000 + row*100",
+  "alignment": "vertex-aligned: a texel's height belongs to that point exactly, not to a cell around it, so a reader rounds to the nearest vertex rather than flooring into a cell",
+  "axes": "game axes -- +X east, +Y south, so row 0 is the northern edge"
+ },
+ "units": "decimetres above sea level, int16",
+ "nodata": -32768,
+ "files": {
+  "height.i16.z": {
+   "content": "7500x7500 int16 decimetres, row-delta then zlib",
+   "bytes": 16808125
+  },
+  "prov.u8.z": {
+   "content": "which layer answered each texel: 0 no-data, 1 landscape, 3 fill, 4 cliff geometry interpolated across a triangle wider than the texel, 5 cliff geometry with at least one source vertex in the texel. A reader that knows only 4 sees 5 as 'not landscape, not fill, not no-data', which is what 4 meant before the split. zlib, no delta",
+   "bytes": 2262298
+  },
+  "density.u8.z": {
+   "content": "source vertices per texel over the cliff layer, clamped at 255, zero elsewhere. The interface between the geometry and anything that draws it. zlib, no delta",
+   "bytes": 7061034
+  },
+  "water.i16.z": {
+   "content": "water surface Z, same grid, same no-data. Information only",
+   "bytes": 569569
+  },
+  "waterq.u8.z": {
+   "content": "0 dry, 1 water with a depth measured against 1 m terrain, 2 water whose level is known and whose depth is not. zlib, no delta",
+   "bytes": 437961
+  }
+ },
+ "provenance": {
+  "0": {
+   "name": "no data",
+   "accuracy_m": null,
+   "note": "open ocean past the landscape edge, and two cave-mouth blobs. Explicit, never zero-filled: say nothing here."
+  },
+  "1": {
+   "name": "landscape",
+   "horizontal_m": 1.0,
+   "vertical_step_m": 0.0078,
+   "accuracy_m": 0.2,
+   "accuracy_from": "measured: median absolute error over 431 static resource nodes that fell on this layer",
+   "measured": {
+    "n": 431,
+    "coverage": 1.0,
+    "offset_m": 0.1113,
+    "medabs_m": 0.2,
+    "p90_m": 0.9184,
+    "trim90_rms_m": 0.295,
+    "under_1m": 391
+   },
+   "note": "the cooked UE Landscape heightfield: a true 1 m grid, 7.8 mm vertical quantisation, no resampling anywhere between the component and this texel"
+  },
+  "4": {
+   "name": "cliff",
+   "horizontal_m": 1.0,
+   "vertical_step_m": 0.0,
+   "accuracy_m": 0.1621,
+   "accuracy_from": "measured: median absolute error over 81 static resource nodes that fell on this layer",
+   "measured": {
+    "n": 81,
+    "coverage": 1.0,
+    "offset_m": 0.0542,
+    "medabs_m": 0.1621,
+    "p90_m": 57.0763,
+    "trim90_rms_m": 9.1416,
+    "under_1m": 69
+   },
+   "note": "rasterised triangles from a placed rock or cliff, at a texel NO SOURCE VERTEX landed in: the height is this file's own plane interpolation across a triangle wider than the texel. Exactly as accurate as value 5 at 1 m, and not a measurement below it -- which is the only thing the two values distinguish"
+  },
+  "5": {
+   "name": "cliff, direct",
+   "horizontal_m": 1.0,
+   "vertical_step_m": 0.0,
+   "accuracy_m": 0.2212,
+   "accuracy_from": "measured: median absolute error over 104 static resource nodes that fell on this layer",
+   "measured": {
+    "n": 104,
+    "coverage": 1.0,
+    "offset_m": 0.0883,
+    "medabs_m": 0.2212,
+    "p90_m": 88.8265,
+    "trim90_rms_m": 17.5547,
+    "under_1m": 81
+   },
+   "note": "rasterised triangles from a placed rock or cliff, at a texel at least one source vertex landed in. density.u8.z says how many. This is where a render finer than 1 m is reading geometry rather than a kernel"
+  },
+  "3": {
+   "name": "fill",
+   "horizontal_m": 3.6621,
+   "vertical_step_m": 3.8966,
+   "accuracy_m": 3.897,
+   "accuracy_from": "derived: this layer's own vertical step, because only 9 nodes fell on it and that is fewer than 30",
+   "measured": {
+    "n": 9,
+    "coverage": 1.0,
+    "offset_m": 1.2449,
+    "medabs_m": 0.5115,
+    "p90_m": 3.35,
+    "trim90_rms_m": 1.3285,
+    "under_1m": 6
+   },
+   "note": "the 2048 px HeightData_Test interface raster, outside the landscape frame. 3.66 m horizontally and 3.897 m per quantisation step: this is the old baseline unchanged, and it is the coarsest thing in the field"
+  }
+ },
+ "coverage": {
+  "no data": 0.195331,
+  "landscape": 0.454478,
+  "fill": 0.139601,
+  "cliff": 0.058318,
+  "cliff, direct": 0.152272,
+  "known": 0.804669
+ },
+ "z_range_m": [
+  -480.52,
+  470.9
+ ],
+ "density": {
+  "file": "density.u8.z",
+  "content": "source vertices per texel, clamped at 255, zero outside the cliff layer",
+  "rule": "a texel with at least 1 sample is provenance 5 (direct); below that it is 4 (interpolated). Counted after the facing cull, so a vertex on the underside of a rock does not make the ground beneath it a measurement",
+  "cliff_texels": 11845669,
+  "direct_fraction": 0.7231,
+  "median_samples_per_cliff_texel": 2,
+  "z6_texel_m": 0.4578,
+  "z7_texel_m": 0.2289,
+  "why": "a renderer drawing finer than this field's own 1 m spacing has to decide whether it is resampling a measurement or an interpolant, and nothing else in the field can tell it. The honest claim this supports is about DENSITY and never about accuracy: the geometry ladder from the collision hull to the Nanite leaf is worth half a point of frac_lt_0.25m and moves p90 by nothing, because the cliff province's error is topological -- a max-Z field answering with a cave roof over the floor a probe stands on"
+ },
+ "container": {
+  "quantisation_max_m": 0.05,
+  "quantisation_rms_m": 0.0273,
+  "why": "int16 decimetres. The rounding costs the RMS above, which is an eighth of the field's own measured accuracy; int32 would double the file for nothing."
+ },
+ "validation": {
+  "against": "data/world_resource_nodes.json",
+  "nodes": 625,
+  "field": {
+   "n": 625,
+   "coverage": 1.0,
+   "offset_m": 0.1012,
+   "medabs_m": 0.2019,
+   "p90_m": 1.412,
+   "trim90_rms_m": 0.3692,
+   "under_1m": 542
+  },
+  "per_layer": {
+   "landscape": {
+    "n": 431,
+    "coverage": 1.0,
+    "offset_m": 0.1113,
+    "medabs_m": 0.2,
+    "p90_m": 0.9184,
+    "trim90_rms_m": 0.295,
+    "under_1m": 391
+   },
+   "fill": {
+    "n": 9,
+    "coverage": 1.0,
+    "offset_m": 1.2449,
+    "medabs_m": 0.5115,
+    "p90_m": 3.35,
+    "trim90_rms_m": 1.3285,
+    "under_1m": 6
+   },
+   "cliff": {
+    "n": 81,
+    "coverage": 1.0,
+    "offset_m": 0.0542,
+    "medabs_m": 0.1621,
+    "p90_m": 57.0763,
+    "trim90_rms_m": 9.1416,
+    "under_1m": 69
+   },
+   "cliff, direct": {
+    "n": 104,
+    "coverage": 1.0,
+    "offset_m": 0.0883,
+    "medabs_m": 0.2212,
+    "p90_m": 88.8265,
+    "trim90_rms_m": 17.5547,
+    "under_1m": 81
+   },
+   "cliff, both": {
+    "n": 185,
+    "coverage": 1.0,
+    "offset_m": 0.0783,
+    "medabs_m": 0.1979,
+    "p90_m": 88.7019,
+    "trim90_rms_m": 15.1173,
+    "under_1m": 150
+   }
+  },
+  "method": "every static resource node's own Z against the field read at its coordinate, with the median offset removed and the worst 10% trimmed. The trim is not cosmetic: about 44 nodes sit under the surface in caves, arches and overhangs, which no single-valued heightmap can represent and which the interface raster fails by the same test.",
+  "gate_m": 0.5,
+  "reference": "the workflow that proved this pipeline measured 0.368 m trimmed RMS and 0.210 m median absolute on this set; the interface raster alone measures 1.080 m and 0.854 m, and its own scale and offset were fitted on these nodes."
+ },
+ "sources": {
+  "game": {
+   "install": "the reader's own Satisfactory install",
+   "licence": "Coffee Stain Studios' own cooked assets, read locally. Not committed, not redistributed, and served to localhost only.",
+   "game_version_pinned": "buildVersion 502094 (engine branch ++FactoryGame+rel-main-anniversary-2026), the installed build",
+   "game_version_raw": {
+    "Changelist": 502094,
+    "BranchName": "++FactoryGame+rel-main-anniversary-2026",
+    "BuildId": "502094",
+    "GameVersion": "1.2.4.0"
+   }
+  },
+  "landscape": {
+   "class": "LandscapeComponent",
+   "derivation": "GrassData height, 128x128 uint16 per component; world_z_cm = (h - 32768)/128*100 + 100",
+   "components": 2289,
+   "frame": [
+    7113,
+    6097
+   ],
+   "frame_origin_cm": [
+    -304800.0,
+    -304800.0
+   ],
+   "drop_texels": [
+    199,
+    702
+   ],
+   "resampling": "none. The frame origin sits a whole number of texels from this grid's, which the run asserts rather than rounds into, so every landscape sample is its own texel",
+   "coverage_of_frame": 0.8516,
+   "holes": {
+    "texels": 419738,
+    "blobs": 34,
+    "note": "raw == 0 inside a component that is present: a landscape hole or cave mouth, left as no data rather than read as -255 m"
+   }
+  },
+  "cliffs": {
+   "class": "StaticMesh render data / BodySetup / FTriangleMeshImplicitObject",
+   "recipe": "the finest description each rock mesh ships, over the set of meshes the cooked collision hull defines: the Nanite leaf level where there is one, LOD 0 where there is not, the hull itself where neither parses. The MESH SET and every placement cull are unchanged from the hull-only field, so a before and after differ in triangles alone",
+   "sources": {
+    "nanite": 90,
+    "lod0": 18,
+    "hull": 0
+   },
+   "source_order": [
+    "nanite",
+    "lod0",
+    "hull"
+   ],
+   "why_not_nanite_only": "25 rock meshes carry no Nanite resource at all -- sea rocks, corals, part of the cave interior set -- and a Nanite-only layer loses about 365,000 texels against the hull layer while still looking like a field",
+   "why_not_every_mesh": "extending past the hull-equivalent set costs 1.66 points of frac_lt_0.25m and 10.9 m of p90 on 839,506 foliage probes: the 120 meshes with no cooked hull are cave pillars, cave holes and merged cave floors, and a max-Z field that starts drawing roofs gets worse at 'where is the ground' no matter how fine its triangles are",
+   "hull_derivation": "cooked Chaos collision trimesh, found by searching for the 267 (0x10B) marker, never at a fixed offset; NumVerts float32 triples then NumTris index triples, width chosen by validating max(index) < NumVerts",
+   "nanite_derivation": "FNaniteResources: root pages inline in the StaticMesh export's tail, streaming pages out of the .ubulk the Zen BulkDataMap names, decoded in pure Python by core.gameassets.nanite. Leaf clusters only; positions and topology only; cluster seams welded at 10 um",
+   "rock_meshes_seen": 130,
+   "meshes_decoded": 108,
+   "meshes_without_cooked_trimesh": 22,
+   "closed_manifolds": 56,
+   "closed_manifold_check": "56 of 108 HULLS satisfy NumTris == 2*NumVerts - 4 exactly, and 58 of 90 Nanite decodes have zero boundary edges once cluster seams are welded. The rest are the open shells -- cave walls, floors, ceilings and merged arch pieces -- and are meant to be. One bit wrong in the strip decode shatters the second number into thousands of boundary edges, which is what makes it worth computing",
+   "vertices": 904205,
+   "triangles_in_source": 1791043,
+   "hull_triangles_in_source": 157992,
+   "placements_total": 24429,
+   "placements_rasterised": 19857,
+   "placements_dropped": {
+    "owner": 841,
+    "no_geometry": 2610,
+    "arch": 1075,
+    "oversize": 46
+   },
+   "triangles_rasterised": 204612323,
+   "vertex_samples_rasterised": 126337912,
+   "triangles_outside_bounds": 0,
+   "exclusions": "NodeMeshActor_C, because predicting a resource node's Z from the mesh drawn under it would be circular and the node table is what validates this field; anything whose basename contains 'Arc', because a max-Z field puts an arch roof over the ground beneath it and masking them improved every metric on all three validation sets; and anything whose scaled extent exceeds 60000 cm, which is the sky dome and the ocean shells"
+  },
+  "fill": {
+   "asset": "/Game/FactoryGame/Interface/UI/Assets/MapTest/HeightData_Test",
+   "derivation": "2048x2048 float16 mip 0; z_cm = 99364.4075*raw + -52282.1283, from a robust fit against the 626 static nodes (569 inliers, 1.07 m RMS)",
+   "nodata_rule": "decoded z > -260 m, NOT raw > 0. The blank value decodes to about -522 m, so the naive test leaks 138,481 texels of blank into the field as a false sea floor",
+   "role": "outside the landscape frame only; the old baseline, unchanged"
+  },
+  "water": {
+   "recipe": "the game's own map artwork for the plan shape, the cooked water volumes' own bounding boxes for the level. Neither source is asked for what it does not know: the artwork has no Z at all, and the volumes are far too sparse to draw a coastline with",
+   "shape": {
+    "asset": "/Game/FactoryGame/Interface/UI/Assets/MapTest/SlicedMap/Map_<c>-<r>, the same four BC1 slices tools/gen_map_image.py draws",
+    "classifier": "blue - red >= 25 on the 8192 sheet",
+    "registration": "(0, 0) sheet pixels, measured by a +/-2 px sweep rather than assumed. The sheet's box and this grid's are the same 7500 m square, so the resample is nearest at 0.92 m to the pixel",
+    "artwork_water_km2": 18.2883
+   },
+   "level": {
+    "actors": 849,
+    "by_class": {
+     "BPW_OceanSplineTool_02_C": 31,
+     "BP_LakeWater_C": 9,
+     "BP_River_PROT_C": 130,
+     "BP_TranslucentWater_C": 26,
+     "BP_WaterFallTool_02_C": 191,
+     "BP_WaterPlane_C": 2,
+     "BP_Water_C": 180,
+     "FGRiverSpline": 1,
+     "FGWaterVolume": 279
+    },
+    "with_a_world_box": 839,
+    "without_a_box": 10,
+    "boxless": [
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4867C501_1719327323",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D488DC301_1756062899",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4893C301_1793936956",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4893C301_1873925957",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4893C301_1954321958",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4893C301_2008175959",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4896C301_1149918480",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D4896C301_1838890481",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGWaterVolume",
+      "actor": "FGWaterVolume_UAID_04421A971D48CFC301_1960588519",
+      "cell": "Persistent_Level.umap"
+     },
+     {
+      "class": "FGRiverSpline",
+      "actor": "FGRiverSpline_1",
+      "cell": "DVYSVUXJK4C10EOJJ5033TWYJ.umap"
+     }
+    ],
+    "box_sources": {
+     "BoxComponent.BoxExtent": 130,
+     "BrushBodySetup.AggGeom": 270,
+     "InstancedStaticMeshComponent.CachedBounds": 222,
+     "StaticMesh.ExtendedBounds": 2,
+     "WaterPlane.ExtendedBounds (assumed)": 215
+    },
+    "surface_classes": [
+     "BPW_OceanSplineTool_02_C",
+     "BP_LakeWater_C",
+     "BP_River_PROT_C",
+     "BP_TranslucentWater_C",
+     "BP_Water_C",
+     "FGWaterVolume"
+    ],
+    "boxes_rasterised": 642,
+    "rule": "the highest surface-class box top standing over the texel. A box top is a surface, so where several overlap in plan the highest is the one visible from above; one median per drawn body was measured to invent up to 157 m of depth over 0.06 km2, because the ocean and its rivers are one drawn shape spanning 141 m of box top",
+    "oracle": "the save's 23 water extractors all sit inside a volume box and stand on its top to within 0.005 cm, which is what says a box top is the water surface rather than merely near it"
+   },
+   "combine": {
+    "bodies": 1031,
+    "texels_with_no_box_over_them": 17,
+    "texels_dropped_as_ground_above_the_level": 39961,
+    "water_km2": 18.2483,
+    "depth_measured_km2": 10.8575,
+    "depth_unknown_km2": 7.3909,
+    "depth_p50_m": 20.406,
+    "depth_p90_m": 62.606,
+    "unknown_depth_rule": "where the ground under the water is the fill layer or no data, the depth is not knowable and waterq.u8.z says so. Nothing may gate on water > terrain there: the fill raster's 3.9 m step routinely rounds above a sea surface 17 m down, which reads the open ocean as dry"
+   },
+   "validation": {
+    "dry_node_false_positive": {
+     "nodes": 625,
+     "called_water": 3,
+     "fraction": 0.0048,
+     "gate_max": 0.01,
+     "against": "data/world_resource_nodes.json",
+     "why": "every static resource node stands on dry ground, so a node the channel calls water is a false positive with no interpretation needed"
+    },
+    "region_recall": {
+     "region": "Spire Coast",
+     "artwork_texels": 300234,
+     "recall": 0.992672,
+     "gate_min": 0.95,
+     "against": "data/region_names.json, the game's own map areas downsampled to 256 m",
+     "why": "this region is where the flatness detector this stage replaced scored worst -- 35.8% recall against the artwork -- so it is the one that says whether the replacement actually replaced it"
+    },
+    "ocean_level": {
+     "assigned_m": -16.994,
+     "box_median_m": -16.994,
+     "boxes": 31,
+     "offset_m": 0.0,
+     "gate_max_m": 0.5,
+     "why": "the largest drawn body is the ocean and every BPW_OceanSplineTool_02_C box states the ocean's own surface, so the two have to agree or the level is being taken from the wrong volumes"
+    },
+    "artwork_over_a_box": {
+     "uncovered_texels": 17,
+     "fraction": 1e-06,
+     "gate_max": 0.01,
+     "why": "the mask and the volumes are two descriptions of one world, so water the artwork draws where no volume stands means they have come apart -- which is what a misregistered sheet looks like from here"
+    }
+   },
+   "accuracy_m": 0.05,
+   "supersedes": "a flatness detector over the interface raster, which found 20.4% of the sheet as water against the artwork's 39.0% -- 46.7% recall, 35.8% over Spire Coast -- and invented plateau lakes on flat mesas. Its failures were structural: 3.9 m of quantisation against 2.1 m of water, rivers below the raster's resolution, and a fill province where the terrain it compared against IS the water surface",
+   "role": "INFORMATION ONLY. Nothing downstream moves ground because of it, and that stays measured rather than assumed: a lake gate built on the old detector made the field worse, nodes trim90 0.93 against 0.77."
+  }
+ },
+ "sweep": {
+  "packages": 4521,
+  "unreadable": 0,
+  "malformed_components": 0,
+  "placements": 24429,
+  "distinct_meshes": 249
+ },
+ "decoders": {
+  "oodle": {
+   "name": "pyooz",
+   "version": "0.0.8",
+   "import_name": "ooz",
+   "licence": "GPL-3.0",
+   "role": "container block decompression, offline, at generation time only. An OPTIONAL dependency: the `gen` extra in pyproject.toml, pinned exactly because it decides these bytes, and asked for on the command line -- `uv run --extra gen python tools/gen_world_heightmap.py`. It is imported at module scope nowhere, and lazily inside one function of satisfactory_mcp.core.gameassets.iostore, so the server and the test suite run with it absent. No part of it is in the output."
+  },
+  "texture": {
+   "name": "texture2ddecoder",
+   "version": "1.0.6",
+   "pillow": "12.3.0",
+   "role": "BC1 blocks of the four map slices, for the water channel's plan shape. The same two the map image is drawn with, and optional in the same way: both are handed to core.gameassets.textures as arguments, so this file imports neither at module scope."
+  },
+  "container": "satisfactory_mcp.core.gameassets.iostore's IoStore reader, imported by name. It was tools/gen_world_collectibles.py's, imported by file path, until the four generators that read the same container came to share one copy of it.",
+  "codec": "satisfactory_mcp.domain.spatial.heightfield, imported so there is one"
+ },
+ "timings_s": {
+  "sweep": 22.4,
+  "landscape": 0.6,
+  "mesh_decode": 24.8,
+  "rasterise": 204.2,
+  "fill": 0.1,
+  "compose": 2.8,
+  "water": 6.8,
+  "validate": 0.0,
+  "encode": 9.0
+ },
+ "known_defects": [
+  "about a fifth of the nominal box is no-data: open ocean past the landscape edge plus two cave-mouth blobs. Explicit, never zero-filled.",
+  "the cave and overhang tail is irreducible. About 44 nodes sit UNDER the surface, and no single-valued heightmap can represent them; the interface raster fails 51 by the same test. A two-layer field is the principled fix and costs one extra rasteriser pass.",
+  "21 of the rock meshes ship no cooked trimesh (CTF_UseSimpleAndComplex): SM_RockPile_*, SM_Cave_Pillar_*, SmoothRock_01 and a few others. Small and rare; their AggGeom convex hulls are still open for a later pass.",
+  "10 water actors ship no bounding box at all -- FGWaterVolume brushes with no cooked BrushBodySetup, one FGRiverSpline, and two developer backdrop planes with no transform. The artwork mask carries their plan shape and neighbouring volumes carry their level; what is left over is 17 texels of drawn water standing over no box at all, which take their body's median.",
+  "the water channel states a LEVEL everywhere and a DEPTH only where the ground under it was measured at 1 m: 7.39 km2 of it, most of the ocean, is depth-unknown. It is information only."
+ ],
+ "staleness": "sources.game.game_version_pinned is the build this field was cut from, in the same shape data/resource_nodes.json uses, so a field and a node table from different builds are comparable on sight. tools/gen_world_heightmap.py refuses to overwrite this directory unless the sidecar names the build then installed; --force says it anyway. Terrain moves every patch, and the standing rule is that a pinned artifact announces drift rather than answering silently wrong."
+}

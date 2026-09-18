@@ -1,0 +1,5 @@
+check,status,notes
+foot_model_separated_from_vehicle_model,PASS,natural roads excluded from foot spur scoring
+existing_tractor_trunk_drivability,FAIL,max local grade 282.3%
+natural_road_machine_readable_layer,PENDING,must be independently sourced/extracted; SCIM data is not reusable
+road_aware_route_fabricated,PASS,no; package explicitly avoids inventing road geometry
