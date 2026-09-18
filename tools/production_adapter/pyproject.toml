@@ -11,6 +11,10 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# The contract stays dependency-free: `import production_adapter` pulls in nothing
+# beyond the standard library. Only `production_adapter.lp_backend` needs scipy,
+# and `__init__.py` deliberately does not import it.
+lp = ["scipy>=1.11"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

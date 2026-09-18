@@ -81,8 +81,22 @@ def demand(
 ) -> OracleResult:
     """Propagate demand for one item down to raw resources, fixed recipes only.
 
-    `allowed_recipes=None` means every non-alternate recipe, which is the only
-    configuration guaranteed to be unambiguous across the whole tree.
+    `allowed_recipes=None` means every non-alternate recipe.
+
+    That is NOT guaranteed to be unambiguous, despite what this docstring claimed
+    until 2026-09-18. Base-only leaves several base-vs-base choices open and the
+    oracle correctly raises on all of them:
+
+        Recipe_Plastic_C vs Recipe_ResidualPlastic_C
+        Recipe_Rubber_C  vs Recipe_ResidualRubber_C
+        the 12 Unpackage recipes, against whatever packages the fluid
+        Recipe_FicsiteIngot_AL_C vs _CAT_C vs the tungsten route
+
+    In practice everything up to Adaptive Control Unit resolves; every Space
+    Elevator part above it raises. A late-game fixed-recipe case therefore needs a
+    curated `allowed_recipes` set that pins those routes deliberately — which is
+    what "fixed recipe" means for a tree that branches. See
+    docs/decisions/production_lp_formulation.md section 14.5.
     """
     by_item, cons, raw = _load(allowed_recipes)
     multipliers: dict[str, float] = collections.defaultdict(float)

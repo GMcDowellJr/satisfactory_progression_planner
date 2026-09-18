@@ -19,12 +19,43 @@ sees a CSV path, a solver's data model, or an LP formulation.
     contracts.py   SolveRequest / SolveResponse            DONE
     scenario.py    the three game modifiers                DONE
     gamedata.py    reference layer -> adapter types        DONE
-    backend.py     the seam                                DEFINED, no backend wired
+    backend.py     the seam                                DONE
+    lp_backend.py  scipy/HiGHS LP, section 7 of the        LANDED 2026-09-18,
+                   formulation record                      validated, not registered
+    analysis.py    compares solve configurations;          LANDED 2026-09-18
+                   quantifies, never ranks
 
-No solver is attached. Two things gate that, both recorded in
-`docs/decisions/production_solver_selection.md`: fork delta F1 (Candidate A's LP
-engine `glpk.js` is GPL-3.0) and the outstanding licence request on Candidate A'.
-The contract is identical either way, which is why it was built first.
+The vendoring question is untouched by this. Section 10 of
+`docs/decisions/production_solver_selection.md` reopened build-vs-vendor and named
+the Python-native path the expected outcome; `lp_backend.py` is that path, written
+from our own formulation record rather than from Candidate A's source. Fork delta
+F1 and the Candidate A' licence request are still open and no longer gate anything.
+
+`lp_backend` is **not registered on import**. `__init__.py` does not import it, so
+`registered()` stays empty and the contract package stays dependency-free. Wire it
+where you use it:
+
+    from production_adapter import load, OutputTarget, SolveRequest
+    from production_adapter.lp_backend import LpBackend, PowerStatistic
+
+    backend = LpBackend(power_statistic=PowerStatistic.MEAN)
+    response = backend.solve(SolveRequest(outputs=(OutputTarget(item, rate),)),
+                             load(repo_root))
+
+`power_statistic` has no default. D2 is deferred (formulation record section 12.1),
+and a default would be a decision nobody made.
+
+`analysis.py` is the tool for deciding it. It solves the same request under several
+configurations and cross-prices each resulting plan under the others' metrics:
+
+    from production_adapter.analysis import compare, power_statistic_variants
+
+    print(compare(power_statistic_variants(request, data)).format_table())
+
+It quantifies and never ranks — no `best`, no sort, nothing returns a single
+variant, and variants that do not share a feasible set are reported as not
+comparable rather than cross-priced into a misleading number. Formulation record
+section 14 covers the guards and what the D2 comparison actually showed.
 
 ## Design notes
 
@@ -42,7 +73,16 @@ Encoder's floor of 0 MW; decide which statistic you are optimising before Phase 
 
 **The complexity weight is disabled.** `Weights(complexity=...)` raises. On the
 vendored Candidate A engine it introduces binaries and every Phase 0 benchmark
-case hit the engine's hardcoded 3-second limit. Fork delta F2.
+case hit the engine's hardcoded 3-second limit. Fork delta F2. The reason no
+longer transfers — `scipy.optimize.milp` takes `time_limit` as an ordinary
+parameter — but lifting F2 is its own decision and its own record.
+
+**Determinism is a property of the backend, not of HiGHS.** Recipes are ordered by
+`recipe_id` and the LP is solved twice: once for the objective, once to minimise
+total activity among the optima. Ties are reported in `SolveResponse.warnings`
+rather than broken silently. "Fewer distinct recipes", the second step section 4
+of the formulation record asks for, is a cardinality objective and needs the
+binaries F2 rules out; it is not implemented.
 
 ## Testing
 

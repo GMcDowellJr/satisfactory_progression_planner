@@ -635,3 +635,476 @@ been run** — that needs Greg's machine.
   Neither manifest still references the retired table. The 18-row gap on REPO_MANIFEST
   includes the two test files added above; the remainder is unexplained and probably not
   worth explaining, the prediction having been approximate.
+
+---
+
+## 13. Amendment, 2026-09-18 — the backend landed
+
+Section 7 is implemented. This records what implementing it settled, what it could
+not settle, one defect it found in prior evidence, and one behaviour of the
+reference layer nobody had written down. Session handoff open item 2 is discharged.
+
+The State block at the top of this record still reads
+`decision_status: RECOMMENDED — awaiting Greg's acceptance`. It is not edited here.
+Implementation proceeded on Greg's instruction to begin open item 2, which is
+acceptance in practice but not in the record; whether the block should move is his
+call, forward.
+
+### 13.1 What exists
+
+    tools/production_adapter/src/production_adapter/lp_backend.py
+        scipy.optimize.linprog, method="highs". Written from this record, not from
+        Candidate A's source. Neither vendored nor forked, so fork deltas F1, F3
+        and F4 no longer gate anything.
+    tests/test_production_lp_backend.py
+        47 tests, section 8 items 1 through 5.
+
+Not registered on import. `production_adapter/__init__.py` does not import
+`lp_backend`, so `registered()` stays empty, the contract package stays
+dependency-free, and `test_no_backend_is_wired_up_yet` keeps passing rather than
+becoming order-dependent on collection sequence. A caller wires it explicitly.
+
+scipy is now declared: `scipy>=1.11` in the root `dev` group, and as the adapter's
+`lp` optional extra.
+
+Validation, section 8 in order:
+
+    1  machine equivalents vs tests/_demand_oracle.py        5 targets, to 1e-4
+    2  Smart Plating 1/min, section 3.3 of the selection     7 recipes, Iron Ore
+       record                                                23.25, 26.05 MW
+    3  raw-material columns, section 3.2                     2 of 4 reconcile;
+                                                             see 13.3
+    4  same request, recipe order reversed                   identical response
+    5  packager/unpackager pair                              never both directions
+
+Iron Plate 20/min returns 8.0000 MW and 30.00 ore, which is the case section 10.3
+asked to be written first.
+
+**Measured in the session container, not on Greg's machine**: 87 passed against a
+partial checkout (Python 3.11, scipy 1.17.1, pytest 9.1.1) — the 47 new tests plus
+the 40 pre-existing ones whose data was staged. The full suite, previously 97
+green, has not been run with these additions. That needs `uv run pytest` on Greg's
+machine.
+
+### 13.2 Decisions taken at implementation time
+
+Each is reversible, each is a constructor argument or a named constant rather than
+a compiled-in assumption.
+
+    power_statistic     REQUIRED, no default. D2 is deferred (12.1), so a default
+                        would be a decision nobody made. Every producer in the
+                        current validation set is fixed-power, so the cases stay
+                        D2-independent by construction and the deferral costs
+                        nothing today.
+    unconsumed          FREE by default, per the 2.7 stopgap, with every leftover
+                        above 1e-4/min named in warnings. FORBID available and
+                        exercised. DISPOSAL raises NotImplementedError naming P5.
+    canonical_mw        re-evaluates the selected recipe mix at canonical power.
+                        7.5 flags the alternative (a second solve at Scenario())
+                        as open; a warning on every response says which reading
+                        this is, so the choice is never inferred from silence.
+    tolerance           1e-6. HiGHS' primal feasibility tolerance floors around
+                        1e-7 and it returns activities at ~1e-8 that are noise,
+                        not production; the option to tighten it below that is
+                        rejected by HiGHS outright. 1e-6 sits above the noise and
+                        two orders below the four decimals section 8 validates to.
+    leftover reporting  1e-4, the precision the warning prints at. A figure that
+                        renders as 0.0000/min is residue, and naming it as
+                        unconsumed output is a false positive. SolveResponse.items
+                        still carries every flow exactly.
+
+**Section 4 step 2 is not fully implementable and this record did not notice.**
+"Prefer fewer distinct recipes" is a cardinality objective. It needs binary
+variables — which is precisely what section 7.4 rules out while fork delta F2
+stands. The two cannot both hold. What is implemented is step 1 (sorted recipe
+ordering) plus a second LP that minimises total activity among the optima of the
+first, which is lexicographic, LP-expressible, and stable. The
+lexicographically-smallest-tuple step is also omitted, for the same reason: it
+needs the cardinality step to be meaningful. Recorded rather than silently
+approximated. If F2 is ever lifted, the cardinality tie-break and the complexity
+weight become available together, which is an argument for lifting them in one
+record rather than two.
+
+**Tie detection compares recipe activities only.** Leftover slack carries zero
+cost by construction (2.4 rejects a penalty on it), so it is degenerate in the
+primary objective whenever any leftover exists at all. Comparing the full solution
+vector fired the warning on nearly every solve and therefore meant nothing.
+Section 4's concern is recipe selections churning between runs; that is what is
+compared. Observed effect: under default weights only Computer over the full
+recipe set ties; under the resources-only Pareto weighting from section 3.4 of the
+selection record, essentially every target does — which is 12.3's point, now
+measured rather than argued.
+
+### 13.3 Defect — section 3.2's Versatile Framework raw-material column is wrong
+
+    section 3.2      Versatile Framework 6/min   9 recipes   Coal 144.00, Iron Ore 144.00
+    this backend     Versatile Framework 6/min   9 recipes   Coal 144.00, Iron Ore 216.00
+    _demand_oracle   Versatile Framework 6/min               Coal 144.00, Iron Ore 216.00
+
+The backend and the oracle share no code. Both read the same reference layer and
+agree on 216.00. The arithmetic is not marginal: 6 Versatile Framework/min needs
+36 Steel Beam/min, which is 144 ore through steel, *and* 3 Modular Frame/min,
+whose Reinforced Iron Plate and Iron Rod branch draws a further 72. Section 3.2's
+figure is the steel branch alone.
+
+The recipe *count* matches at 9, and Coal matches exactly, so this is not a
+different plan — it is the same plan with iron ore under-reported. The cause is in
+Candidate A's `totalRawResources` reporting or in the Phase 0 harness that read
+it; it has not been chased further, because the figure is superseded either way.
+
+Consequence, and the reason this is here rather than only in a test: the session
+handoff records section 3.2's raw-material columns as *usable*, in contrast to its
+power columns. That conclusion does not survive. Reinforced Iron Plate 5/min and
+Automated Wiring 1.2/min still reconcile exactly; Versatile Framework does not,
+and the multi-target row inherits the same 95.25 gap (Iron Ore 149.40 recorded,
+244.65 actual) while its Coal and Copper Ore still reconcile.
+
+Pinned as two executable assertions rather than prose, in the shape section 12.4
+used for the power figures:
+`test_versatile_framework_raw_column_contradicts_phase_0` and
+`test_multi_target_raw_column_inherits_the_same_divergence`.
+
+### 13.4 Found while validating — a resource cap is a routing signal, not a ceiling
+
+`Recipe_Iron_Limestone_C` is a **base** recipe that produces Iron Ore from Stone
+and SAM. Capping Iron Ore at 29/min against an Iron Plate 20/min target therefore
+does not make the problem infeasible: the model covers the missing ore through the
+Converter. Nothing in this record or the selection record anticipated that, and it
+matters in two places.
+
+- A `ResourceCap` constrains extraction of a resource, not availability of the
+  material. Anything downstream reasoning about node depletion needs to know that.
+- The Converter is variable-power, so the first case that binds a cap is also the
+  first case that is **not** D2-independent. The test pins the routing and
+  deliberately does not assert a power figure.
+
+### 13.5 Open, carried forward
+
+Unchanged: P5 still gates disposal (13.2 keeps FREE as the stopgap); 7.5's
+canonical_mw reading is still undecided and now warns; D2 still deferred and now
+structurally so; D3b still Phase 3; per-resource scarcity weighting (7.4) still
+Phase 3; the demand expansion module (section 11) still unnamed and unlocated.
+
+New:
+
+- F2 now gates the cardinality tie-break as well as the complexity weight (13.2).
+  Its original justification — Candidate A's hardcoded 3-second MIP limit — does
+  not transfer to scipy, which takes `time_limit` as an ordinary parameter.
+- Determinism is asserted within one scipy version. Section 4 worries about
+  instability *across* versions and platforms; sorted ordering and the second-stage
+  refinement address the reordering and degeneracy sources, but nothing here has
+  been run on two scipy versions.
+- Whether the State block moves off RECOMMENDED.
+
+---
+
+## 14. Amendment, 2026-09-18 — the comparator, and what D2 actually costs
+
+D2 remains undecided. This amendment does not decide it; it records what the choice
+is worth, measured, so that the deferral in section 12.1 is now an informed wait
+rather than a blind one.
+
+### 14.1 What exists
+
+    tools/production_adapter/src/production_adapter/analysis.py
+    tests/test_production_analysis.py                            20 tests
+
+`analysis.compare()` solves N variants of one request and cross-prices each
+resulting plan under every other variant's metric. A variant is a
+`(label, request, data, backend)` tuple, so the axis of difference is whatever the
+caller varies — power statistic, weights, allowed recipes, scenario, unconsumed
+mode. `power_statistic_variants()` is the D2 instance of the general tool.
+
+Greg's calls, all three taken before any code was written:
+
+    output scope   QUANTIFY ONLY. No best, no rank, no score, no sort.
+    generality     ANY SOLVE-CONFIGURATION AXIS, not the power statistic alone.
+    placement      SIBLING MODULE inside the adapter package. It imports
+                   lp_backend; nothing in the adapter imports it; __init__.py does
+                   not import it, so the contract package stays dependency-free.
+
+One change to `lp_backend.py`: `_enabled_recipe_ids` is now public as
+`enabled_recipe_ids`, because the comparator needs it and a second implementation
+of "which recipes are enabled" could drift from the first silently.
+
+### 14.2 Two structural guards
+
+**It cannot recommend.** `Comparison.variants` is returned in the caller's order
+and never sorted; nothing returns a single variant; the public surface carries no
+ranking vocabulary. Three tests assert this by inspection rather than by review,
+in the shape `test_expectations_cannot_choose_recipes` established. The guardrail
+being defended is the standing one: a comparator that ranks has become the
+progression layer, which is the drift this project exists to avoid. Sorting the
+output would be ranking under another name, which is why caller order is asserted.
+
+**It cannot mislead.** Two variants can only be priced against each other when they
+share a *feasible set* — when only the metric differs. `Feasibility` captures what
+determines the constraint set (scenario, enabled recipes, targets, caps, unconsumed
+mode, activity bound). If those differ, one variant's plan is not a valid plan for
+the other, and re-pricing it would produce a number that looks like a comparison
+and is not. Those cells return `None` with the reason named, never a value.
+
+Consequence worth stating plainly: **weights are comparable, scenarios are not.**
+Comparing a canonical run against a challenge run is not a regret calculation, and
+the tool refuses rather than pretending.
+
+Regret is non-negative by construction, since a comparable variant's plan is always
+feasible for the other. A negative beyond `REGRET_NOISE` raises
+`InconsistentComparison` rather than being rounded away — it would mean either the
+feasibility check admitted a bad pair or a solve missed its optimum. Small negatives
+are expected and snapped: D3a's second-stage LP accepts the primary optimum within a
+1e-9 relative slack, so a cross-priced plan can undercut a reported optimum by about
+that much.
+
+### 14.3 What D2 costs, measured
+
+All fourteen validation and Space Elevator targets, `RecipeMode.ALL`, canonical
+scenario, default weights. "sel" is whether the selected recipe set differs across
+min/mean/max; "rel regret" is the largest cell of the regret matrix relative to the
+optimum it is measured against.
+
+    target                        sel   rel regret     raw min/max    reported MW min -> max
+    Iron Plate                      =      0.0000%     8.67/   8.67      9.30 ->     9.30  x1.00
+    Reinforced Iron Plate           =      0.0000%    15.30/  15.30     21.42 ->    21.42  x1.00
+    Smart Plating                   =      0.0000%     3.89/   3.89     18.15 ->    18.15  x1.00
+    Versatile Framework             =      0.0000%    66.72/  66.72     78.90 ->    78.90  x1.00
+    Automated Wiring                =      0.0000%    13.29/  13.29     24.73 ->    24.73  x1.00
+    Modular Frame Heavy             =      0.0000%    45.08/  45.08    149.34 ->   149.34  x1.00
+    Modular Engine                  =      0.0000%   195.35/ 195.35    338.22 ->   338.22  x1.00
+    Adaptive Control Unit           =      0.0000%    45.84/  45.84     71.91 ->    71.91  x1.00
+    Assembly Director System        =      0.0000%   542.19/ 542.19    943.03 ->   943.03  x1.00
+    Magnetic Field Generator        =      0.0000%   692.72/ 692.72    975.72 ->   975.72  x1.00
+    Nuclear Pasta                DIFF      0.0000%  1521.24/1521.24   1539.39 ->  3539.39  x2.30
+    AI Expansion Server             =      0.0000%   232.10/ 232.10    314.89 ->   381.55  x1.21
+    Ballistic Warp Drive            =      0.0000%  2030.14/2030.14   3740.54 ->  9288.87  x2.48
+    Thermal Propulsion Rocket    DIFF      1.5526%   361.92/ 391.92    744.67 ->  3111.34  x4.18
+
+**The choice barely moves the plan and enormously moves the number.**
+
+Twelve of fourteen targets select an identical recipe set under all three
+statistics. Nuclear Pasta's difference is an exact tie — one additional activity at
+zero relative regret. Thermal Propulsion Rocket is the only case where the statistic
+costs anything real: 1.55% on the objective, and 30/min of raw material (361.92 vs
+391.92, an 8% difference), where MAX takes the base Dark Matter route and MIN and
+MEAN take `Recipe_Alternate_DarkMatter_Crystallization_C`.
+
+Reported power, by contrast, swings by up to 4.18x on the same target.
+
+### 14.4 Consequence for D2
+
+Section 3 recommended `mean_mw` on the grounds that it is neither systematically
+optimistic nor pessimistic, and noted one real alternative: *"max_mw is the right
+statistic if the downstream question is grid sizing rather than running cost."*
+
+The evidence above reframes which of those arguments carries weight. Section 3's
+reasoning is about the objective — about not biasing selection — and selection
+turns out to be almost insensitive to the choice. The grid-sizing argument is about
+the reported figure, which is where the entire sensitivity lives. **On current
+evidence D2 is a reporting decision, not an optimization decision.**
+
+That is not a recommendation to switch, and this record does not make one. It is a
+statement that the question "which statistic biases selection least" has been
+answered — *none of them, materially* — and that whatever settles D2 will be a
+question about what the number is for. Section 12.1's deferral until the
+variable-power tier has been played remains the right call; the thing to pay
+attention to while playing is what the power figure will be used to decide.
+
+Two caveats on the measurement. It is single-target and default-weighted; a
+power-only or resources-only weighting has not been swept this way, and the
+resources-only sweep is where section 12.3 expects degeneracy to be the rule.
+And `Recipe_FicsiteIngot_*` and the residual-oil routes make several of these
+solves degenerate, so "identical selection" partly reflects the D3a tie-break
+landing the same way each time, which is the guarantee it was built to give.
+
+### 14.5 Correction — D2 does not gate Phase 1
+
+A claim made in session, and carried briefly in the session handoff, held that
+Phase 1's exit condition could not be met while D2 was deferred, because every
+Phase 4/5 chain activates variable-power producers. **Withdrawn.**
+
+The measurement behind it used `RecipeMode.ALL`, which is the optimization mode.
+Plan section 11 requires *fixed-recipe* validation — the recipe set is given, so the
+statistic cannot change selection, and `PowerReport` carries min, mean and max
+regardless of which one the objective used. D2 gates Phase 3, where the objective
+chooses. It does not gate Phase 1.
+
+What the late-game validation case does need is a **curated route**, because "base
+recipes only" is not an unambiguous tree past the oil tier. After excluding the 12
+unpackage recipes, Nuclear Pasta needs exactly two route decisions:
+
+    Desc_Silica_C     Recipe_AluminaSolution_C  vs  Recipe_Silica_C
+    Desc_Plastic_C    Recipe_Plastic_C          vs  Recipe_ResidualPlastic_C
+
+Thermal Propulsion Rocket adds the Ficsite ingot route (aluminium vs caterium vs
+tungsten), which has no default and is a genuine choice. Small deliberate work,
+not a blocker.
+
+### 14.6 Defect — `_demand_oracle`'s docstring overstates its own guarantee
+
+`tests/_demand_oracle.py` says of `allowed_recipes=None`: *"which is the only
+configuration guaranteed to be unambiguous across the whole tree."* That is false
+past the oil tier. Base-only leaves `Recipe_Plastic_C` vs `Recipe_ResidualPlastic_C`,
+`Recipe_Rubber_C` vs `Recipe_ResidualRubber_C`, the 12 unpackage recipes, and the
+multi-route Ficsite ingots all ambiguous, and the oracle correctly raises on every
+Space Elevator part above Adaptive Control Unit.
+
+The behaviour is right; only the claim is wrong. Per the standing defect rule this
+is a documentation defect and belongs at the site, not here — recorded in this
+record only because it bears on 14.5's account of what Phase 1 still needs.
+
+### 14.7 Open
+
+- D2 itself, unchanged and still deferred, now with 14.3 to decide against.
+- Whether a power-only or resources-only sweep changes 14.3's conclusion.
+- The curated late-game routes of 14.5, which are Phase 1 work.
+- Whether `Comparison` should ever gain a Pareto-frontier filter. That is plan
+  section 12 and Phase 3; the comparator was deliberately built as the primitive
+  beneath it rather than as it.
+
+---
+
+## 15. Amendment, 2026-09-18 — plan section 11 completed, and a limit on the oracle
+
+All fourteen cases in the implementation plan's section 11 validation set now exist
+as tests. This records how each was made a *fixed-recipe* case, one finding that
+changes what `_demand_oracle` can be used for, and one case in the plan that turns
+out to exercise nothing.
+
+### 15.1 What exists
+
+    tests/test_plan_section_11_validation.py   38 tests, the nine cases that were missing
+    tests/_balance_check.py                    a third independent reference — see 15.3
+
+Section 11 requires each case to compare *item rates, recipe rates, machine
+equivalents, raw inputs, and power* against independently verified values. The
+alternate and scenario cases compare all five against `_demand_oracle` and
+`_fixed_recipe_expectations`. The late-game case is covered differently and 15.4
+says how.
+
+### 15.2 "Fixed recipe" had to be constructed, not assumed
+
+An item can have several *base* producers, so no mode of `AllowedRecipes` yields a
+fixed-recipe case on its own past the early game. Every case here names an explicit
+recipe set, and the guarantee that a set really is fixed is that `_demand_oracle`
+resolves it without raising `AmbiguousDemand` — that raise fires exactly when an
+item on the demand path has more than one enabled producer, so silence means the
+route was forced and the solver had nothing to choose.
+
+Alternate cases are the base set with one recipe swapped:
+
+    Stitched Iron Plate   Recipe_Alternate_ReinforcedIronPlate_2_C  <- Recipe_IronPlateReinforced_C
+    Iron Wire             Recipe_Alternate_Wire_1_C                 <- Recipe_Wire_C
+    Solid Steel Ingot     Recipe_Alternate_IngotSteel_1_C           <- Recipe_IngotSteel_C
+    Steeled Frame         Recipe_Alternate_ModularFrame_C           <- Recipe_ModularFrame_C
+    Steel Rotor           Recipe_Alternate_Rotor_C                  <- Recipe_Rotor_C
+
+The pairing is asserted rather than assumed: a test checks each alternate and the
+recipe it displaces produce the same item set, because a swap that changed what the
+chain produces would not be the same case.
+
+Section 11's "Rotor/Stator + Steel Rotor where applicable" is covered by two
+targets, Rotor 10/min and Motor 5/min, the second because Motor is the chain that
+consumes Rotor and Stator together.
+
+The three scenario rows are now run across **all five** fixed-recipe targets rather
+than one target each, which is what the earlier PARTIAL status referred to.
+
+### 15.3 `_demand_oracle` stops being a valid reference where byproducts feed back
+
+Found while building the late-game case, and it changes a standing assumption, so
+it is here rather than only at the site.
+
+The oracle propagates demand item by item and credits no byproducts. A production
+solver nets everything in one balance and credits them all. The two agree on every
+chain where nothing feeds back — which is every case section 11 had until now — and
+diverge structurally the moment an enabled recipe's byproduct satisfies another
+demand.
+
+Nuclear Pasta is such a chain. `Recipe_AluminaSolution_C` is the sole source of both
+Alumina Solution and Silica, so:
+
+    _demand_oracle    Recipe_AluminaSolution_C  4.1000   runs it once per demand
+    LP backend        Recipe_AluminaSolution_C  3.0750   runs it once for both, and
+                                                         leaves 246.00/min of Alumina
+                                                         Solution as unconsumed output
+
+Every other recipe in the 30-recipe chain agrees to four decimals, which localises
+the divergence rather than merely asserting it. Neither implementation is wrong;
+they answer different questions. What is wrong is treating the oracle as *the*
+independent reference, which is how it has been described until now.
+
+So a third reference was written, crippled the same way as the other two:
+
+    tests/_balance_check.py    takes a SolveResponse and a target map and returns
+                               the ways the response fails to be a consistent answer
+                               — items that do not balance, targets not met, raw
+                               draws that are not resources, reported ItemFlow
+                               disagreeing with the activities. It reads the CSVs
+                               directly. It does not solve, cannot produce an answer,
+                               and has no notion of a better one.
+
+This is the reference that works on any chain, byproducts included, because it
+verifies the answer rather than recomputing it.
+
+### 15.4 What the late-game case does and does not establish
+
+The representative Phase 4/5 chain is Nuclear Pasta 1/min, 30 recipes across eight
+producer classes including the Particle Accelerator, on a curated route: base
+recipes, minus every Unpackage recipe, minus two byproduct routes that would
+otherwise leave an item with two producers.
+
+Two route choices, recorded because they are choices:
+
+    Recipe_Silica_C           dropped. Recipe_AluminaSolution_C is the only source of
+                              Alumina Solution and the chain needs it, so Silica
+                              arrives as that recipe's byproduct rather than direct.
+    Recipe_ResidualPlastic_C  dropped. Plastic comes from the direct route.
+
+Established independently: the response balances and meets the target
+(`_balance_check`, reading the CSVs); power and machine counts follow from the
+activities (`_fixed_recipe_expectations`, also reading the CSVs); the power range
+spans exactly 2000 MW, so the case genuinely exercises the variable-power tier.
+
+**Not** established independently: that those activities are the only ones that
+balance. For a forced route the balance system pins them, and the one place the
+route is not forced is precisely the Alumina byproduct credit in 15.3, which is
+pinned by an explicit assertion instead. Stating the gap rather than implying it is
+covered.
+
+The case also makes section 14.5 executable: all three power statistics return the
+same plan and the same power range, because a fixed recipe set leaves the objective
+nothing to choose. That is why Phase 1's exit condition does not wait on D2.
+
+### 15.5 Defect — section 11's "Smart Plating + Iron Wire" row exercises nothing
+
+Smart Plating is Reinforced Iron Plate plus Rotor. Neither uses Wire. Enabling
+`Recipe_Alternate_Wire_1_C` therefore changes no recipe, no rate and no power: the
+solve is identical to the baseline Smart Plating case, to four decimals.
+
+The row is implemented and kept, because "an unused alternate must not perturb a
+fixed-recipe result" is a real invariant worth holding. But it is not evidence that
+the Iron Wire route was validated, and the test says so in its own docstring so that
+nobody reads the row that way. If an Iron Wire case is wanted, it needs a target
+whose chain contains Wire — Automated Wiring is the obvious candidate.
+
+### 15.6 Phase 1 exit condition
+
+Plan section 17: *"fixed production targets reconcile correctly for early and late
+game."* All fourteen section 11 cases now exist and pass, early and late.
+
+What that rests on, stated plainly rather than assumed: 145 tests pass against a
+partial checkout in a session container (Python 3.11, scipy 1.17.1, pytest 9.1.1).
+The full repository suite — predicted at 202 — has not been run. Nothing here
+observes the pre-existing 97 still passing alongside these additions, and uv has not
+resolved scipy on the machine that matters. Declaring Phase 1 closed is a call for
+Greg to make after `uv run pytest` on his own machine, not something this record
+can assert from where it was written.
+
+### 15.7 Open
+
+- Whether an Iron Wire case against a Wire-bearing target replaces or joins 15.5's.
+- Whether `_demand_oracle`'s docstring should now carry 15.3's limit as well as the
+  ambiguity limit added in 14.6. It currently carries neither in full.
+- The curated late-game route is one route. A second Phase 4/5 chain through a
+  different producer mix (Quantum Encoder, Converter) would exercise the other two
+  variable-power classes, which nothing currently does.

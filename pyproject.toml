@@ -11,10 +11,12 @@ dependencies = []
 #   numpy   scripts/build_travel_topology.py and scripts/build_foot_exploration_data.py
 #           import it; tests/test_foot_exploration_data_separation.py loads those
 #           scripts, so the suite cannot go green without it.
-# scipy is NOT here yet. It arrives with the production LP backend
-# (docs/decisions/production_lp_formulation.md) and with build_surface_tool and
-# corridor_tool, which declare it themselves.
-dev = ["pytest>=8", "numpy>=1.26"]
+#   scipy   production_adapter.lp_backend calls scipy.optimize.linprog, whose
+#           default method is HiGHS; tests/test_production_lp_backend.py cannot
+#           run without it. Arrived 2026-09-18 with that backend, as the note it
+#           replaces anticipated. build_surface_tool and corridor_tool declare
+#           scipy themselves and are unaffected by the floor chosen here.
+dev = ["pytest>=8", "numpy>=1.26", "scipy>=1.11"]
 
 [tool.uv]
 # Not an installable package — the repo is a collection of tools under tools/,
