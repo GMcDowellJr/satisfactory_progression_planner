@@ -36,8 +36,8 @@ from _balance_check import violations
 from _demand_oracle import demand
 from _fixed_recipe_expectations import expectations
 from production_adapter import (
-    AllowedRecipes, CHALLENGE_1_25X_2X, OutputTarget, RecipeMode, Scenario,
-    SolveRequest, load,
+    AllowedRecipes, CHALLENGE_1_25X_2X, OutputTarget, RecipeMode, ResourceCap,
+    Scenario, SolveRequest, load,
 )
 from production_adapter.lp_backend import LpBackend, PowerStatistic
 
@@ -161,6 +161,10 @@ ALTERNATE_CASES = [
      ("Recipe_Alternate_Rotor_C",)),
     ("Motor + Steel Rotor", "Desc_Motor_C", 5.0,
      ("Recipe_Alternate_Rotor_C",)),
+    # Section 11 lists Stitched Iron Plate and Iron Wire as separate rows. They are
+    # one case: see test_iron_wire_is_inert_alone_but_not_in_the_pair.
+    ("Smart Plating + Stitched Iron Plate + Iron Wire", SMART_PLATING, 1.0,
+     ("Recipe_Alternate_ReinforcedIronPlate_2_C", "Recipe_Alternate_Wire_1_C")),
 ]
 
 
@@ -188,14 +192,18 @@ def test_stitched_iron_plate_changes_the_raw_mix(backend, data):
     )
 
 
-def test_iron_wire_is_inert_for_smart_plating(backend, data):
-    """Section 11 pairs Smart Plating with Iron Wire; that chain contains no Wire.
+def test_iron_wire_is_inert_alone_but_not_in_the_pair(backend, data):
+    """Iron Wire changes nothing on its own, and that is the point of the pair.
 
-    Smart Plating is Reinforced Iron Plate plus Rotor, and neither uses Wire, so
-    enabling the alternate changes nothing. Kept, because "an unused alternate must
-    not perturb a fixed-recipe result" is a real invariant — but recorded here so
-    nobody reads this row as evidence that the Iron Wire route was exercised. It
-    was not.
+    Baseline Smart Plating is Reinforced Iron Plate plus Rotor, and neither uses
+    Wire, so enabling Iron Wire by itself changes no recipe, rate or power. Stitched
+    Iron Plate is what puts Wire into the chain — via Copper — and Iron Wire is then
+    what takes the Copper back out. Section 11 lists the two as separate rows; they
+    are one case, and the second row is only meaningful conditioned on the first.
+
+    This test holds the invariant "an unused alternate must not perturb a
+    fixed-recipe result". `test_stitched_plus_iron_wire_removes_the_copper_dependency`
+    holds the pair.
     """
     enabled = _with_alternates(data, "Recipe_Alternate_Wire_1_C")
     with_alternate, _, _ = _reconcile(backend, data, SMART_PLATING, 1.0, enabled)
@@ -207,6 +215,92 @@ def test_iron_wire_is_inert_for_smart_plating(backend, data):
     assert with_alternate.power.scenario_mw == pytest.approx(
         baseline.power.scenario_mw, abs=1e-4
     )
+
+
+def test_stitched_plus_iron_wire_removes_the_copper_dependency(backend, data):
+    """The pair beats both the baseline and either alternate alone.
+
+        baseline              23.2500 ore                    26.0500 MW
+        stitched only         16.2500 ore + 3.3333 copper    23.5833 MW
+        iron wire only        23.2500 ore                    26.0500 MW
+        stitched + iron wire  19.9537 ore                    23.9290 MW
+
+    Stitched alone trades 7.00 ore for 3.33 copper, which is only a gain where
+    copper is close. Iron Wire then buys the copper back for 3.70 ore, leaving the
+    chain 3.30 ore/min and 2.12 MW cheaper than baseline on iron alone.
+    """
+    enabled = _with_alternates(
+        data, "Recipe_Alternate_ReinforcedIronPlate_2_C", "Recipe_Alternate_Wire_1_C"
+    )
+    response, _, _ = _reconcile(backend, data, SMART_PLATING, 1.0, enabled)
+    raw = {r.item_id: r.rate_per_min for r in response.raw_inputs}
+    assert set(raw) == {"Desc_OreIron_C"}
+    assert raw["Desc_OreIron_C"] == pytest.approx(19.953703703703702, abs=1e-4)
+    assert response.power.scenario_mw == pytest.approx(23.928985, abs=1e-4)
+
+    active = {u.recipe_id for u in response.recipes}
+    assert "Recipe_Alternate_Wire_1_C" in active
+    # Iron Wire takes Screws out of the RIP branch, not out of the chain: Rotor
+    # still consumes them, so Recipe_Screw_C survives in every variant here.
+    assert "Recipe_Screw_C" in active
+
+
+def test_alternate_value_is_not_additive(backend, data):
+    """Concrete form of D3b: an alternate's worth is conditional on the others held.
+
+    Iron Wire's marginal value is exactly zero alone and 3.30 ore/min once Stitched
+    Iron Plate is held. Any Phase 3 valuation that scores alternates independently
+    and sums them gets this case wrong, which is why section 12.2 of the formulation
+    record refuses a static tier list.
+    """
+    def ore(*alternates):
+        enabled = _with_alternates(data, *alternates)
+        response, _, _ = _reconcile(backend, data, SMART_PLATING, 1.0, enabled)
+        return {r.item_id: r.rate_per_min for r in response.raw_inputs}["Desc_OreIron_C"]
+
+    baseline = ore()
+    wire_alone = ore("Recipe_Alternate_Wire_1_C")
+    stitched_alone = ore("Recipe_Alternate_ReinforcedIronPlate_2_C")
+    both = ore("Recipe_Alternate_ReinforcedIronPlate_2_C", "Recipe_Alternate_Wire_1_C")
+
+    assert wire_alone == pytest.approx(baseline, abs=1e-6)          # zero marginal value
+    assert stitched_alone < baseline                                # but on a copper cost
+    assert both < baseline                                          # and the pair on iron alone
+    # Not additive: summing the two marginal ore savings does not give the pair's.
+    assert (baseline - wire_alone) + (baseline - stitched_alone) != \
+        pytest.approx(baseline - both, abs=1e-4)
+
+
+def test_a_copper_cap_does_not_express_copper_distance(backend, data):
+    """Why "unless you have copper close" cannot be stated to this model.
+
+    Capping Copper Ore at zero does not make the Stitched-only chain infeasible: the
+    solver routes copper through the Converter from Raw Quartz and SAM, exactly as
+    `Recipe_Iron_Limestone_C` does for iron (section 13.4). Proximity is a
+    world-layer fact, and nothing in a production solve can carry it. The pair, by
+    contrast, needs no such workaround because it needs no copper.
+    """
+    stitched = _with_alternates(data, "Recipe_Alternate_ReinforcedIronPlate_2_C")
+    pair = _with_alternates(
+        data, "Recipe_Alternate_ReinforcedIronPlate_2_C", "Recipe_Alternate_Wire_1_C"
+    )
+    no_copper = (ResourceCap("Desc_OreCopper_C", 0.0),)
+
+    capped = backend.solve(
+        SolveRequest(outputs=(OutputTarget(SMART_PLATING, 1.0),),
+                     allowed_recipes=_explicit(stitched), resource_caps=no_copper),
+        data,
+    )
+    assert {r.item_id for r in capped.raw_inputs} == {
+        "Desc_OreIron_C", "Desc_RawQuartz_C", "Desc_SAM_C"
+    }
+
+    unaffected = backend.solve(
+        SolveRequest(outputs=(OutputTarget(SMART_PLATING, 1.0),),
+                     allowed_recipes=_explicit(pair), resource_caps=no_copper),
+        data,
+    )
+    assert {r.item_id for r in unaffected.raw_inputs} == {"Desc_OreIron_C"}
 
 
 def test_solid_steel_ingot_lowers_coal_and_raises_iron(backend, data):
