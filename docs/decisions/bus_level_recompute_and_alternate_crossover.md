@@ -611,3 +611,70 @@ time this record has produced it under a topology that matches what gets built.
 
 Subject to A3.3's floor caveat: the withdrawal figures are a declared
 underestimate, so "covers" here means "covers the floor."
+
+---
+
+## Amendment 4 — 2026-09-21. Iron Plate closed, and a fourth steady state
+
+Appended forward-only. Closes A3.4's one remaining open question.
+
+    stated   "the Iron Plate is likely just a miss -- we'd want some Iron Plate
+             going to storage even if that means an entire Constructor's worth,
+             or some underclocked amount."
+
+### A4.1 Iron Plate is a declared build line, not a residual item
+
+Its zero residual is not a defect and not a design intent — it is a **missing
+declaration**. Build plates belong on their own line, exactly like Concrete and
+Cable, and the structural zero (Stitched draws 40 plate/min = exactly two
+Constructors at 1.25x) is simply irrelevant once the build line is declared
+separately.
+
+    CLOSED   A3.4's open Iron Plate question. The item joins the
+             build-material class. The §5/§6 residual figures for Iron Plate
+             describe the production bus only and were never the build supply.
+
+One Constructor at 1.25x makes 20 plate/min and draws 40 Iron Ingot/min, against
+a geometric withdrawal estimate of 2.00/min — a 10x overshoot, which is why the
+declaration matters rather than being a rounding detail:
+
+    option                          plate/min   ingot draw   clock   power MW
+    full Constructor, 100%              20.00        40.00    100%       4.00
+    underclocked to 10/min              10.00        20.00     50%       1.60
+    underclocked to 5/min                5.00        10.00     25%       0.64
+    underclocked to withdrawal           2.00         4.00     10%       0.19
+
+The ingot cost is the real figure, not the plate: a full-rate build line adds
+1.33 smelters of upstream draw for plates nobody is consuming yet.
+
+### A4.2 A fourth steady state: MATCHED
+
+Bus record §5 lists three states and says only SUNK gives a constant power draw,
+gating that on the AWESOME Sink's absence. There is a fourth, and it needs
+nothing that is missing from the reference layer:
+
+    MATCHED   underclock the line to its average withdrawal rate. Production
+              equals average consumption, so nothing overflows and nothing
+              pauses. Power is CONSTANT. The container buffers the burstiness
+              of the withdrawal (twenty foundations at once) rather than
+              buffering an overflow.
+
+For the Iron Plate build line that is 0.19 MW constant against 4.00 MW
+oscillating, and 4/min of ingot draw against 40/min peak. It is strictly better
+than the intermittent build for a line whose consumer is a bursty player:
+BACK UP presents a 40/min peak draw and a 4 MW peak that the upstream bus must
+either carry or dip under, for the same average output.
+
+    CONSEQUENCE   handoff open item 7 is narrowed, not closed. The AWESOME Sink
+                  still gates constant power for a line with genuine OVERFLOW
+                  to dispose of. It does not gate constant power for a
+                  build-material line, because that line can be matched to its
+                  draw instead of overproducing into a sink.
+    CONSEQUENCE   respec §4's clock toggle acquires a second, non-exceptional
+                  use. Underclocking is not only the exactness lever of §4.5 --
+                  it is the ordinary way a build-material line is sized, and on
+                  this line it is a 20x power reduction.
+
+Recorded as derived rather than stated: Greg named underclocking as an option;
+the constant-power consequence and the comparison against BACK UP are computed
+here, resting on the §4 convexity (exponent 1.321929) already on the record.
