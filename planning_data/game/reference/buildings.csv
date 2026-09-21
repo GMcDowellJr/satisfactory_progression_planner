@@ -9,3 +9,8 @@ miner_mk1,Miner Mk.1,Desc_MinerMk1_C,extractor,6,14,18,5,0,1,0,0,Tier 0 - HUB Up
 miner_mk2,Miner Mk.2,Desc_MinerMk2_C,extractor,6,14,18,15,0,1,0,0,Tier 4 - Advanced Steel Production,https://satisfactory.wiki.gg/wiki/Miner_Mk.3,2026-09-09
 miner_mk3,Miner Mk.3,Desc_MinerMk3_C,extractor,6,14,18,45,0,1,0,0,Tier 8 - Leading-Edge Production,https://satisfactory.wiki.gg/wiki/Miner_Mk.3,2026-09-09
 space_elevator,Space Elevator,Desc_SpaceElevator_C,special,48,54,118,,6,0,0,0,Tier 0 - HUB Upgrade 6,https://satisfactory.wiki.gg/wiki/Space_Elevator,2026-09-09
+smelter,Smelter,Desc_SmelterMk1_C,production,5,10,8.5,4,1,1,0,0,Tier 0 - HUB Upgrade 2,https://satisfactory.wiki.gg/wiki/Smelter,2026-09-19
+packager,Packager,Desc_Packager_C,production,8,8,12,10,1,1,1,1,Tier 5 - Fluid Packaging,https://satisfactory.wiki.gg/wiki/Packager,2026-09-19
+converter,Converter,Desc_Converter_C,production,16,16,18,,2,1,0,1,Tier 9 - Matter Conversion,https://satisfactory.wiki.gg/wiki/Converter,2026-09-19
+particle_accelerator,Particle Accelerator,Desc_HadronCollider_C,production,24,38,32,,2,1,1,0,Tier 8 - Particle Enrichment,https://satisfactory.wiki.gg/wiki/Particle_Accelerator,2026-09-19
+quantum_encoder,Quantum Encoder,Desc_QuantumEncoder_C,production,22,50,18,,3,1,1,1,Tier 9 - Quantum Encoding,https://satisfactory.wiki.gg/wiki/Quantum_Encoder,2026-09-19

@@ -589,6 +589,26 @@ fixed-recipe solve capability; validation tests.
 
 Exit condition: fixed production targets reconcile correctly for early and late game.
 
+**Status: MET, 2026-09-19.** All 14 of section 11's validation cases reconcile, plus the
+Stitched Iron Plate / Iron Wire pair found during that work and restored to the suite.
+Late-game reconciliation is carried by the curated Nuclear Pasta route, which exercises the
+Particle Accelerator only — a second late chain through the Quantum Encoder or Converter is
+still wanted, and is tracked as an open item rather than as an exit blocker.
+`_balance_check` verifies responses on chains where `_demand_oracle` cannot, byproduct
+feedback included.
+
+Two qualifications are carried forward rather than reopening the phase, both recorded in
+`docs/decisions/demand_expansion_scope_and_site_capacity.md`:
+
+- `scenario.py` does not model the game's integer rounding of scaled recipe costs. The
+  multiplier is applied to rates, where rounding cannot be expressed. Decided and not yet
+  built; it moves the scenario of record by 28 percent. Section 3.2.5.
+- Base-recipe-only expansion is not unambiguous above Adaptive Control Unit. A curated
+  recipe set is required for late fixed-recipe cases; the mechanical exclusions are
+  section 3.1.1.
+
+Neither affects whether fixed targets reconcile, which is what this condition asks.
+
 ### Phase 2 — Project Assembly scheduler
 
 Deliverables: rate-anchor target; completion-time target; Phase 1–5 requirement propagation;
