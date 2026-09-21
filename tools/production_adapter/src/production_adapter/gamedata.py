@@ -105,6 +105,38 @@ class Item:
 
 
 @dataclass(frozen=True)
+class Capability:
+    """One row of logistics_capabilities.csv, with the tier resolved.
+
+    The CSV carries tier only as free text in `unlock` ("Tier 4 - Logistics
+    Mk.3"); `unlock_tier` is that parsed to an integer and `unlock_text` keeps
+    the original for reporting. The respec's own section 3.1 correction — belt
+    Mk.4 recorded as Tier 4 when it is Tier 5 — is the error this field exists
+    to make impossible rather than merely unlikely.
+    """
+
+    capability_id: str
+    capability_type: str      # belt | conveyor_lift | pipeline | miner
+    mark: str                 # "Mk.1" .. "Mk.6"
+    capacity_per_min: float
+    unit: str
+    unlock_tier: int
+    unlock_text: str
+
+
+@dataclass(frozen=True)
+class ExtractionRate:
+    """One row of extraction_rates.csv: extractor x purity."""
+
+    extractor_class: ProducerClass
+    purity: str               # impure | normal | pure | none
+    purity_multiplier: float
+    nominal_rate_min: float   # at 100% clock
+    max_250_rate_min: float   # at 250% clock
+    unit: str                 # items/min | m3/min
+
+
+@dataclass(frozen=True)
 class ReferenceData:
     game_build_id: str
     recipes: dict[RecipeId, Recipe]
@@ -229,3 +261,69 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
         resource_items=frozenset(resources),
     )
     return data if scenario is None else data.with_scenario(scenario)
+
+
+_TIER_PREFIX = "Tier "
+
+
+def _unlock_tier(unlock_text: str) -> int:
+    """Parse "Tier 4 - Logistics Mk.3" to 4.
+
+    Raises rather than defaulting. A capability whose tier cannot be read is a
+    data defect, and a silent 0 would unlock every Mk at every tier — the
+    failure would present as a plan that builds Mk.6 belts on a fresh save.
+    """
+    text = unlock_text.strip()
+    if not text.startswith(_TIER_PREFIX):
+        raise ReferenceDataError(f"unlock text has no tier: {unlock_text!r}")
+    head = text[len(_TIER_PREFIX):].split("-", 1)[0].strip()
+    if not head.isdigit():
+        raise ReferenceDataError(f"unlock tier is not a number: {unlock_text!r}")
+    return int(head)
+
+
+def load_logistics(
+    repo_root: str | pathlib.Path,
+) -> tuple[tuple[Capability, ...], tuple[ExtractionRate, ...]]:
+    """Read logistics_capabilities.csv and extraction_rates.csv.
+
+    Deliberately NOT part of `ReferenceData`. Neither table is scenario
+    dependent — belt throughput and node purity do not move with the recipe
+    multiplier — and placing them behind `with_scenario()` would make scaling
+    them a one-line mistake later.
+
+    Returned sorted by (capability_type, unlock_tier, mark) and by
+    (extractor_class, purity), so callers that iterate are deterministic
+    without sorting at each site.
+    """
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+
+    caps = tuple(
+        Capability(
+            capability_id=r["capability_id"],
+            capability_type=r["capability_type"],
+            mark=r["mark"],
+            capacity_per_min=float(r["capacity_per_min"]),
+            unit=r["unit"],
+            unlock_tier=_unlock_tier(r["unlock"]),
+            unlock_text=r["unlock"],
+        )
+        for r in _rows(ref / "logistics_capabilities.csv")
+    )
+
+    rates = tuple(
+        ExtractionRate(
+            extractor_class=r["extractor_class"],
+            purity=r["purity"],
+            purity_multiplier=float(r["purity_multiplier"]),
+            nominal_rate_min=float(r["nominal_rate_min"]),
+            max_250_rate_min=float(r["max_250_rate_min"]),
+            unit=r["unit"],
+        )
+        for r in _rows(ref / "extraction_rates.csv")
+    )
+
+    return (
+        tuple(sorted(caps, key=lambda c: (c.capability_type, c.unlock_tier, c.mark))),
+        tuple(sorted(rates, key=lambda e: (e.extractor_class, e.purity))),
+    )

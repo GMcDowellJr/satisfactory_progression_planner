@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "satisfactory-realization"
+version = "0.1.0"
+description = "Post-solve realization: a solved plan expressed as equipment at a declared design tier."
+requires-python = ">=3.11"
+# The adapter's CONTRACT half only. This package must never acquire scipy —
+# an install that cannot reach a solver cannot become one, which is the
+# structural half of the tripwire in contracts.py.
+dependencies = ["satisfactory-production-adapter"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

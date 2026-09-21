@@ -30,4 +30,14 @@ package = false
 # then reports every path in tests/ as though it lived under that directory —
 # e.g. "tools\production_adapter\test_demand_oracle.py" for a file that is
 # actually tests/test_demand_oracle.py. Observed 2026-09-18.
-testpaths = ["tests", "tools/production_adapter/tests"]
+#
+# Every directory holding tests must be listed here. A test suite that is not
+# collected is not a check — it is a fourth list, in the sense the provenance
+# manifest work settled on 2026-09-21. tools/realization/tests was added with
+# the realization layer; its conftest.py puts that package on sys.path so it
+# needs no editable install to collect.
+testpaths = [
+    "tests",
+    "tools/production_adapter/tests",
+    "tools/realization/tests",
+]
