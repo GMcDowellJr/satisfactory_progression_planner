@@ -1,0 +1,34 @@
+table,path,provenance,stamp_checked,emitter,note
+alternate_choices.csv,planning_data/game/reference/alternate_choices.csv,snapshot,true,,"undeclared before 2026-09-21; truncated dependency ids, 98 of 107"
+alternate_recipe_unlocks.csv,planning_data/game/reference/alternate_recipe_unlocks.csv,document,false,,own provenance column cites Satisfactory_Alternate_Recipe_Unlocks_by_Progression(2).md
+building_recipe_io.csv,planning_data/game/reference/building_recipe_io.csv,snapshot,true,scripts/extract_game_reference.py,
+building_recipes.csv,planning_data/game/reference/building_recipes.csv,snapshot,true,scripts/extract_game_reference.py,
+buildings.csv,planning_data/game/reference/buildings.csv,wiki,false,,
+crash_site_requirements.csv,planning_data/game/reference/crash_site_requirements.csv,world,false,,requirement_source is map actor mUnlockCost; poi ids carry build 502094
+exploration_poi_hazards.csv,planning_data/game/reference/exploration_poi_hazards.csv,world,false,,hazard_source names SatisfactoryMCP inference; poi ids carry build 502094
+exploration_poi_source_catalog.csv,planning_data/game/reference/exploration_poi_source_catalog.csv,world,false,,source_game_build ++FactoryGame...CL-502094 with its own sha256
+extraction_buildings.csv,planning_data/game/reference/extraction_buildings.csv,snapshot,true,,
+extraction_rates.csv,planning_data/game/reference/extraction_rates.csv,snapshot,true,,
+game_builds.csv,planning_data/game/reference/game_builds.csv,registry,false,,"registry of builds; game_build_id is a key, not a stamp"
+generator_fuels.csv,planning_data/game/reference/generator_fuels.csv,snapshot,true,scripts/extract_game_reference.py,
+hard_drive_system.csv,planning_data/game/reference/hard_drive_system.csv,wiki,false,,
+items.csv,planning_data/game/reference/items.csv,snapshot,true,,
+logistics_capabilities.csv,planning_data/game/reference/logistics_capabilities.csv,wiki,false,,
+mam_pool_effects.csv,planning_data/game/reference/mam_pool_effects.csv,document,false,,own provenance column cites the same markdown document
+non_hard_drive_alternate_unlocks.csv,planning_data/game/reference/non_hard_drive_alternate_unlocks.csv,snapshot,true,,undeclared before 2026-09-21
+online_recipe_checks.csv,planning_data/game/reference/online_recipe_checks.csv,wiki,false,,
+power_buildings.csv,planning_data/game/reference/power_buildings.csv,snapshot,true,scripts/extract_game_reference.py,
+production_buildings.csv,planning_data/game/reference/production_buildings.csv,snapshot,true,,
+progression_clusters.csv,planning_data/game/reference/progression_clusters.csv,project,false,,"project taxonomy; the six bands are defined here, not by the game"
+project_assembly_requirements.csv,planning_data/game/reference/project_assembly_requirements.csv,wiki,false,,
+recipe_io.csv,planning_data/game/reference/recipe_io.csv,snapshot,true,,
+recipe_producers.csv,planning_data/game/reference/recipe_producers.csv,snapshot,true,,
+recipe_variable_power.csv,planning_data/game/reference/recipe_variable_power.csv,snapshot,true,,
+recipes.csv,planning_data/game/reference/recipes.csv,snapshot,true,,
+resource_extraction_map.csv,planning_data/game/reference/resource_extraction_map.csv,snapshot,true,,
+resources.csv,planning_data/game/reference/resources.csv,project,false,,"project crosswalk; resource_id slugs are local, joined to Desc_* item ids"
+route_constraints.csv,planning_data/game/reference/route_constraints.csv,wiki,false,,
+schematic_costs.csv,planning_data/game/reference/schematic_costs.csv,snapshot,true,,undeclared before 2026-09-21
+schematic_dependencies.csv,planning_data/game/reference/schematic_dependencies.csv,snapshot,true,,undeclared before 2026-09-21
+schematic_recipe_unlocks.csv,planning_data/game/reference/schematic_recipe_unlocks.csv,snapshot,true,,undeclared before 2026-09-21
+schematics.csv,planning_data/game/reference/schematics.csv,snapshot,true,,574 rows = FGSchematic class count; undeclared before 2026-09-21

@@ -28,6 +28,12 @@ tmp/
 temp/
 *.tmp
 
+# Commit message drafts, written to be passed to `git commit -F` and deleted.
+# The content lives in the commit; the file is scratch. Ignored so it cannot be
+# swept in by `git add -A`, which is how COMMIT_MSG_phase2_rounding.txt was
+# committed on 2026-09-21.
+COMMIT_MSG*.txt
+
 # Do not accidentally add old release archives
 satisfactory_planning_data_v*.zip
 satisfactory_route_tool_v*.zip

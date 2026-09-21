@@ -1,0 +1,6 @@
+generator_class,display_name,native_class,power_model,power_production_mw,variable_power_factor,requires_supplemental,supplemental_to_power_ratio,fuel_load_amount,game_build_id,source_id,verified_on
+Build_GeneratorBiomass_Automated_C,Biomass Burner,FGBuildableGeneratorFuel,fixed,30.0,,False,0.0,1,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorCoal_C,Coal-Powered Generator,FGBuildableGeneratorFuel,fixed,75.0,,True,10.0,1,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorFuel_C,Fuel-Powered Generator,FGBuildableGeneratorFuel,fixed,250.0,,False,0.0,1000,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorGeoThermal_C,Geothermal Generator,FGBuildableGeneratorGeoThermal,variable,,200.0,False,0.0,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorNuclear_C,Nuclear Power Plant,FGBuildableGeneratorNuclear,fixed,2500.0,,True,1.6,1,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21

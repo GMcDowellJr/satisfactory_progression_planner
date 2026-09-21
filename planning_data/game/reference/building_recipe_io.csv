@@ -1,0 +1,852 @@
+recipe_id,direction,item_id,item_name,amount,amount_raw,unit,game_build_id
+Recipe_AlienPowerBuilding_C,input,Desc_Cable_C,Cable,100.0,100,items,docs_a81d250e96aa
+Recipe_AlienPowerBuilding_C,input,Desc_Computer_C,Computer,10.0,10,items,docs_a81d250e96aa
+Recipe_AlienPowerBuilding_C,input,Desc_Motor_C,Motor,25.0,25,items,docs_a81d250e96aa
+Recipe_AlienPowerBuilding_C,input,Desc_SAMFluctuator_C,SAM Fluctuator,50.0,50,items,docs_a81d250e96aa
+Recipe_AlienPowerBuilding_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,50.0,50,items,docs_a81d250e96aa
+Recipe_AlienPowerBuilding_C,input,Desc_WAT1_C,Somersloop,10.0,10,items,docs_a81d250e96aa
+Recipe_AssemblerMk1_C,input,Desc_Cable_C,Cable,10.0,10,items,docs_a81d250e96aa
+Recipe_AssemblerMk1_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,8.0,8,items,docs_a81d250e96aa
+Recipe_AssemblerMk1_C,input,Desc_Rotor_C,Rotor,4.0,4,items,docs_a81d250e96aa
+Recipe_Barrier_Corner_C,input,Desc_Cement_C,Concrete,1.0,1,items,docs_a81d250e96aa
+Recipe_Barrier_Low_01_C,input,Desc_Cement_C,Concrete,1.0,1,items,docs_a81d250e96aa
+Recipe_Barrier_Low_01_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Barrier_Tall_01_C,input,Desc_Cement_C,Concrete,1.0,1,items,docs_a81d250e96aa
+Recipe_Barrier_Tall_01_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Cable_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Cable_Cluster_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Concrete_C,input,Desc_Cement_C,Concrete,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Connector_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Beam_Connector_Double_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Beam_Cross_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_H_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Painted_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Shelf_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Beam_Support_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_BigGarageDoor_16x8_C,input,Desc_Cement_C,Concrete,4.0,4,items,docs_a81d250e96aa
+Recipe_BigGarageDoor_16x8_C,input,Desc_IronPlate_C,Iron Plate,4.0,4,items,docs_a81d250e96aa
+Recipe_BigGarageDoor_16x8_Concrete_C,input,Desc_Cement_C,Concrete,8.0,8,items,docs_a81d250e96aa
+Recipe_BigGarageDoor_16x8_Steel_C,input,Desc_Cement_C,Concrete,4.0,4,items,docs_a81d250e96aa
+Recipe_BigGarageDoor_16x8_Steel_C,input,Desc_SteelPlate_C,Steel Beam,4.0,4,items,docs_a81d250e96aa
+Recipe_Blender_C,input,Desc_AluminumCasing_C,Aluminum Casing,50.0,50,items,docs_a81d250e96aa
+Recipe_Blender_C,input,Desc_Computer_C,Computer,10.0,10,items,docs_a81d250e96aa
+Recipe_Blender_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_Blender_C,input,Desc_Motor_C,Motor,20.0,20,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_C,input,Desc_Cable_C,Cable,25.0,25,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_C,input,Desc_Cement_C,Concrete,100.0,100,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_C,input,Desc_ModularFrame_C,Modular Frame,15.0,15,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_C,input,Desc_SteelPlate_C,Steel Beam,100.0,100,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk2_C,input,Desc_Cement_C,Concrete,100.0,100,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk2_C,input,Desc_Computer_C,Computer,20.0,20,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk2_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk2_C,input,Desc_Rubber_C,Rubber,100.0,100,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk3_C,input,Desc_FicsiteMesh_C,Ficsite Trigon,100.0,100,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk3_C,input,Desc_ModularFrameFused_C,Fused Modular Frame,20.0,20,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk3_C,input,Desc_TemporalProcessor_C,Neural-Quantum Processor,10.0,10,items,docs_a81d250e96aa
+Recipe_BlueprintDesigner_Mk3_C,input,Desc_TimeCrystal_C,Time Crystal,50.0,50,items,docs_a81d250e96aa
+Recipe_CandyCaneDecor_C,input,Desc_CandyCane_C,Candy Cane,10.0,10,items,docs_a81d250e96aa
+Recipe_CandyCaneDecor_C,input,Desc_XmasBow_C,FICSMAS Bow,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_Cross_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_Cross_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Catwalk_Ramp_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_Ramp_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Catwalk_Stairs_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_Stairs_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Catwalk_Straight_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_Straight_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Catwalk_T_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_T_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Catwalk_Turn_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Catwalk_Turn_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_CeilingLight_C,input,Desc_HighSpeedWire_C,Quickwire,50.0,50,items,docs_a81d250e96aa
+Recipe_CeilingLight_C,input,Desc_SteelPlate_C,Steel Beam,6.0,6,items,docs_a81d250e96aa
+Recipe_CeilingLight_C,input,Desc_Wire_C,Wire,16.0,16,items,docs_a81d250e96aa
+Recipe_CentralStorage_C,input,Desc_ModularFrame_C,Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_CentralStorage_C,input,Desc_SAMFluctuator_C,SAM Fluctuator,10.0,10,items,docs_a81d250e96aa
+Recipe_CentralStorage_C,input,Desc_WAT2_C,Mercer Sphere,1.0,1,items,docs_a81d250e96aa
+Recipe_CentralStorage_C,input,Desc_Wire_C,Wire,100.0,100,items,docs_a81d250e96aa
+Recipe_ChainLinkFence_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Concrete_Barrier_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_ConstructorMk1_C,input,Desc_Cable_C,Cable,8.0,8,items,docs_a81d250e96aa
+Recipe_ConstructorMk1_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_Converter_C,input,Desc_CoolingSystem_C,Cooling System,25.0,25,items,docs_a81d250e96aa
+Recipe_Converter_C,input,Desc_ModularFrameFused_C,Fused Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_Converter_C,input,Desc_ModularFrameLightweight_C,Radio Control Unit,50.0,50,items,docs_a81d250e96aa
+Recipe_Converter_C,input,Desc_SAMFluctuator_C,SAM Fluctuator,100.0,100,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentMergerPriority_C,input,Desc_CrystalOscillator_C,Crystal Oscillator,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentMergerPriority_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentMergerPriority_C,input,Desc_ModularFrame_C,Modular Frame,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentMerger_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentMerger_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitterProgrammable_C,input,Desc_CircuitBoardHighSpeed_C,AI Limiter,5.0,5,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitterProgrammable_C,input,Desc_Computer_C,Computer,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitterProgrammable_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitterSmart_C,input,Desc_CircuitBoardHighSpeed_C,AI Limiter,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitterSmart_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitterSmart_C,input,Desc_Rotor_C,Rotor,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitter_C,input,Desc_Cable_C,Cable,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorAttachmentSplitter_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk1_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk2_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk3_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk4_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk5_C,input,Desc_AluminumPlate_C,Alclad Aluminum Sheet,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk6_C,input,Desc_FicsiteMesh_C,Ficsite Trigon,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorBeltMk6_C,input,Desc_TimeCrystal_C,Time Crystal,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorCeilingAttachment_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorCeilingAttachment_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorCeilingAttachment_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk1_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk2_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk3_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk4_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk5_C,input,Desc_AluminumPlate_C,Alclad Aluminum Sheet,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk6_C,input,Desc_FicsiteMesh_C,Ficsite Trigon,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorLiftMk6_C,input,Desc_TimeCrystal_C,Time Crystal,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorMonitor_C,input,Desc_CrystalOscillator_C,Crystal Oscillator,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorMonitor_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,4.0,4,items,docs_a81d250e96aa
+Recipe_ConveyorMonitor_C,input,Desc_QuartzCrystal_C,Quartz Crystal,10.0,10,items,docs_a81d250e96aa
+Recipe_ConveyorPoleStackable_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorPoleStackable_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorPoleStackable_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorPoleWall_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorPoleWall_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorPoleWall_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorPole_C,input,Desc_Cement_C,Concrete,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorPole_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorPole_C,input,Desc_IronRod_C,Iron Rod,1.0,1,items,docs_a81d250e96aa
+Recipe_ConveyorWallHole_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorWallHole_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_ConveyorWallHole_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_CyberWagon_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,10.0,10,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_AsphaltInCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_AsphaltOutCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_ConcreteInCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_ConcreteOutCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_ConcretePolishedInCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_ConcretePolishedOutCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_ConcretePolished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_GripInCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_GripOutCorner_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DownQuarterPipe_Grip_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_DroneStation_C,input,Desc_AluminumCasing_C,Aluminum Casing,50.0,50,items,docs_a81d250e96aa
+Recipe_DroneStation_C,input,Desc_AluminumPlate_C,Alclad Aluminum Sheet,50.0,50,items,docs_a81d250e96aa
+Recipe_DroneStation_C,input,Desc_HighSpeedConnector_C,High-Speed Connector,20.0,20,items,docs_a81d250e96aa
+Recipe_DroneStation_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,20.0,20,items,docs_a81d250e96aa
+Recipe_DroneStation_C,input,Desc_ModularFrameLightweight_C,Radio Control Unit,10.0,10,items,docs_a81d250e96aa
+Recipe_DroneTransport_C,input,BP_ItemDescriptorPortableMiner_C,Portable Miner,1.0,1,items,docs_a81d250e96aa
+Recipe_DroneTransport_C,input,Desc_AluminumPlate_C,Alclad Aluminum Sheet,10.0,10,items,docs_a81d250e96aa
+Recipe_DroneTransport_C,input,Desc_CircuitBoardHighSpeed_C,AI Limiter,2.0,2,items,docs_a81d250e96aa
+Recipe_DroneTransport_C,input,Desc_ModularFrameLightweight_C,Radio Control Unit,1.0,1,items,docs_a81d250e96aa
+Recipe_DroneTransport_C,input,Desc_Motor_C,Motor,4.0,4,items,docs_a81d250e96aa
+Recipe_ElevatorFloorStop_C,input,Desc_ModularFrame_C,Modular Frame,2.0,2,items,docs_a81d250e96aa
+Recipe_ElevatorFloorStop_C,input,Desc_Motor_C,Motor,1.0,1,items,docs_a81d250e96aa
+Recipe_ElevatorFloorStop_C,input,Desc_SteelPlate_C,Steel Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_Elevator_C,input,Desc_Silica_C,Silica,1.0,1,items,docs_a81d250e96aa
+Recipe_Elevator_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_Explorer_C,input,Desc_CrystalOscillator_C,Crystal Oscillator,5.0,5,items,docs_a81d250e96aa
+Recipe_Explorer_C,input,Desc_ModularFrame_C,Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_Explorer_C,input,Desc_Motor_C,Motor,5.0,5,items,docs_a81d250e96aa
+Recipe_Explorer_C,input,Desc_SteelPipe_C,Steel Pipe,15.0,15,items,docs_a81d250e96aa
+Recipe_Fence_01_C,input,Desc_IronRod_C,Iron Rod,4.0,4,items,docs_a81d250e96aa
+Recipe_Flat_Frame_01_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_FloodlightPole_C,input,Desc_CopperSheet_C,Copper Sheet,4.0,4,items,docs_a81d250e96aa
+Recipe_FloodlightPole_C,input,Desc_HighSpeedWire_C,Quickwire,25.0,25,items,docs_a81d250e96aa
+Recipe_FloodlightPole_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,8.0,8,items,docs_a81d250e96aa
+Recipe_FloodlightWall_C,input,Desc_CopperSheet_C,Copper Sheet,4.0,4,items,docs_a81d250e96aa
+Recipe_FloodlightWall_C,input,Desc_HighSpeedWire_C,Quickwire,25.0,25,items,docs_a81d250e96aa
+Recipe_FloodlightWall_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_FluidTruckStation_C,input,Desc_ModularFrame_C,Modular Frame,15.0,15,items,docs_a81d250e96aa
+Recipe_FluidTruckStation_C,input,Desc_Plastic_C,Plastic,50.0,50,items,docs_a81d250e96aa
+Recipe_FluidTruckStation_C,input,Desc_Rubber_C,Rubber,20.0,20,items,docs_a81d250e96aa
+Recipe_FluidTruckStation_C,input,Desc_Stator_C,Stator,20.0,20,items,docs_a81d250e96aa
+Recipe_FluidTruck_C,input,Desc_ModularFrame_C,Modular Frame,20.0,20,items,docs_a81d250e96aa
+Recipe_FluidTruck_C,input,Desc_Motor_C,Motor,15.0,15,items,docs_a81d250e96aa
+Recipe_FluidTruck_C,input,Desc_Plastic_C,Plastic,50.0,50,items,docs_a81d250e96aa
+Recipe_FluidTruck_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_FoundationGlass_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_FoundationGlass_01_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Hypertube_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Hypertube_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Hypertube_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Lift_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Lift_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Lift_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Pipe_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Pipe_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_FoundationPassthrough_Pipe_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Foundation_8x1_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_8x2_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_8x4_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_ConcretePolished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_ConcretePolished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_ConcretePolished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Frame_01_C,input,Desc_SteelPlate_C,Steel Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Foundation_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_FrackingExtractor_C,input,Desc_AluminumCasing_C,Aluminum Casing,10.0,10,items,docs_a81d250e96aa
+Recipe_FrackingExtractor_C,input,Desc_SteelPlate_C,Steel Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_FrackingSmasher_C,input,Desc_AluminumPlate_C,Alclad Aluminum Sheet,50.0,50,items,docs_a81d250e96aa
+Recipe_FrackingSmasher_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,25.0,25,items,docs_a81d250e96aa
+Recipe_FrackingSmasher_C,input,Desc_ModularFrameLightweight_C,Radio Control Unit,10.0,10,items,docs_a81d250e96aa
+Recipe_FrackingSmasher_C,input,Desc_Motor_C,Motor,50.0,50,items,docs_a81d250e96aa
+Recipe_FrackingSmasher_C,input,Desc_Rubber_C,Rubber,100.0,100,items,docs_a81d250e96aa
+Recipe_FreightWagon_C,input,Desc_ModularFrame_C,Modular Frame,5.0,5,items,docs_a81d250e96aa
+Recipe_FreightWagon_C,input,Desc_SteelPipe_C,Steel Pipe,10.0,10,items,docs_a81d250e96aa
+Recipe_FreightWagon_C,input,Desc_SteelPlate_C,Steel Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_Gate_Automated_8x4_C,input,Desc_IronPlate_C,Iron Plate,6.0,6,items,docs_a81d250e96aa
+Recipe_GeneratorBiomass_Automated_C,input,Desc_IronPlate_C,Iron Plate,15.0,15,items,docs_a81d250e96aa
+Recipe_GeneratorBiomass_Automated_C,input,Desc_IronRod_C,Iron Rod,15.0,15,items,docs_a81d250e96aa
+Recipe_GeneratorBiomass_Automated_C,input,Desc_Wire_C,Wire,25.0,25,items,docs_a81d250e96aa
+Recipe_GeneratorCoal_C,input,Desc_Cable_C,Cable,30.0,30,items,docs_a81d250e96aa
+Recipe_GeneratorCoal_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,20.0,20,items,docs_a81d250e96aa
+Recipe_GeneratorCoal_C,input,Desc_Rotor_C,Rotor,10.0,10,items,docs_a81d250e96aa
+Recipe_GeneratorFuel_C,input,Desc_CopperSheet_C,Copper Sheet,30.0,30,items,docs_a81d250e96aa
+Recipe_GeneratorFuel_C,input,Desc_HighSpeedWire_C,Quickwire,50.0,50,items,docs_a81d250e96aa
+Recipe_GeneratorFuel_C,input,Desc_Motor_C,Motor,15.0,15,items,docs_a81d250e96aa
+Recipe_GeneratorFuel_C,input,Desc_Rubber_C,Rubber,50.0,50,items,docs_a81d250e96aa
+Recipe_GeneratorFuel_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,15.0,15,items,docs_a81d250e96aa
+Recipe_GeneratorGeoThermal_C,input,Desc_CopperSheet_C,Copper Sheet,50.0,50,items,docs_a81d250e96aa
+Recipe_GeneratorGeoThermal_C,input,Desc_HighSpeedConnector_C,High-Speed Connector,25.0,25,items,docs_a81d250e96aa
+Recipe_GeneratorGeoThermal_C,input,Desc_ModularFrame_C,Modular Frame,25.0,25,items,docs_a81d250e96aa
+Recipe_GeneratorGeoThermal_C,input,Desc_Motor_C,Motor,10.0,10,items,docs_a81d250e96aa
+Recipe_GeneratorGeoThermal_C,input,Desc_Wire_C,Wire,250.0,250,items,docs_a81d250e96aa
+Recipe_GeneratorNuclear_C,input,Desc_AluminumPlate_C,Alclad Aluminum Sheet,100.0,100,items,docs_a81d250e96aa
+Recipe_GeneratorNuclear_C,input,Desc_Cable_C,Cable,200.0,200,items,docs_a81d250e96aa
+Recipe_GeneratorNuclear_C,input,Desc_Cement_C,Concrete,250.0,250,items,docs_a81d250e96aa
+Recipe_GeneratorNuclear_C,input,Desc_ComputerSuper_C,Supercomputer,10.0,10,items,docs_a81d250e96aa
+Recipe_GeneratorNuclear_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,25.0,25,items,docs_a81d250e96aa
+Recipe_HadronCollider_C,input,Desc_ComputerSuper_C,Supercomputer,10.0,10,items,docs_a81d250e96aa
+Recipe_HadronCollider_C,input,Desc_CoolingSystem_C,Cooling System,50.0,50,items,docs_a81d250e96aa
+Recipe_HadronCollider_C,input,Desc_HighSpeedWire_C,Quickwire,500.0,500,items,docs_a81d250e96aa
+Recipe_HadronCollider_C,input,Desc_ModularFrameFused_C,Fused Modular Frame,25.0,25,items,docs_a81d250e96aa
+Recipe_HadronCollider_C,input,Desc_MotorLightweight_C,Turbo Motor,10.0,10,items,docs_a81d250e96aa
+Recipe_HyperPoleStackable_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperPoleStackable_C,input,Desc_IronPlate_C,Iron Plate,4.0,4,items,docs_a81d250e96aa
+Recipe_HyperPoleStackable_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeJunction_C,input,Desc_CopperSheet_C,Copper Sheet,5.0,5,items,docs_a81d250e96aa
+Recipe_HyperTubeJunction_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeJunction_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeTJunction_C,input,Desc_CopperSheet_C,Copper Sheet,5.0,5,items,docs_a81d250e96aa
+Recipe_HyperTubeTJunction_C,input,Desc_SteelPipe_C,Steel Pipe,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeTJunction_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeWallHole_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeWallHole_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeWallSupport_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_HyperTubeWallSupport_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_IndustrialTank_C,input,Desc_CopperSheet_C,Copper Sheet,10.0,10,items,docs_a81d250e96aa
+Recipe_IndustrialTank_C,input,Desc_Plastic_C,Plastic,25.0,25,items,docs_a81d250e96aa
+Recipe_IndustrialTank_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_DCorner_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_InvertedRamp_UCorner_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_JumpPadAdjustable_C,input,Desc_Cable_C,Cable,10.0,10,items,docs_a81d250e96aa
+Recipe_JumpPadAdjustable_C,input,Desc_IronPlate_C,Iron Plate,15.0,15,items,docs_a81d250e96aa
+Recipe_JumpPadAdjustable_C,input,Desc_Rotor_C,Rotor,2.0,2,items,docs_a81d250e96aa
+Recipe_Ladder_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_LargeFan_C,input,Desc_CopperSheet_C,Copper Sheet,1.0,1,items,docs_a81d250e96aa
+Recipe_LargeFan_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_LargeVent_C,input,Desc_CopperSheet_C,Copper Sheet,1.0,1,items,docs_a81d250e96aa
+Recipe_LargeVent_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_LightsControlPanel_C,input,Desc_Cable_C,Cable,10.0,10,items,docs_a81d250e96aa
+Recipe_LightsControlPanel_C,input,Desc_CircuitBoardHighSpeed_C,AI Limiter,3.0,3,items,docs_a81d250e96aa
+Recipe_LightsControlPanel_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,5.0,5,items,docs_a81d250e96aa
+Recipe_Locomotive_C,input,Desc_ModularFrame_C,Modular Frame,5.0,5,items,docs_a81d250e96aa
+Recipe_Locomotive_C,input,Desc_Motor_C,Motor,10.0,10,items,docs_a81d250e96aa
+Recipe_Locomotive_C,input,Desc_Rubber_C,Rubber,20.0,20,items,docs_a81d250e96aa
+Recipe_Locomotive_C,input,Desc_SteelPipe_C,Steel Pipe,20.0,20,items,docs_a81d250e96aa
+Recipe_Locomotive_C,input,Desc_Wire_C,Wire,50.0,50,items,docs_a81d250e96aa
+Recipe_LookoutTower_C,input,Desc_IronPlate_C,Iron Plate,5.0,5,items,docs_a81d250e96aa
+Recipe_LookoutTower_C,input,Desc_IronRod_C,Iron Rod,5.0,5,items,docs_a81d250e96aa
+Recipe_Mam_C,input,Desc_Cable_C,Cable,15.0,15,items,docs_a81d250e96aa
+Recipe_Mam_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,5.0,5,items,docs_a81d250e96aa
+Recipe_Mam_C,input,Desc_Wire_C,Wire,45.0,45,items,docs_a81d250e96aa
+Recipe_ManufacturerMk1_C,input,Desc_Cable_C,Cable,50.0,50,items,docs_a81d250e96aa
+Recipe_ManufacturerMk1_C,input,Desc_ModularFrame_C,Modular Frame,20.0,20,items,docs_a81d250e96aa
+Recipe_ManufacturerMk1_C,input,Desc_Motor_C,Motor,10.0,10,items,docs_a81d250e96aa
+Recipe_ManufacturerMk1_C,input,Desc_Plastic_C,Plastic,50.0,50,items,docs_a81d250e96aa
+Recipe_MinerMk1_C,input,BP_ItemDescriptorPortableMiner_C,Portable Miner,1.0,1,items,docs_a81d250e96aa
+Recipe_MinerMk1_C,input,Desc_Cement_C,Concrete,10.0,10,items,docs_a81d250e96aa
+Recipe_MinerMk1_C,input,Desc_IronPlate_C,Iron Plate,10.0,10,items,docs_a81d250e96aa
+Recipe_MinerMk2_C,input,BP_ItemDescriptorPortableMiner_C,Portable Miner,2.0,2,items,docs_a81d250e96aa
+Recipe_MinerMk2_C,input,Desc_ModularFrame_C,Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_MinerMk2_C,input,Desc_SteelPipe_C,Steel Pipe,20.0,20,items,docs_a81d250e96aa
+Recipe_MinerMk2_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_MinerMk3_C,input,BP_ItemDescriptorPortableMiner_C,Portable Miner,3.0,3,items,docs_a81d250e96aa
+Recipe_MinerMk3_C,input,Desc_ComputerSuper_C,Supercomputer,5.0,5,items,docs_a81d250e96aa
+Recipe_MinerMk3_C,input,Desc_ModularFrameFused_C,Fused Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_MinerMk3_C,input,Desc_MotorLightweight_C,Turbo Motor,3.0,3,items,docs_a81d250e96aa
+Recipe_MinerMk3_C,input,Desc_SteelPipe_C,Steel Pipe,50.0,50,items,docs_a81d250e96aa
+Recipe_OilPump_C,input,Desc_Cable_C,Cable,60.0,60,items,docs_a81d250e96aa
+Recipe_OilPump_C,input,Desc_Motor_C,Motor,15.0,15,items,docs_a81d250e96aa
+Recipe_OilPump_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_OilRefinery_C,input,Desc_CopperSheet_C,Copper Sheet,20.0,20,items,docs_a81d250e96aa
+Recipe_OilRefinery_C,input,Desc_Motor_C,Motor,10.0,10,items,docs_a81d250e96aa
+Recipe_OilRefinery_C,input,Desc_SteelPipe_C,Steel Pipe,30.0,30,items,docs_a81d250e96aa
+Recipe_OilRefinery_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_Packager_C,input,Desc_Plastic_C,Plastic,10.0,10,items,docs_a81d250e96aa
+Recipe_Packager_C,input,Desc_Rubber_C,Rubber,10.0,10,items,docs_a81d250e96aa
+Recipe_Packager_C,input,Desc_SteelPlate_C,Steel Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_PillarBase_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_PillarBase_Small_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_PillarMiddle_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_PillarMiddle_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_PillarMiddle_Concrete_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_PillarMiddle_Frame_C,input,Desc_SteelPlate_C,Steel Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_Pillar_Small_Concrete_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Pillar_Small_Frame_C,input,Desc_SteelPlate_C,Steel Beam,3.0,3,items,docs_a81d250e96aa
+Recipe_Pillar_Small_Metal_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Pillar_Small_Metal_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_PipeHyperStart_C,input,Desc_Rotor_C,Rotor,4.0,4,items,docs_a81d250e96aa
+Recipe_PipeHyperStart_C,input,Desc_SteelPipe_C,Steel Pipe,10.0,10,items,docs_a81d250e96aa
+Recipe_PipeHyperStart_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,4.0,4,items,docs_a81d250e96aa
+Recipe_PipeHyperSupport_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeHyperSupport_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeHyper_C,input,Desc_CopperSheet_C,Copper Sheet,1.0,1,items,docs_a81d250e96aa
+Recipe_PipeHyper_C,input,Desc_SteelPipe_C,Steel Pipe,1.0,1,items,docs_a81d250e96aa
+Recipe_PipeStorageTank_C,input,Desc_CopperSheet_C,Copper Sheet,10.0,10,items,docs_a81d250e96aa
+Recipe_PipeStorageTank_C,input,Desc_ModularFrame_C,Modular Frame,5.0,5,items,docs_a81d250e96aa
+Recipe_PipeSupportStackable_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupportStackable_C,input,Desc_IronPlate_C,Iron Plate,4.0,4,items,docs_a81d250e96aa
+Recipe_PipeSupportStackable_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupportWallHole_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupportWallHole_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_PipeSupportWallHole_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupportWall_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupportWall_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_PipeSupportWall_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupport_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_PipeSupport_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_PipelineJunction_Cross_C,input,Desc_CopperSheet_C,Copper Sheet,5.0,5,items,docs_a81d250e96aa
+Recipe_PipelineJunction_T_C,input,Desc_CopperSheet_C,Copper Sheet,5.0,5,items,docs_a81d250e96aa
+Recipe_PipelineMK2_C,input,Desc_CopperSheet_C,Copper Sheet,2.0,2,items,docs_a81d250e96aa
+Recipe_PipelineMK2_C,input,Desc_Plastic_C,Plastic,1.0,1,items,docs_a81d250e96aa
+Recipe_PipelineMK2_NoIndicator_C,input,Desc_CopperSheet_C,Copper Sheet,2.0,2,items,docs_a81d250e96aa
+Recipe_PipelineMK2_NoIndicator_C,input,Desc_Plastic_C,Plastic,1.0,1,items,docs_a81d250e96aa
+Recipe_PipelinePumpMK2_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,1.0,1,items,docs_a81d250e96aa
+Recipe_PipelinePumpMK2_C,input,Desc_Motor_C,Motor,2.0,2,items,docs_a81d250e96aa
+Recipe_PipelinePumpMK2_C,input,Desc_Plastic_C,Plastic,10.0,10,items,docs_a81d250e96aa
+Recipe_PipelinePump_C,input,Desc_CopperSheet_C,Copper Sheet,2.0,2,items,docs_a81d250e96aa
+Recipe_PipelinePump_C,input,Desc_Rotor_C,Rotor,2.0,2,items,docs_a81d250e96aa
+Recipe_Pipeline_C,input,Desc_CopperSheet_C,Copper Sheet,1.0,1,items,docs_a81d250e96aa
+Recipe_Pipeline_NoIndicator_C,input,Desc_CopperSheet_C,Copper Sheet,1.0,1,items,docs_a81d250e96aa
+Recipe_PortalPotty_C,input,Desc_GenericBiomass_C,Biomass,100.0,100,items,docs_a81d250e96aa
+Recipe_PortalPotty_C,input,Desc_ModularFrame_C,Modular Frame,5.0,5,items,docs_a81d250e96aa
+Recipe_PortalPotty_C,input,Desc_SAMIngot_C,Reanimated SAM,20.0,20,items,docs_a81d250e96aa
+Recipe_PortalPotty_C,input,Desc_SteelPipe_C,Steel Pipe,20.0,20,items,docs_a81d250e96aa
+Recipe_PortalSatellite_C,input,Desc_FicsiteMesh_C,Ficsite Trigon,25.0,25,items,docs_a81d250e96aa
+Recipe_PortalSatellite_C,input,Desc_ModularFrameLightweight_C,Radio Control Unit,5.0,5,items,docs_a81d250e96aa
+Recipe_PortalSatellite_C,input,Desc_QuantumOscillator_C,Superposition Oscillator,10.0,10,items,docs_a81d250e96aa
+Recipe_PortalSatellite_C,input,Desc_SAMFluctuator_C,SAM Fluctuator,25.0,25,items,docs_a81d250e96aa
+Recipe_Portal_C,input,Desc_FicsiteMesh_C,Ficsite Trigon,50.0,50,items,docs_a81d250e96aa
+Recipe_Portal_C,input,Desc_ModularFrameLightweight_C,Radio Control Unit,10.0,10,items,docs_a81d250e96aa
+Recipe_Portal_C,input,Desc_MotorLightweight_C,Turbo Motor,5.0,5,items,docs_a81d250e96aa
+Recipe_Portal_C,input,Desc_QuantumOscillator_C,Superposition Oscillator,15.0,15,items,docs_a81d250e96aa
+Recipe_Portal_C,input,Desc_SAMFluctuator_C,SAM Fluctuator,25.0,25,items,docs_a81d250e96aa
+Recipe_PowerLine_C,input,Desc_Cable_C,Cable,1.0,1,items,docs_a81d250e96aa
+Recipe_PowerPoleMk1_C,input,Desc_Cement_C,Concrete,1.0,1,items,docs_a81d250e96aa
+Recipe_PowerPoleMk1_C,input,Desc_IronRod_C,Iron Rod,1.0,1,items,docs_a81d250e96aa
+Recipe_PowerPoleMk1_C,input,Desc_Wire_C,Wire,3.0,3,items,docs_a81d250e96aa
+Recipe_PowerPoleMk2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_PowerPoleMk2_C,input,Desc_HighSpeedWire_C,Quickwire,6.0,6,items,docs_a81d250e96aa
+Recipe_PowerPoleMk2_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_PowerPoleMk3_C,input,Desc_HighSpeedConnector_C,High-Speed Connector,2.0,2,items,docs_a81d250e96aa
+Recipe_PowerPoleMk3_C,input,Desc_Rubber_C,Rubber,3.0,3,items,docs_a81d250e96aa
+Recipe_PowerPoleMk3_C,input,Desc_SteelPipe_C,Steel Pipe,2.0,2,items,docs_a81d250e96aa
+Recipe_PowerPoleWallDoubleMk2_C,input,Desc_HighSpeedWire_C,Quickwire,16.0,16,items,docs_a81d250e96aa
+Recipe_PowerPoleWallDoubleMk2_C,input,Desc_IronRod_C,Iron Rod,4.0,4,items,docs_a81d250e96aa
+Recipe_PowerPoleWallDoubleMk3_C,input,Desc_HighSpeedConnector_C,High-Speed Connector,6.0,6,items,docs_a81d250e96aa
+Recipe_PowerPoleWallDoubleMk3_C,input,Desc_SteelPipe_C,Steel Pipe,6.0,6,items,docs_a81d250e96aa
+Recipe_PowerPoleWallDouble_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_PowerPoleWallDouble_C,input,Desc_Wire_C,Wire,8.0,8,items,docs_a81d250e96aa
+Recipe_PowerPoleWallMk2_C,input,Desc_HighSpeedWire_C,Quickwire,8.0,8,items,docs_a81d250e96aa
+Recipe_PowerPoleWallMk2_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_PowerPoleWallMk3_C,input,Desc_HighSpeedConnector_C,High-Speed Connector,3.0,3,items,docs_a81d250e96aa
+Recipe_PowerPoleWallMk3_C,input,Desc_SteelPipe_C,Steel Pipe,3.0,3,items,docs_a81d250e96aa
+Recipe_PowerPoleWall_C,input,Desc_IronRod_C,Iron Rod,1.0,1,items,docs_a81d250e96aa
+Recipe_PowerPoleWall_C,input,Desc_Wire_C,Wire,4.0,4,items,docs_a81d250e96aa
+Recipe_PowerStorageMk1_C,input,Desc_ModularFrame_C,Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_PowerStorageMk1_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_PowerStorageMk1_C,input,Desc_Wire_C,Wire,100.0,100,items,docs_a81d250e96aa
+Recipe_PowerSwitch_C,input,Desc_CircuitBoardHighSpeed_C,AI Limiter,1.0,1,items,docs_a81d250e96aa
+Recipe_PowerSwitch_C,input,Desc_HighSpeedWire_C,Quickwire,20.0,20,items,docs_a81d250e96aa
+Recipe_PowerSwitch_C,input,Desc_SteelPlate_C,Steel Beam,4.0,4,items,docs_a81d250e96aa
+Recipe_PowerTowerPlatform_C,input,Desc_Cement_C,Concrete,10.0,10,items,docs_a81d250e96aa
+Recipe_PowerTowerPlatform_C,input,Desc_SteelPlate_C,Steel Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_PowerTowerPlatform_C,input,Desc_Wire_C,Wire,20.0,20,items,docs_a81d250e96aa
+Recipe_PowerTower_C,input,Desc_Cement_C,Concrete,10.0,10,items,docs_a81d250e96aa
+Recipe_PowerTower_C,input,Desc_SteelPlate_C,Steel Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_PowerTower_C,input,Desc_Wire_C,Wire,20.0,20,items,docs_a81d250e96aa
+Recipe_PriorityPowerSwitch_C,input,Desc_HighSpeedConnector_C,High-Speed Connector,2.0,2,items,docs_a81d250e96aa
+Recipe_PriorityPowerSwitch_C,input,Desc_HighSpeedWire_C,Quickwire,50.0,50,items,docs_a81d250e96aa
+Recipe_PriorityPowerSwitch_C,input,Desc_SteelPlate_C,Steel Beam,6.0,6,items,docs_a81d250e96aa
+Recipe_QuantumEncoder_C,input,Desc_ComputerSuper_C,Supercomputer,20.0,20,items,docs_a81d250e96aa
+Recipe_QuantumEncoder_C,input,Desc_CoolingSystem_C,Cooling System,50.0,50,items,docs_a81d250e96aa
+Recipe_QuantumEncoder_C,input,Desc_FicsiteMesh_C,Ficsite Trigon,100.0,100,items,docs_a81d250e96aa
+Recipe_QuantumEncoder_C,input,Desc_MotorLightweight_C,Turbo Motor,20.0,20,items,docs_a81d250e96aa
+Recipe_QuantumEncoder_C,input,Desc_TimeCrystal_C,Time Crystal,50.0,50,items,docs_a81d250e96aa
+Recipe_QuarterPipeCorner_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeCorner_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeCorner_03_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeCorner_04_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeInCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeInCorner_ConcretePolished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeInCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeInCorner_Grip_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Ficsit_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Ficsit_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Ficsit_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Grip_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Grip_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_Grip_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_PolishedConcrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_PolishedConcrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleInCorner_PolishedConcrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Asphalt_4x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Asphalt_4x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Asphalt_4x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Concrete_4x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Concrete_4x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Concrete_4x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Ficsit_4x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Ficsit_4x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Ficsit_4x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Grip_4x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Grip_4x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_Grip_4x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_PolishedConcrete_4x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_PolishedConcrete_4x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddleOutCorner_PolishedConcrete_4x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Ficsit_4x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Ficsit_4x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Ficsit_4x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Grip_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Grip_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_Grip_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_PolishedConcrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_PolishedConcrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeMiddle_PolishedConcrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeOutCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeOutCorner_ConcretePolished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeOutCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipeOutCorner_Grip_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipe_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipe_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipe_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipe_ConcretePolished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipe_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_QuarterPipe_Grip_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RadarTower_C,input,Desc_Cable_C,Cable,100.0,100,items,docs_a81d250e96aa
+Recipe_RadarTower_C,input,Desc_Computer_C,Computer,10.0,10,items,docs_a81d250e96aa
+Recipe_RadarTower_C,input,Desc_CrystalOscillator_C,Crystal Oscillator,25.0,25,items,docs_a81d250e96aa
+Recipe_RadarTower_C,input,Desc_ModularFrameHeavy_C,Heavy Modular Frame,20.0,20,items,docs_a81d250e96aa
+Recipe_Railing_01_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_RailroadBlockSignal_C,input,Desc_Computer_C,Computer,1.0,1,items,docs_a81d250e96aa
+Recipe_RailroadBlockSignal_C,input,Desc_SteelPipe_C,Steel Pipe,2.0,2,items,docs_a81d250e96aa
+Recipe_RailroadEndStop_C,input,Desc_Cement_C,Concrete,20.0,20,items,docs_a81d250e96aa
+Recipe_RailroadEndStop_C,input,Desc_SteelPipe_C,Steel Pipe,2.0,2,items,docs_a81d250e96aa
+Recipe_RailroadEndStop_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_RailroadPathSignal_C,input,Desc_Computer_C,Computer,1.0,1,items,docs_a81d250e96aa
+Recipe_RailroadPathSignal_C,input,Desc_SteelPipe_C,Steel Pipe,2.0,2,items,docs_a81d250e96aa
+Recipe_RailroadTrack_C,input,Desc_SteelPipe_C,Steel Pipe,1.0,1,items,docs_a81d250e96aa
+Recipe_RailroadTrack_C,input,Desc_SteelPlate_C,Steel Beam,1.0,1,items,docs_a81d250e96aa
+Recipe_RampDouble_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampDouble_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x1_Corner_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x1_Corner_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x2_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x2_Corner_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x2_Corner_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x4_Corner_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_RampInverted_8x4_Corner_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_8x1_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_8x2_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_8x4_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_8x4_Inverted_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_8x8x8_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Diagonal_8x1_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Diagonal_8x1_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Diagonal_8x2_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Diagonal_8x2_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Diagonal_8x4_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Diagonal_8x4_02_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_DownCorner_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Frame_01_C,input,Desc_SteelPlate_C,Steel Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Frame_Inverted_01_C,input,Desc_SteelPlate_C,Steel Beam,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Metal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Metal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Metal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Polished_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Polished_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Ramp_UpCorner_Polished_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_ResourceSinkShop_C,input,Desc_Cable_C,Cable,10.0,10,items,docs_a81d250e96aa
+Recipe_ResourceSinkShop_C,input,Desc_IronPlate_C,Iron Plate,10.0,10,items,docs_a81d250e96aa
+Recipe_ResourceSinkShop_C,input,Desc_IronScrew_C,Screws,200.0,200,items,docs_a81d250e96aa
+Recipe_ResourceSink_C,input,Desc_Cable_C,Cable,30.0,30,items,docs_a81d250e96aa
+Recipe_ResourceSink_C,input,Desc_Cement_C,Concrete,45.0,45,items,docs_a81d250e96aa
+Recipe_ResourceSink_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,15.0,15,items,docs_a81d250e96aa
+Recipe_Roof_A_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_A_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_A_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_A_04_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Metal_InCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Metal_InCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Metal_InCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Metal_OutCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Metal_OutCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Metal_OutCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_04_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_InCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_InCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_InCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_OutCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_OutCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Orange_OutCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_04_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_InCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_InCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_InCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_OutCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_OutCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Tar_OutCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_04_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_InCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_InCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_InCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_OutCorner_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_OutCorner_02_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Roof_Window_OutCorner_03_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_SmelterBasicMk1_C,input,Desc_IronRod_C,Iron Rod,5.0,5,items,docs_a81d250e96aa
+Recipe_SmelterBasicMk1_C,input,Desc_Wire_C,Wire,8.0,8,items,docs_a81d250e96aa
+Recipe_SmelterMk1_C,input,Desc_Cement_C,Concrete,20.0,20,items,docs_a81d250e96aa
+Recipe_SmelterMk1_C,input,Desc_ModularFrame_C,Modular Frame,10.0,10,items,docs_a81d250e96aa
+Recipe_SmelterMk1_C,input,Desc_Rotor_C,Rotor,10.0,10,items,docs_a81d250e96aa
+Recipe_SnowCannon_C,input,Desc_Snow_C,FICSMAS Actual Snow,100.0,100,items,docs_a81d250e96aa
+Recipe_SnowCannon_C,input,Desc_XmasBall3_C,Copper FICSMAS Ornament,20.0,20,items,docs_a81d250e96aa
+Recipe_SnowCannon_C,input,Desc_XmasBow_C,FICSMAS Bow,10.0,10,items,docs_a81d250e96aa
+Recipe_SnowDispenser_C,input,Desc_CandyCane_C,Candy Cane,10.0,10,items,docs_a81d250e96aa
+Recipe_SnowDispenser_C,input,Desc_Snow_C,FICSMAS Actual Snow,100.0,100,items,docs_a81d250e96aa
+Recipe_SnowDispenser_C,input,Desc_XmasBall4_C,Iron FICSMAS Ornament,20.0,20,items,docs_a81d250e96aa
+Recipe_Snowman_C,input,Desc_CandyCane_C,Candy Cane,3.0,3,items,docs_a81d250e96aa
+Recipe_Snowman_C,input,Desc_Snow_C,FICSMAS Actual Snow,50.0,50,items,docs_a81d250e96aa
+Recipe_Snowman_C,input,Desc_XmasBall1_C,Red FICSMAS Ornament,3.0,3,items,docs_a81d250e96aa
+Recipe_Snowman_C,input,Desc_XmasBall2_C,Blue FICSMAS Ornament,2.0,2,items,docs_a81d250e96aa
+Recipe_Snowman_C,input,Desc_XmasBow_C,FICSMAS Bow,1.0,1,items,docs_a81d250e96aa
+Recipe_StackableShelf_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_StackableShelf_C,input,Desc_IronRod_C,Iron Rod,1.0,1,items,docs_a81d250e96aa
+Recipe_Stair_Asphalt_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_Asphalt_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_Asphalt_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_Concrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_Concrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_Concrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_FicsitSet_8x1_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_FicsitSet_8x2_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_FicsitSet_8x4_01_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_GripMetal_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_GripMetal_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_GripMetal_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_PolishedConcrete_8x1_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_PolishedConcrete_8x2_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stair_PolishedConcrete_8x4_C,input,Desc_Cement_C,Concrete,5.0,5,items,docs_a81d250e96aa
+Recipe_Stairs_Left_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Stairs_Left_01_C,input,Desc_IronPlate_C,Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_Stairs_Right_01_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Stairs_Right_01_C,input,Desc_IronPlate_C,Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Huge_C,input,Desc_CopperSheet_C,Copper Sheet,20.0,20,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Huge_C,input,Desc_CrystalOscillator_C,Crystal Oscillator,5.0,5,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Huge_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,12.0,12,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Large_C,input,Desc_CopperSheet_C,Copper Sheet,4.0,4,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Large_C,input,Desc_CrystalOscillator_C,Crystal Oscillator,1.0,1,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Large_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,3.0,3,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Medium_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Medium_C,input,Desc_QuartzCrystal_C,Quartz Crystal,5.0,5,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Portrait_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,4.0,4,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Portrait_C,input,Desc_QuartzCrystal_C,Quartz Crystal,10.0,10,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_SmallVeryWide_C,input,Desc_IronPlate_C,Iron Plate,4.0,4,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_SmallVeryWide_C,input,Desc_QuartzCrystal_C,Quartz Crystal,4.0,4,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_SmallWide_C,input,Desc_IronPlate_C,Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_SmallWide_C,input,Desc_QuartzCrystal_C,Quartz Crystal,3.0,3,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Small_C,input,Desc_IronPlate_C,Iron Plate,2.0,2,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Small_C,input,Desc_QuartzCrystal_C,Quartz Crystal,2.0,2,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Square_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Square_C,input,Desc_QuartzCrystal_C,Quartz Crystal,10.0,10,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Square_Small_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Square_Small_C,input,Desc_QuartzCrystal_C,Quartz Crystal,5.0,5,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Square_Tiny_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_StandaloneWidgetSign_Square_Tiny_C,input,Desc_QuartzCrystal_C,Quartz Crystal,1.0,1,items,docs_a81d250e96aa
+Recipe_SteelWall_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_8x4_Gate_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_8x4_Window_01_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_8x4_Window_02_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_8x4_Window_03_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_8x4_Window_04_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_FlipTris_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_FlipTris_8x2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_FlipTris_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_FlipTris_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_Tris_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_Tris_8x2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_Tris_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_SteelWall_Tris_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_StorageContainerMk1_C,input,Desc_IronPlate_C,Iron Plate,10.0,10,items,docs_a81d250e96aa
+Recipe_StorageContainerMk1_C,input,Desc_IronRod_C,Iron Rod,10.0,10,items,docs_a81d250e96aa
+Recipe_StorageContainerMk2_C,input,Desc_SteelPipe_C,Steel Pipe,20.0,20,items,docs_a81d250e96aa
+Recipe_StorageContainerMk2_C,input,Desc_SteelPlate_C,Steel Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_StorageHazard_C,input,Desc_IronPlate_C,Iron Plate,6.0,6,items,docs_a81d250e96aa
+Recipe_StorageHazard_C,input,Desc_IronRod_C,Iron Rod,6.0,6,items,docs_a81d250e96aa
+Recipe_StorageMedkit_C,input,Desc_IronPlate_C,Iron Plate,6.0,6,items,docs_a81d250e96aa
+Recipe_StorageMedkit_C,input,Desc_IronRod_C,Iron Rod,6.0,6,items,docs_a81d250e96aa
+Recipe_StoragePlayer_C,input,Desc_IronPlate_C,Iron Plate,6.0,6,items,docs_a81d250e96aa
+Recipe_StoragePlayer_C,input,Desc_IronRod_C,Iron Rod,6.0,6,items,docs_a81d250e96aa
+Recipe_StreetLight_C,input,Desc_HighSpeedWire_C,Quickwire,10.0,10,items,docs_a81d250e96aa
+Recipe_StreetLight_C,input,Desc_IronRod_C,Iron Rod,4.0,4,items,docs_a81d250e96aa
+Recipe_StreetLight_C,input,Desc_Wire_C,Wire,4.0,4,items,docs_a81d250e96aa
+Recipe_TarpFence_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Tractor_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,10.0,10,items,docs_a81d250e96aa
+Recipe_Tractor_C,input,Desc_ModularFrame_C,Modular Frame,5.0,5,items,docs_a81d250e96aa
+Recipe_Tractor_C,input,Desc_Rotor_C,Rotor,5.0,5,items,docs_a81d250e96aa
+Recipe_TradingPost_C,input,Desc_OreIron_C,Iron Ore,20.0,20,items,docs_a81d250e96aa
+Recipe_TrainDockingStationLiquid_C,input,Desc_Cement_C,Concrete,50.0,50,items,docs_a81d250e96aa
+Recipe_TrainDockingStationLiquid_C,input,Desc_Motor_C,Motor,5.0,5,items,docs_a81d250e96aa
+Recipe_TrainDockingStationLiquid_C,input,Desc_Plastic_C,Plastic,25.0,25,items,docs_a81d250e96aa
+Recipe_TrainDockingStationLiquid_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_TrainDockingStationLiquid_C,input,Desc_Wire_C,Wire,100.0,100,items,docs_a81d250e96aa
+Recipe_TrainDockingStation_C,input,Desc_Cement_C,Concrete,50.0,50,items,docs_a81d250e96aa
+Recipe_TrainDockingStation_C,input,Desc_Motor_C,Motor,5.0,5,items,docs_a81d250e96aa
+Recipe_TrainDockingStation_C,input,Desc_Plastic_C,Plastic,25.0,25,items,docs_a81d250e96aa
+Recipe_TrainDockingStation_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_TrainDockingStation_C,input,Desc_Wire_C,Wire,100.0,100,items,docs_a81d250e96aa
+Recipe_TrainPlatformEmpty_02_C,input,Desc_Cement_C,Concrete,50.0,50,items,docs_a81d250e96aa
+Recipe_TrainPlatformEmpty_02_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_TrainPlatformEmpty_C,input,Desc_Cement_C,Concrete,50.0,50,items,docs_a81d250e96aa
+Recipe_TrainPlatformEmpty_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_TrainStation_C,input,Desc_Cement_C,Concrete,50.0,50,items,docs_a81d250e96aa
+Recipe_TrainStation_C,input,Desc_Plastic_C,Plastic,50.0,50,items,docs_a81d250e96aa
+Recipe_TrainStation_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,10.0,10,items,docs_a81d250e96aa
+Recipe_TrainStation_C,input,Desc_Wire_C,Wire,200.0,200,items,docs_a81d250e96aa
+Recipe_TreeGiftProducer_C,input,Desc_Gift_C,FICSMAS Gift,50.0,50,items,docs_a81d250e96aa
+Recipe_TreeGiftProducer_C,input,Desc_XmasBall1_C,Red FICSMAS Ornament,30.0,30,items,docs_a81d250e96aa
+Recipe_TreeGiftProducer_C,input,Desc_XmasBall2_C,Blue FICSMAS Ornament,30.0,30,items,docs_a81d250e96aa
+Recipe_TreeGiftProducer_C,input,Desc_XmasBranch_C,FICSMAS Tree Branch,100.0,100,items,docs_a81d250e96aa
+Recipe_TruckStation_C,input,Desc_Cable_C,Cable,50.0,50,items,docs_a81d250e96aa
+Recipe_TruckStation_C,input,Desc_ModularFrame_C,Modular Frame,15.0,15,items,docs_a81d250e96aa
+Recipe_TruckStation_C,input,Desc_Rotor_C,Rotor,20.0,20,items,docs_a81d250e96aa
+Recipe_Truck_C,input,Desc_ModularFrame_C,Modular Frame,20.0,20,items,docs_a81d250e96aa
+Recipe_Truck_C,input,Desc_Motor_C,Motor,15.0,15,items,docs_a81d250e96aa
+Recipe_Truck_C,input,Desc_Rubber_C,Rubber,50.0,50,items,docs_a81d250e96aa
+Recipe_Truck_C,input,Desc_SteelPlateReinforced_C,Encased Industrial Beam,20.0,20,items,docs_a81d250e96aa
+Recipe_UJellyLandingPad_C,input,Desc_Cable_C,Cable,20.0,20,items,docs_a81d250e96aa
+Recipe_UJellyLandingPad_C,input,Desc_GenericBiomass_C,Biomass,200.0,200,items,docs_a81d250e96aa
+Recipe_UJellyLandingPad_C,input,Desc_Rotor_C,Rotor,2.0,2,items,docs_a81d250e96aa
+Recipe_Valve_C,input,Desc_Rubber_C,Rubber,4.0,4,items,docs_a81d250e96aa
+Recipe_Valve_C,input,Desc_SteelPlate_C,Steel Beam,4.0,4,items,docs_a81d250e96aa
+Recipe_Walkway_Cross_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Walkway_Cross_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Walkway_Ramp_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Walkway_Ramp_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Walkway_Straight_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Walkway_Straight_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Walkway_T_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Walkway_T_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_Walkway_Turn_C,input,Desc_IronPlate_C,Iron Plate,1.0,1,items,docs_a81d250e96aa
+Recipe_Walkway_Turn_C,input,Desc_IronRod_C,Iron Rod,2.0,2,items,docs_a81d250e96aa
+Recipe_WallSet_Steel_Angular_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_WallSet_Steel_Angular_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_8x4_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_8x4_02_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_ConveyorHole_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_ConveyorHole_02_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_ConveyorHole_03_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_Corner_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_Corner_2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_Window_01_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_Window_02_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_Window_03_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x4_Window_04_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x8_Corner_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_8x8_Corner_2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Angular_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Angular_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_CDoor_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_FlipTris_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_FlipTris_8x2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_FlipTris_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_FlipTris_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Gate_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_SDoor_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Tris_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Tris_8x2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Tris_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Concrete_Tris_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_01_Steel_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_02_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_02_Steel_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_03_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_03_Steel_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_04_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_04_C,input,Desc_IronPlate_C,Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_04_Steel_C,input,Desc_Cement_C,Concrete,3.0,3,items,docs_a81d250e96aa
+Recipe_Wall_Conveyor_8x4_04_Steel_C,input,Desc_IronPlate_C,Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_Wall_Door_8x4_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Door_8x4_01_Steel_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Door_8x4_03_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Door_8x4_03_Steel_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Frame_01_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Gate_8x4_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_8x4_Corner_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_8x4_Corner_02_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_8x8_Corner_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_8x8_Corner_02_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_Angular_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_Angular_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_FlipTris_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_FlipTris_8x2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_FlipTris_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_FlipTris_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_Tris_8x1_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_Tris_8x2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_Tris_8x4_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Orange_Tris_8x8_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Steel_8x4_Corner_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Steel_8x4_Corner_2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Steel_8x8_Corner_01_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Steel_8x8_Corner_2_C,input,Desc_Cement_C,Concrete,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_01_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_02_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_03_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_04_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_05_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_05_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_06_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_06_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_07_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_8x4_07_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_Thin_8x4_01_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_Thin_8x4_01_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_Thin_8x4_02_C,input,Desc_Silica_C,Silica,2.0,2,items,docs_a81d250e96aa
+Recipe_Wall_Window_Thin_8x4_02_C,input,Desc_SteelPlate_C,Steel Beam,2.0,2,items,docs_a81d250e96aa
+Recipe_WaterPump_C,input,Desc_CopperSheet_C,Copper Sheet,20.0,20,items,docs_a81d250e96aa
+Recipe_WaterPump_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,10.0,10,items,docs_a81d250e96aa
+Recipe_WaterPump_C,input,Desc_Rotor_C,Rotor,10.0,10,items,docs_a81d250e96aa
+Recipe_WorkBench_C,input,Desc_IronPlate_C,Iron Plate,3.0,3,items,docs_a81d250e96aa
+Recipe_WorkBench_C,input,Desc_IronRod_C,Iron Rod,3.0,3,items,docs_a81d250e96aa
+Recipe_Workshop_C,input,Desc_IronPlate_C,Iron Plate,6.0,6,items,docs_a81d250e96aa
+Recipe_Workshop_C,input,Desc_IronRod_C,Iron Rod,4.0,4,items,docs_a81d250e96aa
+Recipe_WreathDecor_C,input,Desc_XmasBow_C,FICSMAS Bow,1.0,1,items,docs_a81d250e96aa
+Recipe_WreathDecor_C,input,Desc_XmasWreath_C,FICSMAS Wreath,1.0,1,items,docs_a81d250e96aa
+Recipe_XMassTree_C,input,Desc_Cement_C,Concrete,500.0,500,items,docs_a81d250e96aa
+Recipe_XMassTree_C,input,Desc_IronPlateReinforced_C,Reinforced Iron Plate,50.0,50,items,docs_a81d250e96aa
+Recipe_XMassTree_C,input,Desc_XmasBranch_C,FICSMAS Tree Branch,100.0,100,items,docs_a81d250e96aa
+Recipe_xmassLights_C,input,Desc_Cable_C,Cable,1.0,1,items,docs_a81d250e96aa
+Recipe_xmassLights_C,input,Desc_XmasBallCluster_C,FICSMAS Ornament Bundle,1.0,1,items,docs_a81d250e96aa

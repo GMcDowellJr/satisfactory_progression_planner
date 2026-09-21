@@ -1,0 +1,18 @@
+generator_class,fuel_item_id,fuel_item_name,fuel_unit,energy_mj_per_unit,burn_rate_per_min,power_production_mw,supplemental_item_id,supplemental_rate_per_min,supplemental_unit,byproduct_item_id,byproduct_amount_per_fuel,byproduct_rate_per_min,game_build_id,source_id,verified_on
+Build_GeneratorBiomass_Automated_C,Desc_Biofuel_C,Solid Biofuel,items,450.0,4.0,30.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorBiomass_Automated_C,Desc_GenericBiomass_C,Biomass,items,180.0,10.0,30.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorBiomass_Automated_C,Desc_Leaves_C,Leaves,items,15.0,120.0,30.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorBiomass_Automated_C,Desc_Mycelia_C,Mycelia,items,20.0,90.0,30.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorBiomass_Automated_C,Desc_PackagedBiofuel_C,Packaged Liquid Biofuel,items,750.0,2.4,30.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorBiomass_Automated_C,Desc_Wood_C,Wood,items,100.0,18.0,30.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorCoal_C,Desc_Coal_C,Coal,items,300.0,15.0,75.0,Desc_Water_C,45.0,m3,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorCoal_C,Desc_CompactedCoal_C,Compacted Coal,items,630.0,7.142857,75.0,Desc_Water_C,45.0,m3,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorCoal_C,Desc_PetroleumCoke_C,Petroleum Coke,items,180.0,25.0,75.0,Desc_Water_C,45.0,m3,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorFuel_C,Desc_IonizedFuel_C,Ionized Fuel,m3,5000.0,3.0,250.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorFuel_C,Desc_LiquidBiofuel_C,Liquid Biofuel,m3,750.0,20.0,250.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorFuel_C,Desc_LiquidFuel_C,Fuel,m3,750.0,20.0,250.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorFuel_C,Desc_LiquidTurboFuel_C,Turbofuel,m3,2000.0,7.5,250.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorFuel_C,Desc_RocketFuel_C,Rocket Fuel,m3,3600.0,4.166667,250.0,,,,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorNuclear_C,Desc_FicsoniumFuelRod_C,Ficsonium Fuel Rod,items,150000.0,1.0,2500.0,Desc_Water_C,240.0,m3,,,,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorNuclear_C,Desc_NuclearFuelRod_C,Uranium Fuel Rod,items,750000.0,0.2,2500.0,Desc_Water_C,240.0,m3,Desc_NuclearWaste_C,50.0,10.0,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
+Build_GeneratorNuclear_C,Desc_PlutoniumFuelRod_C,Plutonium Fuel Rod,items,1500000.0,0.1,2500.0,Desc_Water_C,240.0,m3,Desc_PlutoniumWaste_C,10.0,1.0,docs_a81d250e96aa,local_game_docs_en_us,2026-09-21
