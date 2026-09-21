@@ -199,6 +199,21 @@ class BusDeclaration:
             raise ValueError(f"{self.bus_id}: extra_producers must be >= 0")
         if self.withdrawal_per_min is not None and self.withdrawal_per_min < 0:
             raise ValueError(f"{self.bus_id}: withdrawal_per_min must be >= 0")
+        # P29. MATCHED is defined as "underclocked to the AVERAGE WITHDRAWAL
+        # RATE", so without a rate there is nothing to match and no clock to
+        # derive. Refused at construction rather than downstream, because the
+        # alternative is `clock_for` dividing by a `None` three calls later and
+        # reporting it as an arithmetic fault.
+        #
+        # The converse is LEGAL and deliberately not checked: a withdrawal
+        # without MATCHED is a BACK_UP build-material line, which is the other
+        # of the two sizings A4.2 names.
+        if self.disposition is Disposition.MATCHED and self.withdrawal_per_min is None:
+            raise ValueError(
+                f"{self.bus_id}: Disposition.MATCHED requires withdrawal_per_min — "
+                "it is the rate being matched. A build-material line with no "
+                "declared withdrawal is sized as BACK_UP instead."
+            )
         seen = [e.input_item for e in self.sources]
         if len(seen) != len(set(seen)):
             raise ValueError(f"{self.bus_id}: an input may name at most one source bus")
