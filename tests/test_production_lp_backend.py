@@ -325,17 +325,25 @@ def test_canonical_mw_says_which_of_the_two_readings_it_is(backend, data):
 
 
 def test_input_multiplier_compounds_across_stages(backend, data):
-    """Section 3.3 of the solver-selection record: 30.00 ore becomes 46.88."""
+    """Section 3.3 of the solver-selection record reads 30.00 ore becoming 46.88.
+
+    That figure is unrounded and superseded by demand-expansion record 3.2.5: the
+    multiplier lands on per-cycle parts. Iron Plate's 3 ingot rounds 3.75 to 4
+    (40/min); Iron Ingot's 1 ore rounds 1.25 back to 1, so the second stage does
+    not compound at all and the answer is 40.00. The earlier record is not edited
+    — it described the adapter accurately when it was written.
+    """
     scaled = data.with_scenario(Scenario(recipe_input_multiplier=1.25))
     response = _solve(backend, scaled, (IRON_PLATE, 20.0))
-    assert _raw(response)[IRON_ORE] == pytest.approx(46.875, abs=1e-4)
+    assert _raw(response)[IRON_ORE] == pytest.approx(40.0, abs=1e-4)
 
 
 def test_power_multiplier_separates_scenario_from_canonical(backend, data):
+    """40 ingot/min against a 30/min Smelter is 1.3333 machines, not 1.25."""
     scaled = data.with_scenario(CHALLENGE_1_25X_2X)
     response = _solve(backend, scaled, (IRON_PLATE, 20.0))
-    assert response.power.scenario_mw == pytest.approx(18.0, abs=1e-4)
-    assert response.power.canonical_mw == pytest.approx(9.0, abs=1e-4)
+    assert response.power.scenario_mw == pytest.approx(18.6667, abs=1e-4)
+    assert response.power.canonical_mw == pytest.approx(9.3333, abs=1e-4)
 
 
 def test_resource_cap_binds_and_says_so(backend, data):

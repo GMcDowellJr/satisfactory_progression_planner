@@ -64,7 +64,21 @@ object. The same loaded reference serves every scenario in a process.
 
 **Inputs scale, outputs do not.** `recipe_input_multiplier` raises what a recipe
 costs, not what it yields, and it compounds across stages — Smart Plating at 1.25x
-needs 62.41 iron ore per minute rather than 23.25, not 29.06.
+needs 33.50 iron ore per minute rather than 23.25, not 29.06.
+
+**Scenarios round.** The multiplier lands on a recipe's per-cycle part counts and
+the result is rounded to the nearest whole number, per input — nearest integer,
+halves away from zero. Confirmed in game at 1.25x in both directions. Rounding is
+not expressible on a rate, so `Scenario.apply_input_rate` no longer exists;
+`apply_input_amount(amount_per_cycle, unit)` replaces it and `Recipe` carries
+`input_amounts` alongside the per-minute `inputs` it derives. Figures published
+before 2026-09-21 — including this file's own 62.41 — are unrounded and overstate
+the 1.25x case. See `docs/decisions/demand_expansion_scope_and_site_capacity.md`
+sections 3.2.2 to 3.2.5.
+
+**Sub-1x scenarios must declare a floor.** Below 1x an input can round to zero and
+the game's floor rule is unobserved, so `Scenario` refuses to construct without an
+explicit `input_amount_floor`. It cannot bind at 1x or above.
 
 **Power is a range, not a number.** Particle Accelerator, Converter and Quantum
 Encoder draw a recipe-dependent range, so `PowerReport` carries min and max

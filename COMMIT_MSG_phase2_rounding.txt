@@ -1,0 +1,131 @@
+Phase 2 task 1: scenarios round — multiplier moves to per-cycle amounts
+
+Implements demand_expansion_scope_and_site_capacity.md 3.2.5, locked 2026-09-19
+and not built until now, plus handoff open item #2. Closes handoff items #1 and
+#2.
+
+THE DEFECT
+
+scenario.py applied recipe_input_multiplier to rate_per_min. The game applies it
+to a recipe's per-cycle integer part counts and rounds to the nearest whole
+number, per input — confirmed in game at 1.25x in both directions on 1.2.4.0
+CL#502094 (record 3.2.4). Rounding is not expressible on a rate, so this was not
+a one-line fix: the transform point had to move.
+
+THE CONTRACT CHANGE
+
+  Recipe            gains input_amounts: (item, amount_per_cycle, unit)
+  Recipe.scaled()   scales and rounds the per-cycle amounts, then re-derives
+                    the per-minute rates
+  Scenario          apply_input_rate REMOVED, not deprecated. Leaving a
+                    rate-shaped input transform in place is the defect; its
+                    absence is the tripwire, so a missed call site raises
+                    AttributeError rather than returning an unrounded answer
+                    apply_input_amount(amount_per_cycle, unit) replaces it
+                    apply_output_rate unchanged — outputs neither scale nor round
+
+lp_backend, analysis and contracts still read Recipe.inputs as rates and are not
+touched.
+
+At recipe_input_multiplier == 1.0 the canonical rates are carried through rather
+than re-derived. A power-only scenario must not perturb inputs, and
+Recipe_Battery_C draws 2.5 m3 of Sulfuric Acid — a 1x round trip would round it
+to 3 and invent a cost the game does not charge.
+
+Checked while wiring it: amount_per_cycle * 60 / manufacturing_duration_sec
+equals rate_per_min on all 919 rows of recipe_io.csv, to 1e-6.
+
+BEHAVIOUR CHANGE — declared, with numbers
+
+  Iron Plate input at 1.25x           37.5/min  ->  40.0/min
+  Iron Plate 20/min -> iron ore         46.875  ->  40.00
+  Smart Plating 1/min -> iron ore       62.408  ->  33.50
+  Iron Plate 20/min, power at 2x       18.0 MW  ->  18.667 MW
+
+Smart Plating falls 46%. Of the six recipes on that chain, three round away
+entirely: Smart Plating's own 1 RIP and 1 Rotor stay at 1 (the in-game read),
+and Iron Rod's and Iron Ingot's single input rounds 1.25 back to 1, so the chain
+stops compounding at two stages instead of five. Only Reinforced Iron Plate
+(6 -> 8 plate, 12 -> 15 screw), Rotor (5 -> 6 rod, 25 -> 31 screw) and Iron
+Plate (3 -> 4 ingot) move at all.
+
+Direction and rough magnitude agree with the -28% the record measured on
+lifetime Modular Frame demand — corroboration from an independent chain.
+
+production_solver_selection.md 3.3 is NOT edited. Its 46.88 and 62.41 described
+the adapter accurately when written. Supersession is recorded forward, in the
+test docstrings that carried those constants and in the implementation note.
+
+WIDER THAN 3.2.5 ANTICIPATED
+
+3.2.5 expected a contract change at one method. The scalar input_multiplier
+parameter is also carried by both independent checkers under tests/ —
+_demand_oracle.demand() and _balance_check.violations() — each multiplying it
+into a rate, so both were wrong in the same way as the adapter.
+
+Both keep the parameter name and type; only its application changed. Each
+reimplements the rule from recipe_io.csv rather than importing
+production_adapter.scenario, preserving the independence their docstrings
+require. Three copies of the rule now exist, deliberately.
+
+They agree. The oracle and the LP backend land on 33.50 and 40.00 from opposite
+directions, to the digit, and a test now pins that so a future divergence fails
+rather than passing quietly.
+
+DECLARED RATHER THAN ASSUMED
+
+  FLUID_ROUNDING_UNIT   NEW OPEN ITEM. 3.2.5 adopts the same rule for fluids but
+                        does not say in which unit, and m3 and mL disagree on
+                        every fluid input: 3 m3 x 1.25 is 4 m3 rounding in m3
+                        and 3.75 m3 rounding in mL. 3.2.3's A-D agreement was
+                        Modular Frame, which has no fluid in the chain, so it
+                        does not transfer. Named at one module constant,
+                        defaulting to m3. Handoff item #3 now settles the unit
+                        as well as the rule.
+
+  input_amount_floor    Scenario refuses to construct below 1x without it. The
+                        record leaves the floor unresolved and says sub-1x
+                        figures stay open; refusing to compute them is the
+                        faithful encoding, and a silent zero input is the
+                        failure mode 1.2.3.0 actually shipped. Cannot bind at
+                        1x or above.
+
+Also recorded: 3.2.2's computation rounded items only, while 3.2.5 as adopted
+rounds fluids too. Both give 66,423 for the scenario of record because those
+paths carry no fluid, so the divergence has been invisible. The code follows
+3.2.5, which is the decision.
+
+MARGINAL_PEAK_DEBOTTLENECK
+
+Added, 1.25 / 2.0 / 2.0, distinct from CHALLENGE_1_25X_2X which carries a 1.0
+Project Assembly multiplier and is a different save.
+
+No CLI preset for it, deliberately. The production solver does not consume the
+Project Assembly multiplier, so --scenario record would behave identically to
+--scenario challenge while appearing to apply the setting it is named for. Worth
+adding when the Phase 2 scheduler consumes that multiplier, not before.
+
+VERIFICATION
+
+  uv run pytest    297 collected, 297 passed
+
+First run was 2 failed / 295 passed; both failures were test_demand_oracle.py
+asserting the same two superseded constants, and both are fixed here. The
+2026-09-18 handoff's prediction of 288 tests is settled at 297, measured.
+
+FILES
+
+  tools/production_adapter/src/production_adapter/scenario.py
+  tools/production_adapter/src/production_adapter/gamedata.py
+  tools/production_adapter/src/production_adapter/__init__.py
+  tools/production_adapter/README.md
+  tools/production_adapter/tests/test_scenario.py
+  tests/_demand_oracle.py
+  tests/_balance_check.py
+  tests/test_demand_oracle.py
+  tests/test_production_adapter_gamedata.py
+  tests/test_production_lp_backend.py
+  tests/test_plan_section_11_validation.py
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WuFDBP2GRmDyaYfMpquSvB

@@ -341,18 +341,27 @@ def test_canonical_power_is_the_scenario_power_divided_by_the_multiplier(
 
 
 def test_the_input_multiplier_compounds_rather_than_scaling(backend, data):
-    """Smart Plating at 1.25x needs 62.41 ore, not 29.06.
+    """Smart Plating at 1.25x needs 33.50 ore, not 29.06 and not 62.41.
 
-    The exact figure is 62.408447265625 — 1.25 raised to the number of stages the
-    demand crosses, not applied once. The adapter README and section 3.3 of the
-    solver-selection record both display it rounded to 62.41.
+    62.408447265625 is 1.25 raised to the stages the demand crosses, with nothing
+    rounded — the figure the adapter README and section 3.3 of the solver-selection
+    record both display as 62.41. Demand-expansion record 3.2.5 supersedes it: the
+    multiplier lands on per-cycle parts and rounds per input, and on this chain
+    most of it rounds away. Smart Plating's own 1 RIP and 1 Rotor stay at 1 (the
+    3.2.4 in-game read), Iron Rod's and Iron Ingot's single input stays at 1, and
+    only Reinforced Iron Plate (6 -> 8 plate, 12 -> 15 screw), Rotor (5 -> 6 rod,
+    25 -> 31 screw) and Iron Plate (3 -> 4 ingot) move at all.
+
+    It still compounds rather than scaling once. It is simply much smaller than
+    the unrounded arithmetic said, in the same direction as the -28% the record
+    measured on lifetime Modular Frame demand.
     """
     response, _, _ = _reconcile(
         backend, data, SMART_PLATING, 1.0, set(data.base_recipes()),
         Scenario(recipe_input_multiplier=1.25),
     )
     raw = {r.item_id: r.rate_per_min for r in response.raw_inputs}
-    assert raw["Desc_OreIron_C"] == pytest.approx(62.408447265625, abs=1e-6)
+    assert raw["Desc_OreIron_C"] == pytest.approx(33.5, abs=1e-6)
     assert raw["Desc_OreIron_C"] > 23.25 * 1.25  # compounds, not scales
 
 

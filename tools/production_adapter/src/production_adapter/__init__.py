@@ -16,11 +16,14 @@ from .backend import Backend, BackendNotSelected, get as get_backend, register, 
 from .gamedata import (
     Item, PowerRange, Producer, Recipe, ReferenceData, ReferenceDataError, load,
 )
-from .scenario import CHALLENGE_1_25X_2X, Scenario
+from .scenario import (
+    CHALLENGE_1_25X_2X, FLUID_UNIT, ITEM_UNIT, MARGINAL_PEAK_DEBOTTLENECK, Scenario,
+)
 
 __all__ = [
-    "AllowedRecipes", "Backend", "BackendNotSelected", "CHALLENGE_1_25X_2X", "Item",
-    "ItemFlow", "MachineCount", "OutputTarget", "PowerRange", "PowerReport", "Producer",
+    "AllowedRecipes", "Backend", "BackendNotSelected", "CHALLENGE_1_25X_2X", "FLUID_UNIT",
+    "ITEM_UNIT", "Item", "ItemFlow", "MARGINAL_PEAK_DEBOTTLENECK",
+    "MachineCount", "OutputTarget", "PowerRange", "PowerReport", "Producer",
     "RawInput", "Recipe", "RecipeMode", "RecipeUse", "ReferenceData", "ReferenceDataError",
     "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "Weights",
     "get_backend", "load", "register", "registered",

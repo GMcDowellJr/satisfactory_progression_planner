@@ -13,7 +13,7 @@ import pathlib
 from dataclasses import dataclass, field
 
 from .contracts import ItemId, ProducerClass, RecipeId
-from .scenario import Scenario
+from .scenario import ITEM_UNIT, Scenario
 
 REFERENCE_SUBPATH = pathlib.Path("planning_data") / "game" / "reference"
 
@@ -58,20 +58,41 @@ class Recipe:
     inputs: tuple[tuple[ItemId, float], ...]    # (item, per-minute at 100% clock)
     outputs: tuple[tuple[ItemId, float], ...]
     power: PowerRange
+    #: (item, per-cycle amount, unit) — what the game states and what the recipe
+    #: multiplier acts on. `inputs` is this divided by the cycle; a scenario is
+    #: applied here and the rates are re-derived, because rounding to whole parts
+    #: is not expressible on a rate (scenario.py, record 3.2.5).
+    input_amounts: tuple[tuple[ItemId, float, str], ...] = ()
+
+    @property
+    def cycles_per_min(self) -> float:
+        return 60.0 / self.duration_sec
 
     def scaled(self, scenario: Scenario) -> "Recipe":
         """A copy with scenario modifiers applied. Canonical data is untouched."""
         if scenario.is_canonical:
             return self
+        if scenario.recipe_input_multiplier == 1.0:
+            # No input transform at all, so the canonical rates are carried
+            # through unchanged rather than re-derived and re-rounded.
+            inputs = self.inputs
+            input_amounts = self.input_amounts
+        else:
+            input_amounts = tuple(
+                (i, scenario.apply_input_amount(a, u), u) for i, a, u in self.input_amounts
+            )
+            per_min = self.cycles_per_min
+            inputs = tuple((i, a * per_min) for i, a, _ in input_amounts)
         return Recipe(
             recipe_id=self.recipe_id,
             display_name=self.display_name,
             is_alternate=self.is_alternate,
             duration_sec=self.duration_sec,
             producer_class=self.producer_class,
-            inputs=tuple((i, scenario.apply_input_rate(r)) for i, r in self.inputs),
+            inputs=inputs,
             outputs=tuple((i, scenario.apply_output_rate(r)) for i, r in self.outputs),
             power=self.power.scaled(scenario.machine_power_multiplier),
+            input_amounts=input_amounts,
         )
 
 
@@ -135,9 +156,19 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
 
     io_in: dict[RecipeId, list[tuple[ItemId, float]]] = {}
     io_out: dict[RecipeId, list[tuple[ItemId, float]]] = {}
+    io_in_amounts: dict[RecipeId, list[tuple[ItemId, float, str]]] = {}
     for r in _rows(ref / "recipe_io.csv"):
-        bucket = io_in if r["direction"] == "input" else io_out
-        bucket.setdefault(r["recipe_id"], []).append((r["item_id"], float(r["rate_per_min"])))
+        if r["direction"] == "input":
+            io_in.setdefault(r["recipe_id"], []).append(
+                (r["item_id"], float(r["rate_per_min"]))
+            )
+            io_in_amounts.setdefault(r["recipe_id"], []).append(
+                (r["item_id"], float(r["amount_per_cycle"]), r.get("unit") or ITEM_UNIT)
+            )
+        else:
+            io_out.setdefault(r["recipe_id"], []).append(
+                (r["item_id"], float(r["rate_per_min"]))
+            )
 
     builds: set[str] = set()
     recipes: dict[RecipeId, Recipe] = {}
@@ -172,6 +203,7 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
             inputs=tuple(io_in.get(rid, ())),
             outputs=tuple(io_out.get(rid, ())),
             power=power,
+            input_amounts=tuple(io_in_amounts.get(rid, ())),
         )
 
     items: dict[ItemId, Item] = {}

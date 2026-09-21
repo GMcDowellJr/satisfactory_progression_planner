@@ -27,9 +27,33 @@ import collections
 import csv
 import pathlib
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP
 
 REF = pathlib.Path(__file__).resolve().parents[1] / "planning_data" / "game" / "reference"
 MAX_DEPTH = 64
+
+
+def _scaled_input_rate(amount_per_cycle: float, unit: str, cycles_per_min: float,
+                       multiplier: float) -> float:
+    """The game's scaled input rate: round the per-cycle amount, then rate it.
+
+    Reimplemented here rather than imported from `production_adapter.scenario`,
+    for the same reason the rest of this module reads the CSVs directly — it is a
+    check of the adapter, not a restatement of it. The rule is record 3.2.5:
+    nearest integer, halves away from zero, per input. Deliberate duplication; if
+    the two ever disagree, that disagreement is the point of this module.
+    """
+    if multiplier == 1.0:
+        return amount_per_cycle * cycles_per_min
+    if multiplier < 1.0:
+        raise ValueError(
+            "sub-1x multipliers need a declared floor rule (record 3.2.3); this "
+            "oracle does not carry one"
+        )
+    scaled = (Decimal(repr(amount_per_cycle)) * Decimal(repr(multiplier))).quantize(
+        Decimal(1), rounding=ROUND_HALF_UP
+    )
+    return float(scaled) * cycles_per_min
 
 
 class AmbiguousDemand(RuntimeError):
@@ -55,10 +79,17 @@ def _load(allowed_recipes: set[str] | None):
     prod = collections.defaultdict(list)
     cons = collections.defaultdict(list)
     for r in _rows("recipe_io.csv"):
-        (prod if r["direction"] == "output" else cons)[r["recipe_id"]].append(
-            (r["item_id"], float(r["rate_per_min"]))
-        )
-    is_alt = {r["recipe_id"]: r["is_alternate"] == "true" for r in _rows("recipes.csv")}
+        if r["direction"] == "output":
+            prod[r["recipe_id"]].append((r["item_id"], float(r["rate_per_min"])))
+        else:
+            cons[r["recipe_id"]].append(
+                (r["item_id"], float(r["amount_per_cycle"]), r.get("unit") or "items")
+            )
+    recipe_rows = _rows("recipes.csv")
+    cycles = {
+        r["recipe_id"]: 60.0 / float(r["manufacturing_duration_sec"]) for r in recipe_rows
+    }
+    is_alt = {r["recipe_id"]: r["is_alternate"] == "true" for r in recipe_rows}
     enabled = set(is_alt) if allowed_recipes is None else set(allowed_recipes)
     if allowed_recipes is None:
         enabled = {k for k, alt in is_alt.items() if not alt}
@@ -70,7 +101,7 @@ def _load(allowed_recipes: set[str] | None):
         for item, rate in prod[rid]:
             by_item[item].append((rid, rate))
     raw = {r["item_id"] for r in _rows("items.csv") if r["category"] == "resource"}
-    return by_item, cons, raw
+    return by_item, cons, raw, cycles
 
 
 def demand(
@@ -98,7 +129,7 @@ def demand(
     what "fixed recipe" means for a tree that branches. See
     docs/decisions/production_lp_formulation.md section 14.5.
     """
-    by_item, cons, raw = _load(allowed_recipes)
+    by_item, cons, raw, cycles = _load(allowed_recipes)
     multipliers: dict[str, float] = collections.defaultdict(float)
     raws: dict[str, float] = collections.defaultdict(float)
 
@@ -120,8 +151,9 @@ def demand(
         rid, out_rate = candidates[0]
         mult = rate / out_rate
         multipliers[rid] += mult
-        for in_item, in_rate in cons.get(rid, ()):
-            walk(in_item, in_rate * mult * input_multiplier, depth + 1)
+        for in_item, amount, unit in cons.get(rid, ()):
+            in_rate = _scaled_input_rate(amount, unit, cycles[rid], input_multiplier)
+            walk(in_item, in_rate * mult, depth + 1)
 
     walk(item_id, rate_per_min, 0)
     return OracleResult(dict(multipliers), dict(raws))

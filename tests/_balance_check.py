@@ -33,6 +33,7 @@ from __future__ import annotations
 import collections
 import csv
 import pathlib
+from decimal import Decimal, ROUND_HALF_UP
 
 REF = pathlib.Path(__file__).resolve().parents[1] / "planning_data" / "game" / "reference"
 
@@ -42,12 +43,44 @@ def _rows(name: str) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
-def _io():
+def _scaled_input_rate(amount_per_cycle: float, unit: str, cycles_per_min: float,
+                       multiplier: float) -> float:
+    """The game's scaled input rate: round the per-cycle amount, then rate it.
+
+    Reimplemented rather than imported, for the same reason this module reads the
+    CSVs directly. Record 3.2.5: nearest integer, halves away from zero, per
+    input. A scalar multiplier applied to a rate — what this module did until
+    2026-09-21 — cannot express it.
+    """
+    if multiplier == 1.0:
+        return amount_per_cycle * cycles_per_min
+    if multiplier < 1.0:
+        raise ValueError(
+            "sub-1x multipliers need a declared floor rule (record 3.2.3); this "
+            "check does not carry one"
+        )
+    scaled = (Decimal(repr(amount_per_cycle)) * Decimal(repr(multiplier))).quantize(
+        Decimal(1), rounding=ROUND_HALF_UP
+    )
+    return float(scaled) * cycles_per_min
+
+
+def _io(input_multiplier: float):
+    cycles = {
+        r["recipe_id"]: 60.0 / float(r["manufacturing_duration_sec"])
+        for r in _rows("recipes.csv")
+    }
     inputs = collections.defaultdict(list)
     outputs = collections.defaultdict(list)
     for r in _rows("recipe_io.csv"):
-        bucket = outputs if r["direction"] == "output" else inputs
-        bucket[r["recipe_id"]].append((r["item_id"], float(r["rate_per_min"])))
+        rid = r["recipe_id"]
+        if r["direction"] == "output":
+            outputs[rid].append((r["item_id"], float(r["rate_per_min"])))
+        else:
+            inputs[rid].append((r["item_id"], _scaled_input_rate(
+                float(r["amount_per_cycle"]), r.get("unit") or "items",
+                cycles[rid], input_multiplier,
+            )))
     resources = {r["item_id"] for r in _rows("items.csv") if r["category"] == "resource"}
     return inputs, outputs, resources
 
@@ -62,9 +95,10 @@ def violations(
 
     An empty list is the assertion. `input_multiplier` must match the scenario the
     response was solved under, because the LP consumed already-scaled inputs and
-    these CSVs are canonical.
+    these CSVs are canonical. It is applied to per-cycle amounts and rounded, per
+    record 3.2.5 — not multiplied into the rate.
     """
-    inputs, outputs, resources = _io()
+    inputs, outputs, resources = _io(input_multiplier)
     activities = {u.recipe_id: u.machine_equivalents for u in response.recipes}
     raw = {r.item_id: r.rate_per_min for r in response.raw_inputs}
     problems: list[str] = []
@@ -77,7 +111,7 @@ def violations(
         for item, rate in outputs.get(recipe_id, ()):
             produced[item] += rate * count
         for item, rate in inputs.get(recipe_id, ()):
-            consumed[item] += rate * input_multiplier * count
+            consumed[item] += rate * count
 
     for item, rate in raw.items():
         if item not in resources:
