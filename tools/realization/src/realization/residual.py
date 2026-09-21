@@ -27,20 +27,30 @@ Screw bus, 199/min demand against 40/min producers:
 Backing up is FLAT in machine count — with no drain, power is a function of
 throughput alone. Underclocking FALLS in machine count (convex power). Only
 running at 100% scales up, and it is a transient unless something drains R.
+
+Bodies written 2026-09-21. All nine rows of that table are reproduced by
+`tests/test_residual.py`, which is what the table was carried on the record for.
 """
 from __future__ import annotations
+
+import math
 
 from production_adapter.gamedata import Producer, ReferenceData
 
 from .contracts import (
     Bus, BusDeclaration, BusResidual, ClockCause, ClockDistribution, ClockMode,
-    Coverage, Disposition,
+    Coverage, Disposition, DispositionUnavailable, RealizationError,
+    WithdrawalBasis,
 )
 
 #: Satisfactory's producer power curve, P = P_base * (clock/100) ** exponent.
 #: The exponent is DATA — `Producer.power_exponent`, 1.321929 on all eleven
 #: producers — and is read from the producer, never hardcoded.
 POWER_IS_CONVEX_IN_CLOCK = True
+
+#: Comparison tolerance. A coverage verdict decided by float noise at the
+#: fifteenth decimal is not a verdict.
+EPS = 1e-9
 
 
 def power_at_clock(producer: Producer, clock_percent: float, machines: int) -> float:
@@ -52,8 +62,27 @@ def power_at_clock(producer: Producer, clock_percent: float, machines: int) -> f
     clock reference there is the comment "fractional, at 100% clock".
     `PowerReport` is therefore linear in machine equivalents, correct at 100%
     and wrong at any other clock. Patched here, where clock first enters.
+
+    REFUSES on a variable-power producer, and the refusal is a finding rather
+    than a limitation of this function. Converter, Particle Accelerator and
+    Quantum Encoder carry `base_power_mw = 0` in `production_buildings.csv`;
+    their real draw is a per-RECIPE range on `Recipe.power`, which this
+    signature cannot reach. Returning 0.0 would be a confident wrong answer —
+    silently free machines — so the figure is declined and the signature gap is
+    named. Widening the signature is a patch, not a body, and is not taken here.
     """
-    raise NotImplementedError
+    if machines < 0:
+        raise ValueError(f"machines must be >= 0, got {machines}")
+    if clock_percent < 0:
+        raise ValueError(f"clock must be >= 0, got {clock_percent}")
+    if producer.is_variable_power:
+        raise RealizationError(
+            f"{producer.producer_class} is variable-power: its draw is a range on "
+            "the RECIPE (Recipe.power), not base_power_mw, which the reference "
+            "layer carries as 0 for this producer. power_at_clock cannot reach it "
+            "from a Producer alone and declines rather than reporting 0.0 MW."
+        )
+    return producer.base_power_mw * (clock_percent / 100.0) ** producer.power_exponent * machines
 
 
 def power_backing_up(producer: Producer, machines: int, utilisation: float) -> float:
@@ -71,12 +100,20 @@ def power_backing_up(producer: Producer, machines: int, utilisation: float) -> f
     Assumes an idle producer draws ~0. NOT verified against the reference
     layer; a non-zero idle draw shrinks every gap above.
     """
-    raise NotImplementedError
+    if machines < 0:
+        raise ValueError(f"machines must be >= 0, got {machines}")
+    if not 0.0 <= utilisation <= 1.0 + EPS:
+        raise ValueError(f"utilisation must be in [0, 1], got {utilisation}")
+    if producer.is_variable_power:
+        raise RealizationError(
+            f"{producer.producer_class} is variable-power; see power_at_clock"
+        )
+    return producer.base_power_mw * machines * min(1.0, utilisation)
 
 
 def residual_of(bus_supply: float, bus_demand: float) -> float:
     """R = supply - demand, at the bus. Never per lane."""
-    raise NotImplementedError
+    return bus_supply - bus_demand
 
 
 def clock_for(
@@ -111,8 +148,70 @@ def clock_for(
     A4.2 narrows §4.5 from the other side: underclocking is also the ORDINARY
     way a build-material line is sized, and on the Iron Plate line it is a 20x
     power reduction rather than a marginal one.
+
+    The branch table above is followed exactly, including where it is odd: a
+    BACK_UP bus whose demand equals its supply gets (100.0, BACKPRESSURE) rather
+    than (100.0, FULL), even though `ClockCause.FULL` is commented "at 100%".
+    Overriding it looked tidier and was not taken — the table is the contract
+    P24 wrote deliberately, and a body is not the place to amend one.
     """
-    raise NotImplementedError
+    if machines < 1:
+        raise ValueError(f"{declaration.bus_id}: machines must be >= 1, got {machines}")
+    if supply_per_min <= 0:
+        raise ValueError(
+            f"{declaration.bus_id}: supply must be positive to derive a clock, "
+            f"got {supply_per_min}"
+        )
+
+    disposition = declaration.disposition
+    if disposition in (Disposition.SUNK, Disposition.WITHDRAWN):
+        return tuple((100.0, ClockCause.FULL) for _ in range(machines))
+
+    if disposition is Disposition.MATCHED:
+        withdrawal = declaration.withdrawal_per_min
+        if withdrawal is None:
+            # Unreachable through `BusDeclaration.__post_init__` (P29), and kept
+            # so that a declaration built by other means still refuses here
+            # rather than dividing by None.
+            raise RealizationError(
+                f"{declaration.bus_id}: MATCHED without withdrawal_per_min has "
+                "nothing to match"
+            )
+        clock = 100.0 * withdrawal / supply_per_min
+        if clock > 100.0 + EPS:
+            raise RealizationError(
+                f"{declaration.bus_id}: declared withdrawal {withdrawal}/min exceeds "
+                f"nameplate {supply_per_min}/min on {machines} machine(s), so the "
+                "line cannot be MATCHED at this machine count. Size it first."
+            )
+        return tuple((min(clock, 100.0), ClockCause.MATCHED) for _ in range(machines))
+
+    # BACK_UP from here.
+    fraction = min(1.0, demand_per_min / supply_per_min)
+    if declaration.clock_mode is ClockMode.BACKPRESSURE:
+        return tuple((fraction * 100.0, ClockCause.BACKPRESSURE) for _ in range(machines))
+
+    if declaration.clock_distribution is ClockDistribution.AVERAGED:
+        return tuple((fraction * 100.0, ClockCause.DECLARED) for _ in range(machines))
+
+    # SPLIT: n machines at 100% and one at the remainder. Power-suboptimal and
+    # reportable, which is the whole reason it is offered alongside AVERAGED.
+    #
+    # Machines past the ceil get 0.0, and that is the truthful report rather
+    # than a gap in the branch: §4 measures that building past the ceil under
+    # BACK_UP "costs build cost and footprint and nothing in power, and buys
+    # nothing", and under a declared SPLIT the surplus is exactly the machine
+    # that has nothing to do. A 0% clock is not buildable in game; that is the
+    # finding, not an evasion of it.
+    nameplate = supply_per_min / machines
+    equivalents = demand_per_min / nameplate
+    whole = min(machines, int(math.floor(equivalents + EPS)))
+    remainder = equivalents - whole
+    clocks = [100.0] * whole
+    if whole < machines:
+        clocks.append(min(100.0, remainder * 100.0))
+    clocks.extend([0.0] * (machines - len(clocks)))
+    return tuple((c, ClockCause.DECLARED) for c in clocks)
 
 
 def residual_for(
@@ -126,8 +225,47 @@ def residual_for(
     the reference layer (handoff open item 8). Refused rather than silently
     downgraded to BACK_UP, which would misreport both the residual's fate and
     whether the draw is stable.
+
+    R is `supply - automated_demand`. The declared withdrawal is NOT inside that
+    sum — `Bus` says so in as many words — because it does not size the bus; it
+    is what the residual has to cover, and `coverage_for` is where the two meet.
+    Folding it in here would make every coverage verdict compare a number
+    against itself.
     """
-    raise NotImplementedError
+    if declaration.disposition is Disposition.SUNK:
+        raise DispositionUnavailable(
+            f"{bus.bus_id}: SUNK routes the overflow to an AWESOME Sink, which is "
+            "absent from the reference layer. A4.2 narrows what that absence costs "
+            "— a build-material line reaches a constant draw through MATCHED — but "
+            "disposal of a genuine overflow still has no model."
+        )
+
+    residual = residual_of(bus.supply_per_min, bus.automated_demand_per_min)
+
+    # What the disposition costs against the cheapest alternative. Only one
+    # state has a cost to report, and computing power on the others would also
+    # drag variable-power producers into a refusal they have no reason to hit.
+    power_cost = 0.0
+    if (
+        declaration.disposition is Disposition.BACK_UP
+        and declaration.clock_mode is ClockMode.BACKPRESSURE
+        and bus.machines > 0
+        and bus.supply_per_min > 0
+    ):
+        recipe = data.recipes[bus.recipe_id]
+        producer = data.producers[recipe.producer_class]
+        utilisation = min(1.0, bus.automated_demand_per_min / bus.supply_per_min)
+        power_cost = power_backing_up(producer, bus.machines, utilisation) - power_at_clock(
+            producer, utilisation * 100.0, bus.machines
+        )
+
+    return BusResidual(
+        bus_id=bus.bus_id,
+        item_id=bus.item_id,
+        rate_per_min=residual,
+        disposition=declaration.disposition,
+        power_cost_mw=power_cost,
+    )
 
 
 def coverage_for(
@@ -144,7 +282,18 @@ def coverage_for(
     optimistic by an unmeasured amount. `Coverage` has no default basis for that
     reason — the caveat cannot be dropped on the way out.
     """
-    raise NotImplementedError
+    withdrawal = declaration.withdrawal_per_min
+    if withdrawal is None:
+        return None
+    residual = bus.residual.rate_per_min
+    return Coverage(
+        bus_id=bus.bus_id,
+        item_id=bus.item_id,
+        residual_per_min=residual,
+        withdrawal_per_min=withdrawal,
+        basis=WithdrawalBasis.GEOMETRIC_FLOOR,
+        covers=residual >= withdrawal - EPS,
+    )
 
 
 def draw_is_stable(declaration: BusDeclaration) -> bool:
@@ -161,5 +310,10 @@ def draw_is_stable(declaration: BusDeclaration) -> bool:
     dispose of. That is a real cost against the generator surface (respec
     §10.5) and it is now the only remaining one of the Sink's two reasons to
     matter, the other being disposal mode itself.
+
+    WITHDRAWN is deliberately NOT stable. Its producers run at 100% only while
+    the player is drawing the container down; §9 keeps player time out of the
+    model, so the tool cannot claim a duration for that and does not report the
+    draw as constant.
     """
-    raise NotImplementedError
+    return declaration.disposition in (Disposition.SUNK, Disposition.MATCHED)

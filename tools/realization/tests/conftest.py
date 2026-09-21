@@ -13,6 +13,8 @@ unnecessary.
 import pathlib
 import sys
 
+import pytest
+
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 
@@ -23,3 +25,28 @@ for p in (
     s = str(p)
     if s not in sys.path:
         sys.path.insert(0, s)
+
+
+@pytest.fixture(scope="session")
+def repo_root() -> pathlib.Path:
+    return REPO
+
+
+@pytest.fixture(scope="session")
+def reference(repo_root):
+    """Canonical reference data, 1x.
+
+    The bodies written on 2026-09-21 join recipe -> producer_class -> producer,
+    so the tests exercise the real join rather than a stub that cannot drift.
+    """
+    from production_adapter import gamedata
+
+    return gamedata.load(repo_root)
+
+
+@pytest.fixture(scope="session")
+def logistics(repo_root):
+    """`(capabilities, extraction_rates)` from `gamedata.load_logistics`."""
+    from production_adapter import gamedata
+
+    return gamedata.load_logistics(repo_root)
