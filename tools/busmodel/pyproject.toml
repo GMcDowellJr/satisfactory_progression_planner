@@ -1,0 +1,16 @@
+[project]
+name = "satisfactory-busmodel"
+version = "0.1.0"
+description = "Bus-level recompute against the reference layer: the oracle for the published bus figures."
+requires-python = ">=3.11"
+# No solver, directly or via an extra. `production_adapter` carries scipy under
+# its `lp` extra, so the base distribution is safe and the extra is not
+# requested; `tests/test_import_boundary.py` asserts both.
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

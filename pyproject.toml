@@ -35,9 +35,18 @@ package = false
 # collected is not a check — it is a fourth list, in the sense the provenance
 # manifest work settled on 2026-09-21. tools/realization/tests was added with
 # the realization layer; its conftest.py puts that package on sys.path so it
-# needs no editable install to collect.
+# needs no editable install to collect. tools/busmodel/tests followed, the same
+# way.
+#
+# Test FILE basenames must stay unique across these directories. None of them
+# carries an __init__.py, so pytest imports each test module under its bare
+# basename and two files with one name collide at collection — the whole run
+# errors out, not just the second file. Observed 2026-09-21 with a second
+# test_import_boundary.py, which is why busmodel's is named
+# test_busmodel_import_boundary.py.
 testpaths = [
     "tests",
     "tools/production_adapter/tests",
     "tools/realization/tests",
+    "tools/busmodel/tests",
 ]
