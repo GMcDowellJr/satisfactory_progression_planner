@@ -19,21 +19,23 @@ A layer that reads `effective_count` and cannot call `linprog` cannot become a
 second solver; the import restriction is asserted by inspection in the tests.
 """
 from .contracts import (
-    Bus, BusDeclaration, BusResidual, Capability, ClockCause, ClockDistribution,
-    ClockMode, ConsumerShare, CreditedFlowCycle, DesignTier, Disposition,
-    DispositionUnavailable, ExtractionRate, Lane, LaneInfeasible, LaneInput,
-    NodeDeclaration, ProjectedGoal, RealizationError, RealizationReport,
-    RealizationRequest, TierUnavailable,
+    Bus, BusDeclaration, BusId, BusNotDeclared, BusResidual, Capability,
+    ClockCause, ClockDistribution, ClockMode, ConsumerShare, Coverage,
+    CreditedFlowCycle, DesignTier, Disposition, DispositionUnavailable,
+    ExtractionRate, Lane, LaneInfeasible, LaneInput, NodeDeclaration,
+    PartitionIncomplete, ProjectedGoal, RealizationError, RealizationReport,
+    RealizationRequest, SourceEdge, TierUnavailable, WithdrawalBasis,
 )
 from .realize import credited_flow_order, project_goals, realize
 
 __all__ = [
-    "Bus", "BusDeclaration", "BusResidual", "Capability", "ClockCause",
-    "ClockDistribution", "ClockMode", "ConsumerShare", "CreditedFlowCycle",
-    "DesignTier", "Disposition", "DispositionUnavailable", "ExtractionRate",
-    "Lane", "LaneInfeasible", "LaneInput", "NodeDeclaration", "ProjectedGoal",
-    "RealizationError", "RealizationReport", "RealizationRequest",
-    "TierUnavailable",
+    "Bus", "BusDeclaration", "BusId", "BusNotDeclared", "BusResidual",
+    "Capability", "ClockCause", "ClockDistribution", "ClockMode",
+    "ConsumerShare", "Coverage", "CreditedFlowCycle", "DesignTier",
+    "Disposition", "DispositionUnavailable", "ExtractionRate", "Lane",
+    "LaneInfeasible", "LaneInput", "NodeDeclaration", "PartitionIncomplete",
+    "ProjectedGoal", "RealizationError", "RealizationReport",
+    "RealizationRequest", "SourceEdge", "TierUnavailable", "WithdrawalBasis",
     "credited_flow_order", "project_goals", "realize",
 ]
 __version__ = "0.1.0"

@@ -16,11 +16,20 @@ that knows the CSV column names"):
 
 Asserted by `tests/test_import_boundary.py`, not by this docstring.
 
-THE PRIMITIVE IS THE BUS, NOT THE LANE. Respec §5 treats a lane as belonging to
-one product; shared intermediates make that false — a starter base makes
-Reinforced Iron Plate and Rotors and both draw on one screw bus. A lane is a
-parallel producer line INSIDE a bus. See
+THE PRIMITIVE IS (item, producers, consumers, PARTITION). Respec §5 treats a lane
+as belonging to one product; shared intermediates make that false — a starter
+base makes Reinforced Iron Plate and Rotors and both draw on one screw bus. A
+lane is a parallel producer line INSIDE a bus. See
 docs/decisions/bus_allocation_backpressure_and_residual.md.
+
+THE PARTITION IS DECLARED, NOT DERIVED. The same item may run on several
+unconnected buses by choice: Iron Wire from Iron Ingot feeding Stitched Iron
+Plate is a different bus from Wire from Copper Ingot feeding Cable and the build
+stock, and their residuals DO NOT POOL. Bus record §1 derived isolation from
+consumer count — that rule is contradicted by
+docs/decisions/bus_level_recompute_and_alternate_crossover.md amendment 3, and
+the consumer set is now what a declared partition must COVER rather than what
+induces it.
 
 Rates are per minute throughout, matching the adapter. Machine counts here are
 INTEGER — this layer is where `MachineCount.effective_count` stops being
@@ -40,6 +49,9 @@ from production_adapter.gamedata import Capability, ExtractionRate
 DesignTier = int          # 0..9, declared by the caller
 CapabilityId = str        # belt_mk2, miner_mk1, pipeline_mk1, ...
 Mark = str                # "Mk.1" .. "Mk.6"
+#: Names one bus of one item. DECLARED by the caller, never derived: "wire_iron"
+#: and "wire_copper" are two buses of Wire and are different objects.
+BusId = str
 
 
 # --------------------------------------------------------------------------
@@ -47,25 +59,48 @@ Mark = str                # "Mk.1" .. "Mk.6"
 # --------------------------------------------------------------------------
 
 class Disposition(str, Enum):
-    """What drains a bus's residual. This is a STEADY STATE, not a transient.
+    """A bus's STEADY STATE. Declared PER BUS. What drains its residual follows.
 
-    A storage container draws no power and is a finite buffer: when it fills,
-    the producers feeding it pause. So "producers at 100% with stock
-    accumulating" is a transient of duration capacity/residual and is not a
-    state the tool reports. The fill dynamics are part of the game and are
-    deliberately not modelled.
+    Per-bus, not per-factory: several states run at once in one factory. The
+    production chain drains continuously with producers at 100% (WITHDRAWN)
+    while a build-material line either fills a container and pauses (BACK_UP) or
+    is clocked to its average draw (MATCHED). A residual without its own bus's
+    state is meaningless, which is how two documents computed R under different
+    states and mistook the difference for an error. See
+    bus_level_recompute_and_alternate_crossover.md amendment 3 A3.2, amendment 4
+    A4.2.
+
+    A storage container draws no power and is a finite buffer, so "producers at
+    100% with stock accumulating and nothing withdrawing" is a transient of
+    duration capacity/residual and is not a state the tool reports. The fill
+    dynamics are part of the game and are deliberately not modelled.
     """
 
-    BACK_UP = "back_up"      # no drain. Producers idle at demand/supply.
-                             # Power LINEAR in utilisation. No stock. Default:
-                             # this is what an unattended factory does.
+    BACK_UP = "back_up"      # no drain. Producers idle at demand/supply. Power
+                             # LINEAR in utilisation. The line fills its
+                             # container and pauses, so its draw on the upstream
+                             # bus OSCILLATES between nameplate and zero and has
+                             # to be sized against the peak.
     SUNK = "sunk"            # smart splitter -> storage, overflow -> AWESOME
                              # Sink. Producers never stop, draw is CONSTANT.
                              # Blocked: the Sink is absent from the reference
-                             # layer (handoff open item 8).
-    WITHDRAWN = "withdrawn"  # the player drains the container. NOT emitted —
-                             # it depends on player behaviour and §9 keeps
-                             # player time out of the model.
+                             # layer. A4.2 NARROWS what that absence costs — it
+                             # no longer gates constant power, only disposal of
+                             # a genuine overflow.
+    WITHDRAWN = "withdrawn"  # drained continuously, so producers run at 100%
+                             # and the residual is rounding slop — small,
+                             # sawtoothed, often exactly zero. This is the
+                             # production chain's state and every figure in A3.5
+                             # was computed under it. §9 still keeps player TIME
+                             # out of the model: a state is not a duration.
+    MATCHED = "matched"      # A4.2. Underclocked to the AVERAGE withdrawal rate.
+                             # Production equals average consumption, so nothing
+                             # overflows and nothing pauses; power is CONSTANT
+                             # and the container buffers the player's burstiness
+                             # rather than an overflow. Needs nothing the
+                             # reference layer is missing. On the Iron Plate
+                             # build line, 0.19 MW against 4.00, and 4/min of
+                             # ingot draw against a 40/min peak.
 
 
 class ClockMode(str, Enum):
@@ -96,8 +131,44 @@ class ClockDistribution(str, Enum):
 
 
 @dataclass(frozen=True)
+class SourceEdge:
+    """Which bus this bus draws one of its inputs from. DECLARATION.
+
+    This is where the partition actually lives. Two buses of the same item are
+    distinguishable only because their consumers name different sources: the
+    Stitched Iron Plate line declares `SourceEdge("Wire", "wire_iron")` and the
+    Cable line declares `SourceEdge("Wire", "wire_copper")`, and nothing in the
+    solve says which is which.
+
+    `source_bus_id=None` means the input is out of scope — raw, or not modelled.
+    """
+
+    input_item: ItemId
+    source_bus_id: BusId | None
+
+
+@dataclass(frozen=True)
 class BusDeclaration:
-    """What the caller states about one item's bus.
+    """What the caller states about ONE BUS. Keyed by `bus_id`, not by item.
+
+    Item-keying was the one-bus-per-item assumption in type form: two Wire
+    declarations under it were accepted and the second was silently unreachable.
+
+    Two sizing bases, and the model must not conflate them:
+
+        residual item        has in-scope consumers. Sized from derived demand:
+                             ceil(demand / rate) + extra_producers. R is rounding
+                             leftover and may be exactly zero, which for a
+                             dedicated intermediate is the design working
+        build-material line  `withdrawal_per_min` is set. Sized from a DECLARED
+                             rate — the §8.2 geometric estimate, footprint-
+                             derived with one extra 8m foundation on the short
+                             axis, and declared by its author as a FLOOR (A3.3).
+                             Two ways to run it, and `disposition` picks:
+                               BACK_UP  whole machines, fills and pauses.
+                                        Oscillating draw sized against nameplate
+                               MATCHED  one machine clocked to the withdrawal.
+                                        Constant draw, no overflow, no pause
 
     Storage rate is a MACHINE COUNT, not a boolean. The residual is quantised —
     at the ceil it is whatever rounding left, and it cannot be raised except by
@@ -109,15 +180,32 @@ class BusDeclaration:
     Meaningful storage costs a machine and arrives 40/min at a time.
     """
 
+    bus_id: BusId
     item_id: ItemId
+    #: Which bus supplies each input. An input absent from this tuple is out of
+    #: scope. Declaration, never derivation.
+    sources: tuple[SourceEdge, ...] = ()
     extra_producers: int = 0
+    #: Set on a build-material line, `None` on a residual item. Units are per
+    #: minute and the basis is `WithdrawalBasis.GEOMETRIC_FLOOR` — see
+    #: `Coverage`, which cannot be constructed without saying so.
+    withdrawal_per_min: float | None = None
     disposition: Disposition = Disposition.BACK_UP
     clock_mode: ClockMode = ClockMode.BACKPRESSURE
     clock_distribution: ClockDistribution = ClockDistribution.AVERAGED
 
     def __post_init__(self) -> None:
         if self.extra_producers < 0:
-            raise ValueError(f"{self.item_id}: extra_producers must be >= 0")
+            raise ValueError(f"{self.bus_id}: extra_producers must be >= 0")
+        if self.withdrawal_per_min is not None and self.withdrawal_per_min < 0:
+            raise ValueError(f"{self.bus_id}: withdrawal_per_min must be >= 0")
+        seen = [e.input_item for e in self.sources]
+        if len(seen) != len(set(seen)):
+            raise ValueError(f"{self.bus_id}: an input may name at most one source bus")
+
+    @property
+    def is_build_material_line(self) -> bool:
+        return self.withdrawal_per_min is not None
 
 
 @dataclass(frozen=True)
@@ -143,11 +231,28 @@ class RealizationRequest:
     nodes: tuple[NodeDeclaration, ...] = ()
     trunk_capability: CapabilityId | None = None
 
-    def declaration_for(self, item_id: ItemId) -> BusDeclaration:
+    def __post_init__(self) -> None:
+        ids = [b.bus_id for b in self.buses]
+        if len(ids) != len(set(ids)):
+            dupes = sorted({i for i in ids if ids.count(i) > 1})
+            raise ValueError(f"duplicate bus_id: {dupes}")
+
+    def declaration_for(self, bus_id: BusId) -> BusDeclaration:
+        """The declaration for one bus.
+
+        RAISES on an unknown bus rather than defaulting one into existence.
+        Under a declared partition a default is not a sensible fallback: which
+        bus an item runs on is precisely what the caller states, and inventing
+        one re-merges the buses the caller split.
+        """
         for b in self.buses:
-            if b.item_id == item_id:
+            if b.bus_id == bus_id:
                 return b
-        return BusDeclaration(item_id=item_id)
+        raise BusNotDeclared(bus_id)
+
+    def declarations_for_item(self, item_id: ItemId) -> tuple[BusDeclaration, ...]:
+        """Every declared bus of one item. Length > 1 is ordinary, not an error."""
+        return tuple(b for b in self.buses if b.item_id == item_id)
 
 
 # --------------------------------------------------------------------------
@@ -162,7 +267,13 @@ class ClockCause(str, Enum):
     clock is a choice or a constraint."""
 
     FULL = "full"                    # at 100%
-    DECLARED = "declared"            # ClockMode.EXPLICIT set it
+    DECLARED = "declared"            # ClockMode.EXPLICIT set a CLOCK
+    MATCHED = "matched"              # derived from a declared RATE: the clock
+                                     # that makes output equal the declared
+                                     # withdrawal. Distinct from DECLARED
+                                     # because the caller stated a draw, not a
+                                     # percentage, and the percentage moves when
+                                     # the scenario multiplier does
     BACKPRESSURE = "backpressure"    # derived: supply exceeds bus demand
     RATIO_LIMITED = "ratio_limited"  # starved — the branch cannot carry the
                                      # draw, or the bus is in deficit and
@@ -174,6 +285,10 @@ class LaneInput:
     item_id: ItemId
     rate_per_min: float
     carrier: Capability   # minimum sufficient Mk at the declared tier
+    #: Which bus this draw lands on. `None` = out of scope (raw, or not
+    #: modelled). Without it a draw on Wire cannot be attributed to wire_iron or
+    #: wire_copper and the two buses re-merge downstream.
+    source_bus_id: BusId | None = None
 
 
 @dataclass(frozen=True)
@@ -202,11 +317,21 @@ class ConsumerShare:
     splitter trees tie constantly. And in the supply-adequate case the topology
     does not need to encode the ratio at all: backpressure converges to each
     consumer's draw on any connected layout with adequate belts.
+
+    `recipe_id=None` is player withdrawal for construction — a real consumer
+    (A3.1 names it as the third on the Wire bus) with no recipe behind it.
     """
 
-    recipe_id: RecipeId
+    recipe_id: RecipeId | None
     draw_per_min: float
-    share: float          # draw / total bus demand
+    #: draw / total AUTOMATED bus demand. Withdrawal is NOT in the denominator
+    #: and carries `None`: it is covered by the residual rather than sized into
+    #: the bus, which is what makes A3.5's `R >= withdraw` verdict meaningful.
+    share: float | None
+
+    @property
+    def is_withdrawal(self) -> bool:
+        return self.recipe_id is None
 
 
 @dataclass(frozen=True)
@@ -220,8 +345,11 @@ class BusResidual:
     is already inside the demand sum and what is left is dead by construction.
     """
 
+    bus_id: BusId
     item_id: ItemId
     rate_per_min: float
+    #: The bus's steady state. REQUIRED and never defaulted — this field is the
+    #: "no stateless residual" tripwire in type form.
     disposition: Disposition
     #: Power the disposition costs against the cheapest alternative. Under
     #: BACK_UP this is the convex saving an explicit clock would have made;
@@ -231,12 +359,27 @@ class BusResidual:
 
 @dataclass(frozen=True)
 class Bus:
-    """(item, producer set, consumer set). The primitive."""
+    """(item, producers, consumers, PARTITION). The primitive.
 
+    Two buses of one item are DIFFERENT OBJECTS and their residuals do not pool.
+    Grouping a report's buses by `item_id` re-merges what the caller declared
+    apart — on the worked case that turns (wire_iron R 20.62, wire_copper R
+    16.00) into a single R 13.12 on 30 machines instead of 31. The arithmetic is
+    fine; it describes a factory nobody built.
+    """
+
+    bus_id: BusId
     item_id: ItemId
     recipe_id: RecipeId
     supply_per_min: float
-    demand_per_min: float
+    #: DERIVED in-scope draw from this bus's consumers. Not declared — that was
+    #: A2.1's standing half, and the config's `automated_demand_per_min` field
+    #: is the defect it names.
+    automated_demand_per_min: float
+    #: DECLARED player withdrawal, 0.0 on a residual item. Deliberately NOT
+    #: summed into `automated_demand_per_min`: it does not size the bus, it is
+    #: what the residual has to cover.
+    withdrawal_per_min: float
     lanes: tuple[Lane, ...]
     consumers: tuple[ConsumerShare, ...]
     residual: BusResidual
@@ -246,23 +389,48 @@ class Bus:
         return sum(l.machines for l in self.lanes)
 
     @property
-    def is_isolable(self) -> bool:
-        """One consumer can be isolated; two or more must merge. Derived, not
-        declared — a rejoin point is a multi-consumer bus."""
-        return len(self.consumers) <= 1
-
-    @property
     def in_deficit(self) -> bool:
-        """Supply below demand. The ONLY case where splitter geometry decides
-        outcomes, because nobody backs up and the nominal ratio picks who
-        starves. Adding one producer removes the problem rather than solving
+        """Supply below automated demand. The ONLY case where splitter geometry
+        decides outcomes, because nobody backs up and the nominal ratio picks
+        who starves. Adding one producer removes the problem rather than solving
         it."""
-        return self.supply_per_min < self.demand_per_min - 1e-9
+        return self.supply_per_min < self.automated_demand_per_min - 1e-9
 
 
 # --------------------------------------------------------------------------
 # reporting
 # --------------------------------------------------------------------------
+
+class WithdrawalBasis(str, Enum):
+    """Where a declared withdrawal rate came from. There is currently one."""
+
+    GEOMETRIC_FLOOR = "geometric_floor"
+    #: §8.2's footprint-derived estimate plus one extra 8m foundation on the
+    #: short axis for movement and splitters. Declared by its author as a FLOOR
+    #: (A3.3), so any verdict computed against it is optimistic by an unmeasured
+    #: amount.
+
+
+@dataclass(frozen=True)
+class Coverage:
+    """Whether a bus's residual covers its declared withdrawal.
+
+    `basis` has NO DEFAULT, deliberately. A3.3 makes the floor caveat a
+    labelling requirement, and a labelling requirement routed through
+    `RealizationReport.warnings` is free text that nothing can assert. Here the
+    verdict cannot be constructed without stating what it was measured against,
+    which is the repo's standing rule that a structural guardrail beats a policy.
+
+    `covers=True` therefore means "covers the floor", never "covers".
+    """
+
+    bus_id: BusId
+    item_id: ItemId
+    residual_per_min: float
+    withdrawal_per_min: float
+    basis: WithdrawalBasis
+    covers: bool
+
 
 @dataclass(frozen=True)
 class ProjectedGoal:
@@ -282,6 +450,9 @@ class RealizationReport:
     projections: tuple[ProjectedGoal, ...]
     total_power_mw: float
     design_tier: DesignTier
+    #: One entry per build-material line. Empty is not "everything covers" — it
+    #: is "no line declared a withdrawal". Never a string in `warnings`.
+    coverage: tuple[Coverage, ...] = field(default_factory=tuple)
     #: An alternate recipe is a RE-WIRING event, not only a cheaper recipe:
     #: Stitched Iron Plate removes Reinforced Iron Plate from the screw bus
     #: entirely (199 -> 124/min). A report is valid for a RECIPE SET, and these
@@ -323,4 +494,27 @@ class DispositionUnavailable(RealizationError):
     SUNK requires the AWESOME Sink, absent from the reference layer. Refused by
     name rather than silently downgraded to BACK_UP, which would misreport both
     the residual's fate and the power draw's stability.
+
+    NARROWED by amendment 4. This is no longer the only route to a constant
+    draw: a build-material line reaches one through MATCHED, which needs nothing
+    that is missing. The refusal now bites only on a line with a genuine
+    overflow to dispose of.
+    """
+
+
+class BusNotDeclared(RealizationError):
+    """A bus was referenced that the request does not declare.
+
+    Raised rather than defaulted. Under a declared partition, defaulting an
+    unknown bus into existence re-merges exactly what the caller split.
+    """
+
+
+class PartitionIncomplete(RealizationError):
+    """The declared partition does not cover the consumer set exactly.
+
+    A consumer claimed by no declared bus, or by more than one. This is what
+    replaces `Bus.is_isolable`: the partition is not derived from the consumer
+    count, but a declared partition is CHECKED against the consumer set, and a
+    gap is refused by name rather than silently merged.
     """

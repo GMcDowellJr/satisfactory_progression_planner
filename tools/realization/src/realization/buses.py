@@ -28,11 +28,11 @@ rounding rule has a LAYOUT consequence, not only a cost one.
 """
 from __future__ import annotations
 
-from production_adapter.contracts import ItemId, RecipeId, SolveResponse
+from production_adapter.contracts import RecipeId, SolveResponse
 from production_adapter.gamedata import Capability, ReferenceData
 
 from .contracts import (
-    Bus, ConsumerShare, Lane, RealizationRequest,
+    Bus, BusId, ConsumerShare, Lane, RealizationRequest,
 )
 
 
@@ -90,12 +90,17 @@ def decompose(
     raise NotImplementedError
 
 
-def partition(
+def consumer_shares(
     response: SolveResponse,
     data: ReferenceData,
-    item_id: ItemId,
+    request: RealizationRequest,
+    bus_id: BusId,
 ) -> tuple[ConsumerShare, ...]:
-    """Every consumer's claim on one item, as ratios summing to 1.
+    """Every consumer's claim on ONE BUS, as ratios over automated demand.
+
+    Renamed from `partition`, which after amendment 3 means the bus partition —
+    a declaration this function does not make. Keyed by bus rather than item,
+    because two buses of one item have different consumers by construction.
 
     Measured example, scenario of record, one base assembler each of
     Reinforced Iron Plate and Rotor:
@@ -123,10 +128,18 @@ def buses_from_response(
     request: RealizationRequest,
     capabilities: tuple[Capability, ...],
 ) -> tuple[Bus, ...]:
-    """Every bus in the solve, in reverse topological order of the credited flow.
+    """Every DECLARED bus, in reverse topological order of the credited flow.
+
+    AUTHORITY: `request.buses` enumerates the buses. The response supplies flows
+    into them and contains no partition — nothing in a solve says that Wire runs
+    as two unconnected buses, because that is a design choice and not a property
+    of the recipe set.
 
     Reads `RecipeUse.machine_equivalents` and `ItemFlow`, and nothing else from
     the response. Does not re-derive the solve.
+
+    Raises `PartitionIncomplete` when a consumer of a declared item is claimed
+    by no declared bus or by more than one.
     """
     raise NotImplementedError
 

@@ -34,7 +34,7 @@ from production_adapter.gamedata import Producer, ReferenceData
 
 from .contracts import (
     Bus, BusDeclaration, BusResidual, ClockCause, ClockDistribution, ClockMode,
-    Disposition,
+    Coverage, Disposition,
 )
 
 #: Satisfactory's producer power curve, P = P_base * (clock/100) ** exponent.
@@ -87,19 +87,30 @@ def clock_for(
 ) -> tuple[tuple[float, ClockCause], ...]:
     """Per-machine (clock, cause). One entry per machine.
 
-        disposition SUNK / WITHDRAWN    every machine 100%, cause FULL
+        SUNK / WITHDRAWN                every machine 100%, cause FULL
+        MATCHED                         withdrawal / nameplate, cause MATCHED
         BACK_UP + BACKPRESSURE          demand/supply, cause BACKPRESSURE
         BACK_UP + EXPLICIT, AVERAGED    demand/supply, cause DECLARED
         BACK_UP + EXPLICIT, SPLIT       n at 100% + remainder, cause DECLARED
 
-    The cause is not decoration. A lane at 96.8% because a splitter ratio
-    starved it (RATIO_LIMITED) and a lane at 96.8% because the caller set it
-    (DECLARED) are different facts, and respec §4.2's "the toggle never
-    touches geometry" holds only for the second.
+    MATCHED takes its clock from `declaration.withdrawal_per_min`, not from the
+    bus demand: the point of the state is that the line's output IS the declared
+    average draw. A MATCHED declaration without a withdrawal rate has nothing to
+    match and is refused.
 
-    Backpressure already makes a lane exact, so an explicit clock buys the
-    convex power saving and nothing else — correcting respec §4.5, which holds
-    that underclocking is the only lever that makes a lane exact.
+    The cause is not decoration. A lane at 96.8% because a splitter ratio
+    starved it (RATIO_LIMITED), because the caller set that percentage
+    (DECLARED), and because the caller declared a rate that works out to 96.8%
+    here (MATCHED) are three different facts, and only the second and third
+    survive a change of scenario multiplier unchanged in kind. Respec §4.2's
+    "the toggle never touches geometry" holds for DECLARED and MATCHED.
+
+    Backpressure already makes a lane exact, so under BACK_UP an explicit clock
+    buys the convex power saving and nothing else — correcting respec §4.5,
+    which holds that underclocking is the only lever that makes a lane exact.
+    A4.2 narrows §4.5 from the other side: underclocking is also the ORDINARY
+    way a build-material line is sized, and on the Iron Plate line it is a 20x
+    power reduction rather than a marginal one.
     """
     raise NotImplementedError
 
@@ -119,13 +130,36 @@ def residual_for(
     raise NotImplementedError
 
 
+def coverage_for(
+    bus: Bus,
+    declaration: BusDeclaration,
+) -> Coverage | None:
+    """Whether this bus's residual covers its declared withdrawal.
+
+    `None` on a residual item — a bus with no declared withdrawal has nothing to
+    cover, which is different from covering zero.
+
+    The verdict carries its basis because it has to: the withdrawal rate is
+    §8.2's geometric estimate, declared by its author as a FLOOR, so `covers` is
+    optimistic by an unmeasured amount. `Coverage` has no default basis for that
+    reason — the caveat cannot be dropped on the way out.
+    """
+    raise NotImplementedError
+
+
 def draw_is_stable(declaration: BusDeclaration) -> bool:
     """Whether this bus presents a constant power draw.
 
-    Only SUNK does. Under BACK_UP the producers oscillate between running and
+    SUNK and MATCHED. Under BACK_UP the producers oscillate between running and
     paused as belts fill and drain, so the draw fluctuates and has to be sized
-    against its peak; a sunk overflow presents a constant one. That is a real
-    cost against the generator surface (respec §10.5) and is the second reason
-    the Sink's absence matters — the first being disposal mode.
+    against its peak; SUNK never stops and MATCHED never needs to.
+
+    A4.2 is what makes this two branches instead of one, and the consequence
+    runs the other way too: constant power for a BUILD-MATERIAL line no longer
+    depends on the AWESOME Sink, which is absent from the reference layer. The
+    Sink still gates constant power for a line with a genuine overflow to
+    dispose of. That is a real cost against the generator surface (respec
+    §10.5) and it is now the only remaining one of the Sink's two reasons to
+    matter, the other being disposal mode itself.
     """
     raise NotImplementedError

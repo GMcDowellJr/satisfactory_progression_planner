@@ -26,7 +26,7 @@ from production_adapter.contracts import ItemId, SolveResponse
 from production_adapter.gamedata import ReferenceData
 
 from .contracts import (
-    Bus, Capability, ExtractionRate, ProjectedGoal, RealizationReport,
+    Bus, BusId, Capability, ExtractionRate, ProjectedGoal, RealizationReport,
     RealizationRequest,
 )
 
@@ -50,19 +50,24 @@ def realize(
 def credited_flow_order(
     response: SolveResponse,
     data: ReferenceData,
-) -> tuple[str, ...]:
-    """Recipe ids in reverse topological order of the CREDITED flow graph.
+    request: RealizationRequest,
+) -> tuple[BusId, ...]:
+    """BUS ids in reverse topological order of the CREDITED flow graph.
+
+    Bus ids, not recipe ids. Two buses of the same item — and here, of the same
+    recipe — are distinct nodes with distinct draws, so a recipe-keyed order
+    cannot express the graph. The edges come from each declaration's `sources`.
 
     Credited means byproducts are edges too: crediting a byproduct against
     demand adds an edge from its producer to every consumer of that item. The
     recipe graph can be acyclic while the credited graph is not, which is
     exactly the case this must detect.
 
-    Raises `CreditedFlowCycle` naming the item. It is refused, not iterated
-    toward — on a cycle the update map is non-monotone (overflow is a sawtooth
-    in demand and enters with a negative sign), and no termination argument is
-    available. This is the standing `_demand_oracle` defect made explicit
-    rather than a new restriction.
+    Raises `CreditedFlowCycle` naming the BUS and the item. It is refused, not
+    iterated toward — on a cycle the update map is non-monotone (overflow is a
+    sawtooth in demand and enters with a negative sign), and no termination
+    argument is available. This is the standing `_demand_oracle` defect made
+    explicit rather than a new restriction.
     """
     raise NotImplementedError
 
