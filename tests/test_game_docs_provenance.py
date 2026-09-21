@@ -7,23 +7,33 @@ import csv
 import hashlib
 import os
 import pathlib
+import re
 
 import pytest
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 STAMP = REPO / "planning_data" / "provenance" / "game_docs_source.csv"
+MANIFEST = REPO / "planning_data" / "provenance" / "reference_tables.csv"
 REF = REPO / "planning_data" / "game" / "reference"
-
-STAMPED_TABLES = [
-    "recipes.csv", "recipe_io.csv", "recipe_producers.csv", "items.csv",
-    "production_buildings.csv", "recipe_variable_power.csv",
-    "extraction_buildings.csv", "extraction_rates.csv", "resource_extraction_map.csv",
-]
+SNAPSHOT_README = (
+    REPO / "planning_data" / "game" / "source_snapshots" / "docs_a81d250e96aa" / "README.md"
+)
 
 
 def _rows(path):
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
+
+
+MANIFEST_ROWS = _rows(MANIFEST)
+
+#: Read from the manifest, not maintained here. Until 2026-09-21 this module,
+#: tools/check_game_docs_provenance.py and the snapshot README each kept their
+#: own copy, and the copies had already diverged: seven tables carried the
+#: snapshot's game_build_id and were in none of them. The manifest is data, not
+#: the tool under test, so reading it costs no independence — the assertions
+#: below are still this module's own.
+STAMPED_TABLES = [r["table"] for r in MANIFEST_ROWS if r["stamp_checked"] == "true"]
 
 
 @pytest.fixture(scope="module")
@@ -87,6 +97,93 @@ def test_derived_tables_carry_the_stamped_build(stamp, table):
     assert builds == {stamp["game_build_id"]}, (
         f"{table} spans {sorted(builds)}, stamp is {stamp['game_build_id']} — "
         "re-derive after the game patch"
+    )
+
+
+def test_the_manifest_declares_every_table_and_no_phantoms():
+    """The loop-closing check. Without it a manifest is just a fourth list.
+
+    A table added to the reference layer and not declared, or declared and not
+    present, fails here rather than being silently missed at the next game patch —
+    which is exactly what happened to the seven undeclared tables found on
+    2026-09-21.
+    """
+    on_disk = {p.name for p in REF.glob("*.csv")}
+    declared = {r["table"] for r in MANIFEST_ROWS}
+    assert declared - on_disk == set(), f"declared but absent: {sorted(declared - on_disk)}"
+    assert on_disk - declared == set(), (
+        f"present but undeclared: {sorted(on_disk - declared)} — "
+        f"add them to {MANIFEST.name} with their provenance"
+    )
+
+
+def test_manifest_paths_agree_with_table_names():
+    for r in MANIFEST_ROWS:
+        assert r["path"] == f"planning_data/game/reference/{r['table']}", r["table"]
+        assert (REPO / r["path"]).is_file(), r["path"]
+
+
+def test_every_stamped_table_actually_carries_a_build_id():
+    """stamp_checked is a claim about the file. Verify it rather than trusting it."""
+    for r in MANIFEST_ROWS:
+        if r["stamp_checked"] != "true":
+            continue
+        with open(REF / r["table"], encoding="utf-8-sig", newline="") as f:
+            cols = csv.DictReader(f).fieldnames or []
+        assert "game_build_id" in cols, f"{r['table']} is stamp_checked but has no such column"
+
+
+def test_an_unstamped_table_carrying_a_build_id_must_say_why():
+    """The game_builds.csv case: a build id used as data, not as provenance.
+
+    Any future table in that shape needs a stated reason, so the exemption
+    cannot spread by copying.
+    """
+    for r in MANIFEST_ROWS:
+        if r["stamp_checked"] == "true":
+            continue
+        with open(REF / r["table"], encoding="utf-8-sig", newline="") as f:
+            cols = csv.DictReader(f).fieldnames or []
+        if "game_build_id" in cols:
+            assert r["note"].strip(), (
+                f"{r['table']} carries game_build_id but is not stamp-checked "
+                "and gives no reason"
+            )
+
+
+def test_provenance_is_a_closed_vocabulary():
+    """A manifest with free-text provenance drifts the way the three lists did.
+
+    snapshot  derived from the pinned en-US.json    (stamp-checked)
+    world     from the world extraction / map actors, build 502094
+    wiki      satisfactory.wiki.gg
+    document  an external markdown source the rows cite themselves
+    project   defined by this project; no external source
+    registry  carries a build id as a key, not as a provenance stamp
+    """
+    allowed = {"snapshot", "world", "wiki", "document", "project", "registry"}
+    seen = {r["provenance"] for r in MANIFEST_ROWS}
+    assert seen <= allowed, f"unknown provenance: {sorted(seen - allowed)}"
+    assert all(r["stamp_checked"] in ("true", "false") for r in MANIFEST_ROWS)
+
+
+def test_every_declared_emitter_exists():
+    for r in MANIFEST_ROWS:
+        e = r["emitter"].strip()
+        if e:
+            assert (REPO / e).is_file(), f"{r['table']} names a missing emitter: {e}"
+
+
+def test_the_snapshot_readme_matches_the_manifest():
+    """The README is prose and cannot import. This is what keeps it honest."""
+    if not SNAPSHOT_README.is_file():
+        pytest.skip("snapshot README not present")
+    text = SNAPSHOT_README.read_text(encoding="utf-8")
+    listed = set(re.findall(r"game/reference/([A-Za-z0-9_]+\.csv)", text))
+    expected = {r["table"] for r in MANIFEST_ROWS if r["provenance"] == "snapshot"}
+    assert listed == expected, (
+        f"README lists {sorted(listed - expected)} extra, "
+        f"{sorted(expected - listed)} missing"
     )
 
 

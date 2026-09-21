@@ -51,9 +51,16 @@ def test_the_two_directions_observed_in_game():
 def test_halves_go_away_from_zero_not_to_even():
     """Record 3.2.5 adopted half-away-from-zero. `round()` would give 2 here.
 
-    UNOBSERVED in game: 3.2.4's reads were 1.25, 3.75 and 15, none of them a tie.
-    Storage review 10.3 proposes the two-building read that settles it. This test
-    asserts the adopted rule, not a measurement.
+    OBSERVED in game 2026-09-21, 1.25x save on 1.2.4.0 CL#502094:
+    Recipe_Cable_C costs 2 Wire at 1x and reads 3 at 1.25x, so 2.5 rounds up.
+    With 3.2.4's 1.25 -> 1, 3.75 -> 4 and 12 -> 15, the rule is fully
+    determined: half-to-even, half-down and truncation all give 2 here, and
+    ceiling is ruled out by the 1.25 -> 1 reading.
+
+    Storage review 10.3's two-building probe is VOID and is not the source:
+    building costs do not scale with the multiplier at all, so a building's
+    cost of 2 carries no information about rounding. The 6.0 -> 8.0 case
+    below follows from the confirmed rule and is not itself observed.
     """
     s = Scenario(recipe_input_multiplier=1.25)
     assert s.apply_input_amount(2.0) == pytest.approx(3.0)     # 2.5 -> 3, not 2

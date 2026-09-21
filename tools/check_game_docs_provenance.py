@@ -38,22 +38,39 @@ import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 STAMP = REPO / "planning_data" / "provenance" / "game_docs_source.csv"
+MANIFEST = REPO / "planning_data" / "provenance" / "reference_tables.csv"
 BUILDS = REPO / "planning_data" / "game" / "reference" / "game_builds.csv"
 CHUNK = 1 << 20
 
 OK, DRIFT, MISSING, STAMP_ERR = 0, 1, 2, 3
 
-DERIVED = [
-    "planning_data/game/reference/recipes.csv",
-    "planning_data/game/reference/recipe_io.csv",
-    "planning_data/game/reference/recipe_producers.csv",
-    "planning_data/game/reference/items.csv",
-    "planning_data/game/reference/production_buildings.csv",
-    "planning_data/game/reference/recipe_variable_power.csv",
-    "planning_data/game/reference/extraction_buildings.csv",
-    "planning_data/game/reference/extraction_rates.csv",
-    "planning_data/game/reference/resource_extraction_map.csv",
-]
+def read_manifest() -> list[dict]:
+    """Every table in the reference layer, and where each one comes from.
+
+    `planning_data/provenance/reference_tables.csv` is the SINGLE declaration.
+    This tool, `tests/test_game_docs_provenance.py` and the snapshot README all
+    read it rather than keeping their own copy.
+
+    Before 2026-09-21 there were three hand-maintained copies and they had
+    already diverged: seven tables carried the snapshot's `game_build_id` and
+    appeared in none of them, including the whole schematic layer. A game patch
+    would have named nine stale tables and silently omitted seven.
+    """
+    if not MANIFEST.is_file():
+        sys.exit(f"MANIFEST: missing at {MANIFEST}; the reference layer is undeclared")
+    with open(MANIFEST, encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        sys.exit(f"MANIFEST: {MANIFEST} declares no tables")
+    return rows
+
+
+def derived_tables() -> tuple[list[dict], list[dict]]:
+    """Snapshot-derived tables, split by whether a script can re-emit them."""
+    snapshot = [r for r in read_manifest() if r["provenance"] == "snapshot"]
+    script = [r for r in snapshot if r["emitter"].strip()]
+    manual = [r for r in snapshot if not r["emitter"].strip()]
+    return script, manual
 
 
 def sha256_of(path: pathlib.Path) -> tuple[str, int]:
@@ -117,12 +134,14 @@ def restamp(stamp: dict, path: pathlib.Path, sha: str, size: int) -> None:
         w = csv.DictWriter(f, fieldnames=list(new))
         w.writeheader()
         w.writerow(new)
+    script, manual = derived_tables()
     print(f"\nrestamped -> {new['game_build_id']}")
     print("Still owed, none of which this did for you:")
     print(f"  1. copy the new file to planning_data/game/source_snapshots/{new['game_build_id']}/")
     print("     and set repo_copy_path to it (it was cleared, not repointed)")
     print("  2. add a row for the new build to game_builds.csv")
-    print("  3. re-derive and re-reconcile every table listed above")
+    print(f"  3. re-emit the {len(script)} script-derived tables, then re-derive and "
+          f"re-reconcile the {len(manual)} hand-derived ones listed above")
 
 
 def main() -> int:
@@ -171,8 +190,16 @@ def main() -> int:
     print("\nThe game has been patched. The snapshot still pins the build these tables were "
           "derived from, so nothing is lost — but every table below now describes an older "
           "game and must be re-derived and re-reconciled:")
-    for p in DERIVED:
-        print(f"  {p}")
+    script, manual = derived_tables()
+    if script:
+        emitters = sorted({r["emitter"].strip() for r in script})
+        print(f"\n  re-emit with {' and '.join(emitters)} --emit:")
+        for r in script:
+            print(f"    {r['path']}")
+    if manual:
+        print("\n  HAND-DERIVED — no script in this repo reproduces these:")
+        for r in manual:
+            print(f"    {r['path']}")
     if args.restamp:
         restamp(stamp, live, sha, size)
     else:
