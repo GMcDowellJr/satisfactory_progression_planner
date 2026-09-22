@@ -33,8 +33,9 @@ import pytest
 
 import _realization_builders as build
 from realization.contracts import (
-    Bus, BusDeclaration, BusNotDeclared, BusResidual, ConsumerShare, Coverage,
-    Disposition, RealizationRequest, SourceEdge, WithdrawalBasis,
+    BASIS_SHAPE, Bus, BusDeclaration, BusNotDeclared, BusResidual,
+    ConsumerShare, Coverage, Disposition, RealizationRequest, SourceEdge,
+    WithdrawalBasis, WithdrawalBill,
 )
 
 
@@ -299,3 +300,82 @@ def test_the_types_are_frozen():
     ):
         with pytest.raises(dataclasses.FrozenInstanceError):
             setattr(obj, field, value)
+
+
+# --------------------------------------------------------------------------
+# the bill: a build-material demand as a STOCK, split at the bootstrap
+# --------------------------------------------------------------------------
+
+def test_every_withdrawal_basis_declares_a_shape():
+    """`BASIS_SHAPE` is the forcing function for a new basis.
+
+    A rate basis and a stock basis reach different fields and different
+    verdicts, and a member added without a shape would pick one by omission.
+    Phase 5's spatial basis is the next one due; it fails here until someone
+    says which it is.
+    """
+    assert set(BASIS_SHAPE) == set(WithdrawalBasis)
+    assert set(BASIS_SHAPE.values()) <= {"rate", "stock"}
+    assert BASIS_SHAPE[WithdrawalBasis.GEOMETRIC_FLOOR] == "rate"
+    assert BASIS_SHAPE[WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR] == "stock"
+
+
+def test_a_bill_cannot_carry_a_rate_basis():
+    """§8.2's geometric floor derives a withdrawal RATE from a footprint. A
+    bill is a quantity, and labelling one with the other is the wrong verdict
+    wearing a right one's clothes — refused at construction, not reviewed."""
+    with pytest.raises(ValueError, match="is a RATE basis"):
+        WithdrawalBill(bootstrap_units=120.0, remainder_units=380.0,
+                       basis=WithdrawalBasis.GEOMETRIC_FLOOR)
+
+
+def test_a_bill_sums_its_two_halves():
+    """120 and 380, not 250 and 250. Equal halves would make `total_units`
+    agree with twice either one and the sum would assert nothing."""
+    bill = WithdrawalBill(bootstrap_units=120.0, remainder_units=380.0,
+                          basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR)
+    assert bill.total_units == pytest.approx(500.0)
+
+
+def test_a_bill_refuses_negative_units():
+    for kwargs in ({"bootstrap_units": -1.0, "remainder_units": 0.0},
+                   {"bootstrap_units": 0.0, "remainder_units": -1.0}):
+        with pytest.raises(ValueError, match="must be >= 0"):
+            WithdrawalBill(basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR, **kwargs)
+
+
+def test_a_line_declares_a_rate_or_a_bill_and_not_both():
+    """Two declared sizings mean two verdicts against two floors with different
+    error characteristics and nothing saying which governs — the failure
+    `Coverage.basis` exists to prevent, one level up."""
+    with pytest.raises(ValueError, match="declares both"):
+        build.declaration(
+            withdrawal_per_min=5.0,
+            withdrawal_bill=WithdrawalBill(
+                bootstrap_units=120.0, remainder_units=380.0,
+                basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
+        )
+
+
+def test_a_bill_alone_makes_a_build_material_line():
+    """`is_build_material_line` is what the rest of the layer branches on, and
+    a bill-sized line is one — it just contributes no rate."""
+    line = build.declaration(withdrawal_bill=WithdrawalBill(
+        bootstrap_units=120.0, remainder_units=380.0,
+        basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR))
+    assert line.is_build_material_line
+    assert line.withdrawal_per_min is None
+    assert not build.declaration().is_build_material_line
+
+
+def test_matched_is_still_refused_against_a_bill():
+    """P29 unchanged in substance and sharpened in message. MATCHED is defined
+    as underclocking to the average withdrawal RATE; a bill is a stock, and
+    making it a rate needs the horizon §9 keeps out of the model."""
+    with pytest.raises(ValueError, match="BILL is not a rate"):
+        build.declaration(
+            disposition=Disposition.MATCHED,
+            withdrawal_bill=WithdrawalBill(
+                bootstrap_units=120.0, remainder_units=380.0,
+                basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
+        )

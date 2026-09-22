@@ -12,6 +12,7 @@ reproduced here, cell for cell, which is what the table was carried for.
 from __future__ import annotations
 
 import dataclasses
+import math
 
 import pytest
 
@@ -19,7 +20,7 @@ import _realization_builders as build
 from realization import residual as R
 from realization.contracts import (
     ClockCause, ClockDistribution, ClockMode, Disposition, DispositionUnavailable,
-    RealizationError, WithdrawalBasis,
+    RealizationError, WithdrawalBasis, WithdrawalBill,
 )
 
 SCREW_DEMAND = 199.0
@@ -368,3 +369,115 @@ def test_draw_is_stable(disposition, stable):
         withdrawal_per_min=2.0 if needs_rate else None,
     )
     assert R.draw_is_stable(declaration) is stable
+
+
+# --------------------------------------------------------------------------
+# projected_coverage_for — the stock basis. Next action 2.
+# --------------------------------------------------------------------------
+#
+# Every quantity below is distinct on purpose. R = 50, bootstrap = 120,
+# remainder = 380, total = 500, T_bootstrap = 2.4, T_total = 10.0 — no two of
+# them coincide, so an assertion on any one of them is an assertion.
+
+BOOTSTRAP = 120.0
+REMAINDER = 380.0
+
+
+def _bill(bootstrap=BOOTSTRAP, remainder=REMAINDER):
+    return WithdrawalBill(
+        bootstrap_units=bootstrap, remainder_units=remainder,
+        basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
+    )
+
+
+def _bus_with_residual_50():
+    """Supply 200, automated demand 150, so R = 50/min."""
+    return build.bus(supply_per_min=200.0, automated_demand_per_min=150.0)
+
+
+def test_a_line_without_a_bill_has_no_projected_verdict():
+    """`None`, not a zero-unit projection. A line sized from a rate is
+    `coverage_for`'s, and a residual item is neither's."""
+    assert R.projected_coverage_for(build.bus(), build.declaration()) is None
+    assert R.projected_coverage_for(
+        build.bus(), build.declaration(withdrawal_per_min=5.0)
+    ) is None
+
+
+def test_the_two_verdicts_are_mutually_exclusive_per_line():
+    """The declaration refuses both, so exactly one of the pair answers for any
+    line and neither function has to know about the other."""
+    rate_line = build.declaration(withdrawal_per_min=5.0)
+    bill_line = build.declaration(withdrawal_bill=_bill())
+    bus = _bus_with_residual_50()
+    assert R.coverage_for(bus, rate_line) is not None
+    assert R.projected_coverage_for(bus, rate_line) is None
+    assert R.coverage_for(bus, bill_line) is None
+    assert R.projected_coverage_for(bus, bill_line) is not None
+
+
+def test_both_durations_are_derived_from_the_residual():
+    """T = bill / R, twice. 120/50 = 2.4 and 500/50 = 10.0."""
+    verdict = R.projected_coverage_for(
+        _bus_with_residual_50(), build.declaration(withdrawal_bill=_bill())
+    )
+    assert verdict.residual_per_min == pytest.approx(50.0)
+    assert verdict.minutes_to_bootstrap == pytest.approx(2.4)
+    assert verdict.minutes_to_total == pytest.approx(10.0)
+    assert verdict.total_units == pytest.approx(500.0)
+
+
+def test_the_bootstrap_duration_is_the_shorter_one():
+    """The split's whole point: the bootstrap gates when the NEXT TIER CAN
+    START, and reporting only the total answers a different question."""
+    verdict = R.projected_coverage_for(
+        _bus_with_residual_50(), build.declaration(withdrawal_bill=_bill())
+    )
+    assert verdict.minutes_to_bootstrap < verdict.minutes_to_total
+
+
+def test_a_bootstrap_only_bill_has_equal_durations():
+    """The boundary case, asserted because it is the one place the two figures
+    SHOULD coincide — a remainder of zero, not a fixture accident."""
+    verdict = R.projected_coverage_for(
+        _bus_with_residual_50(),
+        build.declaration(withdrawal_bill=_bill(remainder=0.0)),
+    )
+    assert verdict.minutes_to_bootstrap == pytest.approx(2.4)
+    assert verdict.minutes_to_total == pytest.approx(2.4)
+
+
+@pytest.mark.parametrize("supply,demand", [
+    (200.0, 200.0),   # R = 0, the ceil landed exactly
+    (150.0, 200.0),   # R < 0, the bus is in deficit
+])
+def test_a_residual_that_cannot_cover_reports_inf_rather_than_refusing(supply, demand):
+    """The truthful report — the build as declared never covers the bill — and
+    not a refusal, matching `project_goals` on a goal no declared bus produces.
+    A plan in progress is an ordinary state."""
+    verdict = R.projected_coverage_for(
+        build.bus(supply_per_min=supply, automated_demand_per_min=demand),
+        build.declaration(withdrawal_bill=_bill()),
+    )
+    assert verdict.minutes_to_bootstrap == math.inf
+    assert verdict.minutes_to_total == math.inf
+
+
+def test_the_basis_is_read_from_the_bill_and_not_from_the_rate_field():
+    """`BusDeclaration.withdrawal_basis` carries the basis of the RATE and is
+    left at its GEOMETRIC_FLOOR default on a bill-sized line. Reading it here
+    would label a canonical bill as §8.2's footprint estimate."""
+    line = build.declaration(withdrawal_bill=_bill())
+    assert line.withdrawal_basis is WithdrawalBasis.GEOMETRIC_FLOOR
+    verdict = R.projected_coverage_for(_bus_with_residual_50(), line)
+    assert verdict.basis is WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR
+
+
+def test_the_projected_verdict_carries_no_boolean():
+    """No `covers`. T is finite whenever R > 0, so a boolean would be trivially
+    true; making it mean something needs a tier horizon this layer may not
+    hold. §8.1 — of two constructions, take the one without an opinion."""
+    verdict = R.projected_coverage_for(
+        _bus_with_residual_50(), build.declaration(withdrawal_bill=_bill())
+    )
+    assert not hasattr(verdict, "covers")

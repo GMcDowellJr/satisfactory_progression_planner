@@ -25,6 +25,7 @@ Reproduced from the record:
 """
 from __future__ import annotations
 
+import dataclasses
 import math
 
 import pytest
@@ -41,7 +42,7 @@ from realization.realize import credited_flow_order, project_goals, realize
 from realization.contracts import (
     BusDeclaration, CreditedFlowCycle, Disposition, DispositionUnavailable,
     LaneInfeasible, NodeDeclaration, RealizationRequest, SourceEdge,
-    WithdrawalBasis,
+    WithdrawalBasis, WithdrawalBill,
 )
 
 STITCHED = "Recipe_Alternate_ReinforcedIronPlate_2_C"
@@ -400,3 +401,81 @@ def test_a_valid_node_declaration_is_echoed_into_the_report(scaled, caps, rates)
                            nodes=(node,)),
     )
     assert result.extraction == (node,)
+
+
+# --------------------------------------------------------------------------
+# the report carries both verdicts, in separate fields. Next action 2.
+# --------------------------------------------------------------------------
+#
+# The Concrete line of P30, now sized from a bill instead of a rate. It
+# declares no withdrawal RATE, so it contributes no demand and sizes at the
+# recovered floor of one machine: supply 15/min, R = 15/min. Against a
+# bootstrap of 60 and a remainder of 240 that is 4 minutes and 20 minutes.
+# Six distinct quantities — 15, 60, 240, 300, 4, 20.
+
+I_CONCRETE = "Desc_Cement_C"
+I_STONE = "Desc_Stone_C"
+R_CONCRETE = "Recipe_Concrete_C"
+
+
+def _concrete_bill_request():
+    return RealizationRequest(
+        design_tier=4,
+        buses=build.worked_buses() + (
+            BusDeclaration(
+                bus_id="concrete", item_id=I_CONCRETE, recipe_id=R_CONCRETE,
+                sources=(SourceEdge(I_STONE, None),),
+                withdrawal_bill=WithdrawalBill(
+                    bootstrap_units=60.0, remainder_units=240.0,
+                    basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
+            ),
+        ),
+    )
+
+
+def test_a_bill_sized_line_reports_durations_and_not_a_coverage_verdict(
+    scaled, caps, rates
+):
+    """The two fields do not overlap. A reader that has to check which shape an
+    entry is has been handed the conflation the split exists to prevent."""
+    result = realize(
+        build.worked_response(), scaled, caps, rates, _concrete_bill_request(),
+    )
+    assert result.coverage == ()
+    assert len(result.projected_coverage) == 1
+    verdict = result.projected_coverage[0]
+    assert verdict.bus_id == "concrete"
+    assert verdict.residual_per_min == pytest.approx(15.0)
+    assert verdict.minutes_to_bootstrap == pytest.approx(4.0)
+    assert verdict.minutes_to_total == pytest.approx(20.0)
+    assert verdict.basis is WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR
+
+
+def test_a_bill_contributes_no_rate_so_the_line_sizes_from_the_declared_build(
+    scaled, caps, rates
+):
+    """Respec §6's settled form, reached from the other side. A stock cannot
+    size a bus without a horizon, so the caller DECLARES THE BUILD and reads
+    the duration back: one machine by default, and `extra_producers` is the
+    lever. Two machines halve the wait.
+    """
+    request = _concrete_bill_request()
+    one = realize(build.worked_response(), scaled, caps, rates, request)
+    doubled = dataclasses.replace(
+        request,
+        buses=request.buses[:-1] + (
+            dataclasses.replace(request.buses[-1], extra_producers=1),
+        ),
+    )
+    two = realize(build.worked_response(), scaled, caps, rates, doubled)
+
+    assert next(b for b in one.buses if b.bus_id == "concrete").machines == 1
+    assert next(b for b in two.buses if b.bus_id == "concrete").machines == 2
+    assert two.projected_coverage[0].residual_per_min == pytest.approx(30.0)
+    assert two.projected_coverage[0].minutes_to_bootstrap == pytest.approx(2.0)
+
+
+def test_both_verdict_fields_are_empty_when_no_line_declares_either(report):
+    """Empty is "no line declared one", never "everything covers"."""
+    assert report.coverage == ()
+    assert report.projected_coverage == ()
