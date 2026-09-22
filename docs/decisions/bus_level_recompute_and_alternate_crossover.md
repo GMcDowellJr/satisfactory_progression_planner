@@ -678,3 +678,157 @@ either carry or dip under, for the same average output.
 Recorded as derived rather than stated: Greg named underclocking as an option;
 the constant-power consequence and the comparison against BACK UP are computed
 here, resting on the §4 convexity (exponent 1.321929) already on the record.
+
+---
+
+## Amendment 5 — 2026-09-21. The two BACK_UP readings are one mechanism, and a line is sized to usage
+
+Appended forward-only. **Unifies A2.2 and A4.2 rather than superseding either.**
+Neither was wrong about its own case; the reading that they were two
+specifications was.
+
+    stated   "both can be true — a line that first backs up (A2) to overflow
+             into adjacent lanes will, eventually, fill up its storage (unless
+             manually pulled from or overflow sent to sink) and cause draw
+             oscillations (A4.2) — don't size for storage, size for usage (both
+             known downstream in lane as well as computed but variable current
+             and next tier bootleg needs)"
+
+### A5.1 A2.2 and A4.2 are one line at two points on one trajectory
+
+The bridge was already on the record, in `realization.contracts.Disposition`'s
+own docstring, and was not read as one:
+
+> A storage container draws no power and is a finite buffer, so "producers at
+> 100% with stock accumulating and nothing withdrawing" is a transient of
+> duration capacity/residual and is not a state the tool reports.
+
+That sentence is A2.2 → A4.2. One mechanism, with a time constant of
+capacity / slack. What differs between the two amendments is the buffer and
+therefore the observation window:
+
+    A2.2's window   the buffer is the belt. It saturates in seconds, so the
+                    observed steady draw is the NEED. That is the basis 19.02
+                    and 15.79 were computed on, and it is correct there
+    A4.2's window   the buffer is a container. Saturation takes capacity/slack
+                    minutes, after which the draw oscillates between nameplate
+                    and zero. That is correct there
+
+    RETRACTED   the framing carried by the 2026-09-21 16:57 handoff finding 1
+                and the busmodel note finding 1 — "the two amendments specify
+                BACK_UP differently and the recompute has to pick." There is
+                nothing to pick. Both are the same state, observed before and
+                after the buffer saturates
+
+### A5.2 Average draw is usage in every state. Nameplate is the peak
+
+Backpressure is a DUTY CYCLE, not a clock. A bus at utilisation u draws
+u × nameplate **on average** whether a clock set it or the belts idled it — the
+two differ in power, not in average throughput. Therefore:
+
+    average draw   = usage. In every state, including BACK_UP and WITHDRAWN
+    peak draw      = nameplate, for capacity/slack after a drawdown
+    the states     differ in POWER (convex in clock, linear in duty cycle) and
+                   in peak DURATION. They do not differ in what a line costs
+                   its source bus on average
+
+    CONSEQUENCE    disposition is DERIVED, not declared. It is a consequence of
+                   (supply − usage) and of where the slack goes. WITHDRAWN vs
+                   MATCHED is only whether the excess is zero by integer luck or
+                   zero by clock; BACK_UP vs SUNK is only slack routing. What a
+                   caller declares is the usage estimate and the slack routing
+    CONSEQUENCE    `busmodel.BusSpec.presents_peak_draw` loses its reason to
+                   exist as a SIZING switch, and `SizingBasis.PEAK` becomes a
+                   REPORT mode rather than a solve mode. The peak is still worth
+                   reporting, but for a different question: what a refill
+                   transient costs the PRODUCTION consumers that share the
+                   source bus, since splitters round-robin and do not prioritise
+    CONSEQUENCE    the realization layer's bodies, written 2026-09-21, compute a
+                   consumer's draw as `machines × per-machine rate`. That is the
+                   peak. Correct for a saturated consumer, an overstatement for
+                   a slack one
+
+### A5.3 A3.5's draw column is pre-saturation, and uniformly
+
+Derived, not stated, and **not computed** — this is arithmetic on two of A3.5's
+own rows, not a recompute.
+
+A3.5's IronRod draw of 64.00 is Rotor's 24.00 plus four screw machines at 10.00
+each. But Rotor is one machine, supply 4.00 against draw 2.00 — 50% utilisation,
+so its steady rod draw is 12.00, not 24.00. The screw bus is 160.00 against
+124.00 — 77.5%, so its steady rod draw is 31.00, not 40.00. Rod demand becomes
+about 43 and the bus is 3 machines rather than 5. The cascade continues: Rotor
+at 50% draws 62 screws rather than 124, which is 2 screw machines rather than 4.
+
+    CONSEQUENCE   size-for-usage does not merely trim the build lines. It
+                  shrinks the PRODUCTION CHAIN. A3.5's 27 machines is a
+                  transient figure — what the factory draws before its
+                  containers saturate, not what it settles at
+    NOT COMPUTED  the full cascade. `worked_case_A4` under a usage basis is what
+                  the recompute now has to produce, and it is no longer a
+                  question of which amendment to follow
+
+### A5.4 A4.1's four options are one continuum on one bus
+
+A4.1's table reads as a line-level choice between dispositions. It is not: build
+supply is a machine-count-and-clock decision on the same bus, and a separate
+line is one option among several rather than the framing.
+
+    add a machine at any clock   fully representable today
+    overclock an existing one    power is priced — `power_exponent` 1.321929 on
+                                 all eleven rows of production_buildings.csv.
+                                 The shard → clock ceiling is NOT in
+                                 planning_data/game/reference: the only clock
+                                 columns there are extraction_rates.csv's
+                                 nominal/max_250 pair, checked 2026-09-21. Power
+                                 Shard is a real item with four recipes, so its
+                                 supply chain is representable; what it buys is
+                                 not
+    somersloop                   parked. Same gap shape as respec §10.6
+
+### A5.5 The withdrawal figure becomes a derived floor, and the floor is what makes one pass legal
+
+A whole-game build-material bill closes a loop: machine counts → construction
+bill → build-line sizing → more machines → bigger bill. That feedback is exactly
+what the demand pass forbids (single reverse-topological traversal, no fixed
+point — see `toggle_propagation_and_demand_pass.md` §5).
+
+It converges, and fast: one Constructor costs 8 Cable and 2 Reinforced Iron
+Plate and produces 20 plate/min, so the map is a hard contraction. But
+converging is not the same as permitted.
+
+**Omitting the second-order term — the machines needed to build the machines
+that make the build materials — leaves the bill BELOW the truth, and below the
+truth is the basis the coverage criterion is already stated against (A3.3).** So
+a single pass is legitimate precisely because it under-counts. The floor is not
+a tolerated imprecision; it is the form of this number that fits the pass.
+
+    stated        "if we considered the entire production cycle from start to
+                  end of game, possibly based on site selection and logistics
+                  between, we should be able to back into those numbers as a
+                  floor (and floor is sufficient)"
+    CONSEQUENCE   §8.2's geometric estimate is not corrected — it is superseded
+                  in PROVENANCE. A derived whole-game floor and a declared
+                  footprint floor are different bases with different error
+                  characteristics, not better and worse instances of one basis.
+                  `WithdrawalBasis` has one value today; it needs a second, and
+                  `Coverage.basis` has no default precisely so the distinction
+                  cannot be dropped on the way out
+    CONSEQUENCE   the bill is a STOCK pass, computed from settled machine counts
+                  and kept out of the flow traversal. Folding it in is how the
+                  loop gets smuggled into a pass that refuses loops
+
+Decomposition of the bill, and which half is computable when, is recorded
+separately — it changes what §8.2 is for rather than correcting a figure.
+
+### What this amendment does not establish
+
+    not computed   `worked_case_A4` under a usage basis. A5.3 is two rows of
+                   arithmetic, not a solve
+    not changed    no code, no declaration and no published table moves on
+                   account of this amendment. `presents_peak_draw` still sizes,
+                   the realization bodies still compute nameplate, and A3.5
+                   stands as written
+    unverified     idle power draw ≈ 0, unchanged. A5.2's claim that the states
+                   differ in power but not in average draw assumes an idling
+                   machine costs nothing
