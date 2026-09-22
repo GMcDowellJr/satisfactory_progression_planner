@@ -19,7 +19,7 @@ A layer that reads `effective_count` and cannot call `linprog` cannot become a
 second solver; the import restriction is asserted by inspection in the tests.
 """
 from .contracts import (
-    Bus, BusDeclaration, BusId, BusNotDeclared, BusResidual, Capability,
+    BillTerm, Bus, BusDeclaration, BusId, BusNotDeclared, BusResidual, Capability,
     ClockCause, ClockDistribution, ClockMode, ConsumerShare, Coverage,
     CreditedFlowCycle, DesignTier, Disposition, DispositionUnavailable,
     ExtractionRate, Lane, LaneInfeasible, LaneInput, NodeDeclaration,
@@ -30,7 +30,7 @@ from .contracts import (
 from .realize import credited_flow_order, project_goals, realize
 
 __all__ = [
-    "Bus", "BusDeclaration", "BusId", "BusNotDeclared", "BusResidual",
+    "BillTerm", "Bus", "BusDeclaration", "BusId", "BusNotDeclared", "BusResidual",
     "Capability", "ClockCause", "ClockDistribution", "ClockMode",
     "ConsumerShare", "Coverage", "CreditedFlowCycle", "DesignTier",
     "Disposition", "DispositionUnavailable", "ExtractionRate", "Lane",

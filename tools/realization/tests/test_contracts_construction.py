@@ -33,10 +33,14 @@ import pytest
 
 import _realization_builders as build
 from realization.contracts import (
-    BASIS_SHAPE, Bus, BusDeclaration, BusNotDeclared, BusResidual,
+    BASIS_SHAPE, BillTerm, Bus, BusDeclaration, BusNotDeclared, BusResidual,
     ConsumerShare, Coverage, Disposition, RealizationRequest, SourceEdge,
     WithdrawalBasis, WithdrawalBill,
 )
+
+CANONICAL_TERMS = frozenset({
+    BillTerm.MACHINE_CONSTRUCTION, BillTerm.BOOTSTRAP_SET,
+})
 
 
 # --------------------------------------------------------------------------
@@ -326,14 +330,14 @@ def test_a_bill_cannot_carry_a_rate_basis():
     wearing a right one's clothes — refused at construction, not reviewed."""
     with pytest.raises(ValueError, match="is a RATE basis"):
         WithdrawalBill(bootstrap_units=120.0, remainder_units=380.0,
-                       basis=WithdrawalBasis.GEOMETRIC_FLOOR)
+                       terms=CANONICAL_TERMS, basis=WithdrawalBasis.GEOMETRIC_FLOOR)
 
 
 def test_a_bill_sums_its_two_halves():
     """120 and 380, not 250 and 250. Equal halves would make `total_units`
     agree with twice either one and the sum would assert nothing."""
     bill = WithdrawalBill(bootstrap_units=120.0, remainder_units=380.0,
-                          basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR)
+                          terms=CANONICAL_TERMS, basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR)
     assert bill.total_units == pytest.approx(500.0)
 
 
@@ -341,7 +345,8 @@ def test_a_bill_refuses_negative_units():
     for kwargs in ({"bootstrap_units": -1.0, "remainder_units": 0.0},
                    {"bootstrap_units": 0.0, "remainder_units": -1.0}):
         with pytest.raises(ValueError, match="must be >= 0"):
-            WithdrawalBill(basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR, **kwargs)
+            WithdrawalBill(terms=CANONICAL_TERMS,
+                           basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR, **kwargs)
 
 
 def test_a_line_declares_a_rate_or_a_bill_and_not_both():
@@ -353,7 +358,7 @@ def test_a_line_declares_a_rate_or_a_bill_and_not_both():
             withdrawal_per_min=5.0,
             withdrawal_bill=WithdrawalBill(
                 bootstrap_units=120.0, remainder_units=380.0,
-                basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
+                terms=CANONICAL_TERMS, basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
         )
 
 
@@ -362,7 +367,7 @@ def test_a_bill_alone_makes_a_build_material_line():
     a bill-sized line is one — it just contributes no rate."""
     line = build.declaration(withdrawal_bill=WithdrawalBill(
         bootstrap_units=120.0, remainder_units=380.0,
-        basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR))
+        terms=CANONICAL_TERMS, basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR))
     assert line.is_build_material_line
     assert line.withdrawal_per_min is None
     assert not build.declaration().is_build_material_line
@@ -377,5 +382,32 @@ def test_matched_is_still_refused_against_a_bill():
             disposition=Disposition.MATCHED,
             withdrawal_bill=WithdrawalBill(
                 bootstrap_units=120.0, remainder_units=380.0,
-                basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
+                terms=CANONICAL_TERMS, basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
         )
+
+
+def test_a_bill_must_name_its_terms():
+    """No default, for the reason `Coverage.basis` has none. An empty term set
+    is a bill of nothing reported as a floor."""
+    with pytest.raises(ValueError, match="at least one term"):
+        WithdrawalBill(bootstrap_units=0.0, remainder_units=380.0,
+                       terms=frozenset(),
+                       basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR)
+
+
+def test_a_positive_bootstrap_must_name_where_it_came_from():
+    """The split's first half is the actionable one; a bootstrap figure whose
+    term set does not include BOOTSTRAP_SET has no provenance."""
+    with pytest.raises(ValueError, match="BOOTSTRAP_SET is not"):
+        WithdrawalBill(bootstrap_units=120.0, remainder_units=380.0,
+                       terms=frozenset({BillTerm.MACHINE_CONSTRUCTION}),
+                       basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR)
+
+
+def test_the_absent_terms_have_names_so_their_absence_is_reportable():
+    """SPATIAL exists to be ABSENT. A term with no name cannot be reported as
+    missing, and A5.5's floor argument rests on naming what is left out."""
+    assert {t.value for t in BillTerm} == {
+        "machine_construction", "bootstrap_set", "unlock_cost",
+        "project_assembly", "spatial",
+    }

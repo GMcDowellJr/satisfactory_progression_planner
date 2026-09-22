@@ -354,6 +354,7 @@ def projected_coverage_for(
         residual_per_min=residual,
         bootstrap_units=bill.bootstrap_units,
         remainder_units=bill.remainder_units,
+        terms=bill.terms,
         basis=bill.basis,
         minutes_to_bootstrap=to_bootstrap,
         minutes_to_total=to_total,

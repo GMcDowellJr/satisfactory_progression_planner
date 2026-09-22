@@ -42,7 +42,7 @@ from realization.realize import credited_flow_order, project_goals, realize
 from realization.contracts import (
     BusDeclaration, CreditedFlowCycle, Disposition, DispositionUnavailable,
     LaneInfeasible, NodeDeclaration, RealizationRequest, SourceEdge,
-    WithdrawalBasis, WithdrawalBill,
+    BillTerm, WithdrawalBasis, WithdrawalBill,
 )
 
 STITCHED = "Recipe_Alternate_ReinforcedIronPlate_2_C"
@@ -427,6 +427,8 @@ def _concrete_bill_request():
                 sources=(SourceEdge(I_STONE, None),),
                 withdrawal_bill=WithdrawalBill(
                     bootstrap_units=60.0, remainder_units=240.0,
+                    terms=frozenset({BillTerm.MACHINE_CONSTRUCTION,
+                                     BillTerm.BOOTSTRAP_SET}),
                     basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR),
             ),
         ),

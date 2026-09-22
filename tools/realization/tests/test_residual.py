@@ -20,7 +20,7 @@ import _realization_builders as build
 from realization import residual as R
 from realization.contracts import (
     ClockCause, ClockDistribution, ClockMode, Disposition, DispositionUnavailable,
-    RealizationError, WithdrawalBasis, WithdrawalBill,
+    BillTerm, RealizationError, WithdrawalBasis, WithdrawalBill,
 )
 
 SCREW_DEMAND = 199.0
@@ -383,9 +383,17 @@ BOOTSTRAP = 120.0
 REMAINDER = 380.0
 
 
-def _bill(bootstrap=BOOTSTRAP, remainder=REMAINDER):
+#: The terms a stock pass can actually sum today: the canonical machine
+#: halves. UNLOCK_COST, PROJECT_ASSEMBLY and SPATIAL are each blocked on
+#: something named, and their absence is what keeps the bill a floor.
+CANONICAL_TERMS = frozenset({
+    BillTerm.MACHINE_CONSTRUCTION, BillTerm.BOOTSTRAP_SET,
+})
+
+
+def _bill(bootstrap=BOOTSTRAP, remainder=REMAINDER, terms=CANONICAL_TERMS):
     return WithdrawalBill(
-        bootstrap_units=bootstrap, remainder_units=remainder,
+        bootstrap_units=bootstrap, remainder_units=remainder, terms=terms,
         basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
     )
 
@@ -481,3 +489,15 @@ def test_the_projected_verdict_carries_no_boolean():
         _bus_with_residual_50(), build.declaration(withdrawal_bill=_bill())
     )
     assert not hasattr(verdict, "covers")
+
+
+def test_the_verdict_carries_the_bill_terms_out():
+    """A bill of the canonical machine terms and a bill of all six are
+    different floors at the same basis. The verdict says which it had, or
+    "covers the floor" changes meaning while every field still reads the
+    same."""
+    verdict = R.projected_coverage_for(
+        _bus_with_residual_50(), build.declaration(withdrawal_bill=_bill())
+    )
+    assert verdict.terms == CANONICAL_TERMS
+    assert BillTerm.SPATIAL not in verdict.terms

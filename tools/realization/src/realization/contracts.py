@@ -204,6 +204,42 @@ BASIS_SHAPE: dict[WithdrawalBasis, Literal["rate", "stock"]] = {
 }
 
 
+class BillTerm(str, Enum):
+    """One summable term of a build-material bill. WHICH terms a bill carries
+    is part of what it means, so `WithdrawalBill` states them.
+
+    The decomposition of 2026-09-21 names six terms across three provenances,
+    and they do NOT become available at the same time. A bill of the canonical
+    machine terms and a bill of all six are different floors at different
+    distances from the truth, and a verdict that does not say which it had is
+    the failure `Coverage.basis` exists to prevent, one level finer: the basis
+    stays `DERIVED_WHOLE_GAME_FLOOR` while the floor underneath it moves.
+    """
+
+    MACHINE_CONSTRUCTION = "machine_construction"
+    #: Settled machine counts x per-building cost. CANONICAL and exact.
+    #: `building_recipe_io.csv`, joined through the building class.
+
+    BOOTSTRAP_SET = "bootstrap_set"
+    #: The declared minimum machine set that brings the next tier online,
+    #: costed the same way. Canonical arithmetic over a DECLARED set, and the
+    #: set is stated as a minimum.
+
+    UNLOCK_COST = "unlock_cost"
+    #: `schematic_costs.csv`. Canonical, and blocked on resolving a tier to its
+    #: schematic ids — which is a PARKED open item, not a written mechanism.
+
+    PROJECT_ASSEMBLY = "project_assembly"
+    #: `project_assembly_requirements.csv`. Canonical at 1x, and scaled by
+    #: `Scenario.project_assembly_requirement_multiplier` — NOT by the recipe
+    #: multiplier. A term that is scaled by the wrong one is silently wrong.
+
+    SPATIAL = "spatial"
+    #: Belt and pipe length, foundation area. Phase 5 owns the bounds and they
+    #: are not wired to demand. Their absence is what keeps a bill a floor
+    #: (A5.5), so this value exists to be ABSENT and says so.
+
+
 @dataclass(frozen=True)
 class WithdrawalBill:
     """A build-material demand as a STOCK, split at the bootstrap.
@@ -243,6 +279,10 @@ class WithdrawalBill:
 
     bootstrap_units: float
     remainder_units: float
+    #: WHICH terms were summed. NO DEFAULT, for the reason `Coverage.basis` has
+    #: none: a bill that does not say what is in it lets "covers the floor"
+    #: change meaning while every field still reads the same.
+    terms: frozenset[BillTerm]
     #: WHERE the bill came from, carried next to the quantity it describes
     #: rather than on `BusDeclaration`, which carries the basis of the RATE.
     #: Two sizings, two bases, neither able to label the other's number.
@@ -252,6 +292,16 @@ class WithdrawalBill:
         for name in ("bootstrap_units", "remainder_units"):
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be >= 0")
+        if not self.terms:
+            raise ValueError(
+                "a bill must name at least one term. An empty term set is a "
+                "bill of nothing reported as a floor."
+            )
+        if self.bootstrap_units > 0.0 and BillTerm.BOOTSTRAP_SET not in self.terms:
+            raise ValueError(
+                "bootstrap_units is positive but BillTerm.BOOTSTRAP_SET is not "
+                "in terms. The split's first half has to say where it came from."
+            )
         if BASIS_SHAPE[self.basis] != "stock":
             raise ValueError(
                 f"{self.basis.value} is a RATE basis and cannot label a bill. "
@@ -711,6 +761,7 @@ class ProjectedCoverage:
     residual_per_min: float
     bootstrap_units: float
     remainder_units: float
+    terms: frozenset[BillTerm]
     basis: WithdrawalBasis
     #: `inf` when the residual is zero or negative. The truthful report — the
     #: build as declared never covers it — and not a refusal, matching
