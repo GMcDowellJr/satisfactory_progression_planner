@@ -7,6 +7,7 @@ from production_adapter import (
     BackendNotSelected, CHALLENGE_1_25X_2X, OutputTarget, ReferenceDataError,
     Scenario, SolveRequest, get_backend, load, registered,
 )
+from production_adapter.gamedata import UNJOINABLE_BUILD_RECIPES, load_construction
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 
@@ -114,3 +115,117 @@ def test_no_backend_is_wired_up_yet():
         get_backend().solve(
             SolveRequest(outputs=(OutputTarget("Desc_IronPlate_C", 20.0),)), None
         )
+
+
+# --------------------------------------------------------------------------
+# construction costs — the Build Gun set, and the join that does not follow
+# the name convention
+# --------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def construction():
+    return load_construction(REPO)
+
+
+def test_the_build_gun_set_loads_whole(construction, data):
+    """549 build recipes, one of which joins to no building. The count is a
+    regression pin against the extraction pass, not an independent expectation."""
+    assert len(construction.by_building_class) == 548
+    assert construction.game_build_id == data.game_build_id
+
+
+def test_every_production_building_resolves_through_its_building_class(construction, data):
+    """`Build_X_C -> Desc_X_C` is the join, and this is what says so. Eleven of
+    eleven; a producer that stops following it raises rather than being costed
+    at zero."""
+    for producer_class in data.producers:
+        cost = construction.for_producer(producer_class)
+        assert cost.items, f"{producer_class} resolved to a building with no cost"
+
+
+def test_the_recipe_name_convention_is_wrong_on_the_smelter_and_the_foundry(construction):
+    """THE REASON THE JOIN GOES THROUGH THE BUILDING CLASS.
+
+    Read from building_recipes.csv, 2026-09-22:
+
+        Recipe_SmelterBasicMk1_C  builds  Desc_SmelterMk1_C   the SMELTER
+        Recipe_SmelterMk1_C       builds  Desc_FoundryMk1_C   the FOUNDRY
+
+    The two are swapped relative to `Build_X_C -> Recipe_X_C`. That mapping
+    does not merely fail on them — `Recipe_SmelterMk1_C` exists, so a naive
+    join SUCCEEDS and charges every Smelter the Foundry's bill. A silent wrong
+    answer, not a lookup error.
+
+    Costs read from building_recipe_io.csv, not restated from a note:
+    the Smelter is 5 Iron Rod + 8 Wire, the Foundry is 20 Concrete + 10
+    Modular Frame + 10 Rotor.
+    """
+    smelter = construction.for_producer("Build_SmelterMk1_C")
+    foundry = construction.for_producer("Build_FoundryMk1_C")
+
+    assert smelter.display_name == "Smelter"
+    assert smelter.build_recipe_id == "Recipe_SmelterBasicMk1_C"
+    assert dict(smelter.items) == {"Desc_IronRod_C": 5.0, "Desc_Wire_C": 8.0}
+
+    assert foundry.display_name == "Foundry"
+    assert foundry.build_recipe_id == "Recipe_SmelterMk1_C"
+    assert dict(foundry.items) == {
+        "Desc_Cement_C": 20.0, "Desc_ModularFrame_C": 10.0, "Desc_Rotor_C": 10.0,
+    }
+
+    # The naive mapping, spelled out so the defect cannot be reintroduced by
+    # someone who finds the join indirect and "simplifies" it.
+    for producer_class in ("Build_SmelterMk1_C", "Build_FoundryMk1_C"):
+        naive = "Recipe_" + producer_class[len("Build_"):]
+        assert construction.for_producer(producer_class).build_recipe_id != naive
+
+
+def test_an_unknown_producer_is_refused_rather_than_costed_at_zero(construction):
+    """A zero-cost building understates a bill that is already declared a
+    floor, and an understated floor is the one failure the floor argument
+    cannot absorb."""
+    with pytest.raises(ReferenceDataError, match="no Build Gun recipe"):
+        construction.for_producer("Build_NotAThing_C")
+    with pytest.raises(ReferenceDataError, match="not a Build_\\*_C producer class"):
+        construction.for_producer("Desc_ConstructorMk1_C")
+
+
+def test_the_one_unjoinable_build_recipe_is_allowlisted_by_name(construction):
+    """`Recipe_PipelinePumpMK2_C` carries an empty `building_class` — one row of
+    549. Named with its reason, in the same shape as the Portable Miner gap,
+    rather than swallowed by a truthy test that would also swallow the next
+    one."""
+    assert UNJOINABLE_BUILD_RECIPES == {"Recipe_PipelinePumpMK2_C"}
+
+
+def test_construction_costs_take_no_scenario(construction):
+    """§8, measured twice: a Constructor is 2 Reinforced Iron Plate + 8 Cable at
+    1x and at 1.25x alike, and 8 x 1.25 = 10, so no rounding rule produces 8.
+    `load_construction` therefore accepts no scenario at all — one that was
+    accepted and ignored would be a parameter that cannot refuse."""
+    import inspect
+
+    assert list(inspect.signature(load_construction).parameters) == ["repo_root"]
+    constructor = construction.for_producer("Build_ConstructorMk1_C")
+    assert dict(constructor.items) == {
+        "Desc_IronPlateReinforced_C": 2.0, "Desc_Cable_C": 8.0,
+    }
+
+
+def test_every_build_recipe_io_row_is_an_input():
+    """The `direction == "input"` filter in `load_construction` is DEAD TODAY,
+    and this is what makes that a measured fact rather than a hope.
+
+    All 851 rows of building_recipe_io.csv are inputs, so removing the filter
+    changes no figure — a mutation against it survives, and correctly. The
+    filter stays because a future extraction that emits an output row (a
+    dismantle refund, say) would otherwise be summed into every building's cost
+    silently. If this test starts failing, the filter has become load-bearing
+    and the cost figures need re-checking, not the filter removing.
+    """
+    import csv
+
+    path = REPO / "planning_data" / "game" / "reference" / "building_recipe_io.csv"
+    with path.open(encoding="utf-8") as fh:
+        directions = {r["direction"] for r in csv.DictReader(fh)}
+    assert directions == {"input"}

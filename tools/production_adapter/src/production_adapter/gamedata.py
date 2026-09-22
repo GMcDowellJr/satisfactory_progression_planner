@@ -137,6 +137,75 @@ class ExtractionRate:
 
 
 @dataclass(frozen=True)
+class BuildingCost:
+    """What one building costs to PLACE. Canonical, exact, and NOT scaled.
+
+    Building construction costs do not move with the recipe multiplier. Read in
+    game at 1.25x, a Constructor is 2 Reinforced Iron Plate + 8 Cable, which is
+    its 1x cost exactly — and 8 x 1.25 = 10, so no rounding rule produces 8.
+    Confirmed from the second direction: the snapshot's 1x figure agrees.
+
+    `build_recipe_id` is CARRIED, not derived from the class name. See
+    `ConstructionData.for_producer`.
+    """
+
+    building_class: str            # Desc_*_C
+    build_recipe_id: RecipeId      # Recipe_*_C
+    display_name: str
+    items: tuple[tuple[ItemId, float], ...]   # (item, units per building)
+
+
+@dataclass(frozen=True)
+class ConstructionData:
+    """Build Gun recipe costs, keyed by the building they place.
+
+    Keyed by BUILDING CLASS (`Desc_*_C`) and not by build recipe id, because the
+    recipe id is what callers get wrong — see `for_producer`.
+    """
+
+    game_build_id: str
+    by_building_class: dict[str, BuildingCost]
+
+    def for_producer(self, producer_class: ProducerClass) -> BuildingCost:
+        """The cost of one machine of a producer class the solve reports.
+
+        THE NAME CONVENTION DOES NOT HOLD, and this is why the lookup goes
+        through the building class rather than through the recipe id. Measured
+        against building_recipes.csv, 2026-09-22:
+
+            Recipe_SmelterBasicMk1_C  builds  Desc_SmelterMk1_C   the SMELTER
+            Recipe_SmelterMk1_C       builds  Desc_FoundryMk1_C   the FOUNDRY
+
+        The two are SWAPPED relative to `Build_X_C -> Recipe_X_C`, and that
+        mapping is wrong on exactly those two of the eleven producers. It is a
+        silent wrong answer rather than a lookup failure: `Recipe_SmelterMk1_C`
+        exists, so a naive join succeeds and charges every Smelter the Foundry's
+        20 Concrete + 10 Modular Frame + 10 Rotor.
+
+        `Build_X_C -> Desc_X_C` IS the join, and it resolves 11 of 11 —
+        asserted by test, not assumed here. An unknown producer raises rather
+        than returning a zero cost, because a zero-cost building understates a
+        bill that is already declared a floor.
+        """
+        if not producer_class.startswith("Build_"):
+            raise ReferenceDataError(
+                f"{producer_class!r} is not a Build_*_C producer class, so its "
+                "building class cannot be formed"
+            )
+        building_class = "Desc_" + producer_class[len("Build_"):]
+        cost = self.by_building_class.get(building_class)
+        if cost is None:
+            raise ReferenceDataError(
+                f"{producer_class} maps to {building_class}, which has no Build "
+                f"Gun recipe in building_recipes.csv (build {self.game_build_id}). "
+                "The Build_X_C -> Desc_X_C join holds for all eleven production "
+                "buildings; a producer that does not follow it is refused rather "
+                "than costed at zero."
+            )
+        return cost
+
+
+@dataclass(frozen=True)
 class ReferenceData:
     game_build_id: str
     recipes: dict[RecipeId, Recipe]
@@ -327,3 +396,69 @@ def load_logistics(
         tuple(sorted(caps, key=lambda c: (c.capability_type, c.unlock_tier, c.mark))),
         tuple(sorted(rates, key=lambda e: (e.extractor_class, e.purity))),
     )
+
+
+#: `Recipe_PipelinePumpMK2_C` carries an EMPTY `building_class` in
+#: building_recipes.csv — the one row of 549 that cannot be joined to a
+#: building. Allowlisted by name with the reason recorded, in the same shape as
+#: the Portable Miner gap, rather than dropped silently by a truthy test that
+#: would also swallow the next one.
+UNJOINABLE_BUILD_RECIPES: frozenset[RecipeId] = frozenset({"Recipe_PipelinePumpMK2_C"})
+
+
+def load_construction(repo_root: str | pathlib.Path) -> ConstructionData:
+    """Read building_recipes.csv and building_recipe_io.csv.
+
+    Deliberately NOT part of `ReferenceData`, and deliberately takes NO
+    scenario. Building construction costs do not scale with the recipe
+    multiplier — measured in game at 1.25x and confirmed against the snapshot —
+    so a scenario parameter here would either be applied and wrong, or accepted
+    and ignored, and a parameter that nothing reads is a parameter that cannot
+    refuse. Same reasoning as `load_logistics`, with a stronger measurement
+    behind it.
+
+    Costs are per ONE building. Multiplying by a machine count is the caller's,
+    and converting the resulting quantity to a rate needs a time horizon this
+    package does not own.
+
+    Raises rather than guessing when a declared build recipe has no cost rows.
+    """
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+
+    items_of: dict[RecipeId, list[tuple[ItemId, float]]] = {}
+    for r in _rows(ref / "building_recipe_io.csv"):
+        if r["direction"] != "input":
+            continue
+        items_of.setdefault(r["recipe_id"], []).append(
+            (r["item_id"], float(r["amount"]))
+        )
+
+    build_id = ""
+    by_class: dict[str, BuildingCost] = {}
+    for r in _rows(ref / "building_recipes.csv"):
+        build_id = r["game_build_id"] or build_id
+        recipe_id = r["recipe_id"]
+        building_class = r["building_class"]
+        if not building_class:
+            if recipe_id in UNJOINABLE_BUILD_RECIPES:
+                continue
+            raise ReferenceDataError(
+                f"{recipe_id} has no building_class in building_recipes.csv and "
+                "is not allowlisted. A build recipe that places nothing cannot "
+                "be costed against a machine count."
+            )
+        if building_class in by_class:
+            raise ReferenceDataError(
+                f"{building_class} is placed by both "
+                f"{by_class[building_class].build_recipe_id} and {recipe_id}. "
+                "The cost of that building is ambiguous and choosing would be "
+                "choosing a recipe."
+            )
+        by_class[building_class] = BuildingCost(
+            building_class=building_class,
+            build_recipe_id=recipe_id,
+            display_name=r["display_name"],
+            items=tuple(sorted(items_of.get(recipe_id, ()))),
+        )
+
+    return ConstructionData(game_build_id=build_id, by_building_class=by_class)
