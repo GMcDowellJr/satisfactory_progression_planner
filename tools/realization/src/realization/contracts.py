@@ -210,6 +210,11 @@ class BusDeclaration:
                                MATCHED  one machine clocked to the withdrawal.
                                         Constant draw, no overflow, no pause
 
+    A build-material line is by construction a bus the SOLVE DOES NOT RUN, so
+    there is no `RecipeUse` to attribute its recipe from. `recipe_id` is where
+    the caller supplies it. Without it the line is refused by name and cannot be
+    sized at all — P30, 2026-09-22.
+
     Storage rate is a MACHINE COUNT, not a boolean. The residual is quantised —
     at the ceil it is whatever rounding left, and it cannot be raised except by
     a whole producer:
@@ -222,6 +227,24 @@ class BusDeclaration:
 
     bus_id: BusId
     item_id: ItemId
+    #: P30. Which recipe this bus runs, when the caller states it. `None` — the
+    #: default — means ATTRIBUTE it from the solve, which is the only behaviour
+    #: that existed before 2026-09-22 and stays the behaviour for every
+    #: production bus.
+    #:
+    #: It exists for the buses the SOLVE DOES NOT RUN. A build-material line —
+    #: Concrete, Cable, the Iron Plate build stock — has no `RecipeUse` to be
+    #: attributed from, so without this field it cannot be sized at all, and
+    #: `buses.buses_from_response` refuses it by name. `busmodel.BusSpec`
+    #: already carries a `recipe_id`; this is the realization contract catching
+    #: up to its own oracle.
+    #:
+    #: Naming a recipe is the CALLER choosing one, not this layer. The standing
+    #: guardrail is that nothing here selects a recipe, and a declaration is not
+    #: a selection — it is the same authority `sources` already carries. Where
+    #: the solve DID run the named recipe, the solve's `RecipeUse` is still what
+    #: is attributed: the declaration disambiguates, it does not replace.
+    recipe_id: RecipeId | None = None
     #: Which bus supplies each input. An input absent from this tuple is out of
     #: scope. Declaration, never derivation.
     sources: tuple[SourceEdge, ...] = ()
@@ -321,6 +344,59 @@ class RealizationRequest:
 # --------------------------------------------------------------------------
 
 BindingSide = Literal["input", "output"]
+
+
+class RecipeProvenance(str, Enum):
+    """Where a bus's recipe came from. P30, 2026-09-22.
+
+    Before P30 there was one answer and it did not need a name. With
+    `BusDeclaration.recipe_id` there are two, and they are NOT the same claim:
+    one is read out of the solve, the other is read out of the request.
+    """
+
+    SOLVED = "solved"      # matched to a `RecipeUse` in the `SolveResponse`.
+                           # The solve ran this recipe and sized it
+    DECLARED = "declared"  # named by `BusDeclaration.recipe_id` and absent
+                           # from the response. The solve has NO ACCOUNT of
+                           # this bus — not a zero-sized one
+
+
+@dataclass(frozen=True)
+class BusRecipe:
+    """The attribution result for one bus: which recipe, and on whose word.
+
+    Not emitted in `RealizationReport` — `Bus.recipe_id` is what a reader sees.
+    It is a type rather than a bare `RecipeUse` so that `machine_equivalents`
+    can be ABSENT rather than zero.
+
+    That distinction is the whole point. `_demand`'s external term is
+    `machine_equivalents * rate - automated`, floored at zero: the demand the
+    solve sized this recipe for that the declaration does not model. On a
+    DECLARED bus the solve sized nothing, and writing 0.0 there would make
+    "the solve has no account of this bus" indistinguishable from "the solve
+    says its external demand is zero" — a measurement and an absence wearing
+    one number. `Coverage.basis` has no default for the same reason.
+
+    Invariant, enforced below: SOLVED carries a figure, DECLARED carries None.
+    """
+
+    recipe_id: RecipeId
+    provenance: RecipeProvenance
+    #: `RecipeUse.machine_equivalents` when SOLVED. `None` when DECLARED, and
+    #: `None` means UNAVAILABLE, never zero.
+    machine_equivalents: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.provenance is RecipeProvenance.SOLVED and self.machine_equivalents is None:
+            raise ValueError(
+                f"{self.recipe_id}: a SOLVED attribution carries the solve's "
+                "machine_equivalents"
+            )
+        if self.provenance is RecipeProvenance.DECLARED and self.machine_equivalents is not None:
+            raise ValueError(
+                f"{self.recipe_id}: a DECLARED attribution has no "
+                "machine_equivalents — the solve did not run this bus"
+            )
 
 
 class ClockCause(str, Enum):

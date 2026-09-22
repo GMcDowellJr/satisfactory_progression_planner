@@ -29,16 +29,20 @@ rounding rule has a LAYOUT consequence, not only a cost one.
 Bodies written 2026-09-21. Three things the bodies had to settle, all recorded
 here rather than resolved quietly:
 
-    RECIPE ATTRIBUTION   `BusDeclaration` carries no `recipe_id` — `BusSpec` in
-                         `tools/busmodel` does. So a bus's recipe is ATTRIBUTED
-                         from the response: the recipes the SOLVE already chose,
-                         matched to a declaration by output item and by the
-                         input items its `sources` name. That is attribution,
-                         not selection: this layer never picks a recipe, and it
-                         refuses by name when the declaration does not
-                         discriminate. A declared bus whose recipe the solve did
-                         not select — every build-material line that is outside
-                         the solve — cannot be attributed at all and is refused.
+    RECIPE ATTRIBUTION   a bus's recipe is ATTRIBUTED from the response: the
+                         recipes the SOLVE already chose, matched to a
+                         declaration by output item and by the input items its
+                         `sources` name. That is attribution, not selection:
+                         this layer never picks a recipe, and it refuses by name
+                         when the declaration does not discriminate.
+                         AMENDED 2026-09-22 by P30. `BusDeclaration` now carries
+                         an optional `recipe_id`, which `busmodel.BusSpec`
+                         always did. A bus the solve did not run — every
+                         build-material line — is attributed from the
+                         declaration instead and carries
+                         `RecipeProvenance.DECLARED`. It is still not selection:
+                         the CALLER named the recipe. A bus that names none and
+                         has no candidate is refused exactly as before.
                          See `_attribute`
     NAMEPLATE DRAW       a consumer's draw is `machines * per-machine input
                          rate`. That is what the signature admits — the draws of
@@ -62,9 +66,9 @@ from production_adapter.gamedata import Capability, ReferenceData, Recipe
 
 from .capabilities import highest_at_tier, minimum_sufficient, by_id
 from .contracts import (
-    Bus, BusId, BusResidual, ClockCause, ConsumerShare, CreditedFlowCycle, Lane,
-    LaneInfeasible, LaneInput, PartitionIncomplete, RealizationError,
-    RealizationRequest,
+    Bus, BusId, BusRecipe, BusResidual, ClockCause, ConsumerShare,
+    CreditedFlowCycle, Lane, LaneInfeasible, LaneInput, PartitionIncomplete,
+    RealizationError, RealizationRequest, RecipeProvenance,
 )
 from .residual import EPS, clock_for, power_at_clock, power_backing_up, residual_for
 
@@ -198,8 +202,8 @@ def _attribute(
     request: RealizationRequest,
     *,
     strict: bool = True,
-) -> dict[BusId, RecipeUse]:
-    """Which of the SOLVE'S recipes runs on each declared bus.
+) -> dict[BusId, BusRecipe]:
+    """Which recipe runs on each declared bus, and on whose word. P30.
 
     This is attribution, never selection. The solver has already chosen the
     recipe set; the declaration says how that set is partitioned into buses, and
@@ -210,18 +214,43 @@ def _attribute(
     `SourceEdge(Copper Ingot, ...)`, and nothing in the solve says which is
     which.
 
-    Refuses by name in three cases, none of which this layer may resolve:
+    Two provenances since 2026-09-22, and the result carries which:
+
+        SOLVED     matched to a `RecipeUse`. Unchanged behaviour, and the only
+                   behaviour for a bus the solve ran
+        DECLARED   `BusDeclaration.recipe_id` named a recipe the solve did not
+                   run. Every build-material line lands here — Concrete, Cable,
+                   the Iron Plate build stock — because the solver does not
+                   model them. The solve has NO ACCOUNT of such a bus, which is
+                   why `BusRecipe.machine_equivalents` is None rather than 0.0
+
+    A declared `recipe_id` is the CALLER choosing, not this layer: it is the
+    same authority `sources` already carries, one step further. It therefore
+    also settles the several-candidates case, which is a disambiguation rather
+    than a selection.
+
+    The declared recipe is CHECKED against the reference layer before it is
+    believed — it must exist, output the bus's item, and consume every input
+    `sources` names. A declaration that contradicts the reference layer is
+    refused by name rather than carried into the sizing.
+
+    Refuses by name in four cases, none of which this layer may resolve:
 
         no candidate        the solve ran no recipe that produces the item with
-                            the declared inputs. A build-material line the solve
-                            does not model — Concrete, Cable, the Iron Plate
-                            build stock — lands here, and that is the standing
-                            gap: `BusDeclaration` has no `recipe_id` to fall
-                            back on, though `busmodel.BusSpec` does
-        several candidates  the declaration does not discriminate. Choosing
-                            would be choosing a recipe
-        one recipe, two     two declared buses attributed to one `RecipeUse`
-        buses               would double-count `machine_equivalents`
+                            the declared inputs, AND the declaration names none
+        several candidates  the declaration discriminates by neither `sources`
+                            nor `recipe_id`. Choosing would be choosing a recipe
+        declared recipe     the named recipe does not output the bus's item, or
+        does not fit        does not consume an input `sources` names
+        one recipe, two     two declared buses attributed to one recipe would
+        buses               double-count `machine_equivalents` and collapse
+                            `_check_partition`'s recipe -> bus map. Refused for
+                            BOTH provenances. KNOWN LIMITATION with a consumer:
+                            a build-material line for an item the solve also
+                            produces on the same recipe cannot be declared
+                            alongside it. Recorded 2026-09-22; P30 does not
+                            close it, and closing it needs bus identity beyond
+                            (item, sources, recipe)
 
     `RealizationError` rather than a named subclass: there is no
     `AmbiguousAttribution` in `contracts.py`, and adding one is a patch.
@@ -233,7 +262,7 @@ def _attribute(
     would arrive from the wrong function. The gap is not thereby silent:
     `buses_from_response` attributes strictly and refuses by name.
     """
-    by_bus: dict[BusId, RecipeUse] = {}
+    by_bus: dict[BusId, BusRecipe] = {}
     claimed: dict[RecipeId, BusId] = {}
     for declaration in request.buses:
         declared_inputs = {e.input_item for e in declaration.sources}
@@ -245,40 +274,95 @@ def _attribute(
             if not declared_inputs <= {item for item, _ in recipe.inputs}:
                 continue
             candidates.append(use)
-        if len(candidates) != 1 and not strict:
-            continue
-        if not candidates:
-            raise RealizationError(
-                f"{declaration.bus_id}: the solve ran no recipe that outputs "
-                f"{declaration.item_id} and consumes "
-                f"{sorted(declared_inputs) or '[]'}. Checked "
-                f"SolveResponse.recipes ({len(response.recipes)} entries) "
-                f"against the reference layer, build {data.game_build_id}. "
-                "BusDeclaration carries no recipe_id to fall back on, so a bus "
-                "outside the solve — a build-material line — cannot be sized "
-                "here. busmodel.BusSpec carries one; this contract does not."
+
+        named = declaration.recipe_id
+        if named is not None:
+            # The declaration is authoritative, so it is CHECKED first. An
+            # unknown recipe is refused by `_recipe` naming the store and the
+            # build.
+            #
+            # Under `strict=False` a contradictory declaration is SKIPPED, not
+            # raised. The lenient pass exists so `credited_flow_order` can order
+            # a declaration it cannot fully attribute; a refusal from there is
+            # the refusal arriving from the wrong function, which is the exact
+            # failure the lenient path was added to prevent.
+            declared_recipe = data.recipes.get(named)
+            if declared_recipe is None:
+                if not strict:
+                    continue
+                _recipe(data, named)   # refuses by name, naming store and build
+            if not any(item == declaration.item_id for item, _ in declared_recipe.outputs):
+                if not strict:
+                    continue
+                raise RealizationError(
+                    f"{declaration.bus_id}: declares recipe_id {named!r}, which "
+                    f"does not output {declaration.item_id} in the reference "
+                    f"layer (build {data.game_build_id}). A bus carries the item "
+                    "its recipe produces."
+                )
+            missing = declared_inputs - {item for item, _ in declared_recipe.inputs}
+            if missing:
+                if not strict:
+                    continue
+                raise RealizationError(
+                    f"{declaration.bus_id}: declares recipe_id {named!r}, which "
+                    f"does not consume {sorted(missing)}. The bus names a source "
+                    "for an input its own recipe does not take."
+                )
+            matched = [use for use in candidates if use.recipe_id == named]
+            attribution = (
+                BusRecipe(
+                    recipe_id=named,
+                    provenance=RecipeProvenance.SOLVED,
+                    machine_equivalents=matched[0].machine_equivalents,
+                )
+                if matched
+                else BusRecipe(recipe_id=named, provenance=RecipeProvenance.DECLARED)
             )
-        if len(candidates) > 1:
-            raise RealizationError(
-                f"{declaration.bus_id}: {len(candidates)} of the solve's recipes "
-                f"output {declaration.item_id} and accept the declared inputs "
-                f"({sorted(c.recipe_id for c in candidates)}). The declaration "
-                "does not discriminate and this layer does not choose a recipe: "
-                "name more of the bus's inputs in `sources`."
+        else:
+            if len(candidates) != 1 and not strict:
+                continue
+            if not candidates:
+                raise RealizationError(
+                    f"{declaration.bus_id}: the solve ran no recipe that outputs "
+                    f"{declaration.item_id} and consumes "
+                    f"{sorted(declared_inputs) or '[]'}. Checked "
+                    f"SolveResponse.recipes ({len(response.recipes)} entries) "
+                    f"against the reference layer, build {data.game_build_id}. "
+                    "The declaration names no recipe_id to fall back on, so a "
+                    "bus outside the solve — a build-material line — cannot be "
+                    "sized here. Set BusDeclaration.recipe_id (P30)."
+                )
+            if len(candidates) > 1:
+                raise RealizationError(
+                    f"{declaration.bus_id}: {len(candidates)} of the solve's recipes "
+                    f"output {declaration.item_id} and accept the declared inputs "
+                    f"({sorted(c.recipe_id for c in candidates)}). The declaration "
+                    "does not discriminate and this layer does not choose a recipe: "
+                    "name more of the bus's inputs in `sources`, or state the "
+                    "recipe in BusDeclaration.recipe_id."
+                )
+            use = candidates[0]
+            attribution = BusRecipe(
+                recipe_id=use.recipe_id,
+                provenance=RecipeProvenance.SOLVED,
+                machine_equivalents=use.machine_equivalents,
             )
-        use = candidates[0]
-        other = claimed.get(use.recipe_id)
+
+        other = claimed.get(attribution.recipe_id)
         if other is not None and not strict:
             continue
         if other is not None:
             raise PartitionIncomplete(
-                f"{use.recipe_id} is attributed to both {other!r} and "
+                f"{attribution.recipe_id} is attributed to both {other!r} and "
                 f"{declaration.bus_id!r}. Two buses running one recipe share one "
                 "machine_equivalents figure, and splitting it is a design "
-                "decision the response does not carry."
+                "decision the response does not carry. A declared "
+                "build-material line on a recipe the solve also runs lands here "
+                "and is a known limitation, not a malformed declaration."
             )
-        claimed[use.recipe_id] = declaration.bus_id
-        by_bus[declaration.bus_id] = use
+        claimed[attribution.recipe_id] = declaration.bus_id
+        by_bus[declaration.bus_id] = attribution
     return by_bus
 
 
@@ -578,7 +662,7 @@ def _machines(
     data: ReferenceData,
     request: RealizationRequest,
     bus_id: BusId,
-    attributed: dict[BusId, RecipeUse],
+    attributed: dict[BusId, BusRecipe],
     cache: dict[BusId, int | None],
 ) -> int:
     """Whole machines on one bus. This layer is where `effective_count` stops
@@ -622,7 +706,7 @@ def _demand(
     data: ReferenceData,
     request: RealizationRequest,
     bus_id: BusId,
-    attributed: dict[BusId, RecipeUse],
+    attributed: dict[BusId, BusRecipe],
     cache: dict[BusId, int | None],
 ) -> float:
     """The demand that SIZES a bus: in-scope + declared withdrawal + out-of-scope.
@@ -636,7 +720,13 @@ def _demand(
                     the root, or a consumer left out of scope — and this is that
                     demand, read from the response rather than re-derived. It is
                     the analog of `busmodel.Declaration.external_per_min`, which
-                    `RealizationRequest` has no field for
+                    `RealizationRequest` has no field for.
+                    ZERO on a `RecipeProvenance.DECLARED` bus, and not by
+                    arithmetic: the solve has no account of that bus at all, so
+                    there is no external demand to read. Absence, not a measured
+                    zero — which is why `BusRecipe.machine_equivalents` is
+                    `None` there and this branches on the `None` instead of
+                    multiplying a 0.0 nobody measured (P30)
 
     This is NOT `Bus.automated_demand_per_min`, which is the in-scope draw
     alone. The two differ by withdrawal and external, and the difference is
@@ -664,7 +754,11 @@ def _demand(
             response, data, request, consumer.bus_id, attributed, cache
         )
 
-    external = max(0.0, use.machine_equivalents * rate - automated)
+    external = (
+        0.0
+        if use.machine_equivalents is None
+        else max(0.0, use.machine_equivalents * rate - automated)
+    )
     return automated + (declaration.withdrawal_per_min or 0.0) + external
 
 
@@ -761,7 +855,12 @@ def buses_from_response(
                 residual=residual_for(data, bus, declaration),
             )
         )
-        if flows.get(declaration.item_id) is None:
+        # P30. The reconciliation is against the SOLVE'S own account of the
+        # item, so it can only be required of a bus the solve ran. A DECLARED
+        # bus is by definition one the solve has no account of — demanding an
+        # `ItemFlow` for it moves the refusal one step later and blocks exactly
+        # the build-material lines `recipe_id` exists to unblock.
+        if use.provenance is RecipeProvenance.SOLVED and flows.get(declaration.item_id) is None:
             raise RealizationError(
                 f"{bus_id}: the response carries no ItemFlow for "
                 f"{declaration.item_id}, so the solve's own account of the item "
@@ -774,7 +873,7 @@ def _check_partition(
     response: SolveResponse,
     data: ReferenceData,
     request: RealizationRequest,
-    attributed: dict[BusId, RecipeUse],
+    attributed: dict[BusId, BusRecipe],
 ) -> None:
     """The partition-coverage tripwire. The last of the four candidates to get a site.
 
