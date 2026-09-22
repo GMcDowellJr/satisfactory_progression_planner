@@ -147,6 +147,46 @@ class SourceEdge:
     source_bus_id: BusId | None
 
 
+class WithdrawalBasis(str, Enum):
+    """Where a declared withdrawal rate came from. Two, and NOT interchangeable.
+
+    Amendment 5 §A5.5. A verdict is only as good as the floor it was measured
+    against, and the two floors here have different provenance and different
+    error characteristics. A basis is therefore part of what a caller DECLARES
+    alongside the rate, and `Coverage` carries it out again.
+
+    A value's meaning is FIXED at what it means on the day it is added. When
+    phase 5 wires the spatial bounds, that is a THIRD value, not this one
+    silently widening — forward-only applied to an enum.
+    """
+
+    GEOMETRIC_FLOOR = "geometric_floor"
+    #: §8.2's footprint-derived estimate plus one extra 8m foundation on the
+    #: short axis for movement and splitters. Declared by its author as a FLOOR
+    #: (A3.3), so any verdict computed against it is optimistic by an unmeasured
+    #: amount.
+
+    DERIVED_WHOLE_GAME_FLOOR = "derived_whole_game_floor"
+    #: The whole-game construction bill's CANONICAL terms, summed from
+    #: `building_recipe_io.csv` per building against settled machine counts,
+    #: plus `schematic_costs.csv` and `project_assembly_requirements.csv`.
+    #:
+    #: The SPATIAL terms — belt and pipe length, foundation area — are ABSENT
+    #: by construction: their lower bounds are phase 5's and are not wired to
+    #: demand. Their absence is what keeps this a floor, which is the property
+    #: A5.5 needs, so it is a definition rather than a shortfall.
+    #:
+    #: Its distance from the truth is NOT uniform across items. Cable,
+    #: Reinforced Iron Plate, Rotor and Wire are dominated by machine
+    #: construction and this is close. Concrete is dominated by the spatial
+    #: term — 371 of 545 building recipes consume it, almost all structural —
+    #: and this is a floor by a wide and unmeasured margin.
+    #:
+    #: Nothing in the repo produces this basis yet. The value exists so that a
+    #: stock pass can be written without the verdict silently changing meaning
+    #: while `Coverage.basis` still reads the same.
+
+
 @dataclass(frozen=True)
 class BusDeclaration:
     """What the caller states about ONE BUS. Keyed by `bus_id`, not by item.
@@ -190,6 +230,12 @@ class BusDeclaration:
     #: minute and the basis is `WithdrawalBasis.GEOMETRIC_FLOOR` — see
     #: `Coverage`, which cannot be constructed without saying so.
     withdrawal_per_min: float | None = None
+    #: WHERE that rate came from. Defaults to the geometric floor, which is the
+    #: WEAKEST and most-caveated basis — a caller who forgets gets the most
+    #: pessimistic label rather than an unearned upgrade. That is why a default
+    #: is safe here and is not on `Coverage.basis`, where any default would
+    #: launder a caveat on the way out instead of applying one.
+    withdrawal_basis: WithdrawalBasis = WithdrawalBasis.GEOMETRIC_FLOOR
     disposition: Disposition = Disposition.BACK_UP
     clock_mode: ClockMode = ClockMode.BACKPRESSURE
     clock_distribution: ClockDistribution = ClockDistribution.AVERAGED
@@ -416,14 +462,9 @@ class Bus:
 # reporting
 # --------------------------------------------------------------------------
 
-class WithdrawalBasis(str, Enum):
-    """Where a declared withdrawal rate came from. There is currently one."""
-
-    GEOMETRIC_FLOOR = "geometric_floor"
-    #: §8.2's footprint-derived estimate plus one extra 8m foundation on the
-    #: short axis for movement and splitters. Declared by its author as a FLOOR
-    #: (A3.3), so any verdict computed against it is optimistic by an unmeasured
-    #: amount.
+#: `WithdrawalBasis` moved up to the declarations section on 2026-09-21: once
+#: `BusDeclaration` carries a basis, the basis is a declaration concept and has
+#: to be defined before the dataclass that defaults to it.
 
 
 @dataclass(frozen=True)

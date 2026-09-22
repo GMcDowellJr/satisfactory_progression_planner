@@ -131,10 +131,32 @@ def test_coverage_cannot_be_constructed_without_a_basis():
     assert field.default is dataclasses.MISSING
 
 
-def test_the_only_withdrawal_basis_is_the_geometric_floor():
-    """There is currently one, and `covers=True` therefore means "covers the
-    floor", never "covers"."""
-    assert tuple(WithdrawalBasis) == (WithdrawalBasis.GEOMETRIC_FLOOR,)
+def test_there_are_two_withdrawal_bases_and_they_are_not_interchangeable():
+    """Was "there is currently one" until amendment 5 §A5.5 added the derived
+    whole-game floor.
+
+    `covers=True` still means "covers the floor", never "covers" — that part is
+    unchanged, and it is now true of two floors with DIFFERENT error
+    characteristics. The test is kept as an exhaustiveness tripwire rather than
+    relaxed: a third value (the spatial-inclusive floor, phase 5) must land here
+    deliberately rather than by widening an existing one.
+    """
+    assert tuple(WithdrawalBasis) == (
+        WithdrawalBasis.GEOMETRIC_FLOOR,
+        WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
+    )
+    assert WithdrawalBasis.GEOMETRIC_FLOOR is not WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR
+
+
+def test_a_declaration_defaults_to_the_weakest_basis():
+    """A caller who forgets gets the most pessimistic label, not an unearned
+    upgrade. This is why `BusDeclaration.withdrawal_basis` may default and
+    `Coverage.basis` may not."""
+    assert build.declaration(withdrawal_per_min=2.0).withdrawal_basis is (
+        WithdrawalBasis.GEOMETRIC_FLOOR
+    )
+    field = {f.name: f for f in dataclasses.fields(Coverage)}["basis"]
+    assert field.default is dataclasses.MISSING
 
 
 # --------------------------------------------------------------------------

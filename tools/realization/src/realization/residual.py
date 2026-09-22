@@ -277,10 +277,16 @@ def coverage_for(
     `None` on a residual item — a bus with no declared withdrawal has nothing to
     cover, which is different from covering zero.
 
-    The verdict carries its basis because it has to: the withdrawal rate is
-    §8.2's geometric estimate, declared by its author as a FLOOR, so `covers` is
-    optimistic by an unmeasured amount. `Coverage` has no default basis for that
-    reason — the caveat cannot be dropped on the way out.
+    The verdict carries its basis because it has to, and the basis is READ from
+    the declaration rather than assumed here. Before amendment 5 this function
+    hardcoded `GEOMETRIC_FLOOR`, which was true of every rate the repo could
+    produce and stopped being true the moment a second basis existed: a rate
+    summed from the canonical construction bill is a different floor with
+    different error characteristics, and labelling it as §8.2's footprint
+    estimate would be a wrong verdict wearing a right one's clothes.
+
+    `Coverage` still has no DEFAULT basis. `BusDeclaration` has one, and the
+    asymmetry is deliberate — see the field's comment there.
     """
     withdrawal = declaration.withdrawal_per_min
     if withdrawal is None:
@@ -291,7 +297,7 @@ def coverage_for(
         item_id=bus.item_id,
         residual_per_min=residual,
         withdrawal_per_min=withdrawal,
-        basis=WithdrawalBasis.GEOMETRIC_FLOOR,
+        basis=declaration.withdrawal_basis,
         covers=residual >= withdrawal - EPS,
     )
 
