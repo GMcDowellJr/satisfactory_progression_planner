@@ -36,7 +36,7 @@ from realization import buses as B
 from realization.contracts import (
     BusDeclaration, ClockCause, ClockDistribution, ClockMode, Disposition,
     LaneInfeasible, PartitionIncomplete, RealizationError, RealizationRequest,
-    SourceEdge,
+    RecipeProvenance, SourceEdge,
 )
 
 I_IRON_INGOT = "Desc_IronIngot_C"
@@ -49,6 +49,11 @@ R_RECYCLED_PLASTIC = "Recipe_Alternate_Plastic_1_C"
 #: `Turbo Rifle Ammo`, which is duplicated in the shipped data).
 R_IRON_WIRE = "Recipe_Alternate_Wire_1_C"
 R_COPPER_WIRE = "Recipe_Wire_C"
+#: The Concrete build-material line of P30. 60 Stone -> 15 Concrete/min at the
+#: scenario of record, read from recipe_io.csv.
+I_CONCRETE = "Desc_Cement_C"
+I_STONE = "Desc_Stone_C"
+R_CONCRETE = "Recipe_Concrete_C"
 
 
 @pytest.fixture(scope="module")
@@ -334,12 +339,14 @@ def test_withdrawal_carries_share_none_and_stays_out_of_the_denominator(scaled):
 # recipe attribution — the BusDeclaration-has-no-recipe_id gap
 # --------------------------------------------------------------------------
 
-def test_a_bus_the_solve_did_not_run_is_refused_by_name(scaled):
+def test_a_bus_the_solve_did_not_run_and_names_no_recipe_is_refused_by_name(scaled):
     """Every build-material line outside the solve lands here: Concrete, Cable,
-    the Iron Plate build stock. `BusDeclaration` carries no `recipe_id` to fall
-    back on and `busmodel.BusSpec` does, which is the standing asymmetry.
+    the Iron Plate build stock.
 
-    Refused rather than guessed, and the message names the store checked.
+    P30 gives `BusDeclaration` a `recipe_id`; it does not make one optional at
+    the point of use. A line that names NEITHER a solved candidate nor a recipe
+    still cannot be sized, and is still refused rather than guessed, with the
+    message naming the store checked.
     """
     request = RealizationRequest(
         design_tier=4,
@@ -415,6 +422,197 @@ def test_lenient_attribution_skips_what_it_cannot_resolve(reference):
         raw_inputs=(), power=PowerReport(0, 0, 0, 0), machines=(),
     )
     assert B._attribute(response, reference, request, strict=False) == {}
+
+
+# --------------------------------------------------------------------------
+# P30 — BusDeclaration carries a recipe_id, so a bus outside the solve is
+# attributable. Every figure below is read from the CSVs at the scenario of
+# record: Recipe_Concrete_C is 60 Stone -> 15 Concrete/min at 1.25x.
+# --------------------------------------------------------------------------
+
+def _concrete(withdrawal_per_min=20.0, **kwargs):
+    """A Concrete build-material line. The solver does not model it.
+
+    20/min, not 15: at 15 the rate, the supply, the residual and the withdrawal
+    are all one number and a test asserting any of them asserts nothing. At 20
+    the bus is 2 machines, supply 30, residual 30, withdrawal 20 — four
+    distinct quantities.
+    """
+    kwargs.setdefault("recipe_id", R_CONCRETE)
+    return BusDeclaration(
+        bus_id="concrete", item_id=I_CONCRETE,
+        sources=(SourceEdge(I_STONE, None),),
+        withdrawal_per_min=withdrawal_per_min,
+        **kwargs,
+    )
+
+
+def _with_concrete(*, response=None, **kwargs):
+    request = RealizationRequest(
+        design_tier=4, buses=build.worked_buses() + (_concrete(**kwargs),),
+    )
+    return (response if response is not None else build.worked_response()), request
+
+
+def test_a_declared_recipe_sizes_a_bus_the_solve_did_not_run(scaled, caps):
+    """The unblocking case. Concrete is outside the solve, the declaration names
+    its recipe, and the line sizes from its withdrawal alone.
+
+    ceil(20 / 15) = 2 machines at 15/min, so supply 30/min. Read from
+    recipe_io.csv at 1.25x, not restated from the body.
+    """
+    response, request = _with_concrete()
+    buses = B.buses_from_response(response, scaled, request, caps)
+    concrete = next(b for b in buses if b.bus_id == "concrete")
+    assert concrete.recipe_id == R_CONCRETE
+    assert concrete.machines == 2
+    assert concrete.supply_per_min == pytest.approx(30.0)
+    assert concrete.automated_demand_per_min == pytest.approx(0.0)
+    assert concrete.withdrawal_per_min == pytest.approx(20.0)
+    assert concrete.residual.rate_per_min == pytest.approx(30.0)
+
+
+def test_a_declared_bus_carries_no_machine_equivalents(scaled):
+    """`None`, never 0.0. The solve has no account of this bus, and an absence
+    and a measured zero must not share a number — `BusRecipe.__post_init__`
+    enforces the pairing, and this is the path that produces it."""
+    response, request = _with_concrete()
+    attributed = B._attribute(response, scaled, request)
+    assert attributed["concrete"].provenance is RecipeProvenance.DECLARED
+    assert attributed["concrete"].machine_equivalents is None
+    assert attributed["screws"].provenance is RecipeProvenance.SOLVED
+    assert attributed["screws"].machine_equivalents == pytest.approx(
+        build.SCREW_EQUIVALENTS
+    )
+
+
+def test_a_declared_line_is_sized_by_its_withdrawal(scaled, caps):
+    """Two withdrawals, one bus: 20/min gives 2 machines, 50/min gives 4. The
+    line tracks its declaration and nothing in the response.
+
+    This pins the SIZING, not the provenance. `_demand`'s external term is
+    absent rather than zero on a DECLARED bus, and the two are numerically
+    identical here — no arithmetic test can separate them. What separates them
+    is `BusRecipe.__post_init__` and the test above.
+    """
+    small_response, small_request = _with_concrete(withdrawal_per_min=20.0)
+    small = B.buses_from_response(small_response, scaled, small_request, caps)
+    large_response, large_request = _with_concrete(withdrawal_per_min=50.0)
+    large = B.buses_from_response(large_response, scaled, large_request, caps)
+    assert next(b for b in small if b.bus_id == "concrete").machines == 2
+    assert next(b for b in large if b.bus_id == "concrete").machines == 4
+
+
+def test_a_declared_bus_needs_no_itemflow(scaled, caps):
+    """The reconciliation reads the SOLVE'S account of an item. A bus the solve
+    did not run has none, and requiring one moved the refusal one step later —
+    which blocked exactly the lines `recipe_id` exists to unblock."""
+    response, request = _with_concrete()
+    assert all(f.item_id != I_CONCRETE for f in response.items)
+    buses = B.buses_from_response(response, scaled, request, caps)
+    assert any(b.bus_id == "concrete" for b in buses)
+
+
+def test_a_declared_recipe_the_solve_did_run_is_still_attributed_from_the_solve(scaled):
+    """The declaration disambiguates; it does not replace. Where the named
+    recipe IS in the response, the solve's `machine_equivalents` is what the
+    bus carries — otherwise naming a recipe would silently discard the sizing
+    the solve did."""
+    request = RealizationRequest(
+        design_tier=4,
+        buses=build.worked_buses(recipe_id=build.R_SCREWS),
+    )
+    attributed = B._attribute(build.worked_response(), scaled, request)
+    assert attributed["screws"].provenance is RecipeProvenance.SOLVED
+    assert attributed["screws"].machine_equivalents == pytest.approx(
+        build.SCREW_EQUIVALENTS
+    )
+
+
+def test_a_declared_recipe_discriminates_where_sources_cannot(reference):
+    """The ambiguity refusal has a second escape hatch now. Naming the recipe is
+    the CALLER choosing, which is the same authority `sources` already carries —
+    this layer still picks nothing."""
+    wire = "Desc_Wire_C"
+    request = RealizationRequest(
+        design_tier=4,
+        buses=(BusDeclaration(bus_id="wire_a", item_id=wire,
+                              recipe_id=R_COPPER_WIRE),),
+    )
+    response = SolveResponse(
+        recipes=(RecipeUse(R_IRON_WIRE, "Build_ConstructorMk1_C", 1.0, 4.0),
+                 RecipeUse(R_COPPER_WIRE, "Build_ConstructorMk1_C", 2.0, 4.0)),
+        items=(ItemFlow(wire, 1.0, 0.0),),
+        raw_inputs=(), power=PowerReport(0, 0, 0, 0), machines=(),
+    )
+    attributed = B._attribute(response, reference, request)
+    assert attributed["wire_a"].recipe_id == R_COPPER_WIRE
+    assert attributed["wire_a"].provenance is RecipeProvenance.SOLVED
+    assert attributed["wire_a"].machine_equivalents == pytest.approx(2.0)
+
+
+def test_a_declared_recipe_that_does_not_output_the_bus_item_is_refused(scaled):
+    """The declaration is authoritative and is therefore CHECKED against the
+    reference layer before it is believed."""
+    response, request = _with_concrete(recipe_id=build.R_SCREWS)
+    with pytest.raises(RealizationError, match="does not output"):
+        B._attribute(response, scaled, request)
+
+
+def test_a_declared_recipe_that_does_not_consume_a_declared_source_is_refused(scaled):
+    """A bus naming a source for an input its own recipe does not take is a
+    contradiction between two halves of one declaration, not a gap in the
+    solve."""
+    request = RealizationRequest(
+        design_tier=4,
+        buses=build.worked_buses() + (
+            BusDeclaration(bus_id="concrete", item_id=I_CONCRETE,
+                           recipe_id=R_CONCRETE,
+                           sources=(SourceEdge(I_STONE, None),
+                                    SourceEdge(I_IRON_INGOT, None)),
+                           withdrawal_per_min=20.0),
+        ),
+    )
+    with pytest.raises(RealizationError, match="does not consume"):
+        B._attribute(build.worked_response(), scaled, request)
+
+
+def test_an_unknown_declared_recipe_is_refused_naming_the_store(scaled):
+    """`_recipe`'s refusal, reached through the declaration rather than through
+    the response. It names the store and the build."""
+    response, request = _with_concrete(recipe_id="Recipe_NotAThing_C")
+    with pytest.raises(RealizationError, match="no recipe .* in the reference layer"):
+        B._attribute(response, scaled, request)
+
+
+def test_lenient_attribution_skips_a_contradictory_declaration(scaled):
+    """`strict=False` refuses NOTHING, declared recipes included. A refusal from
+    `credited_flow_order` is the refusal arriving from the wrong function, which
+    is the failure the lenient pass was added to prevent."""
+    response, request = _with_concrete(recipe_id="Recipe_NotAThing_C")
+    assert "concrete" not in B._attribute(response, scaled, request, strict=False)
+
+
+def test_a_declared_line_on_a_recipe_the_solve_also_runs_is_refused(scaled):
+    """KNOWN LIMITATION, asserted so it cannot become a silent hole.
+
+    Two buses on one recipe collapse `_check_partition`'s recipe -> bus map,
+    whatever their provenance. A build-material line for an item the solve also
+    produces on the same recipe therefore cannot yet be declared alongside it.
+    P30 does not close this; closing it needs bus identity beyond
+    (item, sources, recipe).
+    """
+    request = RealizationRequest(
+        design_tier=4,
+        buses=build.worked_buses() + (
+            BusDeclaration(bus_id="screw_build_stock", item_id=build.I_SCREW,
+                           recipe_id=build.R_SCREWS,
+                           sources=(SourceEdge(build.I_IRON_ROD, None),),
+                           withdrawal_per_min=20.0),
+        ),
+    )
+    with pytest.raises(PartitionIncomplete, match="known limitation"):
+        B._attribute(build.worked_response(), scaled, request)
 
 
 # --------------------------------------------------------------------------
