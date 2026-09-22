@@ -20,7 +20,7 @@ import pytest
 
 from production_adapter import ReferenceDataError, load
 from production_adapter.gamedata import load_construction
-from progression import stock
+from progression import stock, unlocks
 from realization.contracts import BillTerm, WithdrawalBasis
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -237,3 +237,227 @@ def test_the_pass_emits_quantities_and_never_a_rate(result):
 
     fields = {f.name for f in dataclasses.fields(next(iter(result.bills.values())))}
     assert not any("per_min" in name or "rate" in name for name in fields)
+
+
+# --------------------------------------------------------------------------
+# UNLOCK_COST — 3b. The parked tier question turned out to be already answered.
+# --------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def costs():
+    return unlocks.schematic_costs(REPO)
+
+
+def test_unlock_cost_sums_over_a_schematic_set(costs):
+    """Base Building (200 Concrete, 100 Iron Plate, 100 Iron Rod) plus Basic
+    Steel Production (500 Concrete, 1000 Wire, 150 Rotor, 50 Modular Frame).
+    Concrete is the only overlap and must add to 700, not replace."""
+    total = stock.unlock_cost(("Schematic_1-1_C", "Schematic_3-4_C"), costs)
+    assert total["Desc_Cement_C"] == pytest.approx(700.0)
+    assert total["Desc_Wire_C"] == pytest.approx(1000.0)
+    assert total["Desc_IronRod_C"] == pytest.approx(100.0)
+
+
+def test_an_uncosted_schematic_contributes_nothing(costs):
+    """Absent from the cost table means free. Safe only because every Milestone
+    and Tutorial is costed — asserted in test_progression_unlocks.py, and this
+    is the consumer that depends on it."""
+    free = "Schematic_XMassTree_T1_C"
+    assert free not in costs
+    assert stock.unlock_cost((free,), costs) == {}
+
+
+def test_unlock_costs_land_in_the_remainder_not_the_bootstrap(data, construction, costs):
+    """The bootstrap half is "the initial machines needed to start the next
+    tier" as declared — machines. A milestone purchase is not one, so folding
+    it in would widen a definition the caller gave."""
+    result = stock.bill_for(
+        data, construction,
+        bootstrap=stock.BootstrapSet(tier=1, buildings=(("Build_ConstructorMk1_C", 1),)),
+        machines=(),
+        unlocks=("Schematic_1-1_C",), unlock_costs=costs,
+    )
+    concrete = result.bills[I_CONCRETE]
+    assert concrete.bootstrap_units == pytest.approx(0.0)
+    assert concrete.remainder_units == pytest.approx(200.0)
+    assert BillTerm.UNLOCK_COST in concrete.terms
+
+
+def test_the_sink_coupon_rows_are_named_like_any_other_unresolvable(data, construction, costs):
+    """Two EST_Custom schematics are priced in Desc_ResourceSinkCoupon_C, which
+    is not in items.csv because a coupon is not a part. They reach `unresolved`
+    through the SAME rule as the Portable Miner — no special case, because a
+    special case is a place for the next one to hide."""
+    result = stock.bill_for(
+        data, construction,
+        bootstrap=stock.BootstrapSet(tier=1, buildings=(("Build_ConstructorMk1_C", 1),)),
+        machines=(),
+        unlocks=("ResourceSink_PolymerResin_C",), unlock_costs=costs,
+    )
+    assert result.unresolved == (
+        ("ResourceSink_PolymerResin_C", "Desc_ResourceSinkCoupon_C"),
+    )
+    assert "Desc_ResourceSinkCoupon_C" not in result.bills
+
+
+# --------------------------------------------------------------------------
+# PROJECT_ASSEMBLY — 3c
+# --------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def requirements(data):
+    return stock.load_project_assembly(REPO, data)
+
+
+def test_the_delivery_table_resolves_every_name_to_one_item(requirements):
+    """The table carries `item_name` and no `item_id`. Measured against
+    items.csv, 2026-09-22: no display name is duplicated there at all and all
+    fifteen rows resolve to exactly one item. The join is safe by MEASUREMENT,
+    not by design, which is why the loader refuses rather than picks."""
+    assert len(requirements) == 15
+    assert all(r.item_id.startswith("Desc_SpaceElevatorPart_") for r in requirements)
+    phase_1 = [r for r in requirements if r.phase == 1]
+    assert len(phase_1) == 1
+    assert phase_1[0].item_id == "Desc_SpaceElevatorPart_1_C"
+    assert phase_1[0].quantity_1x == pytest.approx(50.0)
+
+
+def test_items_csv_has_no_duplicate_display_names(data):
+    """The measured fact the name join rests on. The storage review's warning
+    about `Turbo Rifle Ammo` is about the RECIPE table; items.csv has no
+    duplicate at all today. If that changes, the join stops being safe and this
+    says so before a bill does."""
+    import collections
+
+    counts = collections.Counter(item.display_name for item in data.items.values())
+    assert [name for name, n in counts.items() if n > 1] == []
+
+
+@pytest.mark.parametrize("doctor,match", [
+    ("collide", "matches 2 items"),
+    ("remove", "matches 0 items"),
+])
+def test_an_unresolvable_delivery_name_is_refused_rather_than_picked(data, doctor, match):
+    """The guard is LATENT against the shipped data — every name resolves today,
+    so removing it changes no figure and a mutation against it survives. This
+    is what makes it load-bearing: the reference layer is doctored so the guard
+    is the only thing standing between a wiki-sourced display name and a wrong
+    item id.
+    """
+    import dataclasses
+
+    items = dict(data.items)
+    smart_plating = "Desc_SpaceElevatorPart_1_C"
+    if doctor == "collide":
+        decoy_id, decoy = next(
+            (k, v) for k, v in items.items() if k != smart_plating
+        )
+        items[decoy_id] = dataclasses.replace(decoy, display_name="Smart Plating")
+    else:
+        del items[smart_plating]
+    doctored = dataclasses.replace(data, items=items)
+
+    with pytest.raises(stock.StockPassError, match=match):
+        stock.load_project_assembly(REPO, doctored)
+
+
+def test_phases_are_declared_and_nothing_else_is_counted(data, requirements):
+    """`delivery_unlocks` is prose — "Tiers 3 and 4", "Project Assembly launch".
+    Parsing English into a tier mapping would be inventing one, so the caller
+    names the phases."""
+    one = stock.project_assembly_cost(data, requirements, (1,))
+    one_and_two = stock.project_assembly_cost(data, requirements, (1, 2))
+    assert one == {"Desc_SpaceElevatorPart_1_C": pytest.approx(50.0)}
+    assert one_and_two["Desc_SpaceElevatorPart_1_C"] == pytest.approx(1050.0)
+    assert set(one_and_two) == {
+        "Desc_SpaceElevatorPart_1_C",
+        "Desc_SpaceElevatorPart_2_C",
+        "Desc_SpaceElevatorPart_3_C",
+    }
+    assert stock.project_assembly_cost(data, requirements, ()) == {}
+
+
+def test_the_project_assembly_multiplier_is_applied_and_not_rounded(requirements):
+    """UNOBSERVED TIE, recorded rather than guessed.
+
+    `apply_project_assembly_quantity` multiplies and does not round — the
+    adapter's existing method, followed rather than improved. At 1.25x phase 1's
+    50 Smart Plating lands on 62.5, which is exactly a tie, and the rounding
+    rule for THIS multiplier has never been read in game. The recipe-input rule
+    (nearest, halves away from zero) was probed before it was locked and this
+    one has not been.
+
+    PROBE, one glance, no construction: set the Project Assembly requirement
+    multiplier to 1.25 and read phase 1's Smart Plating requirement. 62 or 63
+    settles it.
+    """
+    from production_adapter import load
+    from production_adapter.scenario import Scenario
+
+    scaled = load(REPO, Scenario(project_assembly_requirement_multiplier=1.25))
+    total = stock.project_assembly_cost(scaled, requirements, (1,))
+    assert total["Desc_SpaceElevatorPart_1_C"] == pytest.approx(62.5)
+
+
+def test_the_recipe_multiplier_does_not_touch_delivery_quantities(requirements):
+    """A term scaled by the wrong multiplier is silently wrong. The recipe
+    multiplier raises what a recipe COSTS; it does not raise what the Space
+    Elevator asks for."""
+    from production_adapter import load
+    from production_adapter.scenario import Scenario
+
+    scaled = load(REPO, Scenario(recipe_input_multiplier=1.25))
+    total = stock.project_assembly_cost(scaled, requirements, (1,))
+    assert total["Desc_SpaceElevatorPart_1_C"] == pytest.approx(50.0)
+
+
+# --------------------------------------------------------------------------
+# the term set reports what THIS call consulted
+# --------------------------------------------------------------------------
+
+def test_terms_widen_only_when_the_caller_supplies_the_term(
+    data, construction, costs, requirements
+):
+    """`terms` is per call, not per module. A bill that claimed UNLOCK_COST
+    because the module can compute it would be reporting a capability as a
+    measurement."""
+    kwargs = dict(
+        bootstrap=stock.BootstrapSet(tier=1, buildings=(("Build_ConstructorMk1_C", 1),)),
+        machines=(),
+    )
+    bare = stock.bill_for(data, construction, **kwargs)
+    with_unlocks = stock.bill_for(
+        data, construction, unlocks=("Schematic_1-1_C",), unlock_costs=costs, **kwargs
+    )
+    with_both = stock.bill_for(
+        data, construction, unlocks=("Schematic_1-1_C",), unlock_costs=costs,
+        project_assembly=requirements, phases=(1,), **kwargs
+    )
+    assert next(iter(bare.bills.values())).terms == stock.BASE_TERMS
+    assert next(iter(with_unlocks.bills.values())).terms == (
+        stock.BASE_TERMS | {BillTerm.UNLOCK_COST}
+    )
+    assert with_both.bills["Desc_SpaceElevatorPart_1_C"].terms == (
+        stock.BASE_TERMS | {BillTerm.UNLOCK_COST, BillTerm.PROJECT_ASSEMBLY}
+    )
+    for result in (bare, with_unlocks, with_both):
+        for bill in result.bills.values():
+            assert BillTerm.SPATIAL not in bill.terms
+
+
+@pytest.mark.parametrize("kwargs,match", [
+    ({"unlocks": ("Schematic_1-1_C",)}, "together or not at all"),
+    ({"unlock_costs": {}}, "together or not at all"),
+    ({"phases": (1,)}, "together or not at all"),
+])
+def test_a_half_supplied_term_is_refused(data, construction, kwargs, match):
+    """A schematic set with no cost table sums to zero, and a requirement table
+    with no phases selects nothing — either would be reported as the term
+    COUNTED. That is the term set lying, which is the one thing it exists to
+    prevent."""
+    with pytest.raises(stock.StockPassError, match=match):
+        stock.bill_for(
+            data, construction,
+            bootstrap=stock.BootstrapSet(tier=1, buildings=(("Build_ConstructorMk1_C", 1),)),
+            machines=(), **kwargs,
+        )

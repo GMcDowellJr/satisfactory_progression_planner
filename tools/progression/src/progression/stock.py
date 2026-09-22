@@ -24,20 +24,26 @@ signature rather than in a policy, which is this repo's standing preference.
 
     MACHINE_CONSTRUCTION   summed here. building_recipe_io.csv, exact
     BOOTSTRAP_SET          summed here. The same arithmetic over a DECLARED set
-    UNLOCK_COST            NOT summed. schematic_costs.csv is canonical and
-                           resolving a TIER to its schematic ids is a parked
-                           open item — whether `unlocks.py` or
-                           progression_clusters.csv already does it has not
-                           been read
-    PROJECT_ASSEMBLY       NOT summed. Scales by
-                           `Scenario.project_assembly_requirement_multiplier`
-                           and not by the recipe multiplier; a term scaled by
+    UNLOCK_COST            summed WHEN A TIER IS GIVEN. The parked question —
+                           whether anything resolves a capability to a numeric
+                           tier — is answered: `schematics.csv` carries
+                           `tech_tier` and `unlocks.py` has filtered on it
+                           since it was written. Cumulative through the tier
+    PROJECT_ASSEMBLY       summed WHEN PHASES ARE GIVEN. Scaled by
+                           `Scenario.project_assembly_requirement_multiplier`,
+                           never by the recipe multiplier — a term scaled by
                            the wrong one is silently wrong
-    SPATIAL                NOT summed. Phase 5 owns the bounds
+    SPATIAL                NEVER summed here. Phase 5 owns the bounds
 
-Their absence is what keeps the bill a FLOOR, which is the property A5.5 needs,
-so it is a definition rather than a shortfall — and `WithdrawalBill.terms`
-states it rather than leaving a reader to infer it.
+Whatever is left out keeps the bill a FLOOR, which is the property A5.5 needs,
+so an absent term is a definition rather than a shortfall — and
+`WithdrawalBill.terms` states which were consulted rather than leaving a reader
+to infer it from a zero.
+
+BOTH NEW TERMS LAND IN THE REMAINDER, NOT THE BOOTSTRAP. The bootstrap half is
+"the initial machines needed to start the next tier" as declared, and that is
+machines. A milestone purchase and a Space Elevator delivery are neither, so
+folding them into the bootstrap would widen a definition the caller gave.
 
 **No scenario.** Building construction costs do not scale with the recipe
 multiplier (respec §8, measured in game at 1.25x and confirmed against the
@@ -59,17 +65,25 @@ place or they drift into two.
 """
 from __future__ import annotations
 
+import pathlib
 from dataclasses import dataclass
 
 from production_adapter.contracts import ItemId, ProducerClass
 from production_adapter.gamedata import ConstructionData, ReferenceData
 from realization.contracts import BillTerm, WithdrawalBasis, WithdrawalBill
 
-#: The terms this pass sums. Named once so the bills it emits and the tests
-#: that check them cannot disagree about what was counted.
-SUMMED_TERMS: frozenset[BillTerm] = frozenset({
+from .unlocks import SchematicId
+
+#: The two terms EVERY call sums — the machine halves, which need nothing
+#: declared beyond the sets themselves. UNLOCK_COST and PROJECT_ASSEMBLY are
+#: added per call when the caller supplies them, because `terms` reports what
+#: THIS call consulted and not what the module is capable of consulting.
+BASE_TERMS: frozenset[BillTerm] = frozenset({
     BillTerm.MACHINE_CONSTRUCTION, BillTerm.BOOTSTRAP_SET,
 })
+
+#: Kept as the old name for the two-term case. `BASE_TERMS` is what it means.
+SUMMED_TERMS = BASE_TERMS
 
 
 class StockPassError(RuntimeError):
@@ -131,8 +145,77 @@ class StockPass:
     """
 
     bills: dict[ItemId, WithdrawalBill]
-    #: (producer class, cost input absent from items.csv), sorted.
-    unresolved: tuple[tuple[ProducerClass, ItemId], ...]
+    #: (source, cost input absent from items.csv), sorted. The source is a
+    #: producer class for a building cost and a schematic id for an unlock
+    #: cost — whichever names the row a reader would have to go and look at.
+    unresolved: tuple[tuple[str, ItemId], ...]
+
+
+@dataclass(frozen=True)
+class ProjectAssemblyRequirement:
+    """One Space Elevator delivery row, with its item RESOLVED to an id.
+
+    `project_assembly_requirements.csv` carries `item_name` and no `item_id` —
+    it is a wiki-sourced table, not a game-docs one. So the join is by DISPLAY
+    NAME, which is the lookup the storage review warns about: a display-name
+    lookup raises on `Turbo Rifle Ammo`, duplicated in the shipped data.
+
+    That warning is about the RECIPE table. Measured against items.csv,
+    2026-09-22: no display name is duplicated there at all, and all fifteen
+    delivery rows resolve to exactly one item each. The join is therefore safe
+    — by measurement, not by design — so `load_project_assembly` refuses a name
+    that matches zero or more than one rather than relying on that holding.
+    """
+
+    phase: int
+    phase_name: str
+    item_id: ItemId
+    quantity_1x: float
+
+
+def load_project_assembly(
+    repo_root: str | pathlib.Path,
+    data: ReferenceData,
+) -> tuple[ProjectAssemblyRequirement, ...]:
+    """Read project_assembly_requirements.csv, resolving names to item ids.
+
+    Quantities are the table's `quantity_default_1x` and are NOT scaled here —
+    `project_assembly_cost` applies the multiplier, so the scaling happens once
+    and at the point where the scenario is in hand.
+    """
+    import csv
+
+    path = (
+        pathlib.Path(repo_root)
+        / "planning_data" / "game" / "reference"
+        / "project_assembly_requirements.csv"
+    )
+    if not path.is_file():
+        raise StockPassError(f"missing reference table: {path}")
+
+    by_name: dict[str, list[ItemId]] = {}
+    for item_id, item in data.items.items():
+        by_name.setdefault(item.display_name, []).append(item_id)
+
+    out: list[ProjectAssemblyRequirement] = []
+    with path.open(encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            name = row["item_name"]
+            hits = by_name.get(name, [])
+            if len(hits) != 1:
+                raise StockPassError(
+                    f"project assembly row names {name!r}, which matches "
+                    f"{len(hits)} items in items.csv. The table carries no "
+                    "item_id, so an ambiguous or absent display name cannot be "
+                    "resolved and is refused rather than picked."
+                )
+            out.append(ProjectAssemblyRequirement(
+                phase=int(row["phase"]),
+                phase_name=row["phase_name"],
+                item_id=hits[0],
+                quantity_1x=float(row["quantity_default_1x"]),
+            ))
+    return tuple(out)
 
 
 def cost_of(
@@ -154,12 +237,66 @@ def cost_of(
     return total
 
 
+def unlock_cost(
+    schematics: tuple[SchematicId, ...],
+    costs: dict[SchematicId, tuple[tuple[ItemId, float], ...]],
+) -> dict[ItemId, float]:
+    """Per-item units to buy a set of schematics. Not scenario-scaled.
+
+    A schematic absent from `costs` contributes nothing. That is a measured
+    claim about the data, not a convenience — see `unlocks.schematic_costs`,
+    whose docstring names the measurement and whose test pins it.
+
+    Resolution and summing are split on purpose: `unlocks.schematics_at_tier`
+    decides WHICH, this decides HOW MUCH, and neither can drift into the other's
+    job. A filter that returned a bill would have stopped being a filter.
+    """
+    total: dict[ItemId, float] = {}
+    for schematic_id in schematics:
+        for item_id, amount in costs.get(schematic_id, ()):
+            total[item_id] = total.get(item_id, 0.0) + amount
+    return total
+
+
+def project_assembly_cost(
+    data: ReferenceData,
+    requirements: tuple[ProjectAssemblyRequirement, ...],
+    phases: tuple[int, ...],
+) -> dict[ItemId, float]:
+    """Space Elevator delivery quantities for the DECLARED phases.
+
+    PHASES ARE DECLARED, NOT DERIVED FROM A TIER. The table's `delivery_unlocks`
+    column is prose — "Tiers 3 and 4", "Project Assembly launch" — and parsing
+    English into a tier mapping would be inventing one. The caller names the
+    phases; a whole-game bill names all of them.
+
+    Scaled by `Scenario.project_assembly_requirement_multiplier` through
+    `apply_project_assembly_quantity`, which multiplies and does NOT round. That
+    is the adapter's existing method and it is followed rather than improved:
+    the rounding rule for this multiplier has never been observed, and at 1.25x
+    phase 1's 50 Smart Plating lands on 62.5, which is a tie. Recorded as a
+    probe rather than guessed — see the module note in the tests.
+    """
+    wanted = set(phases)
+    total: dict[ItemId, float] = {}
+    for requirement in requirements:
+        if requirement.phase not in wanted:
+            continue
+        scaled = data.scenario.apply_project_assembly_quantity(requirement.quantity_1x)
+        total[requirement.item_id] = total.get(requirement.item_id, 0.0) + scaled
+    return total
+
+
 def bill_for(
     data: ReferenceData,
     construction: ConstructionData,
     *,
     bootstrap: BootstrapSet,
     machines: tuple[tuple[ProducerClass, int], ...],
+    unlocks: tuple[SchematicId, ...] | None = None,
+    unlock_costs: dict[SchematicId, tuple[tuple[ItemId, float], ...]] | None = None,
+    project_assembly: tuple[ProjectAssemblyRequirement, ...] | None = None,
+    phases: tuple[int, ...] | None = None,
 ) -> StockPass:
     """One `WithdrawalBill` per item the two machine sets consume.
 
@@ -179,15 +316,46 @@ def bill_for(
     `unresolved`. Emitting a bill for an item the reference layer does not carry
     would put a quantity of something with no form on a bus that has no carrier.
     """
+    if (unlocks is None) != (unlock_costs is None):
+        raise StockPassError(
+            "unlocks and unlock_costs are given together or not at all. A "
+            "schematic set with no cost table sums to zero and would be "
+            "reported as UNLOCK_COST counted, which is the term set lying."
+        )
+    if (project_assembly is None) != (phases is None):
+        raise StockPassError(
+            "project_assembly and phases are given together or not at all. "
+            "Phases are declared because delivery_unlocks is prose; a "
+            "requirement table with no phases selects nothing and would be "
+            "reported as PROJECT_ASSEMBLY counted."
+        )
+
+    terms = set(BASE_TERMS)
     boot = cost_of(construction, bootstrap.buildings)
     rest = cost_of(construction, machines)
 
-    unresolved: list[tuple[ProducerClass, ItemId]] = []
-    for label, buildings in (("bootstrap", bootstrap.buildings), ("machines", machines)):
+    if unlocks is not None:
+        terms.add(BillTerm.UNLOCK_COST)
+        for item_id, amount in unlock_cost(unlocks, unlock_costs).items():
+            rest[item_id] = rest.get(item_id, 0.0) + amount
+    if project_assembly is not None:
+        terms.add(BillTerm.PROJECT_ASSEMBLY)
+        for item_id, amount in project_assembly_cost(
+            data, project_assembly, phases
+        ).items():
+            rest[item_id] = rest.get(item_id, 0.0) + amount
+
+    unresolved: list[tuple[str, ItemId]] = []
+    for buildings in (bootstrap.buildings, machines):
         for producer_class, _count in buildings:
             for item_id, _amount in construction.for_producer(producer_class).items:
                 if item_id not in data.items:
                     unresolved.append((producer_class, item_id))
+    if unlocks is not None:
+        for schematic_id in unlocks:
+            for item_id, _amount in unlock_costs.get(schematic_id, ()):
+                if item_id not in data.items:
+                    unresolved.append((schematic_id, item_id))
 
     bills: dict[ItemId, WithdrawalBill] = {}
     for item_id in sorted(set(boot) | set(rest)):
@@ -196,7 +364,7 @@ def bill_for(
         bills[item_id] = WithdrawalBill(
             bootstrap_units=boot.get(item_id, 0.0),
             remainder_units=rest.get(item_id, 0.0),
-            terms=SUMMED_TERMS,
+            terms=frozenset(terms),
             basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
         )
     return StockPass(bills=bills, unresolved=tuple(sorted(set(unresolved))))
