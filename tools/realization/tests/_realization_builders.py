@@ -11,11 +11,14 @@ basename and two files with one name collide across `testpaths`.
 """
 from __future__ import annotations
 
+from production_adapter.contracts import (
+    ItemFlow, MachineCount, PowerReport, RawInput, RecipeUse, SolveResponse,
+)
 from production_adapter.gamedata import Producer
 
 from realization.contracts import (
     Bus, BusDeclaration, BusResidual, Capability, ClockCause, ConsumerShare,
-    Disposition, Lane, LaneInput, SourceEdge,
+    Disposition, Lane, LaneInput, RealizationRequest, SourceEdge,
 )
 
 # Reference-layer values, restated so the pure arithmetic tests do not need the
@@ -166,4 +169,88 @@ def bus(
             rate_per_min=supply_per_min - automated_demand_per_min,
             disposition=disposition,
         ),
+    )
+
+
+# --------------------------------------------------------------------------
+# the worked case: screws -> RIP + Rotor -> Smart Plating
+# --------------------------------------------------------------------------
+#
+# A3.1's topology minus the wire buses, which is the part of it that runs on
+# BASE recipes and therefore needs no alternate declared. It exists so the
+# bodies are exercised against the real reference layer rather than a stub:
+# every rate below is read from the CSVs at the scenario of record, never
+# restated here.
+#
+# At 1.25x, one base Assembler each of Reinforced Iron Plate and Rotor draws
+# 75 and 124 screws/min, which is bus record section 1's measured row.
+
+I_ROTOR = "Desc_Rotor_C"
+I_SMART_PLATING = "Desc_SpaceElevatorPart_1_C"
+R_RIP = "Recipe_IronPlateReinforced_C"
+R_ROTOR = "Recipe_Rotor_C"
+R_SMART_PLATING = "Recipe_SpaceElevatorPart_1_C"
+ASSEMBLER = "Build_AssemblerMk1_C"
+CONSTRUCTOR_CLASS = "Build_ConstructorMk1_C"
+
+#: The record's screw bus: 199/min of automated demand against 40/min
+#: producers, which is 4.975 machine-equivalents and ceils to 5.
+SCREW_EQUIVALENTS = 199.0 / 40.0
+
+
+def worked_buses(**screws) -> tuple[BusDeclaration, ...]:
+    """The four declarations. `**screws` overrides the screw bus only."""
+    screws.setdefault("disposition", Disposition.WITHDRAWN)
+    return (
+        BusDeclaration(bus_id="screws", item_id=I_SCREW,
+                       sources=(SourceEdge(I_IRON_ROD, None),), **screws),
+        BusDeclaration(bus_id="rip", item_id="Desc_IronPlateReinforced_C",
+                       sources=(SourceEdge(I_SCREW, "screws"),
+                                SourceEdge(I_IRON_PLATE, None)),
+                       disposition=Disposition.WITHDRAWN),
+        BusDeclaration(bus_id="rotor", item_id=I_ROTOR,
+                       sources=(SourceEdge(I_SCREW, "screws"),
+                                SourceEdge(I_IRON_ROD, None)),
+                       disposition=Disposition.WITHDRAWN),
+        BusDeclaration(bus_id="smart_plating", item_id=I_SMART_PLATING,
+                       sources=(SourceEdge("Desc_IronPlateReinforced_C", "rip"),
+                                SourceEdge(I_ROTOR, "rotor")),
+                       disposition=Disposition.WITHDRAWN),
+    )
+
+
+def worked_request(design_tier: int = 4, **screws) -> RealizationRequest:
+    """Tier 4 by default.
+
+    NOT tier 2: at the scenario of record one Rotor Assembler draws 124
+    screws/min and a Mk.2 belt carries 120, so the declaration is genuinely
+    infeasible there. `test_buses.py` asserts that refusal on purpose.
+    """
+    return RealizationRequest(design_tier=design_tier, buses=worked_buses(**screws))
+
+
+def worked_response(screw_equivalents: float = SCREW_EQUIVALENTS) -> SolveResponse:
+    """What the solve would have returned for the worked case.
+
+    `machine_equivalents` is the only figure the realization layer reads from
+    it, and only where a bus has out-of-scope demand the declaration does not
+    model. Cycle rates are carried because `RecipeUse` requires them and are
+    read by nothing here.
+    """
+    return SolveResponse(
+        recipes=(
+            RecipeUse(R_SMART_PLATING, ASSEMBLER, 1.0, 2.0),
+            RecipeUse(R_RIP, ASSEMBLER, 1.0, 5.0),
+            RecipeUse(R_ROTOR, ASSEMBLER, 1.0, 4.0),
+            RecipeUse(R_SCREWS, CONSTRUCTOR_CLASS, screw_equivalents, 10.0),
+        ),
+        items=tuple(
+            ItemFlow(i, 1.0, 1.0)
+            for i in (I_SCREW, "Desc_IronPlateReinforced_C", I_ROTOR,
+                      I_SMART_PLATING, I_IRON_ROD, I_IRON_PLATE)
+        ),
+        raw_inputs=(RawInput(I_IRON_ROD, 0.0),),
+        power=PowerReport(0.0, 0.0, 0.0, 0.0),
+        machines=(MachineCount(CONSTRUCTOR_CLASS, screw_equivalents, 5),),
+        backend="test",
     )
