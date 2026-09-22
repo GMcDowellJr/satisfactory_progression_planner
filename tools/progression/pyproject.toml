@@ -10,6 +10,11 @@ requires-python = ">=3.11"
 # satisfactory-production-adapter is imported for its contract types. Not declared
 # here because the repo is not installed: tests/conftest.py puts both src trees on
 # sys.path, matching how production_adapter is consumed elsewhere.
+#
+# `progression.stock` additionally imports `realization.contracts` for the bill
+# types — narrowly, and asserted by tests/test_progression_import_boundary.py.
+# It is NOT re-exported from __init__, so this package still imports without the
+# realization layer on the path; only `from progression import stock` needs it.
 dependencies = []
 
 [project.optional-dependencies]
