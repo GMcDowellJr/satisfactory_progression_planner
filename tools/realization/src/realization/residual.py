@@ -39,8 +39,8 @@ from production_adapter.gamedata import Producer, ReferenceData
 
 from .contracts import (
     Bus, BusDeclaration, BusResidual, ClockCause, ClockDistribution, ClockMode,
-    Coverage, Disposition, DispositionUnavailable, RealizationError,
-    WithdrawalBasis,
+    Coverage, Disposition, DispositionUnavailable, ProjectedCoverage,
+    RealizationError, WithdrawalBasis,
 )
 
 #: Satisfactory's producer power curve, P = P_base * (clock/100) ** exponent.
@@ -299,6 +299,64 @@ def coverage_for(
         withdrawal_per_min=withdrawal,
         basis=declaration.withdrawal_basis,
         covers=residual >= withdrawal - EPS,
+    )
+
+
+def projected_coverage_for(
+    bus: Bus,
+    declaration: BusDeclaration,
+) -> ProjectedCoverage | None:
+    """The stock-basis verdict: how long this bus's residual takes to cover a
+    declared BILL, bootstrap half first.
+
+    `None` on a line that declares no bill — including one sized from a RATE,
+    which `coverage_for` answers instead. The two are mutually exclusive at the
+    declaration, so exactly one of the pair returns a verdict for any line and
+    neither has to know about the other.
+
+        T_bootstrap = bootstrap / R
+        T_total     = (bootstrap + remainder) / R
+
+    Both DERIVED durations reported out, never a horizon assumed in, which is
+    what keeps §9 intact — structurally the same move as
+    `ProjectedGoal.minutes_to_complete`. The horizon objection applied to a
+    per-tier bill converted to a rate; it does not apply here, because nothing
+    is converted.
+
+    NO BOOLEAN, deliberately. `T` is finite whenever `R > 0`, so a `covers`
+    field would be trivially true, and making it mean something needs a tier
+    horizon this layer may not hold. The duration is the verdict.
+
+    R is the BUS RESIDUAL — what is left after the in-scope automated
+    consumers, which is the only rate a player can actually withdraw. It may be
+    zero or negative on a bus in deficit; both give `inf`, which is the
+    truthful report that the build as declared never covers the bill.
+
+    The basis is READ from the bill, not from `declaration.withdrawal_basis`.
+    That field carries the basis of the RATE, and on a bill-sized line it is
+    the untouched default — labelling a canonical bill as §8.2's footprint
+    estimate is exactly the wrong verdict wearing a right one's clothes that
+    amendment 5 named.
+    """
+    bill = declaration.withdrawal_bill
+    if bill is None:
+        return None
+    residual = bus.residual.rate_per_min
+    if residual > EPS:
+        to_bootstrap = bill.bootstrap_units / residual
+        to_total = bill.total_units / residual
+    else:
+        to_bootstrap = math.inf
+        to_total = math.inf
+    return ProjectedCoverage(
+        bus_id=bus.bus_id,
+        item_id=bus.item_id,
+        residual_per_min=residual,
+        bootstrap_units=bill.bootstrap_units,
+        remainder_units=bill.remainder_units,
+        basis=bill.basis,
+        minutes_to_bootstrap=to_bootstrap,
+        minutes_to_total=to_total,
     )
 
 

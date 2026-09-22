@@ -23,8 +23,9 @@ from .contracts import (
     ClockCause, ClockDistribution, ClockMode, ConsumerShare, Coverage,
     CreditedFlowCycle, DesignTier, Disposition, DispositionUnavailable,
     ExtractionRate, Lane, LaneInfeasible, LaneInput, NodeDeclaration,
-    PartitionIncomplete, ProjectedGoal, RealizationError, RealizationReport,
-    RealizationRequest, SourceEdge, TierUnavailable, WithdrawalBasis,
+    PartitionIncomplete, ProjectedCoverage, ProjectedGoal, RealizationError,
+    RealizationReport, RealizationRequest, SourceEdge, TierUnavailable,
+    WithdrawalBasis, WithdrawalBill,
 )
 from .realize import credited_flow_order, project_goals, realize
 
@@ -34,8 +35,9 @@ __all__ = [
     "ConsumerShare", "Coverage", "CreditedFlowCycle", "DesignTier",
     "Disposition", "DispositionUnavailable", "ExtractionRate", "Lane",
     "LaneInfeasible", "LaneInput", "NodeDeclaration", "PartitionIncomplete",
-    "ProjectedGoal", "RealizationError", "RealizationReport",
-    "RealizationRequest", "SourceEdge", "TierUnavailable", "WithdrawalBasis",
+    "ProjectedCoverage", "ProjectedGoal", "RealizationError",
+    "RealizationReport", "RealizationRequest", "SourceEdge", "TierUnavailable",
+    "WithdrawalBasis", "WithdrawalBill",
     "credited_flow_order", "project_goals", "realize",
 ]
 __version__ = "0.1.0"

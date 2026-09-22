@@ -187,6 +187,84 @@ class WithdrawalBasis(str, Enum):
     #: while `Coverage.basis` still reads the same.
 
 
+#: Whether a basis produces a RATE or a STOCK. Not a property of the enum
+#: member, because a property added alongside one value silently defaults for
+#: the next. Exhaustiveness is asserted by
+#: `test_contracts_construction.py::test_every_withdrawal_basis_declares_a_shape`,
+#: so a new basis fails a test rather than picking a shape by omission.
+#:
+#: The distinction is not cosmetic. §8.2's geometric floor derives a
+#: withdrawal RATE from a footprint; the whole-game bill is a QUANTITY and
+#: cannot be made a rate without a time horizon, which §9 keeps out of the
+#: model. The two therefore reach different fields and different verdicts, and
+#: a value labelling the wrong one is refused at construction.
+BASIS_SHAPE: dict[WithdrawalBasis, Literal["rate", "stock"]] = {
+    WithdrawalBasis.GEOMETRIC_FLOOR: "rate",
+    WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR: "stock",
+}
+
+
+@dataclass(frozen=True)
+class WithdrawalBill:
+    """A build-material demand as a STOCK, split at the bootstrap.
+
+    The whole-game bill is a quantity, not a rate. §9 keeps player time out of
+    the model, so it is never converted to one: what is reported is the derived
+    duration `T_i = bill_i / R_i`, which is structurally identical to
+    `ProjectedGoal.minutes_to_complete` — derived from the declared build
+    against a canonical total. See `ProjectedCoverage`.
+
+    THE SPLIT. The bill divides at what has to exist BEFORE the next tier's
+    chain can run at all:
+
+        bootstrap   the minimum equipment to bring the next tier online. Coal
+                    power is at least 1 coal generator, 1 water extractor, 1
+                    miner and the infrastructure between them; steel is at
+                    least 2 miners, 1 foundry, 2 constructors, 2 storage and
+                    the same. Declared as MINIMUMS
+        remainder   the rest of the whole-game bill, accumulated while the tier
+                    already runs
+
+    The split matters because the two durations answer different questions.
+    `minutes_to_bootstrap` gates progression — it is when the next tier can
+    START. `minutes_to_total` is when the bill is covered. Folding them into
+    one figure reports the second and answers neither.
+
+    BOTH HALVES ARE FLOORS, and for two independent reasons: the bootstrap sets
+    are stated as minimums, and the spatial terms — the "associated
+    infrastructure" in each of them — are absent until phase 5 wires their
+    bounds. That is the same property A5.5 needs of the whole bill, so the
+    split does not weaken the floor argument; it inherits it twice.
+
+    Units are ITEMS of the bus's item, not machines. The declaration a caller
+    makes is a machine set; resolving it to items through
+    `building_recipe_io.csv` is the stock pass's job and does not exist yet.
+    """
+
+    bootstrap_units: float
+    remainder_units: float
+    #: WHERE the bill came from, carried next to the quantity it describes
+    #: rather than on `BusDeclaration`, which carries the basis of the RATE.
+    #: Two sizings, two bases, neither able to label the other's number.
+    basis: WithdrawalBasis
+
+    def __post_init__(self) -> None:
+        for name in ("bootstrap_units", "remainder_units"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be >= 0")
+        if BASIS_SHAPE[self.basis] != "stock":
+            raise ValueError(
+                f"{self.basis.value} is a RATE basis and cannot label a bill. "
+                "§8.2's geometric floor derives a withdrawal rate from a "
+                "footprint; a bill is a quantity. Use withdrawal_per_min for a "
+                "rate basis."
+            )
+
+    @property
+    def total_units(self) -> float:
+        return self.bootstrap_units + self.remainder_units
+
+
 @dataclass(frozen=True)
 class BusDeclaration:
     """What the caller states about ONE BUS. Keyed by `bus_id`, not by item.
@@ -259,6 +337,19 @@ class BusDeclaration:
     #: is safe here and is not on `Coverage.basis`, where any default would
     #: launder a caveat on the way out instead of applying one.
     withdrawal_basis: WithdrawalBasis = WithdrawalBasis.GEOMETRIC_FLOOR
+    #: The same demand as a STOCK, split at the bootstrap. Mutually exclusive
+    #: with `withdrawal_per_min`: one line is sized one way, and a line
+    #: declaring both would get two verdicts against two floors with nothing
+    #: saying which governs.
+    #:
+    #: A bill contributes NO RATE, so it does not size the bus. That is not an
+    #: omission — converting it to one needs a horizon §9 forbids. The bus is
+    #: sized the way respec §6 settled every other sizing question: the caller
+    #: DECLARES THE BUILD (`extra_producers`, on the recovered floor of one
+    #: machine) and reads `ProjectedCoverage.minutes_to_bootstrap` back. The
+    #: two named ways to shorten it — a second line, or a somersloop — are both
+    #: changes to that declaration, which is the shape §6 requires.
+    withdrawal_bill: WithdrawalBill | None = None
     disposition: Disposition = Disposition.BACK_UP
     clock_mode: ClockMode = ClockMode.BACKPRESSURE
     clock_distribution: ClockDistribution = ClockDistribution.AVERAGED
@@ -280,8 +371,21 @@ class BusDeclaration:
         if self.disposition is Disposition.MATCHED and self.withdrawal_per_min is None:
             raise ValueError(
                 f"{self.bus_id}: Disposition.MATCHED requires withdrawal_per_min — "
-                "it is the rate being matched. A build-material line with no "
-                "declared withdrawal is sized as BACK_UP instead."
+                "it is the rate being matched. A BILL is not a rate and cannot "
+                "be matched: converting it to one needs a time horizon §9 keeps "
+                "out of the model. A build-material line with no declared "
+                "withdrawal RATE is sized as BACK_UP instead."
+            )
+        # Mutually exclusive, not merely redundant. Two declared sizings mean
+        # two verdicts against two floors with different error characteristics
+        # and nothing saying which governs — the failure mode `Coverage.basis`
+        # exists to prevent, arriving one level up.
+        if self.withdrawal_per_min is not None and self.withdrawal_bill is not None:
+            raise ValueError(
+                f"{self.bus_id}: declares both withdrawal_per_min and "
+                "withdrawal_bill. A line is sized from a rate or from a stock, "
+                "and the two carry different bases; declaring both leaves the "
+                "verdict unattributable."
             )
         seen = [e.input_item for e in self.sources]
         if len(seen) != len(set(seen)):
@@ -289,7 +393,7 @@ class BusDeclaration:
 
     @property
     def is_build_material_line(self) -> bool:
-        return self.withdrawal_per_min is not None
+        return self.withdrawal_per_min is not None or self.withdrawal_bill is not None
 
 
 @dataclass(frozen=True)
@@ -565,6 +669,61 @@ class Coverage:
 
 
 @dataclass(frozen=True)
+class ProjectedCoverage:
+    """Whether a bus's residual covers a declared BILL, reported as durations.
+
+    The stock-basis counterpart to `Coverage`, and a separate type rather than
+    fields on it. `Coverage` compares two RATES and answers with a boolean;
+    that shape does not survive a stock basis, because `T = bill / R` is finite
+    whenever `R > 0` and every line therefore "covers" eventually. A boolean
+    here would need a tier horizon, and the only horizon §9 permits is another
+    derived duration — so the honest verdict is the duration itself, compared
+    by whoever has a duration to compare it against.
+
+    §8.1's general form, applied: where two constructions differ only in
+    whether the tool acquires an opinion, take the one without. A duration is a
+    measurement; `covers=True` would be a judgement about a horizon this layer
+    is not entitled to hold.
+
+    Leaving `Coverage` alone is the forward-only rule applied to a type. Every
+    `GEOMETRIC_FLOOR` verdict already written keeps meaning exactly what it
+    meant when it was written, rather than `Coverage` widening underneath it.
+
+    Structurally identical to `ProjectedGoal` — declared build, derived rate,
+    derived duration against a canonical total — which is respec §6's settled
+    form and the reason no new kind of input is introduced here.
+
+        minutes_to_bootstrap   when the NEXT TIER CAN START. The gate on
+                               progression, and the actionable half
+        minutes_to_total       when the whole-game bill is covered
+
+    `basis` has NO DEFAULT, for the reason `Coverage.basis` has none.
+
+    RATE IS THE BUS RESIDUAL, not gross lane output. `ProjectedGoal` reports
+    gross, which is right for a terminal goal item and OVERSTATES for an item
+    with in-scope automated consumers. A build-material line is drawn from what
+    is left after those consumers, so the residual is the only rate that can
+    answer this — which is why these are two types and not one.
+    """
+
+    bus_id: BusId
+    item_id: ItemId
+    residual_per_min: float
+    bootstrap_units: float
+    remainder_units: float
+    basis: WithdrawalBasis
+    #: `inf` when the residual is zero or negative. The truthful report — the
+    #: build as declared never covers it — and not a refusal, matching
+    #: `project_goals` on a goal no declared bus produces.
+    minutes_to_bootstrap: float
+    minutes_to_total: float
+
+    @property
+    def total_units(self) -> float:
+        return self.bootstrap_units + self.remainder_units
+
+
+@dataclass(frozen=True)
 class ProjectedGoal:
     """Respec §6 — rate and T both DERIVED from the declared build."""
 
@@ -582,9 +741,16 @@ class RealizationReport:
     projections: tuple[ProjectedGoal, ...]
     total_power_mw: float
     design_tier: DesignTier
-    #: One entry per build-material line. Empty is not "everything covers" — it
-    #: is "no line declared a withdrawal". Never a string in `warnings`.
+    #: One entry per build-material line sized from a RATE. Empty is not
+    #: "everything covers" — it is "no line declared a withdrawal rate". Never
+    #: a string in `warnings`.
     coverage: tuple[Coverage, ...] = field(default_factory=tuple)
+    #: One entry per build-material line sized from a BILL. Separate from
+    #: `coverage` because the two carry different verdicts over different
+    #: bases, and a reader that has to check which shape an entry is has been
+    #: handed the conflation the split exists to prevent. Empty means "no line
+    #: declared a bill".
+    projected_coverage: tuple[ProjectedCoverage, ...] = field(default_factory=tuple)
     #: An alternate recipe is a RE-WIRING event, not only a cheaper recipe:
     #: Stitched Iron Plate removes Reinforced Iron Plate from the screw bus
     #: entirely (199 -> 124/min). A report is valid for a RECIPE SET, and these

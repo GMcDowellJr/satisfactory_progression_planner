@@ -50,9 +50,10 @@ from .buses import (
 from .capabilities import extraction_rate
 from .contracts import (
     Bus, BusId, BusNotDeclared, Capability, Coverage, CreditedFlowCycle,
-    ExtractionRate, ProjectedGoal, RealizationReport, RealizationRequest,
+    ExtractionRate, ProjectedCoverage, ProjectedGoal, RealizationReport,
+    RealizationRequest,
 )
-from .residual import EPS, coverage_for
+from .residual import EPS, coverage_for, projected_coverage_for
 
 
 def realize(
@@ -87,12 +88,18 @@ def realize(
         extraction_rate(extraction, node)
 
     coverage: list[Coverage] = []
+    projected: list[ProjectedCoverage] = []
     warnings: list[str] = []
     for bus in buses:
         declaration = request.declaration_for(bus.bus_id)
+        # Mutually exclusive at the declaration, so at most one of the two
+        # returns a verdict and neither function has to know about the other.
         verdict = coverage_for(bus, declaration)
         if verdict is not None:
             coverage.append(verdict)
+        projection = projected_coverage_for(bus, declaration)
+        if projection is not None:
+            projected.append(projection)
         warnings.extend(feasibility(bus))
 
         trunk = bus.lanes[0].trunk if bus.lanes else None
@@ -122,6 +129,7 @@ def realize(
         total_power_mw=sum(lane.power_mw for bus in buses for lane in bus.lanes),
         design_tier=request.design_tier,
         coverage=tuple(coverage),
+        projected_coverage=tuple(projected),
         invalidating_unlocks=_invalidating_unlocks(data, buses),
         warnings=tuple(warnings),
     )
