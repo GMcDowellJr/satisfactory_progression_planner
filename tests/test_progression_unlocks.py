@@ -234,3 +234,84 @@ def test_allowed_recipes_is_explicit_never_a_mode():
     assert allowed.mode.value == "explicit"
     assert allowed.recipe_ids == tier(3).recipe_ids
     assert isinstance(tier(3), TierUnlocks)
+
+
+# --------------------------------------------------------------------------
+# tier -> schematics, and what they cost. Added 2026-09-22 for the stock pass.
+# --------------------------------------------------------------------------
+
+def test_the_tier_filter_resolves_schematics_and_recipes_from_one_predicate():
+    """Extracted so the filter exists ONCE. Two copies of a filter is how the
+    provenance work's three-lists defect started, and the fix there was to make
+    the lists one list."""
+    from progression import unlocks as U
+
+    assert U._reached_at_tier({"schematic_type": "EST_Milestone", "tech_tier": "3"}, 3)
+    assert U._reached_at_tier({"schematic_type": "EST_Milestone", "tech_tier": "1"}, 3)
+    assert not U._reached_at_tier({"schematic_type": "EST_Milestone", "tech_tier": "4"}, 3)
+    assert not U._reached_at_tier({"schematic_type": "EST_MAM", "tech_tier": "1"}, 3)
+    assert not U._reached_at_tier({"schematic_type": "EST_Alternate", "tech_tier": "1"}, 3)
+
+
+def test_schematics_at_tier_is_cumulative():
+    """`tech_tier <= tier`, so this is everything bought on the way and not the
+    tier's own row. The wrong shape for "what do I still owe" — the difference
+    is what the player has already bought, which is state this layer does not
+    hold."""
+    from progression.unlocks import schematics_at_tier
+
+    low = set(schematics_at_tier(REPO, 1))
+    high = set(schematics_at_tier(REPO, 3))
+    assert low < high, "a higher tier must strictly contain a lower one"
+    assert "Schematic_1-1_C" in low and "Schematic_3-4_C" not in low
+    assert "Schematic_3-4_C" in high
+
+
+def test_schematics_at_tier_withholds_research_and_hard_drive_schematics():
+    """A tier does not imply MAM research or hard-drive loot, so their COSTS are
+    not in a tier's bill either — the same rule `at_tier` applies to recipes."""
+    import csv
+
+    from progression.unlocks import PROGRESSION_TYPES, schematics_at_tier
+
+    path = REPO / "planning_data" / "game" / "reference" / "schematics.csv"
+    with path.open(encoding="utf-8") as fh:
+        kinds = {r["schematic_id"]: r["schematic_type"] for r in csv.DictReader(fh)}
+    for schematic_id in schematics_at_tier(REPO, 9):
+        assert kinds[schematic_id] in PROGRESSION_TYPES
+
+
+def test_every_milestone_and_tutorial_carries_a_cost():
+    """THE MEASUREMENT THAT MAKES "ABSENT MEANS FREE" SAFE.
+
+    `unlock_cost` treats a schematic missing from the cost table as costing
+    nothing. That is only honest because all 42 Milestones and all 6 Tutorials
+    are costed, and the uncosted progression-type schematics are Custom —
+    starting blueprints, cosmetics, FICSMAS. If a future extraction drops
+    milestone costs, this fails instead of every bill quietly shrinking.
+    """
+    import csv
+
+    from progression.unlocks import schematic_costs
+
+    path = REPO / "planning_data" / "game" / "reference" / "schematics.csv"
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    costs = schematic_costs(REPO)
+
+    for kind, expected in (("EST_Milestone", 42), ("EST_Tutorial", 6)):
+        ids = [r["schematic_id"] for r in rows if r["schematic_type"] == kind]
+        assert len(ids) == expected
+        assert all(s in costs for s in ids), f"an uncosted {kind}"
+
+
+def test_schematic_costs_reads_real_amounts():
+    """Base Building, tier 1: 200 Concrete, 100 Iron Plate, 100 Iron Rod. Three
+    distinct amounts, read from schematic_costs.csv."""
+    from progression.unlocks import schematic_costs
+
+    assert dict(schematic_costs(REPO)["Schematic_1-1_C"]) == {
+        "Desc_Cement_C": 200.0,
+        "Desc_IronPlate_C": 100.0,
+        "Desc_IronRod_C": 100.0,
+    }

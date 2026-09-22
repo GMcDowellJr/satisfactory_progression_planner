@@ -42,7 +42,7 @@ import csv
 import pathlib
 from dataclasses import dataclass
 
-from production_adapter.contracts import AllowedRecipes, RecipeId, RecipeMode
+from production_adapter.contracts import AllowedRecipes, ItemId, RecipeId, RecipeMode
 
 from .pool import PoolAvailability, available_at
 
@@ -55,9 +55,24 @@ PROGRESSION_TYPES = frozenset({"EST_Milestone", "EST_Tutorial", "EST_Custom"})
 #: Types whose presence on a granted recipe means the tier may be overstating it.
 RESEARCH_TYPES = frozenset({"EST_MAM", "EST_Alternate"})
 
+SchematicId = str
+
 
 class UnlockDataError(RuntimeError):
     """The reference layer is missing something this module requires."""
+
+
+def _reached_at_tier(schematic: dict[str, str], tier: int) -> bool:
+    """Whether reaching `tier` accounts for this schematic.
+
+    Extracted 2026-09-22 so the tier filter exists ONCE. `at_tier` resolves it to
+    recipes and `schematics_at_tier` to schematic ids, and two copies of a filter
+    is how the provenance work's three-lists defect started.
+    """
+    return (
+        schematic["schematic_type"] in PROGRESSION_TYPES
+        and int(schematic["tech_tier"]) <= tier
+    )
 
 
 def _rows(path: pathlib.Path) -> list[dict[str, str]]:
@@ -145,10 +160,9 @@ def at_tier(
             raise UnlockDataError(
                 f"{row['schematic_id']} unlocks {recipe_id} but is absent from schematics.csv"
             )
-        kind = schematic["schematic_type"]
-        if kind in RESEARCH_TYPES:
+        if schematic["schematic_type"] in RESEARCH_TYPES:
             by_research.add(recipe_id)
-        if kind in PROGRESSION_TYPES and int(schematic["tech_tier"]) <= tier:
+        if _reached_at_tier(schematic, tier):
             granted.add(recipe_id)
 
     base = {r for r, is_alt in recipes.items() if not is_alt}
@@ -171,3 +185,72 @@ def at_tier(
         uncertain=tuple(sorted(granted & by_research - set(declared))),
         pool=pool,
     )
+
+
+# --------------------------------------------------------------------------
+# tier -> schematics, and what they cost. Added 2026-09-22 for the stock pass.
+# --------------------------------------------------------------------------
+#
+# THE PARKED QUESTION IS ANSWERED. "Whether `unlocks.py` or
+# `progression_clusters.csv` already resolves a capability to a numeric tier"
+# stood open because that store had not been read. It has now:
+# `schematics.csv` carries `tech_tier` as an integer column and this module has
+# filtered on it since it was written. Nothing new was needed — the resolution
+# existed and returned recipes, and what the stock pass needs is the same
+# filter returning schematic ids.
+#
+# These two RESOLVE and READ. They do not sum: summing quantities is the stock
+# pass's, and a filter that started returning bills would have stopped being a
+# filter, which this module's own docstring is emphatic about.
+
+
+def schematics_at_tier(
+    repo_root: str | pathlib.Path,
+    tier: int,
+) -> tuple[SchematicId, ...]:
+    """Every schematic reaching `tier` accounts for. CUMULATIVE, not incremental.
+
+    `tech_tier <= tier`, so this is everything bought on the way to the tier and
+    not the tier's own row. That is the right shape for a whole-game bill and
+    the wrong shape for "what do I still owe" — the difference is what the
+    player has already bought, which is state this layer does not hold and does
+    not ask for.
+
+    Same three types as `at_tier`: Milestone, Tutorial and Custom. MAM and
+    hard-drive schematics are player-driven and are not implied by reaching a
+    tier, so their costs are not in a tier's bill either.
+    """
+    if tier < 0:
+        raise ValueError(f"tier must be non-negative, got {tier}")
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    return tuple(sorted(
+        s["schematic_id"]
+        for s in _rows(ref / "schematics.csv")
+        if _reached_at_tier(s, tier)
+    ))
+
+
+def schematic_costs(
+    repo_root: str | pathlib.Path,
+) -> dict[SchematicId, tuple[tuple[ItemId, float], ...]]:
+    """What each schematic costs to buy. A READ of `schematic_costs.csv`.
+
+    A schematic ABSENT from the result costs nothing, and that is a measured
+    claim rather than a convenient reading: every one of the 42 Milestones and
+    6 Tutorials carries cost rows, and the 91 uncosted progression-type
+    schematics are Custom — starting blueprints, cosmetics, FICSMAS. Asserted
+    by `tests/test_progression_unlocks.py`, so a future extraction that drops
+    milestone costs fails a test instead of quietly shrinking every bill.
+
+    Costs are in ITEMS and are NOT scenario-scaled. Two Custom rows are priced
+    in `Desc_ResourceSinkCoupon_C`, which is not in items.csv because a coupon
+    is not a part; the stock pass reports those the same way it reports the
+    Portable Miner, by naming them rather than dropping them.
+    """
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    by_schematic: dict[SchematicId, list[tuple[ItemId, float]]] = {}
+    for row in _rows(ref / "schematic_costs.csv"):
+        by_schematic.setdefault(row["schematic_id"], []).append(
+            (row["item_id"], float(row["amount"]))
+        )
+    return {k: tuple(sorted(v)) for k, v in by_schematic.items()}
