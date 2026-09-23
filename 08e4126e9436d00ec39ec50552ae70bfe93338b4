@@ -1,0 +1,28 @@
+This commit carries more than its subject says.
+
+Besides the regenerated manifests, 08e4126e is where amendment 12 landed: the
+storage toggle's body and tests (busmodel, realization, tests/) and the A12
+text appended to docs/decisions/bus_level_recompute_and_alternate_crossover.md,
+plus tools/busmodel/README.md. They were meant to go in as two commits of their
+own ahead of the manifests commit. Instead they were staged together with it.
+The contents are as intended; only the commit boundaries are lost.
+
+What changed and why is in A12 (A12.1-A12.5). In short:
+
+  - Each bus line carries an explicit `stores: bool = True` flag, and its
+    disposition is derived from it (stores -> WITHDRAWN; off with a
+    withdrawal -> MATCHED; off -> BACK_UP). Passing `disposition=` raises a
+    TypeError. `recorded_disposition` is the record path, used only in
+    busmodel/declarations.py.
+  - `SizingBasis.STORAGE` is the default. A storing line draws what it
+    produces, and a line with storage off draws usage. A line with nothing
+    left to store is reported (`stores_nothing`), never remedied.
+  - Behaviour change: realization's MATCHED clock is now the line's whole
+    demand over nameplate, not just its withdrawal.
+  - `external` subtracts consumers' usage rather than their draw (A8.2's
+    defect, kept from returning).
+
+Tests: the full suite ran on Greg's machine before the commit and passed.
+
+Annotated after the fact by git note, 2026-09-23. The commit is pushed and is
+not rewritten.
