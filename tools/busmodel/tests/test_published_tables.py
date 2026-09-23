@@ -11,12 +11,16 @@ Two recovered rules are load-bearing and neither document states them
 a one-machine floor. They are options on `solve`, so a failure here names which
 rule moved rather than presenting as arithmetic drift.
 
-WHAT IS NOT ASSERTED, and why. A3.5's 27-machine table is NOT a target. Its
-withdrawal column sits inside the demand sum on Concrete and Wire_copper and
-outside it on four other rows under one verdict column, so `supply - draw = R`
-reconciles on nine of its eleven rows and fails on two. It becomes a target once
-it is recomputed under A4.1, which makes the basis uniform structurally. The
-handoff's next action 4 owns that.
+WHAT IS NOT ASSERTED, and why. A3.5's 27-machine table is NOT a target, and did
+not become one on 2026-09-22. Its withdrawal column sits inside the demand sum
+on Concrete and Wire_copper and outside it on four other rows under one verdict
+column, so `supply - draw = R` reconciles on nine of its eleven rows and fails
+on two. `worked_case_A4` is the same topology with that defect removed, and
+section 7 pins it under BOTH sizing bases — which is the recompute A5.3 asked
+for, not a correction of A3.5.
+
+Section 6 was RE-BASED on 2026-09-22 and its docstring records what it stopped
+asserting. Amendment 6 is the record; do not read the change out of this file.
 """
 from __future__ import annotations
 
@@ -375,14 +379,30 @@ def test_section_6_1_local_minimum(scenario_of_record):
 # --------------------------------------------------------------------------
 
 def test_amendment_4_iron_plate_build_line(scenario_of_record):
-    """A4.1 and A4.2, against Iron Ingot's headroom.
+    """A4.1 and A4.2, against Iron Ingot's headroom. **RE-BASED 2026-09-22.**
 
-        MATCHED build line, 10% clock     +4/min ingot   ->  R 6.00   no new smelter
-        full Constructor, 100%           +40/min ingot   ->  ceil 8, +1 SMELTER
+    The comparison is unchanged in substance and has MOVED COLUMNS. A5.2
+    settles that the two states do not differ in what a line costs its source
+    bus on average — only in power and in peak duration — so the 36/min is a
+    PEAK figure and always was. It is asserted here where it belongs.
 
-    The handoff records this comparison as derived BY HAND, and it is amendment
-    4's sharper form: the full-rate line does not merely cost more power, it
-    costs a smelter producing plates nobody consumes.
+        MATCHED build line, 10% clock   +4/min ingot avg, +4/min peak
+        full Constructor, 100%          +4/min ingot avg, +40/min PEAK
+
+    What this test asserted before, and no longer does: `ingot_full.machines
+    == 8, "the full-rate line costs a smelter"`. Under a usage basis both runs
+    size 7 smelters, because both draw 204/min on average. The smelter was
+    never an average cost.
+
+    **It is not a null result.** The full-rate line asks the ingot bus for
+    240/min against a supply of 210 while it refills — 30/min it cannot have —
+    and splitters round-robin rather than prioritise, so that shortfall is paid
+    by Wire, Iron Plate and Iron Rod, which hold 98% of the bus between them.
+    A4.2's finding survives with its provenance corrected: the full-rate line
+    does not cost a smelter, it starves its neighbours for the duration of a
+    refill. The DURATION is capacity/slack and is still not modelled — no
+    container capacity reaches this layer — so how much that costs is not
+    answered here, and is not guessed.
 
     The two runs differ in exactly one declared field, the build line's
     disposition. Everything else is held.
@@ -407,10 +427,33 @@ def test_amendment_4_iron_plate_build_line(scenario_of_record):
     assert full[decls.BUS_IRON_PLATE_BUILD].supply_per_min == pytest.approx(20.0, abs=TOL)
 
     ingot_matched, ingot_full = matched["iron_ingot"], full["iron_ingot"]
-    assert ingot_full.demand_per_min - ingot_matched.demand_per_min == pytest.approx(36.0, abs=TOL)
+
+    # The average is the same bus, twice. This is A5.2's claim, computed.
+    assert ingot_full.demand_per_min == pytest.approx(
+        ingot_matched.demand_per_min, abs=TOL
+    )
     assert ingot_matched.machines == 7
+    assert ingot_full.machines == 7
     assert ingot_matched.residual_per_min == pytest.approx(6.0, abs=TOL)
-    assert ingot_full.machines == 8, "the full-rate line costs a smelter"
+
+    # The 36/min, where it belongs. Same number, different column.
+    assert ingot_full.peak_demand_per_min - ingot_matched.peak_demand_per_min == (
+        pytest.approx(36.0, abs=TOL)
+    )
+    assert ingot_matched.peak_demand_per_min == pytest.approx(204.0, abs=TOL)
+    assert ingot_full.peak_demand_per_min == pytest.approx(240.0, abs=TOL)
+
+    # MATCHED has no transient at all: supply equals demand by construction.
+    assert ingot_matched.peak_shortfall_per_min == pytest.approx(0.0, abs=TOL)
+    assert ingot_full.peak_shortfall_per_min == pytest.approx(30.0, abs=TOL)
+
+    # And the shortfall lands on the neighbours, not on the line causing it.
+    build_share = next(
+        s for s in ingot_full.consumers if s.bus_id == decls.BUS_IRON_PLATE_BUILD
+    )
+    assert build_share.draw_per_min == pytest.approx(4.0, abs=TOL)
+    assert build_share.peak_per_min == pytest.approx(40.0, abs=TOL)
+    assert build_share.share < 0.03
 
 
 def test_worked_case_reproduces_a3_5_rows_unaffected_by_the_basis_defect(scenario_of_record):
@@ -453,3 +496,134 @@ def test_split_wire_buses_do_not_pool(scenario_of_record):
     assert solution[decls.BUS_WIRE_IRON].recipe_id != solution[decls.BUS_WIRE_COPPER].recipe_id
     assert solution[decls.BUS_WIRE_IRON].residual_per_min == pytest.approx(20.62, abs=TOL)
     assert solution[decls.BUS_WIRE_COPPER].residual_per_min == pytest.approx(16.00, abs=TOL)
+
+
+# --------------------------------------------------------------------------
+# 7. the usage recompute, 2026-09-22. Amendment 6
+# --------------------------------------------------------------------------
+#
+# A5.3 predicted the cascade from two rows of arithmetic and did not compute it:
+# "size-for-usage does not merely trim the build lines, it shrinks the
+# PRODUCTION CHAIN." This is that computation. It is a NEW table rather than a
+# correction of A3.5 — A3.5 stands as written and is still not a target.
+
+#: `worked_case_A4` under `SizingBasis.USAGE`, scenario of record, computed
+#: 2026-09-22 in a container. Quoted here as the table amendment 6 publishes,
+#: which is what makes it a regression target rather than a one-off run.
+A3_5_UNDER_USAGE = (
+    # bus                       machines  demand    residual
+    ("smart_plating",                  1,    2.00,     0.00),
+    ("rip",                            1,    4.00,     1.62),
+    ("rotor",                          1,    4.00,     0.00),
+    ("screws",                         4,  124.00,    36.00),
+    (decls.BUS_WIRE_IRON,              2,   33.33,    11.67),
+    (decls.BUS_WIRE_COPPER,            1,   14.00,    16.00),
+    ("cable",                          1,    3.00,    27.00),
+    ("concrete",                       1,    6.00,     9.00),
+    (decls.BUS_IRON_PLATE,             1,   17.33,     2.67),
+    (decls.BUS_IRON_PLATE_BUILD,       1,    2.00,     0.00),
+    ("iron_rod",                       4,   55.00,     5.00),
+    ("iron_ingot",                     4,  115.89,     4.11),
+    ("copper_ingot",                   1,    7.00,    23.00),
+)
+
+
+def test_worked_case_under_a_usage_basis(scenario_of_record):
+    """A5.3's cascade, computed rather than predicted.
+
+    Every row is the same declaration as the AVERAGE run. The only thing that
+    changed is that a WITHDRAWN consumer draws its usage instead of its
+    nameplate, which is A5.2's single claim.
+    """
+    data = scenario_of_record
+    solution = solve(decls.worked_case_a4(data), data, sizing_basis=SizingBasis.USAGE)
+    for bus_id, machines, demand, residual in A3_5_UNDER_USAGE:
+        assert solution[bus_id].machines == machines, bus_id
+        assert solution[bus_id].demand_per_min == pytest.approx(demand, abs=TOL), bus_id
+        assert solution[bus_id].residual_per_min == pytest.approx(residual, abs=TOL), bus_id
+
+
+def test_the_usage_basis_shrinks_the_production_chain_not_only_the_build_lines(
+    scenario_of_record
+):
+    """A5.3's CONSEQUENCE, asserted as the claim it makes.
+
+        AVERAGE   29 machines, 21.747 continuous
+        USAGE     23 machines, 16.989 continuous
+
+    Six machines, and NONE of them is a build line: Cable, Concrete and the
+    Iron Plate build line are one machine on both bases — the machine floor
+    holds them there. Every machine the usage basis removes comes off Iron
+    Ingot (7 -> 4), Iron Rod (5 -> 4), Iron Plate (2 -> 1) and Wire_iron
+    (3 -> 2), which are production buses.
+
+    This is why A5.3 says A3.5's figure is a TRANSIENT one: what the factory
+    draws before its containers saturate, not what it settles at.
+    """
+    data = scenario_of_record
+    decl = decls.worked_case_a4(data)
+    average = solve(decl, data, sizing_basis=SizingBasis.AVERAGE)
+    usage = solve(decl, data, sizing_basis=SizingBasis.USAGE)
+
+    assert average.total_machines == 29
+    assert usage.total_machines == 23
+    assert average.total_continuous_machines == pytest.approx(21.747, abs=0.001)
+    assert usage.total_continuous_machines == pytest.approx(16.989, abs=0.001)
+
+    for build_line in ("cable", "concrete", decls.BUS_IRON_PLATE_BUILD):
+        assert average[build_line].machines == 1, build_line
+        assert usage[build_line].machines == 1, build_line
+
+    for production, before, after in (
+        ("iron_ingot", 7, 4),
+        ("iron_rod", 5, 4),
+        (decls.BUS_IRON_PLATE, 2, 1),
+        (decls.BUS_WIRE_IRON, 3, 2),
+    ):
+        assert average[production].machines == before, production
+        assert usage[production].machines == after, production
+
+
+def test_the_out_of_scope_draw_follows_the_basis_it_was_solved_on(
+    scenario_of_record
+):
+    """An out-of-scope figure on a different basis from the in-scope ones is
+    the section 6.1 defect in a new place, so the roll-up reads the solution's
+    basis rather than assuming one.
+
+    Iron Ore is the visible case: 210/min under AVERAGE, which is seven
+    smelters at nameplate, against 115.89/min under USAGE, which is what the
+    ingot bus actually consumes.
+    """
+    data = scenario_of_record
+    decl = decls.worked_case_a4(data)
+    average = out_of_scope_draw(decl, data, solve(decl, data))
+    usage = out_of_scope_draw(
+        decl, data, solve(decl, data, sizing_basis=SizingBasis.USAGE)
+    )
+    assert average["Desc_OreIron_C"] == pytest.approx(210.00, abs=TOL)
+    assert usage["Desc_OreIron_C"] == pytest.approx(115.89, abs=TOL)
+    # Limestone is Concrete's, and Concrete is a BACK_UP build line: it drew
+    # its usage on both bases already, so this row does not move.
+    assert average["Desc_Stone_C"] == pytest.approx(usage["Desc_Stone_C"], abs=TOL)
+
+
+def test_the_peak_is_reported_on_both_bases_and_sizes_neither(scenario_of_record):
+    """The demotion, from the published-table side.
+
+    Wire_copper is the sharpest row: Cable draws 3/min on average and 90/min at
+    nameplate, so its peak asks 95/min of a bus supplying 30. Under the OLD
+    peak basis that sized Wire_copper at four Constructors. It now sizes at one
+    on both bases, and the 65/min is reported as a shortfall the production
+    consumers sharing that bus absorb.
+    """
+    data = scenario_of_record
+    decl = decls.worked_case_a4(data)
+    average = solve(decl, data)
+    usage = solve(decl, data, sizing_basis=SizingBasis.USAGE)
+    for solution in (average, usage):
+        bus = solution[decls.BUS_WIRE_COPPER]
+        assert bus.machines == 1
+        assert bus.demand_per_min == pytest.approx(14.00, abs=TOL)
+        assert bus.peak_demand_per_min == pytest.approx(95.00, abs=TOL)
+        assert bus.peak_shortfall_per_min == pytest.approx(65.00, abs=TOL)

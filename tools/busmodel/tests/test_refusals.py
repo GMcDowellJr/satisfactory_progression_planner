@@ -9,11 +9,13 @@ from __future__ import annotations
 import pytest
 
 from busmodel import (
+    BusModelError,
     BusNotDeclared,
     BusSpec,
     CreditedFlowCycle,
     Declaration,
     DispositionUnavailable,
+    SizingBasis,
     SourceEdge,
     solve,
 )
@@ -120,3 +122,89 @@ def test_two_buses_of_one_item_are_ordinary():
         ),
     )
     assert len(decl.buses_of_item(decls.I_WIRE)) == 2
+
+
+# --------------------------------------------------------------------------
+# the peak demotion, 2026-09-22. A5.2
+# --------------------------------------------------------------------------
+
+def test_the_peak_basis_is_refused_by_name_and_says_where_the_peak_went(
+    scenario_of_record
+):
+    """`SizingBasis.PEAK` stopped being a solve mode and is refused, not removed.
+
+    Removing the member would answer a caller with an AttributeError, which
+    says nothing about why. The refusal names A5.2 and names the three fields
+    that carry the peak instead, so the demotion is discoverable at the call
+    site rather than only in a decision record.
+    """
+    data = scenario_of_record
+    with pytest.raises(BusModelError, match="not a sizing basis"):
+        solve(decls.worked_case_a4(data), data, sizing_basis=SizingBasis.PEAK)
+
+
+def test_a_bus_spec_no_longer_accepts_presents_peak_draw():
+    """The loud break. A caller who still means "size this against nameplate"
+    gets a TypeError rather than a field that is quietly never read.
+
+    A declaration nothing reads is worse than no declaration: it lets a caller
+    state a preference that silently does not apply.
+    """
+    with pytest.raises(TypeError, match="presents_peak_draw"):
+        BusSpec(
+            bus_id="plate_build",
+            item_id=decls.I_IRON_PLATE,
+            recipe_id=decls.R_IRON_PLATE,
+            presents_peak_draw=True,
+        )
+
+
+def test_no_machine_count_anywhere_reads_the_peak(scenario_of_record):
+    """The guardrail that keeps the demotion from undoing itself.
+
+    A peak that can move a machine count is `presents_peak_draw` again under a
+    new name. Asserted structurally: the sizing reads `demand_per_min`, so
+    doubling every peak in the model must leave every machine count, every
+    residual and every clock exactly where it was.
+
+    Checked by re-solving a declaration whose peaks differ wildly from its
+    averages — the BACK_UP build line's peak is ten times its draw — and
+    asserting the two runs agree on everything except the peak columns.
+    """
+    data = scenario_of_record
+    matched = solve(decls.worked_case_a4(data), data)
+    full = solve(
+        decls.worked_case_a4(data, build_plate_disposition=Disposition.BACK_UP),
+        data,
+    )
+    for a, b in zip(matched.buses, full.buses):
+        assert a.bus_id == b.bus_id
+        if a.bus_id == decls.BUS_IRON_PLATE_BUILD:
+            continue   # the one bus whose own declaration changed
+        assert a.machines == b.machines, a.bus_id
+        assert a.demand_per_min == pytest.approx(b.demand_per_min), a.bus_id
+        assert a.residual_per_min == pytest.approx(b.residual_per_min), a.bus_id
+        assert a.clock_percent == pytest.approx(b.clock_percent), a.bus_id
+    # ... and the peak is where the difference went.
+    assert matched["iron_ingot"].peak_demand_per_min != (
+        full["iron_ingot"].peak_demand_per_min
+    )
+
+
+def test_a_matched_line_has_no_transient_to_report(scenario_of_record):
+    """Peak equals average under MATCHED, which is the state's whole point.
+
+    Supply equals demand by construction, so the machine is already clocked to
+    the draw. Reporting a nameplate peak for it would invent a transient the
+    state is defined to not have.
+    """
+    data = scenario_of_record
+    solution = solve(decls.worked_case_a4(data), data)
+    build = solution[decls.BUS_IRON_PLATE_BUILD]
+    assert build.disposition is Disposition.MATCHED
+    share = next(
+        s for s in solution["iron_ingot"].consumers
+        if s.bus_id == decls.BUS_IRON_PLATE_BUILD
+    )
+    assert share.peak_per_min == pytest.approx(share.draw_per_min)
+    assert build.peak_shortfall_per_min == pytest.approx(0.0)
