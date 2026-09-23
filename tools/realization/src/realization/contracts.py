@@ -611,14 +611,24 @@ class ConsumerShare:
 
     `recipe_id=None` is player withdrawal for construction — a real consumer
     (A3.1 names it as the third on the Wire bus) with no recipe behind it.
+
+    `draw_per_min` is USAGE and `peak_per_min` is nameplate, as of 2026-09-23 —
+    A5.2, and the same split `busmodel.ConsumerShare` carries. The peak is
+    REQUIRED rather than defaulted: a share built without one would report a
+    peak nobody computed, and `feasibility` reads it for branch capacity.
     """
 
     recipe_id: RecipeId | None
+    #: USAGE — the average draw, in every state. The only figure that sizes.
     draw_per_min: float
     #: draw / total AUTOMATED bus demand. Withdrawal is NOT in the denominator
     #: and carries `None`: it is covered by the residual rather than sized into
     #: the bus, which is what makes A3.5's `R >= withdraw` verdict meaningful.
     share: float | None
+    #: Nameplate — what the consumer draws while it runs. REPORTED, and read
+    #: for belt capacity; never for a machine count. Equal to `draw_per_min`
+    #: under MATCHED and on a withdrawal.
+    peak_per_min: float
 
     @property
     def is_withdrawal(self) -> bool:

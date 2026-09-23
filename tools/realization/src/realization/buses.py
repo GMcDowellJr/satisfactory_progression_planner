@@ -51,6 +51,16 @@ here rather than resolved quietly:
                          bus exactly. It is also A4.2's PEAK basis, not A3.5's
                          AVERAGE, and `BusDeclaration` has no
                          `presents_peak_draw` to say otherwise. Next action 2
+                         AMENDED 2026-09-23. A consumer's draw is now its USAGE —
+                         `consumer demand * per-machine input / consumer rate` —
+                         which A5.2 says is the average draw in every state, and
+                         nameplate is REPORTED as `ConsumerShare.peak_per_min`.
+                         The signature did not have to change: the consumer's
+                         settled demand was already reachable through `_demand`'s
+                         cached recursion. Nameplate had also made `_demand`'s
+                         `external` term subtract a peak from an average, which
+                         hid out-of-scope demand up to the consumers'
+                         integrality slack. See `_draw`
     SIGNATURE            `decompose` gained `bus_id` and `capabilities`. Without
                          the first it cannot reach the declaration its own
                          docstring sizes from; without the second it cannot fill
@@ -67,7 +77,7 @@ from production_adapter.gamedata import Capability, ReferenceData, Recipe
 from .capabilities import highest_at_tier, minimum_sufficient, by_id
 from .contracts import (
     Bus, BusId, BusRecipe, BusResidual, ClockCause, ConsumerShare,
-    CreditedFlowCycle, Lane, LaneInfeasible, LaneInput, PartitionIncomplete,
+    CreditedFlowCycle, Disposition, Lane, LaneInfeasible, LaneInput, PartitionIncomplete,
     RealizationError, RealizationRequest, RecipeProvenance,
 )
 from .residual import EPS, clock_for, power_at_clock, power_backing_up, residual_for
@@ -575,6 +585,45 @@ def _lane_power(producer, machines: int, clock: float, cause: ClockCause) -> flo
 # buses
 # --------------------------------------------------------------------------
 
+def _draw(
+    response: SolveResponse,
+    data: ReferenceData,
+    request: RealizationRequest,
+    consumer_id: BusId,
+    item_id: ItemId,
+    attributed: dict[BusId, BusRecipe],
+    cache: dict[BusId, int | None],
+) -> tuple[float, float]:
+    """`(usage, peak)` — what one consumer bus draws of `item_id`.
+
+        usage   consumer demand * per-machine input / consumer output rate.
+                A5.2: the AVERAGE draw, in every state. This is the only figure
+                that sizes anything
+        peak    consumer machines * per-machine input — nameplate. Equal to usage
+                under MATCHED, where the consumer is clocked to its demand and
+                has no transient to have. REPORTED, and read by `feasibility`
+                for branch capacity and connectivity, which are questions about
+                what a belt must carry rather than about how many machines
+
+    Mirrors `busmodel.solve` under `SizingBasis.USAGE`. A peak that can move a
+    machine count is `presents_peak_draw` again under a new name, so the sizing
+    path reads the first element alone and a test re-solves with peaks an order
+    of magnitude apart and expects no machine count to move.
+    """
+    consumer = request.declaration_for(consumer_id)
+    use = attributed[consumer_id]
+    recipe = _recipe(data, use.recipe_id)
+    per_machine = _input_rate(recipe, item_id)
+    rate = _output_rate(recipe, consumer.item_id)
+    if rate <= 0.0:
+        raise RealizationError(f"{consumer_id}: {use.recipe_id} outputs {rate}/min")
+    machines = _machines(response, data, request, consumer_id, attributed, cache)
+    demand = _demand(response, data, request, consumer_id, attributed, cache)
+    usage = demand * per_machine / rate
+    peak = usage if consumer.disposition is Disposition.MATCHED else machines * per_machine
+    return usage, peak
+
+
 def consumer_shares(
     response: SolveResponse,
     data: ReferenceData,
@@ -604,14 +653,13 @@ def consumer_shares(
     (3-smooth holds for acyclic trees; feeding a stream back upstream reaches
     arbitrary rationals.)
 
-    A draw is `machines * per-machine input rate` — NAMEPLATE. The signature
-    carries no partial solution, so no consumer's settled demand is available
-    here, and nameplate is what remains. It reproduces the measured example
-    above exactly. It is also the PEAK basis of amendment 4.2 rather than the
-    AVERAGE basis every published table in A3.5 was computed on, and the two
-    differ only on a BACK_UP consumer. `BusDeclaration` has no
-    `presents_peak_draw` — `busmodel.BusSpec` does — so the contract as written
-    admits one basis and this body follows it. Next action 2 owns the choice.
+    AMENDED 2026-09-23. `draw_per_min` is the consumer's USAGE and
+    `peak_per_min` its nameplate — see `_draw`. The measured example above is a
+    PEAK figure: it holds only where the solve runs each Assembler at a whole
+    machine, which is what `worked_response()` feeds. On a continuous solve of
+    the same chain the usage draws are 30 and 62. The text this replaces said
+    the signature admitted only nameplate; it did not — the consumer's settled
+    demand was reachable through `_demand` all along.
 
     Consumers come out in `request.buses` order. Caller order is preserved, per
     the standing guardrail against this layer ranking anything.
@@ -630,28 +678,34 @@ def consumer_shares(
         ):
             continue
         use = attributed[consumer.bus_id]
-        per_machine = _input_rate(_recipe(data, use.recipe_id), declaration.item_id)
-        machines = _machines(response, data, request, consumer.bus_id, attributed, cache)
-        shares.append((use.recipe_id, machines * per_machine))
+        usage, peak = _draw(
+            response, data, request, consumer.bus_id, declaration.item_id,
+            attributed, cache,
+        )
+        shares.append((use.recipe_id, usage, peak))
 
-    automated = sum(draw for _, draw in shares)
+    automated = sum(draw for _, draw, _ in shares)
     out = [
         ConsumerShare(
             recipe_id=recipe_id,
             draw_per_min=draw,
             share=(draw / automated) if automated > 0.0 else 0.0,
+            peak_per_min=peak,
         )
-        for recipe_id, draw in shares
+        for recipe_id, draw, peak in shares
     ]
     if declaration.withdrawal_per_min is not None:
         # `share=None`, not 0.0. Withdrawal is not in the denominator: it is
         # covered by the residual rather than sized into the bus, which is what
         # makes A3.5's `R >= withdraw` verdict mean anything.
+        # A player's own draw carries no modelled transient, so its peak is
+        # the declared rate — the same rule `busmodel.solve` follows.
         out.append(
             ConsumerShare(
                 recipe_id=None,
                 draw_per_min=declaration.withdrawal_per_min,
                 share=None,
+                peak_per_min=declaration.withdrawal_per_min,
             )
         )
     return tuple(out)
@@ -712,7 +766,11 @@ def _demand(
     """The demand that SIZES a bus: in-scope + declared withdrawal + out-of-scope.
 
         automated   derived from the declared consumers. Never declared — that
-                    was A2.1's standing half
+                    was A2.1's standing half. Their USAGE since 2026-09-23 (see
+                    `_draw`), which is also what makes `external` below
+                    coherent: the solve's figure is continuous, and subtracting
+                    nameplate from it netted genuine out-of-scope demand against
+                    the consumers' integrality slack and reported zero
         withdrawal  DECLARED, on a build-material line
         external    `machine_equivalents * rate` less the in-scope draw, floored
                     at zero. The solve sized this recipe for demand the
@@ -748,11 +806,11 @@ def _demand(
             for edge in consumer.sources
         ):
             continue
-        consumer_use = attributed[consumer.bus_id]
-        per_machine = _input_rate(_recipe(data, consumer_use.recipe_id), declaration.item_id)
-        automated += per_machine * _machines(
-            response, data, request, consumer.bus_id, attributed, cache
+        usage, _peak = _draw(
+            response, data, request, consumer.bus_id, declaration.item_id,
+            attributed, cache,
         )
+        automated += usage
 
     external = (
         0.0
@@ -933,8 +991,12 @@ def feasibility(bus: Bus) -> tuple[str, ...]:
 
         supply >= demand        otherwise the bus is in deficit, nobody backs
                                 up, and the nominal ratio decides who starves
-        branch capacity         every consumer's branch carries its draw, or
-                                it starves regardless of backpressure
+        branch capacity         every consumer's branch carries its PEAK, or
+                                it starves regardless of backpressure. The
+                                peak, not the usage: a belt has to carry what
+                                the machine draws while it runs, and a
+                                consumer at 40% utilisation still draws at
+                                nameplate whenever it is not paused
         connectivity            a consumer reachable from the producers
 
     Returns the failures, empty when the bus is sound. Deficit is reported
@@ -959,10 +1021,10 @@ def feasibility(bus: Bus) -> tuple[str, ...]:
 
     for consumer in bus.consumers:
         branch = max((lane.trunk.capacity_per_min for lane in bus.lanes), default=0.0)
-        if branch > 0.0 and consumer.draw_per_min > branch + EPS:
+        if branch > 0.0 and consumer.peak_per_min > branch + EPS:
             who = consumer.recipe_id or "player withdrawal"
             failures.append(
-                f"{bus.bus_id}: {who} draws {consumer.draw_per_min:g}/min, which "
+                f"{bus.bus_id}: {who} draws {consumer.peak_per_min:g}/min, which "
                 f"exceeds one branch at {branch:g}/min. It starves regardless of "
                 "backpressure until the branch is split or the Mk raised."
             )
@@ -971,8 +1033,11 @@ def feasibility(bus: Bus) -> tuple[str, ...]:
         failures.append(
             f"{bus.bus_id}: no producers, so no consumer is reachable from them."
         )
+    # The PEAK here too. A consumer held at the machine floor with no demand
+    # has a usage of zero and is still connected; what says it is not is a
+    # recipe that consumes nothing this bus carries, and that is peak zero.
     for consumer in bus.consumers:
-        if consumer.draw_per_min <= EPS:
+        if consumer.peak_per_min <= EPS:
             who = consumer.recipe_id or "player withdrawal"
             failures.append(
                 f"{bus.bus_id}: {who} is listed as a consumer and draws nothing. "
