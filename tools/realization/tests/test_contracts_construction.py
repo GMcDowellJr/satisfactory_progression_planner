@@ -282,10 +282,11 @@ def test_player_withdrawal_is_a_consumer_with_no_recipe():
     """A3.1 names it as the third consumer on the Wire bus. It carries
     `share=None`: withdrawal is not in the denominator, because it is covered by
     the residual rather than sized into the bus."""
-    withdrawal = ConsumerShare(recipe_id=None, draw_per_min=5.0, share=None)
+    withdrawal = ConsumerShare(recipe_id=None, draw_per_min=5.0, share=None,
+                               peak_per_min=5.0)
     assert withdrawal.is_withdrawal
     assert not ConsumerShare(recipe_id="Recipe_Cable_C", draw_per_min=9.0,
-                             share=0.5).is_withdrawal
+                             share=0.5, peak_per_min=9.0).is_withdrawal
 
 
 def test_the_four_steady_states_are_the_whole_enum():

@@ -5,14 +5,18 @@ from a record, and each test says which. Nothing is restated from the bodies
 themselves — a test that agrees with the code because it copied the code
 asserts nothing.
 
-**The basis these tests assert is PEAK, and that is deliberate.** A consumer's
-draw here is `machines x per-machine input rate` — installed capacity, not
-steady draw. Amendment 5 A5.2 establishes that average draw is USAGE in every
-state and that nameplate is the peak, so the record's published figures (199,
-75, 124) are peak figures: the screw bus's own consumers sit at 40% and 50%
-utilisation in this case. Asserting them as peak is correct and survives the
-basis change; the usage-basis figures are new and not yet on any record. Each
-test that depends on the distinction names it.
+**The basis these bodies size on is USAGE, as of 2026-09-23.** A consumer's
+`draw_per_min` is `consumer demand x per-machine input / consumer rate` and its
+`peak_per_min` is `machines x per-machine input`, per A5.2. The record's
+figures (199, 75, 124) are PEAK figures.
+
+**`worked_response()` cannot tell the two apart**, and this was found by
+measurement rather than by reading: it gives RIP and Rotor 1.0
+machine-equivalents, `external` lifts each consumer to one whole machine, and
+usage equals nameplate on every bus. Before 2026-09-23 two tests here claimed
+to assert the PEAK basis and a usage-basis body passed all of them unchanged.
+The section "usage and peak, on a solve that can tell them apart" builds a
+continuous response instead, and every basis claim is asserted there.
 
 Reproduced from the record:
 
@@ -277,7 +281,8 @@ def test_a_withdrawal_consumer_is_skipped(scaled, caps):
     number to land on, so it cannot make a width non-integral."""
     mk2 = _cap(caps, "belt_mk2")
     with_player = _ingot_consumers(scaled) + (
-        build.ConsumerShare(recipe_id=None, draw_per_min=7.0, share=None),
+        build.ConsumerShare(recipe_id=None, draw_per_min=7.0, share=None,
+                            peak_per_min=7.0),
     )
     assert B.integral_lane_widths(scaled, R_IRON_INGOT, with_player, mk2) == (4,)
 
@@ -291,16 +296,19 @@ def test_the_measured_screw_bus(scaled):
 
         screw bus 199/min  ->  RIP 75 (37.7%)   Rotor 124 (62.3%)
 
-    PEAK basis (A5.2): these are one Assembler each at installed capacity. The
-    same two consumers sit at 40% and 50% utilisation, so their USAGE draws are
-    30 and 62 and the bus would be 3 machines rather than 5. That figure is not
-    on any record and is not asserted here.
+    These are PEAK figures that equal the usage here only because
+    `worked_response()` runs each Assembler at a whole machine. So both fields
+    are asserted, and neither assertion says anything about the basis — that is
+    `test_a_continuous_solve_draws_usage_and_reports_the_peak`.
     """
     shares = B.consumer_shares(
         build.worked_response(), scaled, build.worked_request(), "screws",
     )
     assert [s.recipe_id for s in shares] == [build.R_RIP, build.R_ROTOR]
     assert [s.draw_per_min for s in shares] == [
+        pytest.approx(75.0), pytest.approx(124.0),
+    ]
+    assert [s.peak_per_min for s in shares] == [
         pytest.approx(75.0), pytest.approx(124.0),
     ]
     assert sum(s.draw_per_min for s in shares) == pytest.approx(199.0)
@@ -881,13 +889,41 @@ def test_a_branch_that_cannot_carry_its_draw_is_reported():
 def test_a_consumer_that_draws_nothing_is_not_connected():
     """No topology is emitted, so reachability cannot be walked. What can be
     said is that a listed consumer drawing nothing is not connected to anything
-    the bus carries."""
+    the bus carries. 'Nothing' is a PEAK of zero — see the next test."""
     ghost = dataclasses.replace(
         build.bus(),
         consumers=(build.ConsumerShare(recipe_id="Recipe_Rotor_C",
-                                       draw_per_min=0.0, share=0.0),),
+                                       draw_per_min=0.0, share=0.0,
+                                       peak_per_min=0.0),),
     )
     assert any("draws nothing" in f for f in B.feasibility(ghost))
+
+
+def test_a_consumer_at_the_machine_floor_with_no_usage_is_still_connected():
+    """A declared consumer whose demand is zero still gets one machine, so its
+    usage is zero and its peak is not. It is connected — its recipe consumes
+    what the bus carries — and reading the usage here would say otherwise."""
+    idle = dataclasses.replace(
+        build.bus(),
+        consumers=(build.ConsumerShare(recipe_id="Recipe_Rotor_C",
+                                       draw_per_min=0.0, share=0.0,
+                                       peak_per_min=31.0),),
+    )
+    assert not any("draws nothing" in f for f in B.feasibility(idle))
+
+
+def test_branch_capacity_is_checked_against_the_peak():
+    """Rotor at 50% utilisation draws 62/min on average and 124/min while it
+    runs. A Mk.2 branch carries 120, so it starves during every run whatever
+    its average — the belt question is about the peak."""
+    half = dataclasses.replace(
+        build.bus(),
+        consumers=(build.ConsumerShare(recipe_id="Recipe_Rotor_C",
+                                       draw_per_min=62.0, share=1.0,
+                                       peak_per_min=124.0),),
+    )
+    failures = B.feasibility(half)
+    assert any("exceeds one branch" in f and "124/min" in f for f in failures)
 
 
 def test_a_bus_with_no_producers_reaches_nobody():
@@ -917,14 +953,116 @@ def test_out_of_scope_demand_sizes_a_root_bus_beyond_one_machine(scaled, caps):
 
 
 def test_a_consumer_drawing_on_two_machines_draws_twice(scaled):
-    """PEAK basis, asserted where it is visible: every consumer in the worked
-    case runs one machine, so `machines * per-machine rate` and the per-machine
-    rate alone are the same number. Two Rotor Assemblers draw 248/min."""
+    """Two Rotor Assemblers draw 248/min. RENAMED IN SUBSTANCE 2026-09-23: this
+    used to claim it asserted the PEAK basis 'where it is visible', and it could
+    not fail for that reason — at 2.0 machine-equivalents the solve's demand
+    fills both machines, so usage and peak are both 248. It now asserts both
+    fields and claims neither basis; what it still tests is that a consumer's
+    machine count reaches its draw at all."""
     response = _equivalents(build.worked_response(), build.R_ROTOR, 2.0)
     shares = B.consumer_shares(response, scaled, build.worked_request(), "screws")
-    draws = {s.recipe_id: s.draw_per_min for s in shares}
-    assert draws[build.R_ROTOR] == pytest.approx(248.0)
-    assert draws[build.R_RIP] == pytest.approx(75.0)
+    draws = {s.recipe_id: (s.draw_per_min, s.peak_per_min) for s in shares}
+    assert draws[build.R_ROTOR] == (pytest.approx(248.0), pytest.approx(248.0))
+    assert draws[build.R_RIP] == (pytest.approx(75.0), pytest.approx(75.0))
+
+
+# --------------------------------------------------------------------------
+# usage and peak, on a solve that can tell them apart
+# --------------------------------------------------------------------------
+#
+# 2/min of Smart Plating at the scenario of record, solved continuously: RIP at
+# 2/min is 0.4 of an Assembler, Rotor at 2/min is 0.5, and they draw 30 + 62 =
+# 92 screws/min, which is 2.3 Constructors. Each fraction is arithmetic on the
+# worked case's own record figures (75 and 124 at one machine), not a solve.
+
+def _continuous(screw_equivalents: float = 92.0 / 40.0):
+    response = build.worked_response(screw_equivalents)
+    response = _equivalents(response, build.R_RIP, 0.4)
+    return _equivalents(response, build.R_ROTOR, 0.5)
+
+
+def test_a_continuous_solve_draws_usage_and_reports_the_peak(scaled):
+    """A5.2. The draw is the consumer's usage — 30 and 62 — and the nameplate
+    75 and 124 is reported beside it. The shares are over usage."""
+    shares = B.consumer_shares(_continuous(), scaled, build.worked_request(), "screws")
+    assert [s.draw_per_min for s in shares] == [pytest.approx(30.0), pytest.approx(62.0)]
+    assert [s.peak_per_min for s in shares] == [pytest.approx(75.0), pytest.approx(124.0)]
+    assert [round(s.share, 4) for s in shares] == [round(30 / 92, 4), round(62 / 92, 4)]
+
+
+def test_a_continuous_solve_sizes_the_screw_bus_on_usage(scaled, caps):
+    """3 Constructors, not 5. On the peak basis this bus was 5 machines against
+    a solve that asked for 2.3 — two machines sized against the consumers'
+    integrality slack."""
+    result = B.buses_from_response(_continuous(), scaled, build.worked_request(), caps)
+    screws = next(b for b in result if b.bus_id == "screws")
+    assert screws.machines == 3
+    assert screws.supply_per_min == pytest.approx(120.0)
+    assert screws.automated_demand_per_min == pytest.approx(92.0)
+    assert screws.residual.rate_per_min == pytest.approx(28.0)
+
+
+def test_out_of_scope_demand_is_not_netted_against_integrality_slack(scaled, caps):
+    """The solve asks for 132 screws/min against 92 of in-scope usage, so 40/min
+    goes somewhere the declaration does not model. `external` = 132 - 92 sizes
+    the bus to 4.
+
+    Both wrong answers are excluded: 3 is usage without `external`, and 5 is the
+    old peak basis, where `external` = max(0, 132 - 199) = 0 and the 40/min was
+    absorbed into the consumers' slack without being reported anywhere."""
+    response = _continuous(screw_equivalents=132.0 / 40.0)
+    result = B.buses_from_response(response, scaled, build.worked_request(), caps)
+    screws = next(b for b in result if b.bus_id == "screws")
+    assert screws.machines == 4
+
+
+def test_the_peak_cannot_move_a_machine_count(scaled, caps):
+    """The realization counterpart of busmodel's A6.4 guardrail. Nine extra
+    Rotor Assemblers multiply Rotor's peak draw on the screw bus by ten and
+    leave its demand alone, so nothing on the screw bus may move.
+
+    A peak that can move a machine count is `presents_peak_draw` again under a
+    new name."""
+    base = B.buses_from_response(_continuous(), scaled, build.worked_request(), caps)
+    wide_request = dataclasses.replace(
+        build.worked_request(),
+        buses=tuple(
+            dataclasses.replace(d, extra_producers=9) if d.bus_id == "rotor" else d
+            for d in build.worked_request().buses
+        ),
+    )
+    wide = B.buses_from_response(_continuous(), scaled, wide_request, caps)
+    before = next(b for b in base if b.bus_id == "screws")
+    after = next(b for b in wide if b.bus_id == "screws")
+
+    rotor_peak = {
+        id(bus): next(c.peak_per_min for c in bus.consumers if c.recipe_id == build.R_ROTOR)
+        for bus in (before, after)
+    }
+    assert rotor_peak[id(after)] == pytest.approx(10 * rotor_peak[id(before)])
+    assert after.machines == before.machines
+    assert after.supply_per_min == pytest.approx(before.supply_per_min)
+    assert after.automated_demand_per_min == pytest.approx(before.automated_demand_per_min)
+    assert after.residual.rate_per_min == pytest.approx(before.residual.rate_per_min)
+    assert [l.clock_percent for l in after.lanes] == [l.clock_percent for l in before.lanes]
+
+
+def test_a_matched_consumer_has_no_transient(scaled):
+    """Under MATCHED the consumer is clocked to its demand, so its peak IS its
+    usage — the same rule busmodel follows. RIP matched to a 1/min withdrawal on
+    top of Smart Plating's 2/min draws 3 * 15 = 45 screws/min, peak and usage."""
+    request = dataclasses.replace(
+        build.worked_request(),
+        buses=tuple(
+            dataclasses.replace(d, disposition=Disposition.MATCHED, withdrawal_per_min=1.0)
+            if d.bus_id == "rip" else d
+            for d in build.worked_request().buses
+        ),
+    )
+    shares = B.consumer_shares(_continuous(), scaled, request, "screws")
+    rip = next(s for s in shares if s.recipe_id == build.R_RIP)
+    assert rip.draw_per_min == pytest.approx(45.0)
+    assert rip.peak_per_min == pytest.approx(45.0)
 
 
 def test_a_declared_bus_the_solve_sized_at_nothing_still_gets_one_machine(

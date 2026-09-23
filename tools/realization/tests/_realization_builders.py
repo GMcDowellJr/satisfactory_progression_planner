@@ -159,10 +159,15 @@ def bus(
         lanes=(lane(recipe_id=recipe_id, machines=machines,
                     output_item=item_id, output_rate_per_min=supply_per_min),),
         consumers=(
+            # One whole machine each at full rate, so usage and peak are the
+            # same number here. `test_buses.py` builds the case where they
+            # are not.
             ConsumerShare(recipe_id="Recipe_IronPlateReinforced_C",
-                          draw_per_min=75.0, share=75.0 / 199.0),
+                          draw_per_min=75.0, share=75.0 / 199.0,
+                          peak_per_min=75.0),
             ConsumerShare(recipe_id="Recipe_Rotor_C",
-                          draw_per_min=124.0, share=124.0 / 199.0),
+                          draw_per_min=124.0, share=124.0 / 199.0,
+                          peak_per_min=124.0),
         ),
         residual=residual(
             bus_id=bus_id, item_id=item_id,
