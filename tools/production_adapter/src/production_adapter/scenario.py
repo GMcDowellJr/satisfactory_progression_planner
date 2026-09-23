@@ -155,7 +155,32 @@ class Scenario:
         return mw * self.machine_power_multiplier
 
     def apply_project_assembly_quantity(self, quantity: float) -> float:
-        return quantity * self.project_assembly_requirement_multiplier
+        """Scale one delivery quantity and round it, per record 3.2.5.
+
+        The SAME rule as recipe inputs, observed separately rather than
+        assumed to carry over: read in game 2026-09-22, the 0.25x elevator-
+        parts setting turns phase 1's 50 Smart Plating into 13. 12.5 -> 13
+        rules out half-down and half-to-even in one read.
+
+        Ceil is NOT ruled out and cannot be: no selectable multiplier
+        produces a non-half fraction on any of the fifteen delivery rows, so
+        ceil and nearest-half-away agree on every reachable cell. A1.2's
+        shape — the distinction cannot arise in this domain.
+
+        1x is the identity, for the reason `apply_input_amount` has one: the
+        game states canonical quantities when no multiplier is set.
+
+        `input_amount_floor` is NOT applied here. It is the unresolved sub-1x
+        question for recipe INPUTS, and deliveries never reach it — the
+        smallest 1x quantity is 50 and the smallest multiplier is 0.25.
+        Pinned by test rather than left as a reading.
+        """
+        multiplier = self.project_assembly_requirement_multiplier
+        if multiplier == 1.0:
+            return quantity
+        return float(_round_half_away_from_zero(
+            Decimal(repr(quantity)) * Decimal(repr(multiplier))
+        ))
 
     def canonical(self) -> "Scenario":
         """The unmodified scenario, for computing `PowerReport.canonical_mw`."""

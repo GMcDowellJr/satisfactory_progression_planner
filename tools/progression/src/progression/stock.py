@@ -271,11 +271,37 @@ def project_assembly_cost(
     phases; a whole-game bill names all of them.
 
     Scaled by `Scenario.project_assembly_requirement_multiplier` through
-    `apply_project_assembly_quantity`, which multiplies and does NOT round. That
-    is the adapter's existing method and it is followed rather than improved:
-    the rounding rule for this multiplier has never been observed, and at 1.25x
-    phase 1's 50 Smart Plating lands on 62.5, which is a tie. Recorded as a
-    probe rather than guessed — see the module note in the tests.
+    `apply_project_assembly_quantity`, which multiplies and ROUNDS — nearest,
+    halves away from zero, the same rule as recipe inputs. It was read in game
+    on 2026-09-22 rather than assumed to carry over from the recipe setting:
+    0.25x turns phase 1's 50 Smart Plating into 13.
+
+    **CORRECTED 2026-09-22.** This docstring previously named the probe as
+    "1.25x, where phase 1's 50 Smart Plating lands on 62.5". THE GAME DOES NOT
+    OFFER 1.25x HERE. Read from the settings menu, the selectable Project
+    Assembly requirement multipliers are:
+
+        0.25  0.5  0.75  1  2  5  10  25  50  100
+
+    The recipe-input multiplier and this one are different settings with
+    different value sets, and the old note had borrowed the former's 1.25.
+
+    The tie was still REACHABLE, and only just — which is what made the read
+    possible at all. Across all fifteen delivery rows and all ten multipliers,
+    exactly four cells land on an exact half, all of them below 1x:
+
+        phase 1  Smart Plating (50)              at 0.25x -> 12.5 -> 13 READ
+                                                 at 0.75x -> 37.5
+        phase 4  Thermal Propulsion Rocket (250) at 0.25x -> 62.5
+                                                 at 0.75x -> 187.5
+
+    Every multiplier at or above 1x is exact on every row, so the rounding
+    could not have been observed there and cannot affect a bill computed
+    there. The scenario of record uses 2.0x and no figure on it moves.
+
+    No row falls below 1 at any multiplier, so `Scenario.input_amount_floor` —
+    the unresolved sub-1x question for recipe INPUTS — does not arise for
+    deliveries. Asserted in the tests rather than left as a reading.
     """
     wanted = set(phases)
     total: dict[ItemId, float] = {}

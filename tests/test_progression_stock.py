@@ -377,26 +377,99 @@ def test_phases_are_declared_and_nothing_else_is_counted(data, requirements):
     assert stock.project_assembly_cost(data, requirements, ()) == {}
 
 
-def test_the_project_assembly_multiplier_is_applied_and_not_rounded(requirements):
-    """UNOBSERVED TIE, recorded rather than guessed.
+#: The Project Assembly requirement multipliers the game offers, read from the
+#: settings menu 2026-09-22. NOT the same set as the recipe-input multiplier's,
+#: which is the error this test used to carry: it probed 1.25x, which this
+#: setting does not have.
+PA_MULTIPLIERS = (0.25, 0.5, 0.75, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0)
 
-    `apply_project_assembly_quantity` multiplies and does not round — the
-    adapter's existing method, followed rather than improved. At 1.25x phase 1's
-    50 Smart Plating lands on 62.5, which is exactly a tie, and the rounding
-    rule for THIS multiplier has never been read in game. The recipe-input rule
-    (nearest, halves away from zero) was probed before it was locked and this
-    one has not been.
 
-    PROBE, one glance, no construction: set the Project Assembly requirement
-    multiplier to 1.25 and read phase 1's Smart Plating requirement. 62 or 63
-    settles it.
+def test_the_project_assembly_multiplier_rounds_halves_away_from_zero(requirements):
+    """OBSERVED 2026-09-22. The tie was read in game and the rule is the same
+    one recipe inputs follow — read separately, not assumed to carry over.
+
+        setting   Project Assembly requirement multiplier, 0.25x
+        read      phase 1's Smart Plating requirement -> 13
+        rules out half-down and half-to-even, which both give 12
+
+    CEIL IS NOT RULED OUT, and cannot be. No selectable multiplier produces a
+    non-half fraction on any of the fifteen delivery rows, so ceil and
+    nearest-half-away agree on every reachable cell. A1.2's shape: the
+    distinction cannot arise in this domain, and is recorded as closed rather
+    than carried.
+
+    TWO THINGS THIS TEST USED TO SAY, both now wrong and both kept here so the
+    correction is legible rather than silent:
+
+        "multiplies and does not round"   it rounds, as of 2026-09-22
+        "set the multiplier to 1.25"      the game does not offer 1.25x for
+                                          THIS setting — see PA_MULTIPLIERS
+                                          above. That probe was unrunnable and
+                                          had borrowed the recipe multiplier's
+                                          value set
     """
     from production_adapter import load
     from production_adapter.scenario import Scenario
 
-    scaled = load(REPO, Scenario(project_assembly_requirement_multiplier=1.25))
+    scaled = load(REPO, Scenario(project_assembly_requirement_multiplier=0.25))
     total = stock.project_assembly_cost(scaled, requirements, (1,))
-    assert total["Desc_SpaceElevatorPart_1_C"] == pytest.approx(62.5)
+    assert total["Desc_SpaceElevatorPart_1_C"] == pytest.approx(13.0)
+
+
+def test_one_times_is_the_identity_and_not_a_rounding_of_itself(requirements):
+    """The canonical quantity is stated by the game and is never rounded.
+
+    Same reason `apply_input_amount` short-circuits at 1x: rounding a canonical
+    figure would invent a cost. Trivial today because every 1x delivery
+    quantity is already an integer — asserted anyway, because that is a
+    property of the shipped table and not of the method.
+    """
+    from production_adapter import load
+    from production_adapter.scenario import Scenario
+
+    scaled = load(REPO, Scenario(project_assembly_requirement_multiplier=1.0))
+    total = stock.project_assembly_cost(scaled, requirements, (1,))
+    assert total["Desc_SpaceElevatorPart_1_C"] == pytest.approx(50.0)
+
+
+def test_no_delivery_quantity_ties_at_or_above_one_times(requirements):
+    """The exposure is bounded, and the bound is what makes it not urgent.
+
+    Across all fifteen delivery rows and all ten selectable multipliers,
+    exactly four cells land on an exact half and every one of them is BELOW
+    1x. Every multiplier at or above 1x is exact on every row, so the
+    unobserved rounding rule cannot affect a bill computed there — including
+    the scenario of record, which is 2.0x.
+
+    Asserted over the real table rather than stated, so that a delivery row
+    added or edited upstream fails here instead of quietly widening the
+    exposure.
+    """
+    ties = [
+        (r.phase, r.item_id, m)
+        for m in PA_MULTIPLIERS
+        for r in requirements
+        if abs((r.quantity_1x * m) % 1.0 - 0.5) < 1e-9
+    ]
+    assert {m for _p, _i, m in ties} == {0.25, 0.75}
+    assert len(ties) == 4
+    assert {i for _p, i, _m in ties} == {
+        "Desc_SpaceElevatorPart_1_C",      # Smart Plating, phase 1
+        "Desc_SpaceElevatorPart_8_C",      # Thermal Propulsion Rocket, phase 4
+    }
+
+
+def test_no_delivery_quantity_falls_below_one_at_any_multiplier(requirements):
+    """`input_amount_floor` is a recipe-INPUT question and does not reach here.
+
+    Record 3.2.3 leaves the sub-1x floor rule unresolved for recipe inputs,
+    which is why `Scenario` refuses a sub-1x recipe multiplier without a
+    declared floor. Deliveries never reach the question: the smallest 1x
+    quantity is 50, and 50 x 0.25 is 12.5. Pinned so that a smaller delivery
+    row appearing upstream surfaces the question instead of rounding into it.
+    """
+    smallest = min(r.quantity_1x for r in requirements)
+    assert smallest * min(PA_MULTIPLIERS) >= 1.0, smallest
 
 
 def test_the_recipe_multiplier_does_not_touch_delivery_quantities(requirements):
