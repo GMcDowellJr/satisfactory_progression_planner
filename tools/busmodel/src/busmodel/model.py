@@ -105,15 +105,17 @@ class SizingBasis(str, Enum):
     always computed, and `USAGE` arrives as a separate value. Same rule
     `WithdrawalBasis` follows, applied here.
 
-        AVERAGE   THE BASIS OF RECORD, and the default. Every published table in
-                  the bus records was computed on it, which is the only reason
-                  it is still here. It is a MIXTURE and not an average: a
+        AVERAGE   THE BASIS OF RECORD. Every published table in the bus
+                  records was computed on it, which is the only reason it is
+                  still here. NOT THE DEFAULT since 2026-09-23 (amendment 10):
+                  a reproduction names it. It is a MIXTURE and not an average: a
                   WITHDRAWN consumer draws its NAMEPLATE, everything else draws
                   its usage. A5.2 says that split has no principled
                   justification — it is an artefact of the observation window,
                   not a model — but the record was computed that way and this
                   package's first job is to reproduce the record
-        USAGE     A5.2's basis: every consumer draws its continuous
+        USAGE     THE DEFAULT since 2026-09-23 (amendment 10).
+                  A5.2's basis: every consumer draws its continuous
                   machine-equivalent need, in every state. "Average draw is
                   usage in every state; nameplate is the peak." This is the
                   steady state after the buffers saturate, and it is what
@@ -486,7 +488,7 @@ def solve(
     decl: Declaration,
     data: ReferenceData,
     *,
-    sizing_basis: SizingBasis = SizingBasis.AVERAGE,
+    sizing_basis: SizingBasis = SizingBasis.USAGE,
     machine_floor: int = 1,
 ) -> Solution:
     """Solve a declaration against scenario-scaled reference data.
@@ -499,8 +501,13 @@ def solve(
     `machine_floor` is the recovered min-one-machine rule; pass 0 to solve
     without it.
 
-    `sizing_basis` takes `AVERAGE` (the record's basis, default) or `USAGE`
-    (A5.2's). `PEAK` is refused — the peak is reported on every solve instead.
+    `sizing_basis` takes `USAGE` (A5.2's, the default) or `AVERAGE` (the
+    record's). `PEAK` is refused — the peak is reported on every solve instead.
+
+    The default is the MODEL and the record is named. Until 2026-09-23 it was
+    the other way round, so a call that named no basis answered on the one A5.2
+    retracted; a reproduction of a published table now passes
+    `sizing_basis=SizingBasis.AVERAGE` and says so at the call site.
     """
     if sizing_basis not in SOLVE_BASES:
         raise BusModelError(

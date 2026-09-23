@@ -63,8 +63,15 @@ def main(argv: list[str] | None = None) -> int:
     # refusal, which says why it is not a basis any more and where the peak is
     # reported instead. Dropping it from `choices` would answer with argparse's
     # "invalid choice", which explains nothing.
+    # Defaults to `usage`, the model (amendment 10). `--basis average` is the
+    # override that reproduces the published tables, which were computed on it.
+    # The rendered table names its basis either way, so an output cannot be
+    # read without knowing which it is.
     p.add_argument("--basis", choices=[b.value for b in SizingBasis],
-                   default=SizingBasis.AVERAGE.value)
+                   default=SizingBasis.USAGE.value,
+                   help="usage (default, A5.2's model) or average (the basis "
+                        "every published table was computed on). peak is "
+                        "refused and says why")
     p.add_argument("--machine-floor", type=int, default=1)
     args = p.parse_args(argv)
 
