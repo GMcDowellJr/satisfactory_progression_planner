@@ -1371,3 +1371,119 @@ Container 2026-09-23: busmodel's suite collected 64 before and 69 after.
 
     not re-run   the storage review's sections 5, 6.1 and 7 under `USAGE`.
                  Still unknown rather than unchanged
+
+## Amendment 11 — 2026-09-23. The storage review under `USAGE`: sections 5 and 7 have no demand to size
+
+Appended forward-only. Amendment 6 recorded "not recomputed — the storage
+review's sections 5, 6.1 and 7 under `USAGE`. What they would say is unknown
+rather than unchanged." This is the recompute. Nothing above is edited, and the
+storage review (`storage-model-bundle-review-2026-09-21.md`, rev 4) is not
+edited either; where this contradicts it, this is newer.
+
+    measured  agent container, 2026-09-23, against `2aef8e58`. Pinned by
+              `test_published_tables.py` section 8. The reproductions on
+              `AVERAGE` (sections 1-3 there) are unchanged and still pass
+
+### A11.1 Section 5: every machine above the floor is the review's 100%-clock assumption
+
+The storage review's declarations have zero external demand (the recovered
+rule, section 1), no declared withdrawal, and every line WITHDRAWN. On `USAGE`
+that is a factory with NO demand in it: every bus sits at the one-machine
+floor, continuous machines 0.000, whole output as residual.
+
+    table              AVERAGE (record)   USAGE
+    T1-2 @1x           15 machines         9 — one per line, the floor
+    T1-2 @1.25x        18 machines         9
+    base RIP @1x       16 machines         9
+
+So every above-floor machine in section 5 — and therefore the 12.5x Iron Plate
+notch and Screws' 0.00 → 26.00/min — is a floor machine at a demand-less root
+drawing its nameplate, propagated upstream. The review stated this assumption
+itself (§9: "every modelled line runs at 100% clock"); A5.2 is what makes it an
+assumption rather than a model.
+
+    STANDS      the sawtooth. Overflow = ceil(d/r)·r − d is arithmetic and
+                is non-monotonic in anything that moves d. `worked_case_A4`
+                shows it under real demand
+    DOES NOT    section 5's INSTANCE. Its magnitudes are properties of the
+    TRANSFER    100%-clock assumption on a declaration with no demand, not of
+                rounding under demand
+    NOT         AVERAGE's 15/18 against USAGE's 9. Under the feasibility guard
+    COMPARABLE  these are not a basis comparison: the two runs answer different
+                questions (what the lines draw at full rate; what the declared
+                demand requires, which is nothing). Reported side by side, not
+                differenced
+
+A5.3 asked whether its cascade is a property of `worked_case_A4` or of every
+table. **The storage review cannot answer it** — A5.3's cascade is integrality
+slack shrinking under a real demand, and there is no demand here to shrink.
+
+### A11.2 Section 7: the alternate delta is one RIP machine's footprint
+
+On `RECORD` the review's alternate report reads Stitched against base RIP as
+15 against 16 machines, iron ingot 100 against 155/min, copper 60 against 30.
+On `USAGE` the two regimes are identical: 9 floor machines each, zero
+out-of-scope draw. RIP is a root with no demand, so its recipe moves nothing.
+
+    what the record measured   the upstream draw of ONE Reinforced Iron Plate
+                               machine at 100% under each recipe. A real and
+                               useful per-machine figure
+    what it did not measure    what either regime costs a phase, because the
+                               phase declares no RIP demand
+
+Giving the roots the config's own declared demand does not rescue it: only
+Rotor qualifies (2/min — RIP's one in-file consumer, Modular Frame, is declared
+at 0), and the two regimes are still both 9 machines with identical draws.
+
+    STANDS      section 7's REPORT SHAPE — deltas, no ordering, an alternate as
+                a re-wiring event. The shape was the finding
+    DOES NOT    its figures, as a statement about the phase
+    TRANSFER
+
+### A11.3 Section 6.1 has no basis; its usage analogue loses four of six negatives at 1x
+
+Section 6.1 does not call `solve`. Its draw is every line at 100% of the
+config's INSTALLED CAPACITY, which is nameplate by construction, and it
+reproduces unchanged on any default. There is no `USAGE` re-run of it as
+written.
+
+Its usage analogue draws each consumer at the config's OWN DECLARED DEMAND — a
+consistency check of the demand column against itself:
+
+                     at capacity (record)          at declared demand
+    T1-2 @1x         Screws −50, Wire −18.5,       none
+                     Rod −3
+    T3-4 @1x         Screws −50, Wire −37.3,       Wire −17.10
+                     Rod −6
+    T1-2 @1.25x      Screws −74, Wire −30.9,       Screws −12.00
+                     Rod −8.5, Plate −5.6
+    T3-4 @1.25x      Screws −74, Wire −53.7,       Screws −12.00, Wire −26.98
+                     Rod −13, RIP −0.5
+
+Screws at 1x goes from −50 to 0: Rotor is declared at 2/min, half its machine,
+so it draws 50 screws and the config declares 50. At 1.25x the multiplier
+raises that to 62, and the −12 is the scenario, not the config.
+
+**This contradicts the storage review's §9**, which says "§6.1's negative deltas
+are robust to [the 100%-clock assumption]: an underclocked line would show a
+positive delta." An underclocked consumer draws less, so every delta moves
+positive — which is the direction that REMOVES negatives. Four of the six at
+1x do not survive. The one that does, T3-4 Wire, is a real inconsistency in the
+config's demand column on its own terms.
+
+    CONSEQUENCE   the review's settle-first item 4 ("correct the three negative
+                  deltas") was stated against capacity-basis deltas. On the
+                  demand column's own terms there is one at 1x, not three
+
+### What this amendment does not establish
+
+    not decided   whether section 5 and 7's record tests keep their current
+                  docstrings. They reproduce the record, correctly, and a
+                  reproduction does not have to endorse what it reproduces;
+                  amendment 11 is where the reading lives
+    not re-run    the storage review's §3 table, which used the config's
+                  declared demand directly rather than the section 5 rule. It
+                  was never a regression target
+    not modelled  what the config's author meant the roots' demand to be. The
+                  declared-demand column is A2.1's derived column; A11.3 uses
+                  it only against itself
