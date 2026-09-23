@@ -254,13 +254,18 @@ def _attribute(
         does not fit        does not consume an input `sources` names
         one recipe, two     two declared buses attributed to one recipe would
         buses               double-count `machine_equivalents` and collapse
-                            `_check_partition`'s recipe -> bus map. Refused for
-                            BOTH provenances. KNOWN LIMITATION with a consumer:
-                            a build-material line for an item the solve also
-                            produces on the same recipe cannot be declared
-                            alongside it. Recorded 2026-09-22; P30 does not
-                            close it, and closing it needs bus identity beyond
-                            (item, sources, recipe)
+                            `_check_partition`'s recipe -> bus map. KNOWN
+                            LIMITATION with a consumer: a build-material line
+                            for an item the solve also produces on the same
+                            recipe cannot be declared alongside it. Recorded
+                            2026-09-22; P30 does not close it, and closing it
+                            needs bus identity beyond (item, sources, recipe).
+                            NARROWED 2026-09-23: refused only where the solve
+                            RAN the recipe. Two DECLARED buses on one recipe
+                            carry no `machine_equivalents` and appear nowhere
+                            in `response.recipes`, so neither reason applies —
+                            and `worked_case_A4`'s two Iron Plate buses are
+                            exactly that case
 
     `RealizationError` rather than a named subclass: there is no
     `AmbiguousAttribution` in `contracts.py`, and adding one is a patch.
@@ -360,6 +365,17 @@ def _attribute(
             )
 
         other = claimed.get(attribution.recipe_id)
+        # Two DECLARED buses on one recipe are admitted (2026-09-23). Neither
+        # reason for the refusal below applies to them: both carry
+        # `machine_equivalents=None`, so there is no figure to double-count,
+        # and `_check_partition` walks `response.recipes` alone, which holds
+        # neither. The refusal stands wherever the solve ran the recipe.
+        if (
+            other is not None
+            and attribution.provenance is RecipeProvenance.DECLARED
+            and by_bus[other].provenance is RecipeProvenance.DECLARED
+        ):
+            other = None
         if other is not None and not strict:
             continue
         if other is not None:
