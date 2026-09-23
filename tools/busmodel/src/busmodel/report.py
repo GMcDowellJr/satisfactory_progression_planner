@@ -29,10 +29,16 @@ def out_of_scope_draw(
         for item_id, per_min in recipe.inputs:
             if spec.source_of(item_id) is not None:
                 continue
-            peak = spec.presents_peak_draw
-            if peak is None:
-                peak = solution.sizing_basis is SizingBasis.PEAK
-            if b.disposition is Disposition.WITHDRAWN or peak:
+            # Mirrors `solve`'s branch deliberately, and is not simplified:
+            # under AVERAGE a WITHDRAWN bus draws its nameplate on its
+            # out-of-scope inputs exactly as it does on its declared ones, and
+            # under USAGE nothing does. `presents_peak_draw` is gone from both
+            # sides as of 2026-09-22 (A5.2), so there is no per-bus override to
+            # consult here either.
+            if (
+                solution.sizing_basis is SizingBasis.AVERAGE
+                and b.disposition is Disposition.WITHDRAWN
+            ):
                 flow = b.machines * per_min
             else:
                 flow = b.demand_per_min * per_min / (b.rate_per_min or 1.0)
@@ -40,14 +46,18 @@ def out_of_scope_draw(
     return draw
 
 
+#: The last two columns are the REPORT the peak was demoted to (A6.4). They are
+#: rendered on every basis, because the peak is computed on every basis and a
+#: figure that only appears under one mode is a figure nobody reads.
 _HEAD = (
     f'  {"bus":22s}{"rate":>8s}{"ext":>8s}{"auto":>9s}{"withdr":>8s}'
-    f'{"demand":>9s}{"cont":>8s}{"mach":>6s}{"clock":>7s}{"supply":>9s}{"R/min":>9s}  state'
+    f'{"demand":>9s}{"cont":>8s}{"mach":>6s}{"clock":>7s}{"supply":>9s}{"R/min":>9s}'
+    f'{"peak":>9s}{"short":>8s}  state'
 )
 
 
 def render(solution: Solution, *, title: str | None = None) -> str:
-    lines = ["=" * 110, title or solution.declaration_name,
+    lines = ["=" * 127, title or solution.declaration_name,
              f"  basis {solution.sizing_basis.value}, machine floor {solution.machine_floor}",
              _HEAD]
     for b in sorted(solution.buses, key=lambda x: -x.residual_per_min):
@@ -56,6 +66,7 @@ def render(solution: Solution, *, title: str | None = None) -> str:
             f"{b.automated_demand_per_min:9.2f}{b.withdrawal_per_min:8.2f}"
             f"{b.demand_per_min:9.2f}{b.continuous_machines:8.2f}{b.machines:6d}"
             f"{b.clock_percent:7.1f}{b.supply_per_min:9.2f}{b.residual_per_min:9.2f}"
+            f"{b.peak_demand_per_min:9.2f}{b.peak_shortfall_per_min:8.2f}"
             f"  {b.disposition.value}"
         )
     lines.append(

@@ -327,10 +327,14 @@ def worked_case_a4(
             bus_id=BUS_IRON_PLATE_BUILD, item_id=I_IRON_PLATE, recipe_id=R_IRON_PLATE,
             sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),),
             withdrawal_per_min=2.0, disposition=build_plate_disposition,
-            # A4.2: a BACK_UP build line "presents a 40/min peak draw ... that
-            # the upstream bus must either carry or dip under". MATCHED is
-            # constant, so the override only bites on the BACK_UP variant.
-            presents_peak_draw=(build_plate_disposition is Disposition.BACK_UP),
+            # A4.2's "presents a 40/min peak draw ... that the upstream bus
+            # must either carry or dip under" USED to be declared here, as
+            # `presents_peak_draw=(build_plate_disposition is BACK_UP)`. That
+            # it was derived from the disposition at the declaration site is
+            # why A5.2 could remove the field outright rather than rename it:
+            # it was never a declaration. `solve` now derives the same peak and
+            # REPORTS it — the 40/min is `ConsumerShare.peak_per_min` on the
+            # ingot bus, and it no longer sizes that bus.
         ),
         BusSpec(
             bus_id="iron_rod", item_id=I_IRON_ROD, recipe_id=R_IRON_ROD,

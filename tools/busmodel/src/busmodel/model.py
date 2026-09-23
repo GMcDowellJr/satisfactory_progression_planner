@@ -98,27 +98,45 @@ class DispositionUnavailable(BusModelError):
 
 
 class SizingBasis(str, Enum):
-    """Which of a consumer's two draw figures sizes the bus upstream of it.
+    """Which draw figure sizes a bus. TWO size; the third is REFUSED.
 
-    A BACK_UP line presents two different numbers to its source and both are
-    real: it draws its nameplate rate while it runs and nothing while it is
-    paused. Which one sizes the upstream bus is a modelling choice, and the
-    documents this reproduces did not make it explicitly.
+    A value's meaning is FIXED at what it means on the day it is added, so
+    `AVERAGE` is not redefined below — its docstring is corrected to say what it
+    always computed, and `USAGE` arrives as a separate value. Same rule
+    `WithdrawalBasis` follows, applied here.
 
-        AVERAGE   the mean draw. Every published table in the bus records was
-                  computed on this basis, so it is the default.
-        PEAK      the instantaneous draw the upstream bus must actually carry.
-                  This is what amendment 4 argues from: a full-rate Iron Plate
-                  build line presents 40/min of ingot draw, not its 4/min
-                  average, and that is the difference between a residual of
-                  6.00/min and one more smelter.
+        AVERAGE   THE BASIS OF RECORD, and the default. Every published table in
+                  the bus records was computed on it, which is the only reason
+                  it is still here. It is a MIXTURE and not an average: a
+                  WITHDRAWN consumer draws its NAMEPLATE, everything else draws
+                  its usage. A5.2 says that split has no principled
+                  justification — it is an artefact of the observation window,
+                  not a model — but the record was computed that way and this
+                  package's first job is to reproduce the record
+        USAGE     A5.2's basis: every consumer draws its continuous
+                  machine-equivalent need, in every state. "Average draw is
+                  usage in every state; nameplate is the peak." This is the
+                  steady state after the buffers saturate, and it is what
+                  amendment 5 says the factory settles at
+        PEAK      NOT A SIZING BASIS ANY MORE. `solve` refuses it by name — see
+                  the refusal there. The peak is REPORTED instead, on every
+                  solve and under both bases, as `ConsumerShare.peak_per_min`
+                  and `BusSolution.peak_demand_per_min`
 
-    Under WITHDRAWN the two coincide. Under MATCHED they also coincide, which is
-    the state's whole point.
+    The two that size differ only on WITHDRAWN consumers, which is exactly where
+    A5.2 says the record over-counted.
     """
 
     AVERAGE = "average"
+    USAGE = "usage"
     PEAK = "peak"
+
+
+#: The bases `solve` accepts. `PEAK` is deliberately absent and is refused by
+#: name rather than by omission, so a caller who asks for it is told why.
+SOLVE_BASES: frozenset[SizingBasis] = frozenset({
+    SizingBasis.AVERAGE, SizingBasis.USAGE,
+})
 
 
 @dataclass(frozen=True)
@@ -177,23 +195,21 @@ class BusSpec:
     #: estimate, footprint-derived, declared by its author as a FLOOR (A3.3), so
     #: any coverage verdict against it is optimistic by an unmeasured amount.
     withdrawal_per_min: float | None = None
-    #: Override `SizingBasis` for THIS bus's draw on its sources. `None` follows
-    #: the solve's basis.
+
+    #: `presents_peak_draw` WAS HERE and is GONE as of 2026-09-22. It existed
+    #: because the records carried two BACK_UP behaviours and did not
+    #: distinguish them, so the caller had to say which one sized its sources.
+    #: A5.1 retracts that framing — they are one mechanism at two points on one
+    #: trajectory — and A5.2 settles the sizing: average draw is usage in every
+    #: state, so nothing chooses a peak basis per bus any more.
     #:
-    #: It exists because the records contain two different BACK_UP behaviours
-    #: and do not distinguish them. A2.2's BACK_UP is a production bus throttled
-    #: by backpressure, idling at utilisation demand/supply, whose steady draw
-    #: is its need -- that is the basis 19.02 and 15.79 were computed on. A4.2's
-    #: BACK_UP is a build-material line that fills a container and PAUSES, whose
-    #: draw oscillates between nameplate and zero and "must be sized against the
-    #: peak". Both are correct about their own case.
-    #:
-    #: Set per bus rather than resolved by rule, because choosing the rule is
-    #: A3.5-versus-A4.2 and that is not this package's to settle: A3.5 sizes
-    #: Wire_copper against Cable's AVERAGE 9/min, while A4.2's argument applied
-    #: to the same line would size it against Cable's 90/min nameplate and put
-    #: four Constructors on that bus instead of one.
-    presents_peak_draw: bool | None = None
+    #: REMOVED rather than left inert. A declaration nothing reads is a caller
+    #: stating a preference that silently does not apply, and the only site that
+    #: set it already derived it — `presents_peak_draw=(disposition is BACK_UP)`
+    #: — which is the evidence it was never a declaration in the first place.
+    #: The peak is now DERIVED from the disposition and REPORTED: see
+    #: `ConsumerShare.peak_per_min`. A caller still passing the keyword gets a
+    #: TypeError, which is the loud break the rename would have been.
 
     def __post_init__(self) -> None:
         if self.extra_producers < 0:
@@ -315,11 +331,26 @@ class ConsumerShare:
 
     `bus_id=None` is player withdrawal for construction: a real consumer with no
     recipe behind it.
+
+    TWO DRAW FIGURES, and both are real (A5.2). `draw_per_min` is what sized the
+    bus, on whichever `SizingBasis` the solve ran. `peak_per_min` is what this
+    consumer pulls while it is actually running, which is nameplate for any
+    state whose supply exceeds its demand and equals the average under MATCHED,
+    where supply equals demand by construction.
+
+    The peak is REPORTED on every solve and under both bases. It is not an
+    input to anything: no machine count anywhere in this module reads it, and
+    `tests/test_refusals.py` asserts that. A peak that could size is
+    `presents_peak_draw` again under a new name.
     """
 
     bus_id: BusId | None
     draw_per_min: float
     share: float
+    #: Nameplate while running. For player withdrawal (`bus_id is None`) it is
+    #: the declared withdrawal itself: the model carries no transient for a
+    #: player's own draw and does not invent one.
+    peak_per_min: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -348,6 +379,26 @@ class BusSolution:
     supply_per_min: float
     residual_per_min: float
     consumers: tuple[ConsumerShare, ...]
+    #: External + every consumer's nameplate + the declared withdrawal. What
+    #: this bus is asked for when everything drawing on it runs at once, which
+    #: is the refill transient after a drawdown. REPORTED, never sized against:
+    #: `machines` above is computed from `demand_per_min` alone.
+    peak_demand_per_min: float = 0.0
+
+    @property
+    def peak_shortfall_per_min(self) -> float:
+        """What the peak asks for beyond what this bus supplies.
+
+        A5.2's real question, and the reason the peak survives the demotion:
+        splitters round-robin and do not prioritise, so a refill transient is
+        paid by the PRODUCTION consumers sharing this bus, not by the line
+        refilling. Positive means those consumers starve for the duration of
+        the transient; the DURATION is capacity/slack and is not modelled here,
+        because no container capacity reaches this layer.
+
+        Zero is not "no transient" — it is "the transient fits in the supply".
+        """
+        return max(0.0, self.peak_demand_per_min - self.supply_per_min)
 
     @property
     def utilisation(self) -> float:
@@ -447,7 +498,22 @@ def solve(
 
     `machine_floor` is the recovered min-one-machine rule; pass 0 to solve
     without it.
+
+    `sizing_basis` takes `AVERAGE` (the record's basis, default) or `USAGE`
+    (A5.2's). `PEAK` is refused — the peak is reported on every solve instead.
     """
+    if sizing_basis not in SOLVE_BASES:
+        raise BusModelError(
+            f"{sizing_basis.value} is not a sizing basis. A5.2 settles that the "
+            "states differ in POWER and in peak DURATION, not in what a line "
+            "costs its source bus on average, so sizing every consumer against "
+            "its nameplate is not a second model of the factory — it is the "
+            "same factory measured before its buffers saturate. The peak is "
+            "REPORTED on every solve, under either basis: read "
+            "`ConsumerShare.peak_per_min`, `BusSolution.peak_demand_per_min` "
+            "and `BusSolution.peak_shortfall_per_min`. Size with "
+            f"{sorted(b.value for b in SOLVE_BASES)}."
+        )
     specs = {b.bus_id: b for b in decl.buses}
     rates = {b.bus_id: _rate_of(data, b) for b in decl.buses}
     for b in decl.buses:
@@ -477,34 +543,46 @@ def solve(
             c = solved[consumer_id]
             c_spec = specs[consumer_id]
             per_min = _input_rate(data, c_spec, item_id)
-            peak = c_spec.presents_peak_draw
-            if peak is None:
-                peak = sizing_basis is SizingBasis.PEAK
-            if c.disposition is Disposition.WITHDRAWN:
-                # Drained continuously, so producers run at 100%: the draw is
-                # nameplate and the average equals the peak.
-                flow = c.machines * per_min
-            elif peak and c.disposition is Disposition.BACK_UP:
-                # Fills a container and pauses. The upstream bus has to carry
-                # the nameplate rate while it runs.
-                flow = c.machines * per_min
+            usage = c.demand_per_min * per_min / rate_or_one(c.rate_per_min)
+            nameplate = c.machines * per_min
+            # THE PEAK IS DERIVED, never declared. Under MATCHED supply equals
+            # demand by construction, so the machine is already clocked to the
+            # draw and there is no transient to have. Every other state can run
+            # at nameplate and pause, which is one mechanism observed before and
+            # after its buffer saturates (A5.1) rather than two states.
+            peak = (
+                usage if c.disposition is Disposition.MATCHED else nameplate
+            )
+            if (
+                sizing_basis is SizingBasis.AVERAGE
+                and c.disposition is Disposition.WITHDRAWN
+            ):
+                # The record's basis, reproduced rather than defended. A5.2
+                # says this over-counts by the integrality slack; it is kept
+                # because the published tables were computed on it.
+                flow = nameplate
             else:
-                # Average draw: actual need. Under MATCHED this is also the peak.
-                flow = c.demand_per_min * per_min / rate_or_one(c.rate_per_min)
+                # A5.2: average draw is usage, in every state.
+                flow = usage
             automated += flow
-            shares.append(ConsumerShare(consumer_id, flow, 0.0))
+            shares.append(ConsumerShare(consumer_id, flow, 0.0, peak))
 
         withdrawal = spec.withdrawal_per_min or 0.0
         external = float(decl.external_per_min.get(bus_id, 0.0))
         demand = external + automated + withdrawal
         if withdrawal:
-            shares.append(ConsumerShare(None, withdrawal, 0.0))
+            # A player's own draw carries no modelled transient, so its peak is
+            # the declared rate. Inventing one would put a figure nobody
+            # measured inside `peak_demand_per_min`.
+            shares.append(ConsumerShare(None, withdrawal, 0.0, withdrawal))
         total = sum(s.draw_per_min for s in shares)
         shares = tuple(
             ConsumerShare(s.bus_id, s.draw_per_min,
-                          (s.draw_per_min / total) if total > 0 else 0.0)
+                          (s.draw_per_min / total) if total > 0 else 0.0,
+                          s.peak_per_min)
             for s in shares
         )
+        peak_demand = external + sum(s.peak_per_min for s in shares)
 
         continuous = demand / rate if rate > 0 else 0.0
         machines = max(machine_floor, math.ceil(continuous - EPS)) + spec.extra_producers
@@ -533,6 +611,7 @@ def solve(
             supply_per_min=supply,
             residual_per_min=supply - demand,
             consumers=shares,
+            peak_demand_per_min=peak_demand,
         )
 
     return Solution(

@@ -59,6 +59,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--repo", default=".", help="repo root holding planning_data/")
     p.add_argument("--multiplier", type=float, default=1.25,
                    help="recipe input multiplier; 1.0 is canonical")
+    # `peak` stays in the choices so that asking for it reaches `solve`'s
+    # refusal, which says why it is not a basis any more and where the peak is
+    # reported instead. Dropping it from `choices` would answer with argparse's
+    # "invalid choice", which explains nothing.
     p.add_argument("--basis", choices=[b.value for b in SizingBasis],
                    default=SizingBasis.AVERAGE.value)
     p.add_argument("--machine-floor", type=int, default=1)
