@@ -21,6 +21,11 @@ for, not a correction of A3.5.
 
 Section 6 was RE-BASED on 2026-09-22 and its docstring records what it stopped
 asserting. Amendment 6 is the record; do not read the change out of this file.
+
+EVERY REPRODUCTION NAMES ITS BASIS, as of 2026-09-23 (amendment 10). `solve`
+now defaults to `USAGE`, the model; the tables were computed on `AVERAGE`, so
+each call below passes `sizing_basis=RECORD` rather than inheriting a default
+that no longer means the record.
 """
 from __future__ import annotations
 
@@ -29,6 +34,10 @@ import pytest
 from busmodel import SizingBasis, balance_check, solve
 from busmodel import declarations as decls
 from busmodel.report import out_of_scope_draw
+
+#: The basis every published table was computed on. Named once so a call site
+#: reads as a reproduction, and so the default moving cannot move a table.
+RECORD = SizingBasis.AVERAGE
 
 TOL = 0.01
 
@@ -76,7 +85,7 @@ SECTION_5_UNCHANGED = (decls.I_ROTOR, decls.I_MODULAR_FRAME, decls.I_CABLE, decl
 ])
 def test_storage_review_section_5(request, scenario_name, expected):
     data = request.getfixturevalue(scenario_name)
-    solution = solve(decls.storage_review_t1_2(data), data)
+    solution = solve(decls.storage_review_t1_2(data), data, sizing_basis=RECORD)
     for bus_id, (machines, overflow) in expected.items():
         bus = solution[bus_id]
         assert bus.machines == machines, bus_id
@@ -91,8 +100,9 @@ def test_storage_review_section_5_unchanged_rows(canonical, scenario_of_record):
     output. Without the floor they would be zero at both scenarios and would
     also be "unchanged", which is the wrong reason for the right answer.
     """
-    at_1x = solve(decls.storage_review_t1_2(canonical), canonical)
-    at_125 = solve(decls.storage_review_t1_2(scenario_of_record), scenario_of_record)
+    at_1x = solve(decls.storage_review_t1_2(canonical), canonical, sizing_basis=RECORD)
+    at_125 = solve(decls.storage_review_t1_2(scenario_of_record), scenario_of_record,
+                   sizing_basis=RECORD)
     for bus_id in SECTION_5_UNCHANGED:
         assert at_1x[bus_id].machines == at_125[bus_id].machines == 1, bus_id
         assert at_1x[bus_id].residual_per_min == pytest.approx(
@@ -205,7 +215,7 @@ def test_storage_review_section_7_alternate_table(canonical, regime):
     """
     decl = (decls.storage_review_t1_2(canonical) if regime == "stitched"
             else decls.storage_review_t1_2_base_rip(canonical))
-    solution = solve(decl, canonical)
+    solution = solve(decl, canonical, sizing_basis=RECORD)
     expected = SECTION_7[regime]
 
     assert solution.total_machines == expected["total_machines"]
@@ -238,7 +248,7 @@ def test_bus_record_screw_bus(scenario_of_record):
     """
     data = scenario_of_record
     decl = decls.crossover_regime(data, stitched=False)
-    solution = solve(decl, data)
+    solution = solve(decl, data, sizing_basis=RECORD)
     screws = solution["screws"]
 
     assert screws.rate_per_min == pytest.approx(40.0, abs=TOL)
@@ -277,7 +287,8 @@ def test_storage_rate_is_a_machine_count(scenario_of_record):
             ),
             external_per_min=dict(base.external_per_min),
         )
-        assert solve(decl, data)["screws"].residual_per_min == pytest.approx(expected, abs=TOL)
+        residual = solve(decl, data, sizing_basis=RECORD)["screws"].residual_per_min
+        assert residual == pytest.approx(expected, abs=TOL)
 
 
 # --------------------------------------------------------------------------
@@ -294,8 +305,8 @@ def test_bus_record_section_8_regime_comparison(scenario_of_record):
     Wire lane appears on the ingot bus.
     """
     data = scenario_of_record
-    a = solve(decls.crossover_regime(data, stitched=False), data)
-    b = solve(decls.crossover_regime(data, stitched=True), data)
+    a = solve(decls.crossover_regime(data, stitched=False), data, sizing_basis=RECORD)
+    b = solve(decls.crossover_regime(data, stitched=True), data, sizing_basis=RECORD)
 
     assert a.total_continuous_machines == pytest.approx(19.02, abs=TOL)
     assert a.total_machines == 20
@@ -331,8 +342,8 @@ SECTION_6_SWEEP = {
 def test_crossover_sweep(scenario_of_record, scale):
     data = scenario_of_record
     a_cont, a_ceil, b_cont, b_ceil = SECTION_6_SWEEP[scale]
-    a = solve(decls.crossover_regime(data, stitched=False, scale=scale), data)
-    b = solve(decls.crossover_regime(data, stitched=True, scale=scale), data)
+    a = solve(decls.crossover_regime(data, stitched=False, scale=scale), data, sizing_basis=RECORD)
+    b = solve(decls.crossover_regime(data, stitched=True, scale=scale), data, sizing_basis=RECORD)
     assert a.total_continuous_machines == pytest.approx(a_cont, abs=0.02)
     assert a.total_machines == a_ceil
     assert b.total_continuous_machines == pytest.approx(b_cont, abs=0.02)
@@ -350,7 +361,8 @@ def test_integrality_tax_is_bounded_by_the_bus_count(scenario_of_record):
     data = scenario_of_record
     for scale in SECTION_6_SWEEP:
         for stitched, bus_count in ((False, 6), (True, 7)):
-            solution = solve(decls.crossover_regime(data, stitched=stitched, scale=scale), data)
+            solution = solve(decls.crossover_regime(data, stitched=stitched, scale=scale), data,
+                             sizing_basis=RECORD)
             assert len(solution.buses) == bus_count
             assert 0.0 <= solution.integrality_tax < bus_count
 
@@ -364,8 +376,10 @@ def test_section_6_1_local_minimum(scenario_of_record):
     data = scenario_of_record
 
     def saved(scale):
-        a = solve(decls.crossover_regime(data, stitched=False, scale=scale), data)
-        b = solve(decls.crossover_regime(data, stitched=True, scale=scale), data)
+        a = solve(decls.crossover_regime(data, stitched=False, scale=scale), data,
+                  sizing_basis=RECORD)
+        b = solve(decls.crossover_regime(data, stitched=True, scale=scale), data,
+                  sizing_basis=RECORD)
         return a.total_machines - b.total_machines
 
     assert saved(0.9) == 3
@@ -410,9 +424,10 @@ def test_amendment_4_iron_plate_build_line(scenario_of_record):
     data = scenario_of_record
     from realization.contracts import Disposition
 
-    matched = solve(decls.worked_case_a4(data), data)
+    matched = solve(decls.worked_case_a4(data), data, sizing_basis=RECORD)
     full = solve(
-        decls.worked_case_a4(data, build_plate_disposition=Disposition.BACK_UP), data
+        decls.worked_case_a4(data, build_plate_disposition=Disposition.BACK_UP), data,
+        sizing_basis=RECORD,
     )
 
     plate = matched[decls.BUS_IRON_PLATE_BUILD]
@@ -468,7 +483,7 @@ def test_worked_case_reproduces_a3_5_rows_unaffected_by_the_basis_defect(scenari
     which A4.1 establishes was never the build supply.
     """
     data = scenario_of_record
-    solution = solve(decls.worked_case_a4(data), data)
+    solution = solve(decls.worked_case_a4(data), data, sizing_basis=RECORD)
     for bus_id, machines, residual in (
         ("screws", 4, 36.00),
         (decls.BUS_WIRE_IRON, 3, 20.62),
@@ -489,7 +504,7 @@ def test_split_wire_buses_do_not_pool(scenario_of_record):
     """
     data = scenario_of_record
     decl = decls.worked_case_a4(data)
-    solution = solve(decl, data)
+    solution = solve(decl, data, sizing_basis=RECORD)
 
     wire_buses = decl.buses_of_item(decls.I_WIRE)
     assert {b.bus_id for b in wire_buses} == {decls.BUS_WIRE_IRON, decls.BUS_WIRE_COPPER}
@@ -562,7 +577,7 @@ def test_the_usage_basis_shrinks_the_production_chain_not_only_the_build_lines(
     """
     data = scenario_of_record
     decl = decls.worked_case_a4(data)
-    average = solve(decl, data, sizing_basis=SizingBasis.AVERAGE)
+    average = solve(decl, data, sizing_basis=RECORD)
     usage = solve(decl, data, sizing_basis=SizingBasis.USAGE)
 
     assert average.total_machines == 29
@@ -597,7 +612,7 @@ def test_the_out_of_scope_draw_follows_the_basis_it_was_solved_on(
     """
     data = scenario_of_record
     decl = decls.worked_case_a4(data)
-    average = out_of_scope_draw(decl, data, solve(decl, data))
+    average = out_of_scope_draw(decl, data, solve(decl, data, sizing_basis=RECORD))
     usage = out_of_scope_draw(
         decl, data, solve(decl, data, sizing_basis=SizingBasis.USAGE)
     )
@@ -619,7 +634,7 @@ def test_the_peak_is_reported_on_both_bases_and_sizes_neither(scenario_of_record
     """
     data = scenario_of_record
     decl = decls.worked_case_a4(data)
-    average = solve(decl, data)
+    average = solve(decl, data, sizing_basis=RECORD)
     usage = solve(decl, data, sizing_basis=SizingBasis.USAGE)
     for solution in (average, usage):
         bus = solution[decls.BUS_WIRE_COPPER]

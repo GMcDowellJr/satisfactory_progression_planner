@@ -20,6 +20,7 @@ from busmodel import (
     solve,
 )
 from busmodel import declarations as decls
+from busmodel.model import SOLVE_BASES
 from realization.contracts import Disposition
 
 
@@ -159,7 +160,8 @@ def test_a_bus_spec_no_longer_accepts_presents_peak_draw():
         )
 
 
-def test_no_machine_count_anywhere_reads_the_peak(scenario_of_record):
+@pytest.mark.parametrize("basis", sorted(SOLVE_BASES, key=lambda b: b.value))
+def test_no_machine_count_anywhere_reads_the_peak(scenario_of_record, basis):
     """The guardrail that keeps the demotion from undoing itself.
 
     A peak that can move a machine count is `presents_peak_draw` again under a
@@ -170,12 +172,17 @@ def test_no_machine_count_anywhere_reads_the_peak(scenario_of_record):
     Checked by re-solving a declaration whose peaks differ wildly from its
     averages — the BACK_UP build line's peak is ten times its draw — and
     asserting the two runs agree on everything except the peak columns.
+
+    Over BOTH sizing bases since 2026-09-23. It ran on the default alone, and
+    the default moved (amendment 10); a guardrail that silently changes which
+    basis it guards is guarding less than it says.
     """
     data = scenario_of_record
-    matched = solve(decls.worked_case_a4(data), data)
+    matched = solve(decls.worked_case_a4(data), data, sizing_basis=basis)
     full = solve(
         decls.worked_case_a4(data, build_plate_disposition=Disposition.BACK_UP),
         data,
+        sizing_basis=basis,
     )
     for a, b in zip(matched.buses, full.buses):
         assert a.bus_id == b.bus_id
@@ -191,15 +198,17 @@ def test_no_machine_count_anywhere_reads_the_peak(scenario_of_record):
     )
 
 
-def test_a_matched_line_has_no_transient_to_report(scenario_of_record):
+@pytest.mark.parametrize("basis", sorted(SOLVE_BASES, key=lambda b: b.value))
+def test_a_matched_line_has_no_transient_to_report(scenario_of_record, basis):
     """Peak equals average under MATCHED, which is the state's whole point.
 
     Supply equals demand by construction, so the machine is already clocked to
     the draw. Reporting a nameplate peak for it would invent a transient the
-    state is defined to not have.
+    state is defined to not have. Over both bases, for the reason the guardrail
+    above gives.
     """
     data = scenario_of_record
-    solution = solve(decls.worked_case_a4(data), data)
+    solution = solve(decls.worked_case_a4(data), data, sizing_basis=basis)
     build = solution[decls.BUS_IRON_PLATE_BUILD]
     assert build.disposition is Disposition.MATCHED
     share = next(
@@ -208,3 +217,38 @@ def test_a_matched_line_has_no_transient_to_report(scenario_of_record):
     )
     assert share.peak_per_min == pytest.approx(share.draw_per_min)
     assert build.peak_shortfall_per_min == pytest.approx(0.0)
+
+
+# --------------------------------------------------------------------------
+# the default is the model; the record is named (amendment 10)
+# --------------------------------------------------------------------------
+
+def test_the_default_basis_is_usage():
+    """A call that names no basis gets A5.2's model. Until 2026-09-23 it got
+    the basis A5.2 retracted, with nothing at the call site to say so."""
+    import inspect
+
+    default = inspect.signature(solve).parameters["sizing_basis"].default
+    assert default is SizingBasis.USAGE
+
+
+def test_the_default_moves_the_worked_case_and_the_record_does_not(scenario_of_record):
+    """The default and the record now disagree on `worked_case_A4`, 23 machines
+    against 29 (A6.3) — which is what makes this test able to fail. A default
+    that equalled the record here could not be told apart from it."""
+    data = scenario_of_record
+    decl = decls.worked_case_a4(data)
+    assert solve(decl, data).total_machines == 23
+    assert solve(decl, data, sizing_basis=SizingBasis.AVERAGE).total_machines == 29
+
+
+def test_the_cli_defaults_to_usage_and_takes_the_record_as_an_override(capsys, repo_root):
+    """`python -m busmodel` without `--basis` renders the usage basis;
+    `--basis average` reproduces the record. The rendered table names its
+    basis either way, which is the assertion — an output must say which it is."""
+    from busmodel.cli import main
+
+    main(["worked_case_A4", "--repo", str(repo_root)])
+    assert "basis usage" in capsys.readouterr().out
+    main(["worked_case_A4", "--repo", str(repo_root), "--basis", "average"])
+    assert "basis average" in capsys.readouterr().out
