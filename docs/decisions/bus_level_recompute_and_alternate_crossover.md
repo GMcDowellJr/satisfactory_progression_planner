@@ -1272,3 +1272,64 @@ Both now read `peak_per_min`. Neither moves a machine count; they report.
                   been done
     unchanged     `realize`'s 0% clock warning. The machine past the ceil is
                   still reported as buying nothing
+
+## Amendment 9 — 2026-09-23. The oracle's second job, run: the layers agree on every row
+
+Appended forward-only. Amendment 8 listed "not re-run — A6.3's table through
+the realization layer" in its own "does not establish". This is that run.
+
+    measured  agent container, 2026-09-23, against `8d64a2f0` plus the change
+              recorded at A9.2. Pinned by
+              `tests/test_oracle_against_realization.py`
+
+### A9.1 Thirteen buses, one disagreement in definition and none in substance
+
+`worked_case_A4`, scenario of record, busmodel under `SizingBasis.USAGE` against
+`realization.buses_from_response` on a translated request:
+
+    agree   machine count, automated demand and withdrawal on all 13 buses.
+            23 machines on both sides — A6.3's USAGE total. Iron Ingot 115.89
+            on 4 Smelters, both sides
+    agree   every consumer's usage AND peak on every bus, including the MATCHED
+            Iron Plate build line, whose peak equals its usage in both layers
+    agree   supply on every non-MATCHED bus. On the MATCHED bus busmodel's
+            clocked supply equals realization's lanes at their clock
+    differ  the residual, BY DEFINITION and on the record: busmodel's is
+            supply − (automated + withdrawal + external); realization's is
+            supply − automated, leaving withdrawal to `coverage_for` and
+            external out of scope. Every difference on the table is exactly a
+            withdrawal or the root's external. Not compared as a number
+
+The translation is where a false agreement or disagreement could come from, so
+it is pinned separately: the response carries ONE `RecipeUse` (the root, at
+busmodel's declared external over its rate) and every other bus is DECLARED,
+which makes realization's derived external zero by absence — what busmodel
+declares for those buses.
+
+Every test was confirmed to fail against a body with its rule reverted — the
+usage draw, the MATCHED peak rule, and A9.2 below.
+
+### A9.2 Two DECLARED buses on one recipe are admitted
+
+The run could not start as the bodies stood: `worked_case_A4` puts the Iron
+Plate production bus and its build line on one recipe, and `_attribute` refused
+two buses on one recipe "whatever their provenance". Neither of its reasons
+holds when both are DECLARED — both carry `machine_equivalents=None`, so
+nothing is double-counted, and `_check_partition` walks `response.recipes`,
+which holds neither. The refusal is NARROWED to recipes the solve ran.
+
+    BEHAVIOUR CHANGE   a declaration previously refused is now sized
+    unchanged          the SOLVED case — a build line beside a production bus
+                       the solve runs on the same recipe — is still refused by
+                       name, and still needs bus identity beyond
+                       (item, sources, recipe) to close
+
+### What this amendment does not establish
+
+    not shown   agreement on any declaration but `worked_case_A4`. The storage
+                review's cases are busmodel reproductions on `AVERAGE`, which
+                realization does not implement
+    not shown   agreement where the solve runs a non-root bus. Every non-root
+                bus here is DECLARED, so `external` on a SOLVED intermediate —
+                A8.2's case — is covered by `test_buses.py` and not by the
+                oracle
