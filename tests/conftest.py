@@ -14,3 +14,8 @@ sys.path.insert(0, str(REPO / "tools" / "progression" / "src"))
 #: repo already reject, arriving as an ordering dependency instead of as a
 #: forgotten editable install.
 sys.path.insert(0, str(REPO / "tools" / "realization" / "src"))
+#: `busmodel`, for `test_oracle_against_realization.py` — the oracle's second
+#: job, which needs the oracle AND the bodies it checks. It lives here because
+#: this directory is above both packages: neither import boundary is weakened,
+#: since each boundary test scans its own `src/` and nothing else.
+sys.path.insert(0, str(REPO / "tools" / "busmodel" / "src"))

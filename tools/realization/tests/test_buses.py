@@ -604,11 +604,12 @@ def test_lenient_attribution_skips_a_contradictory_declaration(scaled):
 def test_a_declared_line_on_a_recipe_the_solve_also_runs_is_refused(scaled):
     """KNOWN LIMITATION, asserted so it cannot become a silent hole.
 
-    Two buses on one recipe collapse `_check_partition`'s recipe -> bus map,
-    whatever their provenance. A build-material line for an item the solve also
+    Two buses on one recipe the SOLVE RAN collapse `_check_partition`'s
+    recipe -> bus map. A build-material line for an item the solve also
     produces on the same recipe therefore cannot yet be declared alongside it.
     P30 does not close this; closing it needs bus identity beyond
-    (item, sources, recipe).
+    (item, sources, recipe). Narrowed 2026-09-23 to the solved case — see
+    `test_two_declared_buses_on_one_recipe_are_admitted`.
     """
     request = RealizationRequest(
         design_tier=4,
@@ -832,6 +833,32 @@ def test_buses_come_out_in_reverse_topological_order(scaled, caps):
     assert order.index("smart_plating") < order.index("rip")
     assert order.index("rip") < order.index("screws")
     assert order.index("rotor") < order.index("screws")
+
+
+def test_two_declared_buses_on_one_recipe_are_admitted(scaled, caps):
+    """Neither of the refusal's reasons applies when the solve ran the recipe
+    for neither bus: both carry `machine_equivalents=None`, and
+    `_check_partition` walks `response.recipes`, which holds neither. This is
+    `worked_case_A4`'s Iron Plate production bus beside its build line, and
+    each is sized from its own declared demand alone."""
+    buses = build.worked_buses() + (
+        BusDeclaration(bus_id="plate_stock_a", item_id=build.I_IRON_PLATE,
+                       recipe_id=build.R_IRON_PLATE,
+                       sources=(SourceEdge(I_IRON_INGOT, None),),
+                       withdrawal_per_min=20.0),
+        BusDeclaration(bus_id="plate_stock_b", item_id=build.I_IRON_PLATE,
+                       recipe_id=build.R_IRON_PLATE,
+                       sources=(SourceEdge(I_IRON_INGOT, None),),
+                       withdrawal_per_min=50.0),
+    )
+    result = B.buses_from_response(
+        build.worked_response(), scaled,
+        RealizationRequest(design_tier=4, buses=buses), caps,
+    )
+    stock = {b.bus_id: b for b in result if b.bus_id.startswith("plate_stock")}
+    # 20/min per Constructor at 1.25x (recipe_io.csv): one machine and three.
+    assert stock["plate_stock_a"].machines == 1
+    assert stock["plate_stock_b"].machines == 3
 
 
 def test_two_buses_on_one_recipe_are_refused(scaled, caps):
