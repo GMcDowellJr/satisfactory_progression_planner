@@ -61,6 +61,11 @@ def _installed_capacity(decl, data, machines, capacity):
 #: `storage-model-bundle-review-2026-09-21.md` section 5, phase 1, solved to a
 #: fixed point with per-input nearest-integer rounding, external demand held
 #: constant. bus_id -> (machines, overflow/min).
+#:
+#: A REPRODUCTION, NOT AN ENDORSEMENT. Amendment 11 (A11.1): the declaration
+#: carries no demand, so every above-floor machine here is a floor machine's
+#: nameplate draw under the review's 100%-clock assumption. On USAGE the same
+#: declaration is 9 floor machines — section 8 below pins that.
 SECTION_5_1X = {
     decls.I_RIP: (1, 2.62),
     decls.I_IRON_PLATE: (1, 1.25),
@@ -118,6 +123,10 @@ def test_storage_review_section_5_unchanged_rows(canonical, scenario_of_record):
 #: Section 6.1, at 1x. Positive deltas are legitimate (consumers outside the
 #: modelled set); negative ones are not, because the consumer is inside the same
 #: file. Only the negative rows are published, so only they are asserted.
+#:
+#: A REPRODUCTION, NOT AN ENDORSEMENT. These are CAPACITY-basis deltas. At the
+#: config's own declared demand four of the six at 1x vanish (A11.3), which
+#: contradicts the review's §9 robustness claim — section 8 below pins it.
 SECTION_6_1_NEGATIVES_1X = {
     "T1-2": {decls.I_SCREW: -50.0, decls.I_WIRE: -18.5, decls.I_IRON_ROD: -3.0},
     "T3-4": {decls.I_SCREW: -50.0, decls.I_WIRE: -37.3, decls.I_IRON_ROD: -6.0},
