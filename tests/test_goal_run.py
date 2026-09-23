@@ -30,7 +30,7 @@ from production_adapter import OutputTarget, Scenario, SolveRequest, load
 from production_adapter.gamedata import load_construction, load_logistics
 from production_adapter.lp_backend import LpBackend, PowerStatistic
 from progression import at_tier, stock, unlocks
-from realization import BusDeclaration, RealizationRequest, SourceEdge
+from realization import BusDeclaration, Disposition, RealizationRequest, SourceEdge
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 GOAL_RUN_PATH = REPO / "tools" / "goal_run.py"
@@ -310,3 +310,132 @@ def test_run_has_no_loop_and_one_call_site_per_layer():
     names = _called_names(fn)
     for layer in ("solve", "realize", "project_goals", "bill_for"):
         assert names.count(layer) == 1, layer
+
+
+# ==========================================================================
+# paced_run — A13 (D2). The floor pass, the rates, the paced pass
+# ==========================================================================
+
+import csv  # noqa: E402
+
+from progression import schedule  # noqa: E402
+
+#: P1: the unlocks paced are the ones THIS stage buys, declared by the caller.
+#: Here: the milestones the schematics table places at tech tier 2. Filtered in
+#: the test, because deciding a stage's set is the caller's and not the run's.
+_ROWS = {
+    r["schematic_id"]: r
+    for r in csv.DictReader(
+        (REPO / "planning_data" / "game" / "reference" / "schematics.csv").open(encoding="utf-8")
+    )
+}
+TIER_2_BOUGHT = tuple(
+    s for s in unlocks.schematics_at_tier(REPO, TIER) if _ROWS[s]["tech_tier"] == "2"
+)
+
+
+def _paced_kwargs(data, project_assembly, buses=DECLARED, **over):
+    kw = _kwargs(data, project_assembly, buses)
+    kw["declared_stock"] = goal_run.StockDeclaration(
+        bootstrap=BOOTSTRAP,
+        unlocks=TIER_2_BOUGHT,
+        unlock_costs=unlocks.schematic_costs(REPO),
+    )
+    kw["horizon_min"] = schedule.horizon_from_anchor(50.0, 1.0)
+    kw.update(over)
+    return kw
+
+
+@pytest.fixture(scope="module")
+def paced(data, project_assembly):
+    return goal_run.paced_run(**_paced_kwargs(data, project_assembly))
+
+
+def test_the_stage_buys_five_tier_2_milestones():
+    """The declared set, pinned so a change in the table shows up here first."""
+    assert len(TIER_2_BOUGHT) == 5
+    assert {_ROWS[s]["schematic_type"] for s in TIER_2_BOUGHT} == {"EST_Milestone"}
+
+
+def test_the_floor_pass_is_storage_off(paced, storage_off):
+    """Pass 1 is the smallest build that meets usage — the storage-off figures."""
+    assert paced.floor.machines == storage_off.machines
+    assert _ore_per_min(paced.floor) == pytest.approx(23.25)
+
+
+def test_the_paced_rates_are_the_floor_bill_over_fifty_minutes(paced):
+    """Re-derived from the floor bill here, then pinned."""
+    assert paced.horizon_min == 50.0
+    for item_id, bill in paced.floor.stock.bills.items():
+        assert paced.storage_rates[item_id] == pytest.approx(
+            (bill.bootstrap_units + bill.remainder_units) / 50.0)
+    assert {i: round(paced.storage_rates[i], 4) for i in (RIP, PLT, ROD, SCR, ROT)} == {
+        RIP: 1.6, PLT: 22.5, ROD: 14.4, SCR: 20.0, ROT: 1.24,
+    }
+
+
+def test_the_paced_first_fifty_takes_sixteen_machines_and_109_55_ore(paced):
+    """Between storage off (7, 23.25) and running flat out (17, 120.0). The
+    first cut of D2's figures, measured in the container on 2026-09-23."""
+    assert paced.paced.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 9), (SMELTER, 4))
+    assert _ore_per_min(paced.paced) == pytest.approx(109.55)
+
+
+def test_every_paced_line_has_at_least_the_floors_machines(paced):
+    """The floor argument: pass 2's demand is pass 1's plus a non-negative
+    rate, so a bill summed over pass 1 is a floor of pass 2's."""
+    floor = {b.bus_id: b.machines for b in paced.floor.realization.buses}
+    for b in paced.paced.realization.buses:
+        assert b.machines >= floor[b.bus_id], b.bus_id
+
+
+def test_phase_one_finishes_at_t(paced):
+    """The goal line's rate is the solve's target, so the goal completes at the
+    horizon it defined. The round trip."""
+    (g,) = paced.paced.goals
+    assert g.minutes_to_complete == pytest.approx(paced.horizon_min)
+
+
+def test_lines_with_nothing_to_pace_are_reported(paced):
+    """P5. Smart Plating's delivery term is excluded (P1), and no building
+    costs Iron Ingot, so both clock to usage and store nothing."""
+    empty = {b.bus_id for b in paced.paced.realization.buses if b.stores_nothing}
+    assert empty == {"smart_plating", "iron_ingot"}
+
+
+def test_a_project_assembly_term_is_refused(data, project_assembly):
+    kw = _paced_kwargs(data, project_assembly)
+    kw["declared_stock"] = dataclasses.replace(
+        kw["declared_stock"], project_assembly=project_assembly, phases=(1,))
+    with pytest.raises(goal_run.PacedRunError, match="counts it twice"):
+        goal_run.paced_run(**kw)
+
+
+def test_two_storing_buses_of_one_item_are_refused(data, project_assembly):
+    doubled = DECLARED + (dataclasses.replace(DECLARED[3], bus_id="screws_2"),)
+    with pytest.raises(goal_run.PacedRunError, match="which one stores"):
+        goal_run.paced_run(**_paced_kwargs(data, project_assembly, buses=doubled))
+
+
+def test_a_line_declared_storage_off_is_left_alone(data, project_assembly):
+    """Only storing lines are paced; the caller's storage-off lines stay off."""
+    mixed = tuple(
+        dataclasses.replace(b, stores=False) if b.bus_id == "iron_plate" else b
+        for b in DECLARED
+    )
+    report = goal_run.paced_run(**_paced_kwargs(data, project_assembly, buses=mixed))
+    (plate,) = [b for b in report.paced.realization.buses if b.bus_id == "iron_plate"]
+    assert plate.residual.disposition is Disposition.BACK_UP
+    assert plate.storage_per_min == 0.0
+
+
+def test_paced_run_calls_run_twice_and_never_in_a_loop():
+    """Pass 1 and pass 2, no third. The comprehensions in it build
+    declarations; none of them contains a `run` call."""
+    (fn,) = [n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == "paced_run"]
+    assert _called_names(fn).count("run") == 2
+    loops = (ast.For, ast.While, ast.comprehension, ast.AsyncFor,
+             ast.ListComp, ast.GeneratorExp, ast.SetComp, ast.DictComp)
+    for node in ast.walk(fn):
+        if isinstance(node, loops):
+            assert "run" not in _called_names(node)

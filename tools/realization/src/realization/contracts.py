@@ -101,6 +101,15 @@ class Disposition(str, Enum):
                              # reference layer is missing. On the Iron Plate
                              # build line, 0.19 MW against 4.00, and 4/min of
                              # ingot draw against a 40/min peak.
+    PACED = "paced"          # A13 (D2). A STORING line with a declared storage
+                             # rate: clocked to consumers + storage + external
+                             # over nameplate, so it fills its container at
+                             # `storage_per_min` and finishes its bill by the
+                             # scheduler's T. Derived from stores=True plus a
+                             # rate, never declared. Arithmetically MATCHED's
+                             # clock (P4, pinned); a different intent — a fill
+                             # rate the player draws down, not the player's
+                             # own draw. Constant power, no transient.
 
 
 def derive_disposition(
@@ -108,6 +117,7 @@ def derive_disposition(
     stores: bool,
     withdrawal_per_min: float | None,
     recorded: Disposition | None,
+    storage_per_min: float | None = None,
 ) -> Disposition:
     """A bus's steady state, DERIVED from the storage toggle. Amendment 12.
 
@@ -121,6 +131,13 @@ def derive_disposition(
         stores=False, withdrawal declared  MATCHED    clocked to the withdrawal
         stores=False, no withdrawal        BACK_UP    idled to usage; realization's
                                                       `clock_mode` sets a clock
+        stores=True, storage rate          PACED      A13 (D2): clocked to its
+                                                      demand, storage included
+
+    `storage_per_min` is a SCHEDULER's output — a bill over the horizon T —
+    handed in as a rate so that §9 keeps T itself out of this layer. It needs
+    storage ON (a paced line is a storing line) and is not a record-path state:
+    no published table describes one.
 
     `recorded` is the RECORD PATH (A12, Q5). The published tables describe
     states the toggle cannot state — a storing line observed after its
@@ -130,6 +147,19 @@ def derive_disposition(
     `busmodel.declarations`, nothing under `tools/*/src` passes it; asserted by
     inspection in `test_refusals.py`.
     """
+    if storage_per_min is not None:
+        if recorded is not None:
+            raise ValueError(
+                f"{owner}: a storage rate (PACED, A13) and a recorded disposition. "
+                "The record path reproduces published tables, and none describes "
+                "a paced line."
+            )
+        if not stores:
+            raise ValueError(
+                f"{owner}: storage_per_min is the rate a STORING line fills its "
+                "container at, and stores=False sends nothing to storage."
+            )
+        return Disposition.PACED
     if recorded is not None:
         if recorded is Disposition.WITHDRAWN and not stores:
             raise ValueError(
@@ -462,12 +492,19 @@ class BusDeclaration:
     clock_distribution: ClockDistribution = ClockDistribution.AVERAGED
     #: THE RECORD PATH. See `derive_disposition`. Not for new declarations.
     recorded_disposition: Disposition | None = None
+    #: A13 (D2). The rate a STORING line fills its container at: a paced bill
+    #: over the scheduler's horizon, `progression.schedule`'s output. A RATE,
+    #: so this layer still never sees T (§9). Adds to the bus's sizing demand
+    #: and clocks the line to that demand (Disposition.PACED). `None` leaves a
+    #: storing line at D1's 100%. 0.0 is a paced line with nothing to pace: it
+    #: clocks to usage and reports `stores_nothing` (P5).
+    storage_per_min: float | None = None
 
     @property
     def disposition(self) -> Disposition:
         return derive_disposition(
             self.bus_id, self.stores, self.withdrawal_per_min,
-            self.recorded_disposition,
+            self.recorded_disposition, self.storage_per_min,
         )
 
     def __post_init__(self) -> None:
@@ -478,6 +515,18 @@ class BusDeclaration:
             raise ValueError(f"{self.bus_id}: extra_producers must be >= 0")
         if self.withdrawal_per_min is not None and self.withdrawal_per_min < 0:
             raise ValueError(f"{self.bus_id}: withdrawal_per_min must be >= 0")
+        if self.storage_per_min is not None:
+            if self.storage_per_min < 0:
+                raise ValueError(f"{self.bus_id}: storage_per_min must be >= 0")
+            # A13. One line, one sizing. A storage rate beside a withdrawal
+            # rate or a bill is two declared demands with nothing saying which
+            # the residual answers to — `withdrawal_bill`'s rule, one level on.
+            if self.withdrawal_per_min is not None or self.withdrawal_bill is not None:
+                raise ValueError(
+                    f"{self.bus_id}: storage_per_min with a withdrawal. A paced "
+                    "line is sized from its storage rate alone; the bill it "
+                    "paces is the scheduler's input, not a second declaration."
+                )
         # P29. MATCHED is defined as "underclocked to the AVERAGE WITHDRAWAL
         # RATE", so without a rate there is nothing to match and no clock to
         # derive. Refused at construction rather than downstream, because the
@@ -638,6 +687,10 @@ class ClockCause(str, Enum):
                                      # because the caller stated a draw, not a
                                      # percentage, and the percentage moves when
                                      # the scenario multiplier does
+    PACED = "paced"                  # A13 (D2): derived from a declared
+                                     # STORAGE rate — the clock that finishes
+                                     # a bill by the scheduler's T. MATCHED's
+                                     # arithmetic, a different declaration
     BACKPRESSURE = "backpressure"    # derived: supply exceeds bus demand
     RATIO_LIMITED = "ratio_limited"  # starved — the branch cannot carry the
                                      # draw, or the bus is in deficit and
@@ -761,6 +814,10 @@ class Bus:
     lanes: tuple[Lane, ...]
     consumers: tuple[ConsumerShare, ...]
     residual: BusResidual
+    #: A13. DECLARED storage rate on a PACED line, 0.0 otherwise. Like
+    #: `withdrawal_per_min`, inside the sizing demand and NOT in
+    #: `automated_demand_per_min`.
+    storage_per_min: float = 0.0
 
     @property
     def machines(self) -> int:
@@ -783,6 +840,11 @@ class Bus:
         none of them. On this layer's residual definition (supply − automated,
         A9.1), so a declared withdrawal is not netted off here.
         """
+        if self.residual.disposition is Disposition.PACED:
+            # A13 (P5). A paced line's residual on this layer's definition is
+            # nameplate less automated — the idle capacity — so the storing
+            # question is answered by the rate it was paced to.
+            return self.storage_per_min <= 1e-9
         return (
             self.residual.disposition is Disposition.WITHDRAWN
             and self.residual.rate_per_min <= 1e-9

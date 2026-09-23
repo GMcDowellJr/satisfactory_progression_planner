@@ -342,10 +342,16 @@ def test_player_withdrawal_is_a_consumer_with_no_recipe():
                              share=0.5, peak_per_min=9.0).is_withdrawal
 
 
-def test_the_four_steady_states_are_the_whole_enum():
+def test_the_five_steady_states_are_the_whole_enum():
     """A4.2 adds a fourth and the enum is NOT split: the drain is a derived
-    property of one declared state. If a fifth arrives, this names it."""
-    assert {d.value for d in Disposition} == {"back_up", "sunk", "withdrawn", "matched"}
+    property of one declared state. If a fifth arrives, this names it.
+
+    A13 (D2) is the fifth: PACED, a storing line clocked to a declared storage
+    rate. A new value rather than a re-read WITHDRAWN, whose meaning — producers
+    at 100% — was fixed when it was added (A6.1)."""
+    assert {d.value for d in Disposition} == {
+        "back_up", "sunk", "withdrawn", "matched", "paced",
+    }
 
 
 def test_the_types_are_frozen():

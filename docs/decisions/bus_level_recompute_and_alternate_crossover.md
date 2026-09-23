@@ -1645,3 +1645,126 @@ Rotor Assemblers do draw ten times the screws.
     unreachable   BACK_UP with a withdrawal and SUNK, except by the record path.
                   A future routing value (storage / sink / off) would replace
                   the bool; not decided
+
+## Amendment 13 — 2026-09-23. Goal-paced targets (D2): a storing line clocked to its bill over T
+
+Appended forward-only. Nothing above is edited. Carries D2 out of A12's "not
+built" list. A12.1's expectation that STORAGE and AVERAGE "part when D2 gives a
+storing line a target clock" did not happen, and A13.3 says why.
+
+    decided   Greg, in session 2026-09-23, on the D2 design note (project doc
+              d2-goal-paced-targets-design-2026-09-23.md):
+      T   T = anchor goal total / anchor target rate (50 SP at 1/min = 50 min).
+          The default derivation; an override is a different number passed to
+          the same parameter
+      P1  the paced bill = this build's machines + the NEXT tier's bootstrap +
+          the unlocks DECLARED for this stage, NOT the cumulative tier set. The
+          Project Assembly delivery term is excluded, because the goal item
+          already reaches its line as the solve's target
+      P2  a new field, `storage_per_min`, on BusDeclaration and BusSpec.
+          `withdrawal_per_min` keeps its meaning (A6.1)
+      P3  a new derived disposition, PACED (stores=True plus a rate). WITHDRAWN
+          keeps "producers at 100%"
+      P4  PACED and storage-off MATCHED at one rate compute the same numbers.
+          Both are kept, since they state different intent, and the
+          equality is pinned
+      P5  a paced line with nothing to pace clocks to usage and reports
+          `stores_nothing`
+      --  two passes: storage off (the floor), then paced. No iteration
+    measured  agent container, 2026-09-23. Not Greg's machine
+
+### A13.1 Where the division lives
+
+Realization keeps §9, so no player time enters it. It receives a RATE and
+never T. `stock` keeps "never a rate, a horizon". The division is in a new
+`progression.schedule`, which divides and nothing else. It is asserted from its
+source: the only arithmetic is addition and division, it has no min, max, sort
+or rounding, and it imports adapter contract types only.
+
+### A13.2 The loop, and the floor that closes it
+
+The bill needs machine counts (the goal run's O1), and the paced counts need
+the bill. That is A5's loop. `goal_run.paced_run` runs:
+
+    floor   every line storage OFF -> bill over those machines
+    pace    rate_i = bill_i / T
+    paced   storing lines PACED at their item's rate
+
+The paced demand is usage plus a non-negative rate, so every paced line has at
+least the floor's machines (asserted per line). The bill is therefore a floor
+of the paced build's bill, and Greg's standing position is that a floor
+suffices. Two `run` calls and no loop around either, asserted from the source.
+
+### A13.3 STORAGE and AVERAGE do not part
+
+With PACED a separate value, AVERAGE's record rule — a WITHDRAWN consumer draws
+nameplate — never reaches a paced consumer. Under STORAGE a paced consumer's
+supply at its clock is its demand, which is usage. So all three bases size a
+paced line identically, and the basis question does not arise for it. The
+A12.1 equality test is unchanged and still true on everything it covers. The
+new pin is `test_every_basis_sizes_a_paced_declaration_the_same`.
+
+    NOT A PRIOR CONCLUSION CHANGED  A12.1's equality held and holds. What moved
+                                    is only its forecast of where it would fail
+
+### A13.4 What moved
+
+    realization   Disposition.PACED, ClockCause.PACED;
+                  BusDeclaration.storage_per_min (refused with stores=False,
+                  with a withdrawal rate or bill, on the record path, and
+                  below zero). `_demand` adds it; `clock_for` clocks PACED to
+                  demand / nameplate; `_draw` reads a paced consumer's supply
+                  at its clock (A12 Q2's rule, not a second one);
+                  `draw_is_stable` includes PACED; `Bus.storage_per_min`;
+                  `stores_nothing` reads the rate on a paced line
+    busmodel      the mirror: `BusSpec.storage_per_min`, PACED supply = demand,
+                  `BusSolution.storage_per_min`, `stores_nothing`
+    progression   `schedule.py`: `horizon_from_anchor`, `storage_rates`
+    tools         `goal_run.paced_run`, `PacedRunReport`, `PacedRunError`
+
+### A13.5 First figures
+
+Phase 1, 1x/1x/1x, tier 2, the first-50 partition. The bootstrap is 1 miner and
+1 biomass burner. The unlocks declared for the stage are the five milestones
+`schematics.csv` places at tech tier 2. T = 50.
+
+                        machines (Asm/Con/Sml)   iron ore /min   phase 1
+    storage off (floor)    7  (3 / 3 / 1)             23.25        50 min
+    PACED                 16  (3 / 9 / 4)            109.55        50 min
+    flat out (A12, D1)    17  (3 / 10 / 4)           120.00        25 min
+
+    rates  plate 22.50, screw 20.00, rod 14.40, RIP 1.60, rotor 1.24 /min
+    stores nothing  smart_plating (P1 excludes its delivery term), iron_ingot
+                    (no building costs it)
+
+**Finding, which is why P1 was needed.** The design-note prototype paced the
+cumulative tier 0-2 unlock set: 1680 plates into 50 minutes, 19 machines and
+137.2 ore/min. That is more than running flat out, because tiers 0 and 1 were
+bought before the stage opened. P1 exists because of that result.
+
+One oddity in the data, noted where it was found: `Schematic_3-2_C` carries
+`tech_tier` 2 and is one of the five. Not investigated.
+
+### A13.6 Tests
+
+Every rule was confirmed to fail with it reverted: storage in realization's
+demand, the paced consumer's draw, storage in busmodel's demand, the PA
+refusal, a third `run` pass, and the floor pass keeping storage on. The oracle
+comparison (A9) runs on a third state, paced. `test_contracts_construction`'s
+enum test names the fifth state, as its docstring asked.
+
+    counts   container, collected: busmodel 82 -> 89, realization 240 -> 253,
+             tests/ (staged subset) 186 -> 212. 554 pass together, five
+             runs clean
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not built     D3 (carry-forward across stages: stock made before a stage
+                  opens should reduce what it must make); the T override as
+                  a UI; several goals sharing one T, which is the scheduler
+                  building OutputTargets
+    not modelled  container capacity against a paced fill (A7.3). A bill of
+                  rate x T must fit somewhere
+    open          which schematics a stage buys is the caller's declaration.
+                  Nothing derives it, and deriving it is D3's question

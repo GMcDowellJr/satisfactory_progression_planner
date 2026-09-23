@@ -83,3 +83,24 @@ build makes, not what the target asked for.
     floor         the bill is a floor for stock's reasons, plus one more: a
                   build-material line not yet declared adds none of its own
                   machines
+
+## Amendment 1 — 2026-09-23. `paced_run` (D2)
+
+Appended forward-only. The goal run's decisions stand. `run` is unchanged and
+G1-G4 still hold for it.
+
+`paced_run` composes `run` twice, with `progression.schedule` between the two
+calls: first the storage-off floor, then the paced build. It is recorded in the
+crossover record's amendment 13, which is where D2's decisions live. What
+bears on this record:
+
+    G2   `run` is still single-pass. `paced_run` calls it exactly twice and
+         never from inside a loop, asserted from the source. Two passes and not
+         one is A13.2's floor argument, not iteration
+    G1   `paced_run` builds no BusDeclaration or RealizationRequest; it
+         `dataclasses.replace`s the caller's, setting only `stores=False`
+         (floor) and `storage_per_min` (paced)
+    O2   the bill still does not feed back into `withdrawal_bill`. Pacing
+         feeds a RATE, into a different field with a different meaning
+    refused   a Project Assembly term in the stock declaration (P1), and two
+              storing buses of one item, since the item's bill would pace both

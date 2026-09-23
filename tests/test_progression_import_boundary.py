@@ -68,6 +68,7 @@ def test_the_scan_sees_every_module():
     observed on 2026-09-21 against a partially staged reference directory."""
     assert {p.name for p in _module_files()} == {
         "__init__.py", "pool.py", "unlocks.py", "stock.py",
+        "schedule.py",   # A13 (D2), 2026-09-23
     }
 
 

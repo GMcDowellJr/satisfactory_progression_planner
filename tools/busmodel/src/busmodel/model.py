@@ -223,6 +223,11 @@ class BusSpec:
     #: `declarations.py` and nothing else under `src/`; asserted by inspection
     #: in `tests/test_refusals.py`.
     recorded_disposition: Disposition | None = None
+    #: A13 (D2). The rate a STORING line fills its container at — a paced bill
+    #: over the scheduler's T, handed in as a rate. Inside the demand, and the
+    #: line is clocked to that demand (Disposition.PACED). Mirrors
+    #: `realization.contracts.BusDeclaration.storage_per_min`.
+    storage_per_min: float | None = None
 
     #: `presents_peak_draw` WAS HERE and is GONE as of 2026-09-22. It existed
     #: because the records carried two BACK_UP behaviours and did not
@@ -243,11 +248,19 @@ class BusSpec:
     def disposition(self) -> Disposition:
         return derive_disposition(
             self.bus_id, self.stores, self.withdrawal_per_min,
-            self.recorded_disposition,
+            self.recorded_disposition, self.storage_per_min,
         )
 
     def __post_init__(self) -> None:
         self.disposition   # a contradictory record path is refused here
+        if self.storage_per_min is not None:
+            if self.storage_per_min < 0:
+                raise ValueError(f"{self.bus_id}: storage_per_min must be >= 0")
+            if self.withdrawal_per_min is not None:
+                raise ValueError(
+                    f"{self.bus_id}: storage_per_min with withdrawal_per_min. A "
+                    "paced line is sized from its storage rate alone (A13)."
+                )
         if self.extra_producers < 0:
             raise ValueError(f"{self.bus_id}: extra_producers must be >= 0")
         if self.withdrawal_per_min is not None and self.withdrawal_per_min < 0:
@@ -340,6 +353,7 @@ class Declaration:
                         extra_producers=b.extra_producers,
                         withdrawal_per_min=b.withdrawal_per_min,
                         recorded_disposition=b.recorded_disposition,
+                        storage_per_min=b.storage_per_min,
                     )
                 )
             else:
@@ -421,6 +435,9 @@ class BusSolution:
     #: is the refill transient after a drawdown. REPORTED, never sized against:
     #: `machines` above is computed from `demand_per_min` alone.
     peak_demand_per_min: float = 0.0
+    #: A13. DECLARED storage rate on a PACED line, 0.0 otherwise. INSIDE
+    #: `demand_per_min`, like the withdrawal.
+    storage_per_min: float = 0.0
 
     @property
     def peak_shortfall_per_min(self) -> float:
@@ -445,6 +462,10 @@ class BusSolution:
         machine — is the player's. On this package's residual, which nets the
         declared withdrawal and the external demand (A9.1).
         """
+        if self.disposition is Disposition.PACED:
+            # A13 (P5). A paced line's supply equals its demand, so its residual
+            # is zero by construction; what it stores is its storage rate.
+            return self.storage_per_min <= EPS
         return (
             self.disposition is Disposition.WITHDRAWN
             and self.residual_per_min <= EPS
@@ -607,7 +628,9 @@ def solve(
             # at nameplate and pause, which is one mechanism observed before and
             # after its buffer saturates (A5.1) rather than two states.
             peak = (
-                usage if c.disposition is Disposition.MATCHED else nameplate
+                usage
+                if c.disposition in (Disposition.MATCHED, Disposition.PACED)
+                else nameplate
             )
             if (
                 sizing_basis is SizingBasis.AVERAGE
@@ -629,8 +652,9 @@ def solve(
             shares.append(ConsumerShare(consumer_id, flow, 0.0, peak))
 
         withdrawal = spec.withdrawal_per_min or 0.0
+        storage = spec.storage_per_min or 0.0
         external = float(decl.external_per_min.get(bus_id, 0.0))
-        demand = external + automated + withdrawal
+        demand = external + automated + withdrawal + storage
         if withdrawal:
             # A player's own draw carries no modelled transient, so its peak is
             # the declared rate. Inventing one would put a figure nobody
@@ -647,7 +671,8 @@ def solve(
 
         continuous = demand / rate if rate > 0 else 0.0
         machines = max(machine_floor, math.ceil(continuous - EPS)) + spec.extra_producers
-        if spec.disposition is Disposition.MATCHED:
+        if spec.disposition in (Disposition.MATCHED, Disposition.PACED):
+            # A13: PACED is MATCHED's clock on a storing line (P4, pinned).
             # Underclocked to the average withdrawal rate: production equals
             # average consumption, so nothing overflows and nothing pauses.
             supply = demand
@@ -673,6 +698,7 @@ def solve(
             residual_per_min=supply - demand,
             consumers=shares,
             peak_demand_per_min=peak_demand,
+            storage_per_min=storage,
         )
 
     return Solution(

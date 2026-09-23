@@ -26,12 +26,28 @@ it cannot become a planner by drift. Asserted by inspection in
                and the binding goal is left to the reader (O3) until D2 gives the
                goal build a meaning for T
 
+**`paced_run` (A13, D2)** composes `run` twice with the scheduler between, so
+that `run` itself stays single-pass:
+
+    floor    every line storage OFF -> the smallest build that meets usage ->
+             a bill over those machines
+    pace     each storing line's rate = its item's bill / T
+             (`progression.schedule`)
+    paced    storing lines clocked to that rate -> the reported build
+
+The paced demand is usage plus a non-negative rate, so every paced line has at
+least the floor's machines, and a bill summed over the floor is a FLOOR of the
+paced build's. That is enough, by Greg's standing position that a floor
+suffices, and it is why there is no third pass. Asserted: two `run` calls, and
+neither sits in a loop.
+
 Location. Like `production_cli.py`, this is a joint above three packages, so it
 lives at `tools/` root and sets up `sys.path` itself; none of the packages may
 import upward to hold it.
 """
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -45,7 +61,7 @@ for _src in ("production_adapter", "progression", "realization"):
 from production_adapter import ReferenceData, SolveRequest, SolveResponse  # noqa: E402
 from production_adapter.contracts import ItemId, ProducerClass  # noqa: E402
 from production_adapter.gamedata import ConstructionData  # noqa: E402
-from progression import stock  # noqa: E402
+from progression import schedule, stock  # noqa: E402
 from progression.unlocks import SchematicId  # noqa: E402
 from realization import (  # noqa: E402
     Capability, ExtractionRate, ProjectedGoal, RealizationReport,
@@ -178,4 +194,96 @@ def run(
         goals=projected,
         machines=machines,
         stock=bill,
+    )
+
+
+class PacedRunError(ValueError):
+    """A paced run declines rather than pacing something twice."""
+
+
+@dataclass(frozen=True)
+class PacedRunReport:
+    """Both passes, the horizon, and the rates the second was paced to.
+
+    `floor` is the storage-off build the bill was summed over; `paced` is the
+    build that bill paces. Side by side so the gap between them is visible:
+    that gap is what keeps the bill a floor.
+    """
+
+    horizon_min: float
+    storage_rates: dict[ItemId, float]
+    floor: GoalRunReport
+    paced: GoalRunReport
+
+
+def paced_run(
+    *,
+    data: ReferenceData,
+    backend,
+    solve: SolveRequest,
+    logistics: tuple[tuple[Capability, ...], tuple[ExtractionRate, ...]],
+    realization: RealizationRequest,
+    goals: tuple[Goal, ...],
+    construction: ConstructionData,
+    declared_stock: StockDeclaration,
+    horizon_min: float,
+) -> PacedRunReport:
+    """A13 (D2). The floor pass, the rates, the paced pass. Nothing chosen here.
+
+    `horizon_min` is T. `schedule.horizon_from_anchor` is the default
+    derivation, and an override is just a different number passed here.
+
+    REFUSED, before anything runs:
+
+        a Project Assembly term in `declared_stock`   the goal item reaches its
+            line as the solve's target already, and pacing the delivery term
+            too counts it twice: 1/min + 50/50 = 2/min (P1)
+        two STORING buses of one item   the item's bill would pace both, which
+            doubles it. Which line stores is the caller's declaration
+
+    Which unlocks are paced is the caller's too: `declared_stock.unlocks` is
+    the set THIS stage buys (P1), not the cumulative tier set.
+
+    A storing line whose item has no bill is paced to 0.0. It clocks to usage
+    and reports `stores_nothing` (P5).
+    """
+    if declared_stock.project_assembly is not None or declared_stock.phases is not None:
+        raise PacedRunError(
+            "a paced run excludes the Project Assembly term (P1). The goal item "
+            "reaches its line as the solve's target, and pacing its delivery "
+            "as well counts it twice."
+        )
+    storing_items = [b.item_id for b in realization.buses if b.stores]
+    if len(storing_items) != len(set(storing_items)):
+        raise PacedRunError(
+            "two storing buses carry one item, so its bill would pace both. "
+            "Declare which one stores."
+        )
+
+    floor_request = dataclasses.replace(
+        realization,
+        buses=tuple(dataclasses.replace(b, stores=False) for b in realization.buses),
+    )
+    common = dict(
+        data=data, backend=backend, solve=solve, logistics=logistics,
+        goals=goals, construction=construction, declared_stock=declared_stock,
+    )
+    floor = run(realization=floor_request, **common)
+
+    rates = schedule.storage_rates(floor.stock.bills, horizon_min)
+    paced_request = dataclasses.replace(
+        realization,
+        buses=tuple(
+            dataclasses.replace(b, storage_per_min=rates.get(b.item_id, 0.0))
+            if b.stores else b
+            for b in realization.buses
+        ),
+    )
+    paced = run(realization=paced_request, **common)
+
+    return PacedRunReport(
+        horizon_min=horizon_min,
+        storage_rates=rates,
+        floor=floor,
+        paced=paced,
     )

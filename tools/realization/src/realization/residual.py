@@ -126,6 +126,7 @@ def clock_for(
 
         SUNK / WITHDRAWN                every machine 100%, cause FULL
         MATCHED                         demand / nameplate, cause MATCHED
+        PACED (A13)                     demand / nameplate, cause PACED
         BACK_UP + BACKPRESSURE          demand/supply, cause BACKPRESSURE
         BACK_UP + EXPLICIT, AVERAGED    demand/supply, cause DECLARED
         BACK_UP + EXPLICIT, SPLIT       n at 100% + remainder, cause DECLARED
@@ -199,6 +200,20 @@ def clock_for(
                 "cannot be MATCHED at this machine count. Size it first."
             )
         return tuple((min(clock, 100.0), ClockCause.MATCHED) for _ in range(machines))
+
+    if disposition is Disposition.PACED:
+        # A13 (D2). The demand includes the declared storage rate, and the
+        # machine count was ceil'd from the same demand, so the clock is at
+        # most 100% by construction. Checked anyway: a caller that sized the
+        # line some other way gets a refusal, not a clock over nameplate.
+        clock = 100.0 * demand_per_min / supply_per_min
+        if clock > 100.0 + EPS:
+            raise RealizationError(
+                f"{declaration.bus_id}: demand {demand_per_min}/min (storage "
+                f"{declaration.storage_per_min}/min included) exceeds nameplate "
+                f"{supply_per_min}/min on {machines} machine(s)."
+            )
+        return tuple((min(clock, 100.0), ClockCause.PACED) for _ in range(machines))
 
     # BACK_UP from here.
     fraction = min(1.0, demand_per_min / supply_per_min)
@@ -395,4 +410,6 @@ def draw_is_stable(declaration: BusDeclaration) -> bool:
     model, so the tool cannot claim a duration for that and does not report the
     draw as constant.
     """
-    return declaration.disposition in (Disposition.SUNK, Disposition.MATCHED)
+    return declaration.disposition in (
+        Disposition.SUNK, Disposition.MATCHED, Disposition.PACED,  # A13: PACED
+    )                                                               # never pauses

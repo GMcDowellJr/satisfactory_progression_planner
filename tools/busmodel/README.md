@@ -65,6 +65,9 @@ residuals do not pool.
     BACK_UP     producers idle at utilisation demand/supply
     MATCHED     clocked to the average withdrawal. Supply equals demand, so the
                 residual is zero and the draw is constant
+    PACED       amendment 13 (D2). A storing line clocked to a declared storage
+                rate (`BusSpec.storage_per_min`, a bill over the scheduler's T).
+                MATCHED's arithmetic on a storing line; the draw is constant
     SUNK        refused by name — the AWESOME Sink is absent from the reference
                 layer
 
@@ -106,9 +109,12 @@ does.
 
     storage   THE DEFAULT since amendment 12. A storing consumer draws what it
               PRODUCES — its supply at its clock, nameplate at 100% — and a
-              non-storing one draws its usage. Equal to `average` today on
-              every declaration by construction; the two part when a storing
-              line runs at a target clock (D2)
+              non-storing one draws its usage. Equal to `average` on every
+              declaration by construction. A12 expected the two to part once
+              a storing line had a target clock; they do not. A13 made a paced
+              line PACED rather than WITHDRAWN, and on a paced line every
+              basis sizes the same, because its supply at its clock is its
+              usage (`tests/test_busmodel_paced.py`)
     usage     The default from amendment 10 to amendment 12. A5.2's basis:
               every consumer draws its usage, in every state — which is
               storage off everywhere

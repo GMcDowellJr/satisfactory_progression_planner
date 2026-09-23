@@ -652,9 +652,18 @@ def _draw(
     machines = _machines(response, data, request, consumer_id, attributed, cache)
     demand = _demand(response, data, request, consumer_id, attributed, cache)
     usage = demand * per_machine / rate
-    peak = usage if consumer.disposition is Disposition.MATCHED else machines * per_machine
+    clocked = consumer.disposition in (Disposition.MATCHED, Disposition.PACED)
+    peak = usage if clocked else machines * per_machine
     if consumer.stores:
-        supply = machines * rate   # every lane at 100%; no target clock yet
+        # A13 (D2): a PACED line's supply at its clock is its demand, so its
+        # draw is its usage; an unpaced storing line is still at 100%. One rule
+        # — supply at the clock — as A12's Q2 wrote it down in advance.
+        clock = (
+            min(1.0, demand / (machines * rate))
+            if consumer.disposition is Disposition.PACED
+            else 1.0
+        )
+        supply = machines * rate * clock
         draw = supply * per_machine / rate
     else:
         draw = usage
@@ -859,7 +868,12 @@ def _demand(
         if use.machine_equivalents is None
         else max(0.0, use.machine_equivalents * rate - in_scope_usage)
     )
-    return automated + (declaration.withdrawal_per_min or 0.0) + external
+    return (
+        automated
+        + (declaration.withdrawal_per_min or 0.0)
+        + (declaration.storage_per_min or 0.0)   # A13: a paced line's fill rate
+        + external
+    )
 
 
 def buses_from_response(
@@ -941,6 +955,7 @@ def buses_from_response(
                 disposition=declaration.disposition,
                 power_cost_mw=0.0,
             ),
+            storage_per_min=declaration.storage_per_min or 0.0,
         )
         buses.append(
             Bus(
@@ -953,6 +968,7 @@ def buses_from_response(
                 lanes=bus.lanes,
                 consumers=bus.consumers,
                 residual=residual_for(data, bus, declaration),
+                storage_per_min=bus.storage_per_min,
             )
         )
         # P30. The reconciliation is against the SOLVE'S own account of the

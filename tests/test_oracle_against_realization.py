@@ -72,6 +72,7 @@ def _translate(decl, data):
                 # lines. This file is a test; the inspection in busmodel's
                 # `test_refusals.py` covers `tools/*/src` only.
                 recorded_disposition=b.recorded_disposition,
+                storage_per_min=b.storage_per_min,   # A13
             )
             for b in decl.buses
         ),
@@ -105,6 +106,20 @@ def _storage_off(decl):
     )
 
 
+def _paced(decl):
+    """A13 (D2): every line without a withdrawal STORING and paced at 3/min;
+    the withdrawal lines storage-off MATCHED. No record paths."""
+    return dataclasses.replace(
+        decl,
+        buses=tuple(
+            dataclasses.replace(b, stores=True, recorded_disposition=None, storage_per_min=3.0)
+            if b.withdrawal_per_min is None
+            else dataclasses.replace(b, stores=False, recorded_disposition=None)
+            for b in decl.buses
+        ),
+    )
+
+
 def _run(decl, scaled, caps):
     oracle = solve(decl, scaled)   # the default, STORAGE
     request, response = _translate(decl, scaled)
@@ -112,13 +127,16 @@ def _run(decl, scaled, caps):
     return decl, oracle, request, response, bodies
 
 
-@pytest.fixture(scope="module", params=["storage", "storage_off"])
+@pytest.fixture(scope="module", params=["storage", "storage_off", "paced"])
 def both(request, scaled, caps):
     """A12: the worked case as declared (its WITHDRAWN lines store), and with
-    every line's storage off — A9's USAGE agreement, restated on the toggle."""
+    every line's storage off — A9's USAGE agreement, restated on the toggle.
+    A13 adds the paced state."""
     decl = D.worked_case_a4(scaled)
     if request.param == "storage_off":
         decl = _storage_off(decl)
+    if request.param == "paced":
+        decl = _paced(decl)
     return _run(decl, scaled, caps)
 
 
@@ -163,7 +181,7 @@ def test_supply_agrees_where_both_layers_mean_nameplate(both):
     decl, oracle, _request, _response, bodies = both
     for spec in decl.buses:
         o, r = oracle[spec.bus_id], bodies[spec.bus_id]
-        if spec.disposition is Disposition.MATCHED:
+        if spec.disposition in (Disposition.MATCHED, Disposition.PACED):
             clocked = sum(l.output_rate_per_min for l in r.lanes)
             assert clocked == pytest.approx(o.supply_per_min), spec.bus_id
         else:
