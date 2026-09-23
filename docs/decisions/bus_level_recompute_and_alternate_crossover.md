@@ -1164,3 +1164,111 @@ figure.
                  line has no WITHDRAWN analogue. Recorded, not modelled
     unchanged    the AWESOME Sink, the somersloop axis, and every parked item
                  A6 carried forward
+
+## Amendment 8 — 2026-09-23. The realization layer follows A5.2, and `external` was basis-coupled
+
+Appended forward-only. Nothing above is edited. Discharges A5.2's third
+consequence, which A6 declined in its own "does not establish" ("not changed —
+the realization layer"). `busmodel` and `realization.buses` now size on the same
+basis, so the oracle's second job — checking the realization bodies against
+something that is not themselves — is available again on this axis.
+
+    decided   Greg, in session 2026-09-23: option A of three — size on usage,
+              report the peak, and add a fixture that can tell them apart
+    measured  agent container, 2026-09-23, against `0d8d7d7c`. Not Greg's
+              machine, and not the full suite
+
+### A8.1 What the bodies computed, and what they compute now
+
+    before   every consumer drew `machines × per-machine input` — nameplate,
+             in every disposition. Not busmodel's `AVERAGE` (which is
+             nameplate on WITHDRAWN only) but the basis busmodel's `solve` now
+             REFUSES as `SizingBasis.PEAK`. A peak could move a machine count
+             in this layer, which is what A6.4's guardrail forbids in the other
+    after    `draw_per_min` = consumer demand × per-machine input / consumer
+             rate — busmodel's `USAGE`. Nameplate is reported as the new
+             `ConsumerShare.peak_per_min`, equal to usage under MATCHED and on
+             a withdrawal, the same two rules busmodel follows
+
+`USAGE` rather than `AVERAGE` because this layer has no published table to
+reproduce. `AVERAGE` exists for the oracle's first job; action 2's question
+(whether it stays busmodel's default) is not decided by this and does not need
+to be.
+
+The body's docstring said the signature admitted only nameplate because "no
+consumer's settled demand is available here". It was: `_demand` is already
+reached through the same cached recursion `_machines` uses. No signature
+changed.
+
+### A8.2 `external` subtracted a peak from an average
+
+`_demand` derives out-of-scope demand on a solved bus as
+`max(0, machine_equivalents × rate − automated)`. The solve's figure is
+continuous; `automated` was nameplate. So genuine out-of-scope demand up to the
+consumers' integrality slack read as ZERO and was absorbed into the sizing
+without being reported. Measured, worked case at the scenario of record, the
+solve asking 132 screws/min against 92 of in-scope usage:
+
+    peak basis    external = max(0, 132 − 199) = 0     5 machines
+    usage basis   external = 132 − 92 = 40             4 machines
+
+It erred conservative — no bus was undersized by it — but the figure it
+reported was wrong. **This is what made the three outcomes of the 07:35 handoff
+unequal**: declining to follow busmodel would have left this subtraction in
+place and needed its own repair. On a usage basis the term is coherent without
+any change to its own line.
+
+### A8.3 The suite could not discriminate the bases
+
+A usage-basis body passed all 215 realization tests unchanged. `worked_response`
+gives RIP and Rotor 1.0 machine-equivalents, `external` lifts each consumer to
+one whole machine, and usage equals nameplate on every bus. Two tests claimed
+to assert the peak basis and could not fail for that reason. Both are kept and
+now assert both fields while claiming neither basis.
+
+A continuous response of the same chain (RIP 0.4, Rotor 0.5, screws 2.3
+equivalents) is the fixture that discriminates. On it:
+
+    screw bus        peak basis        usage basis
+    draws            75 + 124 = 199    30 + 62 = 92
+    machines         5                 3
+    residual /min    1.0               28.0
+
+Seven tests added, each confirmed to fail against a body with the old rule put
+back: draws and peaks on the continuous fixture, the screw bus's size, the
+`external` case above, the MATCHED rule, and two `feasibility` cases below. The
+guardrail is the busmodel one restated for this layer: nine extra Rotor
+Assemblers multiply Rotor's peak by ten and no machine count, supply, residual
+or clock on the screw bus moves.
+
+### A8.4 `feasibility` reads the peak, and that is not sizing
+
+Two of its checks were reading `draw_per_min` and would have changed meaning
+silently under the switch:
+
+    branch capacity   a belt carries what the machine draws while it runs.
+                      Rotor at 50% averages 62/min and still needs 124/min of
+                      branch — usage would pass a belt that starves it
+    connectivity      a consumer held at the machine floor with no demand has
+                      usage zero and is connected. "Draws nothing" is a PEAK of
+                      zero — a recipe that consumes nothing the bus carries
+
+Both now read `peak_per_min`. Neither moves a machine count; they report.
+
+### What this amendment does not establish
+
+    not measured  the full suite on Greg's machine. The container ran the
+                  realization, busmodel, adapter and progression suites and
+                  the stock-to-realization joint; 442 pass and the one failure
+                  is `__main__.py` not being staged into the container
+    not added     a bus-level peak. busmodel carries
+                  `BusSolution.peak_demand_per_min` and
+                  `peak_shortfall_per_min`; `realization.Bus` carries neither.
+                  The per-consumer peaks are there to sum; the shortfall also
+                  needs `external`, which `Bus` does not carry
+    not re-run    A6.3's table through the realization layer. The two layers
+                  now share a basis; whether they agree row for row on
+                  `worked_case_A4` is the oracle's second job, and it has not
+                  been done
+    unchanged     `realize`'s 0% clock warning. The machine past the ceil is
+                  still reported as buying nothing
