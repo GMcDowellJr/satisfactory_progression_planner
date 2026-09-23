@@ -1333,3 +1333,41 @@ which holds neither. The refusal is NARROWED to recipes the solve ran.
                 bus here is DECLARED, so `external` on a SOLVED intermediate —
                 A8.2's case — is covered by `test_buses.py` and not by the
                 oracle
+
+## Amendment 10 — 2026-09-23. `USAGE` is the default; the record is named
+
+Appended forward-only. Amendment 6 recorded "not decided — whether `USAGE`
+should become the default. `AVERAGE` stays the default only because the
+published tables were computed on it; that is a reproduction argument, not a
+modelling one, and the two will have to be separated." This separates them.
+
+    decided   Greg, in session 2026-09-23: option 2 of three — `USAGE` becomes
+              the default, every reproduction names `AVERAGE`, and the CLI
+              keeps `--basis` as the override. Chosen over keeping `AVERAGE`
+              (casual calls answer on a retracted basis, silently) and over
+              removing the default (every unnamed call breaks)
+
+### A10.1 What moved and what did not
+
+    moved       `solve()`'s default, and the CLI's `--basis` default, from
+                `average` to `usage`
+    named       every reproduction in `test_published_tables.py` passes
+                `sizing_basis=RECORD`, a module constant bound to `AVERAGE`.
+                No published figure moved, and none could: each call now says
+                which basis it reproduces instead of inheriting one
+    widened     the two peak guardrails in `test_refusals.py` ran on the
+                default alone. They now run on both bases, so the default
+                moving did not silently change which basis they guard
+    pinned      the default itself, on `solve` and on the CLI; and that the
+                default and the record disagree on `worked_case_A4` (23
+                against 29), which is what lets the pin fail
+    unchanged   `AVERAGE` as a value and its meaning. Realization, which sizes
+                on usage unconditionally (A8.1)
+
+Every new or widened test was confirmed to fail with the old default put back.
+Container 2026-09-23: busmodel's suite collected 64 before and 69 after.
+
+### What this amendment does not establish
+
+    not re-run   the storage review's sections 5, 6.1 and 7 under `USAGE`.
+                 Still unknown rather than unchanged

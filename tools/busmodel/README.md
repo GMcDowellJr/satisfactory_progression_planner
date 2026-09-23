@@ -87,16 +87,21 @@ named options rather than compiled into the arithmetic:
 ## Running it
 
     python -m busmodel --repo . worked_case_A4 --multiplier 1.25
-    python -m busmodel --repo . storage_review_T1-2 --multiplier 1.0
-    python -m busmodel --repo . crossover_B --multiplier 1.25
+    python -m busmodel --repo . storage_review_T1-2 --multiplier 1.0 --basis average
+    python -m busmodel --repo . crossover_B --multiplier 1.25 --basis average
 
-`--basis` takes `average` or `usage`.
+`--basis` takes `usage` (the default) or `average` (the override that
+reproduces the record). The same default applies to `solve()`. Every rendered
+table prints its basis in its header.
 
-    average   THE BASIS OF RECORD, and the default. A MIXTURE, not an average:
-              a WITHDRAWN consumer draws its nameplate and everything else
-              draws its usage. Every published table was computed on it, which
-              is the only reason it is still here
-    usage     A5.2's basis. Every consumer draws its usage, in every state
+    usage     THE DEFAULT since 2026-09-23 (amendment 10). A5.2's basis:
+              every consumer draws its usage, in every state
+    average   THE BASIS OF RECORD. A MIXTURE, not an average: a WITHDRAWN
+              consumer draws its nameplate and everything else draws its
+              usage. Every published table was computed on it, which is the
+              only reason it is still here — so reproducing a table means
+              passing `--basis average`, or `sizing_basis=SizingBasis.AVERAGE`
+              in code, and the tests do exactly that
     peak      REFUSED as of 2026-09-22. It was a sizing mode and is not one any
               more; `solve` raises and names where the peak went. `--basis peak`
               still reaches that refusal on purpose, because argparse's
