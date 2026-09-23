@@ -151,14 +151,16 @@ def test_matched_takes_its_clock_from_the_declared_rate_not_the_demand():
     """A4.1's Iron Plate build line: one Constructor makes 20 plate/min against
     a geometric withdrawal estimate of 2.00/min, so the clock is 10%.
 
-    The clock comes from `withdrawal_per_min`, not from bus demand — the point
-    of the state is that the line's output IS the declared average draw.
+    A12: the clock is the line's DEMAND over nameplate, and on a line with no
+    consumers the demand IS the withdrawal — `buses.decompose` passes
+    automated + withdrawal + external. This test used to pass a demand of 0.0,
+    which no call path produces for this line.
     """
     declaration = build.declaration(
         bus_id="iron_plate_build", item_id=build.I_IRON_PLATE,
         disposition=Disposition.MATCHED, withdrawal_per_min=2.0,
     )
-    clocks = R.clock_for(declaration, 0.0, 20.0, 1)
+    clocks = R.clock_for(declaration, 2.0, 20.0, 1)
     assert clocks == ((pytest.approx(10.0), ClockCause.MATCHED),)
 
 
@@ -168,7 +170,7 @@ def test_matched_is_distinct_from_declared():
     declaration = build.declaration(
         disposition=Disposition.MATCHED, withdrawal_per_min=2.0
     )
-    assert R.clock_for(declaration, 0.0, 20.0, 1)[0][1] is ClockCause.MATCHED
+    assert R.clock_for(declaration, 2.0, 20.0, 1)[0][1] is ClockCause.MATCHED
     assert ClockCause.MATCHED is not ClockCause.DECLARED
 
 
@@ -179,7 +181,19 @@ def test_matched_above_nameplate_is_refused():
         disposition=Disposition.MATCHED, withdrawal_per_min=50.0
     )
     with pytest.raises(RealizationError, match="cannot be MATCHED"):
-        R.clock_for(declaration, 0.0, 20.0, 1)
+        R.clock_for(declaration, 50.0, 20.0, 1)
+
+
+def test_matched_with_consumers_clocks_to_its_whole_demand():
+    """A12. Storage OFF with a withdrawal derives MATCHED, and D1 says such a
+    line "clocks down to what its consumers need". 2/min to a consumer plus
+    2/min withdrawn on a 5/min machine is 80%, not the 40% the withdrawal alone
+    gives — which starved the consumer. busmodel's MATCHED rule."""
+    declaration = build.declaration(stores=False, withdrawal_per_min=2.0)
+    assert declaration.disposition is Disposition.MATCHED
+    assert R.clock_for(declaration, 4.0, 5.0, 1) == (
+        (pytest.approx(80.0), ClockCause.MATCHED),
+    )
 
 
 def test_back_up_under_backpressure_is_demand_over_supply():

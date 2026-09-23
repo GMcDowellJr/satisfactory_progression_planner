@@ -57,7 +57,7 @@ from typing import Mapping
 
 from production_adapter.contracts import ItemId, ProducerClass, RecipeId
 from production_adapter.gamedata import ReferenceData
-from realization.contracts import Disposition
+from realization.contracts import Disposition, derive_disposition
 
 BusId = str
 
@@ -114,30 +114,44 @@ class SizingBasis(str, Enum):
                   justification — it is an artefact of the observation window,
                   not a model — but the record was computed that way and this
                   package's first job is to reproduce the record
-        USAGE     THE DEFAULT since 2026-09-23 (amendment 10).
-                  A5.2's basis: every consumer draws its continuous
+        USAGE     THE DEFAULT from amendment 10 until amendment 12, the same
+                  day. A5.2's basis: every consumer draws its continuous
                   machine-equivalent need, in every state. "Average draw is
                   usage in every state; nameplate is the peak." This is the
-                  steady state after the buffers saturate, and it is what
-                  amendment 5 says the factory settles at
+                  steady state after the buffers saturate. Under A12 it is
+                  "storage off everywhere" — the opposite of Greg's default —
+                  and stays as a value meaning exactly that
+        STORAGE   THE DEFAULT since amendment 12 (D1, 2026-09-23). The storage
+                  toggle sets the basis PER LINE: a consumer with
+                  `stores=True` runs at its clock and sends its residual to
+                  storage, so it draws what it PRODUCES — its supply at its
+                  clock, nameplate while that is 100%; a consumer with
+                  `stores=False` draws its usage. Numerically equal to
+                  `AVERAGE` today on every declaration, BY CONSTRUCTION: a
+                  storing line is WITHDRAWN, and a WITHDRAWN line runs at 100%.
+                  It is a separate value because the two rules part company
+                  the moment a storing line runs at a target clock (D2), and a
+                  value's meaning is fixed on the day it is added
         PEAK      NOT A SIZING BASIS ANY MORE. `solve` refuses it by name — see
                   the refusal there. The peak is REPORTED instead, on every
                   solve and under both bases, as `ConsumerShare.peak_per_min`
                   and `BusSolution.peak_demand_per_min`
 
-    The two that size differ only on WITHDRAWN consumers, which is exactly where
-    A5.2 says the record over-counted.
+    The three that size differ only on WITHDRAWN consumers, which is exactly
+    where A5.2 said the record over-counted and where A12 says it did not: a
+    storing line draws what it produces.
     """
 
     AVERAGE = "average"
     USAGE = "usage"
     PEAK = "peak"
+    STORAGE = "storage"
 
 
 #: The bases `solve` accepts. `PEAK` is deliberately absent and is refused by
 #: name rather than by omission, so a caller who asks for it is told why.
 SOLVE_BASES: frozenset[SizingBasis] = frozenset({
-    SizingBasis.AVERAGE, SizingBasis.USAGE,
+    SizingBasis.AVERAGE, SizingBasis.USAGE, SizingBasis.STORAGE,
 })
 
 
@@ -188,7 +202,13 @@ class BusSpec:
     recipe_id: RecipeId
     #: Which bus supplies each input. Declaration, never derivation.
     sources: tuple[SourceEdge, ...] = ()
-    disposition: Disposition = Disposition.WITHDRAWN
+    #: THE STORAGE TOGGLE, amendment 12 (D1). ON by default: the line runs at
+    #: its clock and its residual goes to storage. OFF: it clocks down to what
+    #: its consumers need. `disposition` WAS the declared field here, defaulting
+    #: to WITHDRAWN, and is now DERIVED from this — see the property below and
+    #: `realization.contracts.derive_disposition`. Passing `disposition=` is a
+    #: TypeError (Q4, A6.1's precedent).
+    stores: bool = True
     #: Producers beyond the ceil. Storage rate is a MACHINE COUNT, not a
     #: boolean: R(k) = ceil_residual + k * producer_rate, and on the screw bus
     #: the quantum is a full 40/min.
@@ -197,6 +217,12 @@ class BusSpec:
     #: estimate, footprint-derived, declared by its author as a FLOOR (A3.3), so
     #: any coverage verdict against it is optimistic by an unmeasured amount.
     withdrawal_per_min: float | None = None
+    #: THE RECORD PATH (A12, Q5). States a disposition the toggle cannot — a
+    #: storing line observed after saturation (BACK_UP with a withdrawal), and
+    #: SUNK — so the published tables still reproduce. Used by
+    #: `declarations.py` and nothing else under `src/`; asserted by inspection
+    #: in `tests/test_refusals.py`.
+    recorded_disposition: Disposition | None = None
 
     #: `presents_peak_draw` WAS HERE and is GONE as of 2026-09-22. It existed
     #: because the records carried two BACK_UP behaviours and did not
@@ -213,7 +239,15 @@ class BusSpec:
     #: `ConsumerShare.peak_per_min`. A caller still passing the keyword gets a
     #: TypeError, which is the loud break the rename would have been.
 
+    @property
+    def disposition(self) -> Disposition:
+        return derive_disposition(
+            self.bus_id, self.stores, self.withdrawal_per_min,
+            self.recorded_disposition,
+        )
+
     def __post_init__(self) -> None:
+        self.disposition   # a contradictory record path is refused here
         if self.extra_producers < 0:
             raise ValueError(f"{self.bus_id}: extra_producers must be >= 0")
         if self.withdrawal_per_min is not None and self.withdrawal_per_min < 0:
@@ -302,9 +336,10 @@ class Declaration:
                         item_id=b.item_id,
                         recipe_id=recipe_id,
                         sources=sources,
-                        disposition=b.disposition,
+                        stores=b.stores,
                         extra_producers=b.extra_producers,
                         withdrawal_per_min=b.withdrawal_per_min,
+                        recorded_disposition=b.recorded_disposition,
                     )
                 )
             else:
@@ -403,6 +438,19 @@ class BusSolution:
         return max(0.0, self.peak_demand_per_min - self.supply_per_min)
 
     @property
+    def stores_nothing(self) -> bool:
+        """A STORING line whose output is exactly consumed. Amendment 12 (D1).
+
+        REPORTED, never acted on: the remedy — overclock, somersloop, or add a
+        machine — is the player's. On this package's residual, which nets the
+        declared withdrawal and the external demand (A9.1).
+        """
+        return (
+            self.disposition is Disposition.WITHDRAWN
+            and self.residual_per_min <= EPS
+        )
+
+    @property
     def utilisation(self) -> float:
         if self.supply_per_min <= 0:
             return 0.0
@@ -488,7 +536,7 @@ def solve(
     decl: Declaration,
     data: ReferenceData,
     *,
-    sizing_basis: SizingBasis = SizingBasis.USAGE,
+    sizing_basis: SizingBasis = SizingBasis.STORAGE,
     machine_floor: int = 1,
 ) -> Solution:
     """Solve a declaration against scenario-scaled reference data.
@@ -501,12 +549,13 @@ def solve(
     `machine_floor` is the recovered min-one-machine rule; pass 0 to solve
     without it.
 
-    `sizing_basis` takes `USAGE` (A5.2's, the default) or `AVERAGE` (the
-    record's). `PEAK` is refused — the peak is reported on every solve instead.
+    `sizing_basis` takes `STORAGE` (A12's, the default), `USAGE` (storage off
+    everywhere) or `AVERAGE` (the record's). `PEAK` is refused — the peak is
+    reported on every solve instead.
 
-    The default is the MODEL and the record is named. Until 2026-09-23 it was
-    the other way round, so a call that named no basis answered on the one A5.2
-    retracted; a reproduction of a published table now passes
+    The default is the MODEL and the record is named. A10 made that `USAGE`;
+    A12 makes it `STORAGE`, because `USAGE` is "storage off everywhere" and
+    storage ON is the default. A reproduction still passes
     `sizing_basis=SizingBasis.AVERAGE` and says so at the call site.
     """
     if sizing_basis not in SOLVE_BASES:
@@ -568,6 +617,11 @@ def solve(
                 # says this over-counts by the integrality slack; it is kept
                 # because the published tables were computed on it.
                 flow = nameplate
+            elif sizing_basis is SizingBasis.STORAGE and c_spec.stores:
+                # A12 (D1): a storing consumer draws what it PRODUCES — its
+                # supply at its clock. Nameplate while that clock is 100%, and
+                # written as supply so a target clock (D2) needs no second rule.
+                flow = c.supply_per_min * per_min / rate_or_one(c.rate_per_min)
             else:
                 # A5.2: average draw is usage, in every state.
                 flow = usage

@@ -217,6 +217,12 @@ SECTION_7 = {
 def test_storage_review_section_7_alternate_table(canonical, regime):
     """An alternate is a RE-WIRING event, not only a cheaper recipe.
 
+    A REPRODUCTION, NOT AN ENDORSEMENT. Amendment 11 (A11.2): RIP has no
+    demand in this declaration, so these deltas are the upstream footprint of
+    ONE RIP machine at 100% under each recipe, not a cost of the phase. On
+    USAGE the two regimes are identical — section 8 below pins that. The
+    report SHAPE is what stands.
+
     Stated as deltas, no ordering: Stitched cuts the screw line from four
     machines to two and iron ingot draw by 35%, at the cost of doubling copper
     ingot draw and adding two wire machines. Nothing here is ranked, which is
@@ -288,9 +294,10 @@ def test_storage_rate_is_a_machine_count(scenario_of_record):
             buses=tuple(
                 decls.BusSpec(
                     bus_id=b.bus_id, item_id=b.item_id, recipe_id=b.recipe_id,
-                    sources=b.sources, disposition=b.disposition,
+                    sources=b.sources, stores=b.stores,
                     extra_producers=k if b.bus_id == "screws" else 0,
                     withdrawal_per_min=b.withdrawal_per_min,
+                    recorded_disposition=b.recorded_disposition,
                 )
                 for b in base.buses
             ),

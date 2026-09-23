@@ -36,7 +36,10 @@ def test_matched_without_a_withdrawal_rate_is_refused():
             bus_id="plate_build",
             item_id=decls.I_IRON_PLATE,
             recipe_id=decls.R_IRON_PLATE,
-            disposition=Disposition.MATCHED,
+            # A12: a DERIVED MATCHED always carries its rate, so this refusal
+            # is reachable only through the record path.
+            stores=False,
+            recorded_disposition=Disposition.MATCHED,
         )
 
 
@@ -53,7 +56,9 @@ def test_sunk_is_refused_by_name(scenario_of_record):
             BusSpec(
                 bus_id="concrete", item_id=decls.I_CONCRETE, recipe_id=decls.R_CONCRETE,
                 sources=(SourceEdge("Desc_Stone_C", None),),
-                disposition=Disposition.SUNK,
+                # A12: SUNK is not derivable from the toggle; the record path
+                # is what keeps this refusal reachable and tested.
+                recorded_disposition=Disposition.SUNK,
             ),
         ),
     )
@@ -220,35 +225,128 @@ def test_a_matched_line_has_no_transient_to_report(scenario_of_record, basis):
 
 
 # --------------------------------------------------------------------------
-# the default is the model; the record is named (amendment 10)
+# the default is the model; the record is named (amendment 10, superseded in
+# its default by amendment 12)
 # --------------------------------------------------------------------------
 
-def test_the_default_basis_is_usage():
-    """A call that names no basis gets A5.2's model. Until 2026-09-23 it got
-    the basis A5.2 retracted, with nothing at the call site to say so."""
+def test_the_default_basis_is_storage():
+    """A12 (D1): the storage toggle sets the basis per line, and a call that
+    names no basis gets that. A10 had made the default `USAGE`, which is
+    "storage off everywhere" — the opposite of the default toggle."""
     import inspect
 
     default = inspect.signature(solve).parameters["sizing_basis"].default
-    assert default is SizingBasis.USAGE
+    assert default is SizingBasis.STORAGE
 
 
-def test_the_default_moves_the_worked_case_and_the_record_does_not(scenario_of_record):
-    """The default and the record now disagree on `worked_case_A4`, 23 machines
-    against 29 (A6.3) — which is what makes this test able to fail. A default
-    that equalled the record here could not be told apart from it."""
+def test_the_default_moves_the_worked_case_off_usage(scenario_of_record):
+    """29 machines against USAGE's 23 (A6.3). This is what lets the default pin
+    fail: a STORAGE rule reverted to usage answers 23 here.
+
+    STORAGE equals AVERAGE on this declaration, and on every declaration today,
+    BY CONSTRUCTION — a storing line is WITHDRAWN and a WITHDRAWN line runs at
+    100%. Pinned as an equality so that the day D2 gives a storing line a
+    target clock, this test is where the two rules are seen to part."""
     data = scenario_of_record
     decl = decls.worked_case_a4(data)
-    assert solve(decl, data).total_machines == 23
+    assert solve(decl, data).total_machines == 29
+    assert solve(decl, data, sizing_basis=SizingBasis.USAGE).total_machines == 23
     assert solve(decl, data, sizing_basis=SizingBasis.AVERAGE).total_machines == 29
 
 
-def test_the_cli_defaults_to_usage_and_takes_the_record_as_an_override(capsys, repo_root):
-    """`python -m busmodel` without `--basis` renders the usage basis;
-    `--basis average` reproduces the record. The rendered table names its
-    basis either way, which is the assertion — an output must say which it is."""
+def test_storage_off_everywhere_is_usage(scenario_of_record):
+    """The toggle is the whole of the difference. Every line of the worked case
+    with storage OFF (record paths dropped, so each line derives from the
+    toggle alone) solves under STORAGE exactly as the whole declaration does
+    under USAGE."""
+    import dataclasses
+
+    data = scenario_of_record
+    decl = decls.worked_case_a4(data)
+    off = dataclasses.replace(
+        decl,
+        buses=tuple(
+            dataclasses.replace(b, stores=False, recorded_disposition=None)
+            for b in decl.buses
+        ),
+    )
+    a = solve(off, data)
+    b = solve(decl, data, sizing_basis=SizingBasis.USAGE)
+    assert [x.machines for x in a.buses] == [y.machines for y in b.buses]
+    for x, y in zip(a.buses, b.buses):
+        assert x.automated_demand_per_min == pytest.approx(y.automated_demand_per_min)
+
+
+def test_a_storing_line_with_nothing_to_store_is_reported(scenario_of_record):
+    """D1's "no residual" report. On `worked_case_A4` Smart Plating and Rotor
+    store and have residual 0.00 (A6.3); Screws stores 36.00; the MATCHED
+    Iron Plate build line has storage off. The report names the first two and
+    picks no remedy."""
+    data = scenario_of_record
+    solution = solve(decls.worked_case_a4(data), data)
+    flagged = {b.bus_id for b in solution.buses if b.stores_nothing}
+    assert {"smart_plating", "rotor"} <= flagged
+    assert "screws" not in flagged
+    assert decls.BUS_IRON_PLATE_BUILD not in flagged
+
+
+def test_out_of_scope_draw_follows_the_storage_basis(scenario_of_record):
+    """The report mirrors `solve`'s branch, or an out-of-scope figure sits on a
+    different basis from the in-scope ones — the section 6.1 defect in a new
+    place. Iron Ore on `worked_case_A4`: 210.00/min with the record's storing
+    lines drawing what they produce, 115.89 with storage off (A6.3)."""
+    from busmodel.report import out_of_scope_draw
+
+    data = scenario_of_record
+    decl = decls.worked_case_a4(data)
+    storage = out_of_scope_draw(decl, data, solve(decl, data))
+    usage = out_of_scope_draw(
+        decl, data, solve(decl, data, sizing_basis=SizingBasis.USAGE))
+    assert storage["Desc_OreIron_C"] == pytest.approx(210.00, abs=0.005)
+    assert usage["Desc_OreIron_C"] == pytest.approx(115.89, abs=0.005)
+
+
+def test_disposition_is_no_longer_a_declaration():
+    """Q4: a TypeError, the loud break A6.1 chose for `presents_peak_draw`."""
+    with pytest.raises(TypeError, match="disposition"):
+        BusSpec(bus_id="x", item_id=decls.I_WIRE, recipe_id=decls.R_WIRE,
+                disposition=Disposition.WITHDRAWN)
+
+
+def test_only_the_record_uses_the_record_path(repo_root):
+    """A12, Q5. `recorded_disposition` exists so the published tables still
+    reproduce. Anywhere else under `tools/*/src` it would let a caller declare
+    a state the toggle deliberately does not offer. Asserted by inspection:
+    outside the two contracts that define it and the module that holds the
+    record, no source file passes it."""
+    import pathlib
+
+    allowed = {
+        pathlib.Path("tools/busmodel/src/busmodel/declarations.py"),
+        pathlib.Path("tools/busmodel/src/busmodel/model.py"),
+        pathlib.Path("tools/realization/src/realization/contracts.py"),
+    }
+    offenders = [
+        path.relative_to(repo_root)
+        for path in (repo_root / "tools").glob("*/src/**/*.py")
+        if "recorded_disposition" in path.read_text(encoding="utf-8")
+        and path.relative_to(repo_root) not in allowed
+    ]
+    assert offenders == []
+
+
+def test_the_cli_defaults_to_storage_and_takes_the_others_as_overrides(capsys, repo_root):
+    """`python -m busmodel` without `--basis` renders the storage basis;
+    `--basis usage` and `--basis average` are the overrides. The rendered table
+    names its basis either way — an output must say which it is."""
     from busmodel.cli import main
 
     main(["worked_case_A4", "--repo", str(repo_root)])
+    out = capsys.readouterr().out
+    assert "basis storage" in out
+    # A12: the "no residual" report reaches the rendered output.
+    assert "storing, nothing to store:" in out and "smart_plating" in out
+    main(["worked_case_A4", "--repo", str(repo_root), "--basis", "usage"])
     assert "basis usage" in capsys.readouterr().out
     main(["worked_case_A4", "--repo", str(repo_root), "--basis", "average"])
     assert "basis average" in capsys.readouterr().out

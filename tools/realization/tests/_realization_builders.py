@@ -96,6 +96,27 @@ def lane(
     )
 
 
+def flags(disposition: Disposition, withdrawal_per_min: float | None) -> dict:
+    """A12: the `BusDeclaration` keywords that yield `disposition`.
+
+    DERIVED where the toggle can state it — WITHDRAWN is `stores=True`;
+    BACK_UP without a withdrawal and MATCHED with one are `stores=False`.
+    Everything else (SUNK; BACK_UP WITH a withdrawal, which the toggle reads as
+    MATCHED) goes through the record path, because these tests exercise the
+    residual branch table over every state and the toggle cannot reach them
+    all. A test helper, so the inspection test on `tools/*/src` does not see it.
+    """
+    stores = disposition in (Disposition.WITHDRAWN, Disposition.SUNK)
+    derived = (
+        Disposition.WITHDRAWN if stores
+        else Disposition.MATCHED if withdrawal_per_min is not None
+        else Disposition.BACK_UP
+    )
+    if derived is disposition:
+        return {"stores": stores}
+    return {"stores": stores, "recorded_disposition": disposition}
+
+
 def declaration(
     *,
     bus_id: str = "screws",
@@ -109,8 +130,9 @@ def declaration(
         bus_id=bus_id,
         item_id=item_id,
         sources=(SourceEdge(I_IRON_ROD, "iron_rod"),),
-        disposition=disposition,
         withdrawal_per_min=withdrawal_per_min,
+        # A caller that states the toggle itself gets exactly that.
+        **({} if "stores" in kwargs else flags(disposition, withdrawal_per_min)),
         extra_producers=extra_producers,
         **kwargs,
     )
@@ -204,23 +226,26 @@ SCREW_EQUIVALENTS = 199.0 / 40.0
 
 
 def worked_buses(**screws) -> tuple[BusDeclaration, ...]:
-    """The four declarations. `**screws` overrides the screw bus only."""
-    screws.setdefault("disposition", Disposition.WITHDRAWN)
+    """The four declarations. `**screws` overrides the screw bus only.
+
+    Every bus STORES (A12's default). `disposition=` in `**screws` is
+    translated through `flags`; `stores=False` on the consumers is what a test
+    passes to put RIP and Rotor on the usage path.
+    """
+    disposition = screws.pop("disposition", Disposition.WITHDRAWN)
+    screws.update(flags(disposition, screws.get("withdrawal_per_min")))
     return (
         BusDeclaration(bus_id="screws", item_id=I_SCREW,
                        sources=(SourceEdge(I_IRON_ROD, None),), **screws),
         BusDeclaration(bus_id="rip", item_id="Desc_IronPlateReinforced_C",
                        sources=(SourceEdge(I_SCREW, "screws"),
-                                SourceEdge(I_IRON_PLATE, None)),
-                       disposition=Disposition.WITHDRAWN),
+                                SourceEdge(I_IRON_PLATE, None))),
         BusDeclaration(bus_id="rotor", item_id=I_ROTOR,
                        sources=(SourceEdge(I_SCREW, "screws"),
-                                SourceEdge(I_IRON_ROD, None)),
-                       disposition=Disposition.WITHDRAWN),
+                                SourceEdge(I_IRON_ROD, None))),
         BusDeclaration(bus_id="smart_plating", item_id=I_SMART_PLATING,
                        sources=(SourceEdge("Desc_IronPlateReinforced_C", "rip"),
-                                SourceEdge(I_ROTOR, "rotor")),
-                       disposition=Disposition.WITHDRAWN),
+                                SourceEdge(I_ROTOR, "rotor"))),
     )
 
 

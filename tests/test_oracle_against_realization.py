@@ -3,8 +3,11 @@
 `tools/busmodel` has two jobs. The first — reproduce the record — its own suite
 carries. The second is to give `realization.buses` something to be checked
 against that is not itself. Until amendment 8 the two layers sized on different
-bases and a comparison would have disagreed for a known reason; since then both
-size on USAGE, so every row below is a check.
+bases and a comparison would have disagreed for a known reason; from A8 both
+sized on USAGE. Since amendment 12 both size on the STORAGE TOGGLE — busmodel
+under `SizingBasis.STORAGE`, realization unconditionally — so every row below
+is a check on D1. The USAGE agreement A9 recorded is kept below, with every
+line's storage off, because A12 did not retract it.
 
 **The translation is the risk, not the bodies.** busmodel DECLARES out-of-scope
 demand (`Declaration.external_per_min`); realization DERIVES it from a
@@ -61,9 +64,14 @@ def _translate(decl, data):
             BusDeclaration(
                 bus_id=b.bus_id, item_id=b.item_id, recipe_id=b.recipe_id,
                 sources=tuple(SourceEdge(e.input_item, e.source_bus_id) for e in b.sources),
-                disposition=b.disposition,
+                stores=b.stores,
                 withdrawal_per_min=b.withdrawal_per_min,
                 extra_producers=b.extra_producers,
+                # The record path carried across, so the two layers see the
+                # same disposition on the record's BACK_UP-with-withdrawal
+                # lines. This file is a test; the inspection in busmodel's
+                # `test_refusals.py` covers `tools/*/src` only.
+                recorded_disposition=b.recorded_disposition,
             )
             for b in decl.buses
         ),
@@ -85,13 +93,33 @@ def _translate(decl, data):
     return request, response
 
 
-@pytest.fixture(scope="module")
-def both(scaled, caps):
-    decl = D.worked_case_a4(scaled)
-    oracle = solve(decl, scaled, sizing_basis=SizingBasis.USAGE)
+def _storage_off(decl):
+    """Every line with storage OFF and no record path: the toggle alone. Under
+    STORAGE this is USAGE by construction (busmodel `test_refusals.py`)."""
+    return dataclasses.replace(
+        decl,
+        buses=tuple(
+            dataclasses.replace(b, stores=False, recorded_disposition=None)
+            for b in decl.buses
+        ),
+    )
+
+
+def _run(decl, scaled, caps):
+    oracle = solve(decl, scaled)   # the default, STORAGE
     request, response = _translate(decl, scaled)
     bodies = {b.bus_id: b for b in B.buses_from_response(response, scaled, request, caps)}
     return decl, oracle, request, response, bodies
+
+
+@pytest.fixture(scope="module", params=["storage", "storage_off"])
+def both(request, scaled, caps):
+    """A12: the worked case as declared (its WITHDRAWN lines store), and with
+    every line's storage off — A9's USAGE agreement, restated on the toggle."""
+    decl = D.worked_case_a4(scaled)
+    if request.param == "storage_off":
+        decl = _storage_off(decl)
+    return _run(decl, scaled, caps)
 
 
 def test_the_translation_is_what_it_claims(both, scaled):
@@ -142,10 +170,26 @@ def test_supply_agrees_where_both_layers_mean_nameplate(both):
             assert r.supply_per_min == pytest.approx(o.supply_per_min), spec.bus_id
 
 
-def test_the_totals_are_amendment_6s_usage_column(both):
+def test_storage_off_is_amendment_6s_usage_column(scaled, caps):
     """A6.3, USAGE: 23 machines, and Iron Ingot at 115.89/min on 4 Smelters.
-    Restated from the record, not from either body."""
-    _decl, oracle, _request, _response, bodies = both
+    Restated from the record, not from either body. Since A12 reached by
+    turning every line's storage off."""
+    _decl, oracle, _request, _response, bodies = _run(
+        _storage_off(D.worked_case_a4(scaled)), scaled, caps,
+    )
     assert sum(b.machines for b in bodies.values()) == 23 == oracle.total_machines
     assert bodies["iron_ingot"].machines == 4
     assert bodies["iron_ingot"].automated_demand_per_min == pytest.approx(115.89, abs=0.005)
+
+
+def test_storage_on_is_amendment_6s_record_column(scaled, caps):
+    """A12: the worked case as declared, both layers on the toggle. 29 machines
+    and Iron Ingot at 204.00/min on 7 Smelters — A6.3's AVERAGE column,
+    because the record's WITHDRAWN lines are exactly its storing lines.
+    Restated from the record, not from either body."""
+    _decl, oracle, _request, _response, bodies = _run(
+        D.worked_case_a4(scaled), scaled, caps,
+    )
+    assert sum(b.machines for b in bodies.values()) == 29 == oracle.total_machines
+    assert bodies["iron_ingot"].machines == 7
+    assert bodies["iron_ingot"].automated_demand_per_min == pytest.approx(204.00, abs=0.005)

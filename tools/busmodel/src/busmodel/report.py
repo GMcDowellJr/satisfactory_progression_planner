@@ -40,6 +40,10 @@ def out_of_scope_draw(
                 and b.disposition is Disposition.WITHDRAWN
             ):
                 flow = b.machines * per_min
+            elif solution.sizing_basis is SizingBasis.STORAGE and spec.stores:
+                # A12: a storing line draws what it produces, on its
+                # out-of-scope inputs as on its declared ones.
+                flow = b.supply_per_min * per_min / (b.rate_per_min or 1.0)
             else:
                 flow = b.demand_per_min * per_min / (b.rate_per_min or 1.0)
             draw[item_id] = draw.get(item_id, 0.0) + flow
@@ -74,6 +78,11 @@ def render(solution: Solution, *, title: str | None = None) -> str:
         f"   continuous {solution.total_continuous_machines:.2f}"
         f"   integrality tax {solution.integrality_tax:.2f}"
     )
+    # A12 (D1): REPORTED, never acted on. Remedy — overclock, somersloop, or
+    # add a machine — is the player's, so none is named per line.
+    empty = [b.bus_id for b in solution.buses if b.stores_nothing]
+    if empty:
+        lines.append(f"  storing, nothing to store: {', '.join(empty)}")
     return "\n".join(lines)
 
 

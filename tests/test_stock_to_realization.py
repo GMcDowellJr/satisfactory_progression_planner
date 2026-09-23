@@ -392,8 +392,42 @@ def test_a_build_material_line_on_a_recipe_the_solve_runs_is_refused(
         realize(response, data, capabilities, rates, request)
 
 
-def test_the_zero_clock_warning_fires_on_every_bill_sized_line(joined):
-    """A CONTRADICTION in one report, pinned rather than patched.
+def test_a_storing_bill_line_runs_at_the_rate_its_verdict_divides_by(joined):
+    """Amendment 12 (D1) dissolves the contradiction pinned below, for a
+    STORING line. The concrete line now stores by default: its one machine runs
+    at 100% and sends 15/min to storage, so the lane output and the 15/min
+    `projected_coverage` divides the bill by are the same figure, and no 0%
+    warning fires. Until A12 the realization default was BACK_UP."""
+    _bill, report = joined
+    assert not any(w.startswith("concrete:") and "0% clock" in w
+                   for w in report.warnings), report.warnings
+    lane_output = sum(
+        lane.output_rate_per_min
+        for bus in report.buses if bus.bus_id == "concrete"
+        for lane in bus.lanes
+    )
+    assert lane_output == pytest.approx(15.0)
+    assert report.projected_coverage[0].residual_per_min == pytest.approx(15.0)
+
+
+@pytest.fixture(scope="module")
+def joined_storage_off(data, logistics, stock_pass):
+    """`joined`, with the concrete line's storage OFF — the state the
+    contradiction below was pinned on before A12 made storage the default."""
+    import dataclasses
+
+    capabilities, rates = logistics
+    bill = stock_pass.bills[I_CONCRETE]
+    request = RealizationRequest(
+        design_tier=4,
+        buses=(dataclasses.replace(_concrete_line(bill), stores=False),),
+    )
+    return bill, realize(_empty_solve(), data, capabilities, rates, request)
+
+
+def test_the_zero_clock_warning_fires_on_every_bill_sized_line(joined_storage_off):
+    """A CONTRADICTION in one report, pinned rather than patched. Since A12 it
+    needs storage OFF to arise; see the test above.
 
     A bill contributes no rate, so a bill-sized line has zero in-scope demand,
     so `clock_for` returns 0% under BACKPRESSURE and the lane produces 0/min.
@@ -414,7 +448,7 @@ def test_the_zero_clock_warning_fires_on_every_bill_sized_line(joined):
     emitted number, and the fix is a realization-layer decision about what a
     0% clock means on a line the solve does not run.
     """
-    _bill, report = joined
+    _bill, report = joined_storage_off
     assert any(
         w.startswith("concrete:") and "0% clock" in w for w in report.warnings
     ), report.warnings

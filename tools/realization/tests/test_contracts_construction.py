@@ -77,6 +77,59 @@ def test_bus_residual_disposition_has_no_default():
 
 
 # --------------------------------------------------------------------------
+# amendment 12: the storage toggle, and the disposition derived from it
+# --------------------------------------------------------------------------
+
+def _bare(**kw) -> BusDeclaration:
+    return BusDeclaration(bus_id="b", item_id=build.I_SCREW, **kw)
+
+
+def test_the_default_is_storage_on():
+    """D1: storage ON unless opted out. The field this replaces defaulted to
+    BACK_UP — storage off — which contradicted D1 and busmodel's WITHDRAWN."""
+    assert _bare().stores is True
+    assert _bare().disposition is Disposition.WITHDRAWN
+
+
+@pytest.mark.parametrize("kw, expected", [
+    ({}, Disposition.WITHDRAWN),
+    ({"withdrawal_per_min": 2.0}, Disposition.WITHDRAWN),
+    ({"stores": False}, Disposition.BACK_UP),
+    ({"stores": False, "withdrawal_per_min": 2.0}, Disposition.MATCHED),
+])
+def test_the_disposition_is_derived_from_the_toggle(kw, expected):
+    """Q3's table. A storing build line with a withdrawal is WITHDRAWN: the
+    player draws from storage the line keeps filling."""
+    assert _bare(**kw).disposition is expected
+
+
+def test_disposition_is_no_longer_a_declaration():
+    """Q4: a TypeError, the loud break A6.1 chose for `presents_peak_draw`."""
+    with pytest.raises(TypeError, match="disposition"):
+        _bare(disposition=Disposition.WITHDRAWN)
+
+
+@pytest.mark.parametrize("stores, recorded", [
+    (False, Disposition.WITHDRAWN),
+    (True, Disposition.BACK_UP),
+    (True, Disposition.MATCHED),
+])
+def test_a_record_path_that_contradicts_the_toggle_is_refused(stores, recorded):
+    kw = {"withdrawal_per_min": 2.0} if recorded is Disposition.MATCHED else {}
+    with pytest.raises(ValueError, match="stores="):
+        _bare(stores=stores, recorded_disposition=recorded, **kw)
+
+
+def test_the_record_path_states_what_the_toggle_cannot():
+    """BACK_UP with a withdrawal — the record's Cable and Concrete lines — and
+    SUNK. The toggle derives MATCHED and WITHDRAWN for these."""
+    back_up = _bare(stores=False, withdrawal_per_min=3.0,
+                    recorded_disposition=Disposition.BACK_UP)
+    assert back_up.disposition is Disposition.BACK_UP
+    assert _bare(recorded_disposition=Disposition.SUNK).disposition is Disposition.SUNK
+
+
+# --------------------------------------------------------------------------
 # tripwire: MATCHED needs a rate (P29)
 # --------------------------------------------------------------------------
 

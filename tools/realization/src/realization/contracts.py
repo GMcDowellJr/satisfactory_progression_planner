@@ -103,6 +103,52 @@ class Disposition(str, Enum):
                              # ingot draw against a 40/min peak.
 
 
+def derive_disposition(
+    owner: str,
+    stores: bool,
+    withdrawal_per_min: float | None,
+    recorded: Disposition | None,
+) -> Disposition:
+    """A bus's steady state, DERIVED from the storage toggle. Amendment 12.
+
+    D1 (Greg, 2026-09-23): the storage toggle sets the sizing basis, per line.
+    A5.2's consequence 1 — "disposition is DERIVED, not declared; what a
+    caller declares is the usage estimate and the slack routing" — taken
+    literally. `stores` IS the slack routing.
+
+        stores=True                        WITHDRAWN  runs at its clock, the
+                                                      residual goes to storage
+        stores=False, withdrawal declared  MATCHED    clocked to the withdrawal
+        stores=False, no withdrawal        BACK_UP    idled to usage; realization's
+                                                      `clock_mode` sets a clock
+
+    `recorded` is the RECORD PATH (A12, Q5). The published tables describe
+    states the toggle cannot state — a storing line observed after its
+    container saturated (BACK_UP with a withdrawal), and SUNK — and reproducing
+    them is busmodel's first job. So a recorded disposition is taken as given,
+    and is refused only where it CONTRADICTS the toggle. Outside
+    `busmodel.declarations`, nothing under `tools/*/src` passes it; asserted by
+    inspection in `test_refusals.py`.
+    """
+    if recorded is not None:
+        if recorded is Disposition.WITHDRAWN and not stores:
+            raise ValueError(
+                f"{owner}: recorded WITHDRAWN runs at its clock with the residual "
+                "to storage, which is stores=True. Declared stores=False."
+            )
+        if recorded in (Disposition.BACK_UP, Disposition.MATCHED) and stores:
+            raise ValueError(
+                f"{owner}: recorded {recorded.name} sends no residual to storage "
+                "on the model's terms, which is stores=False. Declared stores=True."
+            )
+        return recorded
+    if stores:
+        return Disposition.WITHDRAWN
+    if withdrawal_per_min is not None:
+        return Disposition.MATCHED
+    return Disposition.BACK_UP
+
+
 class ClockMode(str, Enum):
     """Whether clocks are set deliberately. Only meaningful under BACK_UP.
 
@@ -400,11 +446,34 @@ class BusDeclaration:
     #: two named ways to shorten it — a second line, or a somersloop — are both
     #: changes to that declaration, which is the shape §6 requires.
     withdrawal_bill: WithdrawalBill | None = None
-    disposition: Disposition = Disposition.BACK_UP
+    #: THE STORAGE TOGGLE, amendment 12 (D1). ON by default: the line runs at
+    #: its clock, its consumers take exactly what they need through an exact
+    #: splitter/merger setup, and the RESIDUAL goes to storage — so it draws
+    #: what it PRODUCES from its own sources. OFF: the line clocks down to what
+    #: its consumers need and draws its usage.
+    #:
+    #: `disposition` WAS HERE, a declared field defaulting to BACK_UP — storage
+    #: off, contradicting D1 and busmodel's WITHDRAWN default. It is now
+    #: DERIVED (see the property below and `derive_disposition`). Passing
+    #: `disposition=` is a TypeError, the loud break A6.1 chose for
+    #: `presents_peak_draw`.
+    stores: bool = True
     clock_mode: ClockMode = ClockMode.BACKPRESSURE
     clock_distribution: ClockDistribution = ClockDistribution.AVERAGED
+    #: THE RECORD PATH. See `derive_disposition`. Not for new declarations.
+    recorded_disposition: Disposition | None = None
+
+    @property
+    def disposition(self) -> Disposition:
+        return derive_disposition(
+            self.bus_id, self.stores, self.withdrawal_per_min,
+            self.recorded_disposition,
+        )
 
     def __post_init__(self) -> None:
+        # Refused at construction, not at first read: a contradictory record
+        # path would otherwise surface wherever `disposition` is next touched.
+        self.disposition
         if self.extra_producers < 0:
             raise ValueError(f"{self.bus_id}: extra_producers must be >= 0")
         if self.withdrawal_per_min is not None and self.withdrawal_per_min < 0:
@@ -417,7 +486,11 @@ class BusDeclaration:
         #
         # The converse is LEGAL and deliberately not checked: a withdrawal
         # without MATCHED is a BACK_UP build-material line, which is the other
-        # of the two sizings A4.2 names.
+        # of the two sizings A4.2 names. Since A12 it is reachable only through
+        # the record path, or as a STORING line (stores=True, WITHDRAWN).
+        #
+        # A12: a DERIVED MATCHED always has its rate, so this now fires only on
+        # a recorded MATCHED without one.
         if self.disposition is Disposition.MATCHED and self.withdrawal_per_min is None:
             raise ValueError(
                 f"{self.bus_id}: Disposition.MATCHED requires withdrawal_per_min — "
@@ -613,13 +686,17 @@ class ConsumerShare:
     (A3.1 names it as the third on the Wire bus) with no recipe behind it.
 
     `draw_per_min` is USAGE and `peak_per_min` is nameplate, as of 2026-09-23 —
-    A5.2, and the same split `busmodel.ConsumerShare` carries. The peak is
+    A5.2, and the same split `busmodel.ConsumerShare` carries. AMENDED by A12
+    the same day: a STORING consumer draws what it PRODUCES — nameplate while
+    it runs at 100% — because its residual goes to storage rather than idling
+    it. Only a non-storing consumer draws usage. The peak is
     REQUIRED rather than defaulted: a share built without one would report a
     peak nobody computed, and `feasibility` reads it for branch capacity.
     """
 
     recipe_id: RecipeId | None
-    #: USAGE — the average draw, in every state. The only figure that sizes.
+    #: What sizes the source bus. USAGE for a non-storing consumer; for a
+    #: storing one (A12) what it produces. The only figure that sizes.
     draw_per_min: float
     #: draw / total AUTOMATED bus demand. Withdrawal is NOT in the denominator
     #: and carries `None`: it is covered by the residual rather than sized into
@@ -696,6 +773,20 @@ class Bus:
         who starves. Adding one producer removes the problem rather than solving
         it."""
         return self.supply_per_min < self.automated_demand_per_min - 1e-9
+
+    @property
+    def stores_nothing(self) -> bool:
+        """A STORING line whose output is exactly consumed. Amendment 12 (D1).
+
+        REPORTED, never acted on. The remedies — overclock, somersloop, or add a
+        machine — are the player's; this layer names the condition and picks
+        none of them. On this layer's residual definition (supply − automated,
+        A9.1), so a declared withdrawal is not netted off here.
+        """
+        return (
+            self.residual.disposition is Disposition.WITHDRAWN
+            and self.residual.rate_per_min <= 1e-9
+        )
 
 
 # --------------------------------------------------------------------------

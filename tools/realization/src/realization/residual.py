@@ -125,7 +125,7 @@ def clock_for(
     """Per-machine (clock, cause). One entry per machine.
 
         SUNK / WITHDRAWN                every machine 100%, cause FULL
-        MATCHED                         withdrawal / nameplate, cause MATCHED
+        MATCHED                         demand / nameplate, cause MATCHED
         BACK_UP + BACKPRESSURE          demand/supply, cause BACKPRESSURE
         BACK_UP + EXPLICIT, AVERAGED    demand/supply, cause DECLARED
         BACK_UP + EXPLICIT, SPLIT       n at 100% + remainder, cause DECLARED
@@ -134,6 +134,19 @@ def clock_for(
     bus demand: the point of the state is that the line's output IS the declared
     average draw. A MATCHED declaration without a withdrawal rate has nothing to
     match and is refused.
+
+    AMENDED 2026-09-23, amendment 12. The paragraph above holds only for a line
+    with NO in-scope consumers — A4.1's Iron Plate build line, the one MATCHED
+    line any case declared. Since A12 MATCHED is also what storage OFF derives
+    for a line with a withdrawal AND consumers (D1: "the line clocks down to
+    what its consumers need"), and a clock read from the withdrawal alone
+    starves those consumers: RIP with storage off, 2/min to Smart Plating and
+    2/min withdrawn, ran at 2/min. The clock is now `demand_per_min` over
+    nameplate, where `demand_per_min` is what `buses.decompose` passes —
+    automated + withdrawal + external — which is `busmodel.solve`'s MATCHED
+    rule (supply = demand). For a line with no consumers the two rules are the
+    same number. The withdrawal is still REQUIRED: without it the state has
+    nothing to match.
 
     The cause is not decoration. A lane at 96.8% because a splitter ratio
     starved it (RATIO_LIMITED), because the caller set that percentage
@@ -177,12 +190,13 @@ def clock_for(
                 f"{declaration.bus_id}: MATCHED without withdrawal_per_min has "
                 "nothing to match"
             )
-        clock = 100.0 * withdrawal / supply_per_min
+        clock = 100.0 * demand_per_min / supply_per_min
         if clock > 100.0 + EPS:
             raise RealizationError(
-                f"{declaration.bus_id}: declared withdrawal {withdrawal}/min exceeds "
-                f"nameplate {supply_per_min}/min on {machines} machine(s), so the "
-                "line cannot be MATCHED at this machine count. Size it first."
+                f"{declaration.bus_id}: demand {demand_per_min}/min (declared "
+                f"withdrawal {withdrawal}/min included) exceeds nameplate "
+                f"{supply_per_min}/min on {machines} machine(s), so the line "
+                "cannot be MATCHED at this machine count. Size it first."
             )
         return tuple((min(clock, 100.0), ClockCause.MATCHED) for _ in range(machines))
 

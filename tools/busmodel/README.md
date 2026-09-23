@@ -90,12 +90,28 @@ named options rather than compiled into the arithmetic:
     python -m busmodel --repo . storage_review_T1-2 --multiplier 1.0 --basis average
     python -m busmodel --repo . crossover_B --multiplier 1.25 --basis average
 
-`--basis` takes `usage` (the default) or `average` (the override that
-reproduces the record). The same default applies to `solve()`. Every rendered
-table prints its basis in its header.
+`--basis` takes `storage` (the default), `usage` or `average` (the override
+that reproduces the record). The same default applies to `solve()`. Every
+rendered table prints its basis in its header, and lists any storing line with
+nothing to store.
 
-    usage     THE DEFAULT since 2026-09-23 (amendment 10). A5.2's basis:
-              every consumer draws its usage, in every state
+**Amendment 12, 2026-09-23: the storage toggle sets the basis, per line.**
+`BusSpec.stores` (default `True`) is the declaration; `disposition` is DERIVED
+from it — storing is WITHDRAWN, storage off with a withdrawal is MATCHED,
+storage off otherwise is BACK_UP — and passing `disposition=` is a TypeError.
+The published tables state dispositions the toggle cannot (BACK_UP with a
+withdrawal; SUNK), so `declarations.py` alone uses `recorded_disposition`, the
+record path; `tests/test_refusals.py` asserts nothing else under `tools/*/src`
+does.
+
+    storage   THE DEFAULT since amendment 12. A storing consumer draws what it
+              PRODUCES — its supply at its clock, nameplate at 100% — and a
+              non-storing one draws its usage. Equal to `average` today on
+              every declaration by construction; the two part when a storing
+              line runs at a target clock (D2)
+    usage     The default from amendment 10 to amendment 12. A5.2's basis:
+              every consumer draws its usage, in every state — which is
+              storage off everywhere
     average   THE BASIS OF RECORD. A MIXTURE, not an average: a WITHDRAWN
               consumer draws its nameplate and everything else draws its
               usage. Every published table was computed on it, which is the
@@ -126,6 +142,10 @@ Wire_copper and outside it on four other rows, under one verdict column, so
 `worked_case_A4` is the same topology with every withdrawal inside its own
 bus's demand — the uniformity A4.1 buys structurally — and it is therefore NOT
 byte-identical to A3.5 and is not meant to be.
+
+**`worked_case_A4` under `--basis storage` is 29 machines** (amendment 12), the
+same as the record's `average`, because the record's WITHDRAWN lines are
+exactly its storing lines. `test_refusals.py` pins it.
 
 **`worked_case_A4` under `--basis usage` IS a target**, as of 2026-09-22:
 23 machines against the average basis's 29, with all six removed machines

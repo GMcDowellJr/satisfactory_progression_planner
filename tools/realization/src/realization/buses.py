@@ -61,6 +61,12 @@ here rather than resolved quietly:
                          `external` term subtract a peak from an average, which
                          hid out-of-scope demand up to the consumers'
                          integrality slack. See `_draw`
+                         AMENDED AGAIN 2026-09-23, amendment 12 (D1). A STORING
+                         consumer draws what it PRODUCES — nameplate at 100% —
+                         because its residual goes to storage instead of idling
+                         it. Only a non-storing consumer draws usage. `external`
+                         keeps subtracting USAGE, not the draw, so A8.2's repair
+                         survives the change. See `_draw`
     SIGNATURE            `decompose` gained `bus_id` and `capabilities`. Without
                          the first it cannot reach the declaration its own
                          docstring sizes from; without the second it cannot fill
@@ -609,21 +615,31 @@ def _draw(
     item_id: ItemId,
     attributed: dict[BusId, BusRecipe],
     cache: dict[BusId, int | None],
-) -> tuple[float, float]:
-    """`(usage, peak)` — what one consumer bus draws of `item_id`.
+) -> tuple[float, float, float]:
+    """`(draw, peak, usage)` — what one consumer bus draws of `item_id`.
+
+        draw    what SIZES the source bus. Amendment 12 (D1): a STORING
+                consumer (`stores=True`) runs at its clock and sends its
+                residual to storage, so it draws what it PRODUCES — its supply
+                at its clock, which is nameplate while that clock is 100%. A
+                non-storing consumer draws its usage. Written as supply rather
+                than as `peak` so that a target clock (D2) moves the draw
+                without a second rule
 
         usage   consumer demand * per-machine input / consumer output rate.
-                A5.2: the AVERAGE draw, in every state. This is the only figure
-                that sizes anything
+                A5.2: the AVERAGE draw once a line's buffer has saturated.
+                Sizes a non-storing consumer's source; always what `external`
+                subtracts
         peak    consumer machines * per-machine input — nameplate. Equal to usage
                 under MATCHED, where the consumer is clocked to its demand and
                 has no transient to have. REPORTED, and read by `feasibility`
                 for branch capacity and connectivity, which are questions about
                 what a belt must carry rather than about how many machines
 
-    Mirrors `busmodel.solve` under `SizingBasis.USAGE`. A peak that can move a
+    Mirrors `busmodel.solve` under `SizingBasis.STORAGE` (A12; `USAGE` until
+    then). A peak that can move a
     machine count is `presents_peak_draw` again under a new name, so the sizing
-    path reads the first element alone and a test re-solves with peaks an order
+    path reads `draw` and never `peak` and a test re-solves with peaks an order
     of magnitude apart and expects no machine count to move.
     """
     consumer = request.declaration_for(consumer_id)
@@ -637,7 +653,12 @@ def _draw(
     demand = _demand(response, data, request, consumer_id, attributed, cache)
     usage = demand * per_machine / rate
     peak = usage if consumer.disposition is Disposition.MATCHED else machines * per_machine
-    return usage, peak
+    if consumer.stores:
+        supply = machines * rate   # every lane at 100%; no target clock yet
+        draw = supply * per_machine / rate
+    else:
+        draw = usage
+    return draw, peak, usage
 
 
 def consumer_shares(
@@ -694,11 +715,11 @@ def consumer_shares(
         ):
             continue
         use = attributed[consumer.bus_id]
-        usage, peak = _draw(
+        draw, peak, _usage = _draw(
             response, data, request, consumer.bus_id, declaration.item_id,
             attributed, cache,
         )
-        shares.append((use.recipe_id, usage, peak))
+        shares.append((use.recipe_id, draw, peak))
 
     automated = sum(draw for _, draw, _ in shares)
     out = [
@@ -814,6 +835,10 @@ def _demand(
     rate = _output_rate(_recipe(data, use.recipe_id), declaration.item_id)
 
     automated = 0.0
+    #: A12. USAGE alone, for `external`. A storing consumer's draw is what it
+    #: produces, and subtracting THAT from the solve's continuous figure is
+    #: exactly the peak-minus-average A8.2 repaired.
+    in_scope_usage = 0.0
     for consumer in request.buses:
         if consumer.bus_id == bus_id:
             continue
@@ -822,16 +847,17 @@ def _demand(
             for edge in consumer.sources
         ):
             continue
-        usage, _peak = _draw(
+        draw, _peak, usage = _draw(
             response, data, request, consumer.bus_id, declaration.item_id,
             attributed, cache,
         )
-        automated += usage
+        automated += draw
+        in_scope_usage += usage
 
     external = (
         0.0
         if use.machine_equivalents is None
-        else max(0.0, use.machine_equivalents * rate - automated)
+        else max(0.0, use.machine_equivalents * rate - in_scope_usage)
     )
     return automated + (declaration.withdrawal_per_min or 0.0) + external
 

@@ -196,9 +196,15 @@ def test_the_worked_case_completes_in_fifty_minutes(report):
 
 
 def test_rate_is_derived_from_machines_at_the_lane_clock(scaled, caps, rates):
-    """The DECLARATION is machine count; the rate follows from it. Clocking the
-    Smart Plating line halves the rate and doubles the duration, and no
-    player-time parameter enters either figure."""
+    """The DECLARATION is machine count; the rate follows from it, and no
+    player-time parameter enters either figure.
+
+    A12 re-based the numbers, not the claim. This used to clock Smart Plating
+    to its 1/min withdrawal alone — half its rate, double the duration — which
+    starved the 2/min the solve asks of it. MATCHED now clocks to the line's
+    whole demand (2 external + 1 withdrawn = 3/min): two Assemblers at 75%,
+    3/min, 100 parts in 33.3 minutes. Every figure is machines at their
+    clock."""
     clocked = realize(
         build.worked_response(), scaled, caps, rates,
         RealizationRequest(
@@ -206,7 +212,7 @@ def test_rate_is_derived_from_machines_at_the_lane_clock(scaled, caps, rates):
             buses=tuple(
                 BusDeclaration(bus_id=b.bus_id, item_id=b.item_id,
                                sources=b.sources,
-                               disposition=Disposition.MATCHED,
+                               stores=False,
                                withdrawal_per_min=1.0)
                 if b.bus_id == "smart_plating" else b
                 for b in build.worked_buses()
@@ -216,8 +222,12 @@ def test_rate_is_derived_from_machines_at_the_lane_clock(scaled, caps, rates):
     projection = project_goals(
         clocked.buses, (("space_elevator_t1", build.I_SMART_PLATING, 100.0),),
     )[0]
-    assert projection.rate_per_min == pytest.approx(1.0)
-    assert projection.minutes_to_complete == pytest.approx(100.0)
+    root = next(b for b in clocked.buses if b.bus_id == "smart_plating")
+    assert [(l.machines, l.clock_percent) for l in root.lanes] == [
+        (2, pytest.approx(75.0))
+    ]
+    assert projection.rate_per_min == pytest.approx(3.0)
+    assert projection.minutes_to_complete == pytest.approx(100.0 / 3.0)
 
 
 def test_a_goal_no_bus_produces_never_completes(report):

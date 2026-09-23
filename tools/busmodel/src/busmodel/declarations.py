@@ -33,6 +33,31 @@ from realization.contracts import Disposition
 
 from .model import BusSpec, Declaration, SourceEdge
 
+
+def _recorded(disposition: Disposition, *, withdrawal: bool = True) -> dict:
+    """The `BusSpec` keywords that reproduce a PUBLISHED disposition. A12, Q5.
+
+    The record was written in dispositions; the model is now declared in the
+    storage toggle (D1). Where the toggle derives the record's disposition this
+    returns the toggle alone. Where it cannot — BACK_UP with a withdrawal, a
+    storing line observed after its container saturated, and SUNK — it adds
+    the record path, `recorded_disposition`. This module is the only place
+    under `tools/*/src` that uses it; `tests/test_refusals.py` asserts that by
+    inspection.
+
+    `withdrawal` is whether the spec being built declares one, which is what
+    decides MATCHED against BACK_UP on the toggle's side.
+    """
+    stores = disposition in (Disposition.WITHDRAWN, Disposition.SUNK)
+    derived = (
+        Disposition.WITHDRAWN if stores
+        else Disposition.MATCHED if withdrawal
+        else Disposition.BACK_UP
+    )
+    if derived is disposition:
+        return {"stores": stores}
+    return {"stores": stores, "recorded_disposition": disposition}
+
 # --------------------------------------------------------------------------
 # ids, keyed canonically
 # --------------------------------------------------------------------------
@@ -116,7 +141,7 @@ def merged_declaration(
                 item_id=item_id,
                 recipe_id=recipe_id,
                 sources=sources,
-                disposition=Disposition.WITHDRAWN,
+                # WITHDRAWN, which the toggle states: storage ON, the default.
             )
         )
     return Declaration(
@@ -312,12 +337,12 @@ def worked_case_a4(
         BusSpec(
             bus_id="cable", item_id=I_CABLE, recipe_id=R_CABLE,
             sources=(SourceEdge(I_WIRE, BUS_WIRE_COPPER),),
-            withdrawal_per_min=3.0, disposition=Disposition.BACK_UP,
+            withdrawal_per_min=3.0, **_recorded(Disposition.BACK_UP),
         ),
         BusSpec(
             bus_id="concrete", item_id=I_CONCRETE, recipe_id=R_CONCRETE,
             sources=(ore("Desc_Stone_C", None),),
-            withdrawal_per_min=6.0, disposition=Disposition.BACK_UP,
+            withdrawal_per_min=6.0, **_recorded(Disposition.BACK_UP),
         ),
         BusSpec(
             bus_id=BUS_IRON_PLATE, item_id=I_IRON_PLATE, recipe_id=R_IRON_PLATE,
@@ -326,7 +351,7 @@ def worked_case_a4(
         BusSpec(
             bus_id=BUS_IRON_PLATE_BUILD, item_id=I_IRON_PLATE, recipe_id=R_IRON_PLATE,
             sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),),
-            withdrawal_per_min=2.0, disposition=build_plate_disposition,
+            withdrawal_per_min=2.0, **_recorded(build_plate_disposition),
             # A4.2's "presents a 40/min peak draw ... that the upstream bus
             # must either carry or dip under" USED to be declared here, as
             # `presents_peak_draw=(build_plate_disposition is BACK_UP)`. That
@@ -382,39 +407,39 @@ def crossover_regime(data: ReferenceData, *, stitched: bool, scale: float = 1.0)
     """
     back_up = Disposition.BACK_UP
     common = [
-        BusSpec(bus_id="rotor", item_id=I_ROTOR, recipe_id=R_ROTOR, disposition=back_up,
+        BusSpec(bus_id="rotor", item_id=I_ROTOR, recipe_id=R_ROTOR, **_recorded(back_up, withdrawal=False),
                 sources=(SourceEdge(I_IRON_ROD, "iron_rod"),
                          SourceEdge(I_SCREW, "screws"))),
         BusSpec(bus_id="screws", item_id=I_SCREW, recipe_id=R_BASE_SCREWS,
-                disposition=back_up,
+                **_recorded(back_up, withdrawal=False),
                 sources=(SourceEdge(I_IRON_ROD, "iron_rod"),)),
         BusSpec(bus_id="iron_rod", item_id=I_IRON_ROD, recipe_id=R_IRON_ROD,
-                disposition=back_up,
+                **_recorded(back_up, withdrawal=False),
                 sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),)),
         BusSpec(bus_id=BUS_IRON_PLATE, item_id=I_IRON_PLATE, recipe_id=R_IRON_PLATE,
-                disposition=back_up,
+                **_recorded(back_up, withdrawal=False),
                 sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),)),
     ]
     if stitched:
         head = [
             BusSpec(bus_id="rip", item_id=I_RIP, recipe_id=R_STITCHED_RIP,
-                    disposition=back_up,
+                    **_recorded(back_up, withdrawal=False),
                     sources=(SourceEdge(I_IRON_PLATE, BUS_IRON_PLATE),
                              SourceEdge(I_WIRE, BUS_WIRE_IRON))),
             BusSpec(bus_id=BUS_WIRE_IRON, item_id=I_WIRE, recipe_id=R_IRON_WIRE,
-                    disposition=back_up,
+                    **_recorded(back_up, withdrawal=False),
                     sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),)),
         ]
     else:
         head = [
             BusSpec(bus_id="rip", item_id=I_RIP, recipe_id=R_BASE_RIP,
-                    disposition=back_up,
+                    **_recorded(back_up, withdrawal=False),
                     sources=(SourceEdge(I_IRON_PLATE, BUS_IRON_PLATE),
                              SourceEdge(I_SCREW, "screws"))),
         ]
     tail = [
         BusSpec(bus_id="iron_ingot", item_id=I_IRON_INGOT, recipe_id=R_IRON_INGOT,
-                disposition=back_up,
+                **_recorded(back_up, withdrawal=False),
                 sources=(SourceEdge("Desc_OreIron_C", None),)),
     ]
     return Declaration(

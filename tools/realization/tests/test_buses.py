@@ -230,11 +230,9 @@ def _ingot_consumers(data):
                 design_tier=2,
                 buses=(
                     BusDeclaration(bus_id="iron_ingot", item_id=I_IRON_INGOT,
-                                   sources=(SourceEdge(I_IRON_ORE, None),),
-                                   disposition=Disposition.WITHDRAWN),
+                                   sources=(SourceEdge(I_IRON_ORE, None),)),
                     BusDeclaration(bus_id="iron_plate", item_id=build.I_IRON_PLATE,
-                                   sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),),
-                                   disposition=Disposition.WITHDRAWN),
+                                   sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),)),
                 ),
             ),
             "iron_ingot",
@@ -648,7 +646,7 @@ def test_a_declared_consumer_that_names_no_source_is_refused(scaled):
         BusDeclaration(bus_id=b.bus_id, item_id=b.item_id,
                        sources=tuple(e for e in b.sources
                                      if e.input_item != build.I_SCREW),
-                       disposition=b.disposition)
+                       stores=b.stores)
         if b.bus_id == "rotor" else b
         for b in build.worked_buses()
     )
@@ -701,8 +699,7 @@ def test_one_machine_past_the_trunk_is_lane_infeasible(scaled, caps):
             scaled, build.R_ROTOR, 4.0, (), _cap(caps, "belt_mk2"), caps,
             RealizationRequest(
                 design_tier=2,
-                buses=(BusDeclaration(bus_id="rotor", item_id=build.I_ROTOR,
-                                      disposition=Disposition.WITHDRAWN),),
+                buses=(BusDeclaration(bus_id="rotor", item_id=build.I_ROTOR),),
             ),
             "rotor",
         )
@@ -866,8 +863,7 @@ def test_two_buses_on_one_recipe_are_refused(scaled, caps):
     how to split it is a design decision the response does not carry."""
     buses = build.worked_buses() + (
         BusDeclaration(bus_id="screws_two", item_id=build.I_SCREW,
-                       sources=(SourceEdge(build.I_IRON_ROD, None),),
-                       disposition=Disposition.WITHDRAWN),
+                       sources=(SourceEdge(build.I_IRON_ROD, None),)),
     )
     with pytest.raises(PartitionIncomplete, match="attributed to both"):
         B.buses_from_response(
@@ -1008,10 +1004,26 @@ def _continuous(screw_equivalents: float = 92.0 / 40.0):
     return _equivalents(response, build.R_ROTOR, 0.5)
 
 
+def _non_storing(request=None):
+    """RIP and Rotor with storage OFF (A12). Every test in this section until
+    A12 asserted the usage path on consumers that were declared WITHDRAWN; under
+    D1 a WITHDRAWN consumer stores and draws what it produces, so those tests
+    now state the toggle that puts them on the path they assert."""
+    request = request or build.worked_request()
+    return dataclasses.replace(
+        request,
+        buses=tuple(
+            dataclasses.replace(d, stores=False) if d.bus_id in ("rip", "rotor") else d
+            for d in request.buses
+        ),
+    )
+
+
 def test_a_continuous_solve_draws_usage_and_reports_the_peak(scaled):
     """A5.2. The draw is the consumer's usage — 30 and 62 — and the nameplate
-    75 and 124 is reported beside it. The shares are over usage."""
-    shares = B.consumer_shares(_continuous(), scaled, build.worked_request(), "screws")
+    75 and 124 is reported beside it. The shares are over usage. Storage OFF
+    on both consumers since A12."""
+    shares = B.consumer_shares(_continuous(), scaled, _non_storing(), "screws")
     assert [s.draw_per_min for s in shares] == [pytest.approx(30.0), pytest.approx(62.0)]
     assert [s.peak_per_min for s in shares] == [pytest.approx(75.0), pytest.approx(124.0)]
     assert [round(s.share, 4) for s in shares] == [round(30 / 92, 4), round(62 / 92, 4)]
@@ -1020,8 +1032,8 @@ def test_a_continuous_solve_draws_usage_and_reports_the_peak(scaled):
 def test_a_continuous_solve_sizes_the_screw_bus_on_usage(scaled, caps):
     """3 Constructors, not 5. On the peak basis this bus was 5 machines against
     a solve that asked for 2.3 — two machines sized against the consumers'
-    integrality slack."""
-    result = B.buses_from_response(_continuous(), scaled, build.worked_request(), caps)
+    integrality slack. Storage OFF on both consumers since A12."""
+    result = B.buses_from_response(_continuous(), scaled, _non_storing(), caps)
     screws = next(b for b in result if b.bus_id == "screws")
     assert screws.machines == 3
     assert screws.supply_per_min == pytest.approx(120.0)
@@ -1036,9 +1048,10 @@ def test_out_of_scope_demand_is_not_netted_against_integrality_slack(scaled, cap
 
     Both wrong answers are excluded: 3 is usage without `external`, and 5 is the
     old peak basis, where `external` = max(0, 132 - 199) = 0 and the 40/min was
-    absorbed into the consumers' slack without being reported anywhere."""
+    absorbed into the consumers' slack without being reported anywhere.
+    Storage OFF on both consumers since A12."""
     response = _continuous(screw_equivalents=132.0 / 40.0)
-    result = B.buses_from_response(response, scaled, build.worked_request(), caps)
+    result = B.buses_from_response(response, scaled, _non_storing(), caps)
     screws = next(b for b in result if b.bus_id == "screws")
     assert screws.machines == 4
 
@@ -1049,13 +1062,18 @@ def test_the_peak_cannot_move_a_machine_count(scaled, caps):
     leave its demand alone, so nothing on the screw bus may move.
 
     A peak that can move a machine count is `presents_peak_draw` again under a
-    new name."""
-    base = B.buses_from_response(_continuous(), scaled, build.worked_request(), caps)
+    new name.
+
+    A12: on NON-STORING consumers. A storing consumer's nameplate is its DRAW,
+    not a peak — nine more Rotor Assemblers that store produce ten times the
+    rotors and do draw ten times the screws — so the guardrail is about
+    transients and runs where a transient is what nameplate means."""
+    base = B.buses_from_response(_continuous(), scaled, _non_storing(), caps)
     wide_request = dataclasses.replace(
-        build.worked_request(),
+        _non_storing(),
         buses=tuple(
             dataclasses.replace(d, extra_producers=9) if d.bus_id == "rotor" else d
-            for d in build.worked_request().buses
+            for d in _non_storing().buses
         ),
     )
     wide = B.buses_from_response(_continuous(), scaled, wide_request, caps)
@@ -1081,7 +1099,7 @@ def test_a_matched_consumer_has_no_transient(scaled):
     request = dataclasses.replace(
         build.worked_request(),
         buses=tuple(
-            dataclasses.replace(d, disposition=Disposition.MATCHED, withdrawal_per_min=1.0)
+            dataclasses.replace(d, stores=False, withdrawal_per_min=1.0)
             if d.bus_id == "rip" else d
             for d in build.worked_request().buses
         ),
@@ -1090,6 +1108,94 @@ def test_a_matched_consumer_has_no_transient(scaled):
     rip = next(s for s in shares if s.recipe_id == build.R_RIP)
     assert rip.draw_per_min == pytest.approx(45.0)
     assert rip.peak_per_min == pytest.approx(45.0)
+
+
+# --------------------------------------------------------------------------
+# amendment 12 (D1): the storage toggle sets the sizing basis, per line
+# --------------------------------------------------------------------------
+#
+# The continuous fixture above, with RIP and Rotor at the default: storage ON.
+# Each runs its one Assembler at 100% and sends the residual to storage, so it
+# draws what it produces — 75 and 124 — whatever the solve asked of it.
+
+def test_a_storing_consumer_draws_what_it_produces(scaled):
+    """75 and 124, not 30 and 62. The peak equals the draw: a storing line's
+    nameplate is not a transient on top of its average, it IS its average."""
+    shares = B.consumer_shares(_continuous(), scaled, build.worked_request(), "screws")
+    assert [s.draw_per_min for s in shares] == [pytest.approx(75.0), pytest.approx(124.0)]
+    assert [s.peak_per_min for s in shares] == [pytest.approx(75.0), pytest.approx(124.0)]
+
+
+def test_storing_consumers_size_their_source_at_nameplate(scaled, caps):
+    """5 Constructors on 199/min, against 3 on 92/min with storage off. The
+    same solve and the same machines; only the toggle differs."""
+    stored = B.buses_from_response(_continuous(), scaled, build.worked_request(), caps)
+    usage = B.buses_from_response(_continuous(), scaled, _non_storing(), caps)
+    s = next(b for b in stored if b.bus_id == "screws")
+    u = next(b for b in usage if b.bus_id == "screws")
+    assert (s.machines, s.automated_demand_per_min) == (5, pytest.approx(199.0))
+    assert (u.machines, u.automated_demand_per_min) == (3, pytest.approx(92.0))
+
+
+def test_external_subtracts_usage_even_when_the_consumers_store(scaled, caps):
+    """A8.2's repair survives D1. The solve asks 132 screws/min against 92 of
+    in-scope USAGE, so 40/min is out of scope; the storing consumers draw 199,
+    so demand is 239 and the bus is 6. Subtracting the DRAW would give
+    external = max(0, 132 − 199) = 0 and 5 machines — the peak-minus-average
+    A8.2 removed, back through the storing path."""
+    response = _continuous(screw_equivalents=132.0 / 40.0)
+    result = B.buses_from_response(response, scaled, build.worked_request(), caps)
+    screws = next(b for b in result if b.bus_id == "screws")
+    assert screws.machines == 6
+
+
+def _plate_on_ingot(data, caps, *, ingot_stores: bool):
+    """At 1x one Smelter's 30 ingot/min feeds one Plate Constructor exactly —
+    the divisibility case above, realized. The ingot bus's residual is zero."""
+    return B.buses_from_response(
+        SolveResponse(
+            recipes=(
+                RecipeUse(R_IRON_PLATE, "Build_ConstructorMk1_C", 1.0, 20.0),
+                RecipeUse(R_IRON_INGOT, "Build_SmelterMk1_C", 1.0, 20.0),
+            ),
+            items=(ItemFlow(I_IRON_INGOT, 1.0, 1.0),
+                   ItemFlow(build.I_IRON_PLATE, 1.0, 0.0)),
+            raw_inputs=(), power=PowerReport(0, 0, 0, 0), machines=(),
+        ),
+        data,
+        RealizationRequest(
+            design_tier=2,
+            buses=(
+                BusDeclaration(bus_id="iron_ingot", item_id=I_IRON_INGOT,
+                               sources=(SourceEdge(I_IRON_ORE, None),),
+                               stores=ingot_stores),
+                BusDeclaration(bus_id="iron_plate", item_id=build.I_IRON_PLATE,
+                               sources=(SourceEdge(I_IRON_INGOT, "iron_ingot"),)),
+            ),
+        ),
+        caps,
+    )
+
+
+def test_a_storing_line_with_nothing_to_store_is_reported(reference, caps):
+    """D1's "no residual" case. The ingot line stores, and its one Smelter's
+    whole output is taken by the Plate Constructor, so there is nothing to
+    store. REPORTED on the bus; the remedy — overclock, somersloop, another
+    machine — is the player's. The plate root stores its whole output (this
+    layer's residual excludes the out-of-scope draw, A9.1) and is not
+    reported."""
+    by_id = {b.bus_id: b for b in _plate_on_ingot(reference, caps, ingot_stores=True)}
+    assert by_id["iron_ingot"].residual.rate_per_min == pytest.approx(0.0)
+    assert by_id["iron_ingot"].stores_nothing
+    assert not by_id["iron_plate"].stores_nothing
+
+
+def test_a_non_storing_line_is_never_reported_as_storing_nothing(reference, caps):
+    """The report is about STORING lines. The same zero residual with storage
+    off is the design working."""
+    by_id = {b.bus_id: b for b in _plate_on_ingot(reference, caps, ingot_stores=False)}
+    assert by_id["iron_ingot"].residual.rate_per_min == pytest.approx(0.0)
+    assert not by_id["iron_ingot"].stores_nothing
 
 
 def test_a_declared_bus_the_solve_sized_at_nothing_still_gets_one_machine(

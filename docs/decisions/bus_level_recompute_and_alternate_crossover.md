@@ -1487,3 +1487,161 @@ config's demand column on its own terms.
     not modelled  what the config's author meant the roots' demand to be. The
                   declared-demand column is A2.1's derived column; A11.3 uses
                   it only against itself
+
+## Amendment 12 — 2026-09-23. The storage toggle sets the sizing basis, per line
+
+Appended forward-only. Nothing above is edited. Supersedes, in provenance,
+A5.2's reading that "WITHDRAWN draws nameplate" is an artefact of the
+observation window, and A10's default. Neither is retracted as arithmetic:
+A5.2's trajectory still describes a line whose storage saturates, and `USAGE`
+still computes what it always computed.
+
+    decided   Greg, in session 2026-09-23 (D1): the storage toggle sets the
+              sizing basis, per line
+      ON (default)  the line runs at 100%. Its consumers take exactly what they
+                    need through an exact splitter/merger setup; the RESIDUAL
+                    goes to storage. It draws its NAMEPLATE from its sources
+      OFF           the line clocks down to what its consumers need and draws
+                    its USAGE. Example: iron wire on the wire lanes
+      no residual   a storing line whose output is exactly consumed has nothing
+                    to store. The remedy — overclock, somersloop, or add a
+                    machine — is the player's; the tool REPORTS it, never picks
+    decided   Greg, same session, on the questions the body step raised:
+      Q1  the toggle is an EXPLICIT per-line flag, `stores: bool = True`, and
+          the disposition is DERIVED from it — A5.2's consequence 1 literally
+      Q2  a storing line draws what it PRODUCES: nameplate while it runs at
+          100%, a target clock's output once D2 sets one. Stated so D2 does
+          not have to supersede D1
+      Q3  stores=True -> WITHDRAWN; stores=False with a withdrawal -> MATCHED;
+          stores=False otherwise -> BACK_UP (realization's `clock_mode` sets
+          any clock)
+      Q4  `disposition=` is a TypeError, A6.1's precedent
+      Q5  the record path, below
+    noted     Greg, same session: time to completion must eventually be
+              overridable; until then T defaults to the goal-build derivation
+              (D2). Recorded here because it bounds what D2 may assume
+    measured  agent container, 2026-09-23, against `de700c05` plus the change
+              below. Not Greg's machine
+
+### A12.1 The record's AVERAGE was D1 under older names
+
+`AVERAGE` draws nameplate for a WITHDRAWN consumer and usage for everything
+else. WITHDRAWN is "drained continuously, producers at 100%" — storage ON.
+BACK_UP (the record's need basis) and MATCHED draw usage — storage OFF. So
+`AVERAGE` was D1 wherever a line's disposition had been chosen to mean its
+storage state, and A10 had moved the default to `USAGE`, which is storage off
+everywhere.
+
+    new value   `SizingBasis.STORAGE`, THE DEFAULT (solve and CLI). A storing
+                consumer draws its supply at its clock; a non-storing one draws
+                its usage. A new value rather than a re-pointed `AVERAGE`, per
+                A6.1's rule that a value's meaning is fixed when it is added
+    equal       `STORAGE` equals `AVERAGE` on every declaration today, BY
+                CONSTRUCTION: a storing line is WITHDRAWN and runs at 100%.
+                They part when D2 gives a storing line a target clock. Pinned
+                as an equality so that day is visible
+    kept        `AVERAGE` as the record; `USAGE` as storage off everywhere
+
+### A12.2 The record path
+
+Q3's table cannot state two things the record declares. `worked_case_A4`'s
+Cable and Concrete lines are BACK_UP WITH a withdrawal — a storing line
+measured after its container saturated — which the toggle derives as MATCHED
+(off) or WITHDRAWN (on), and either moves A6.3's reproduced AVERAGE column.
+And SUNK is not derivable from a bool, so its refusal would be unreachable.
+
+    field      `recorded_disposition: Disposition | None = None` on both
+               `BusSpec` and `BusDeclaration`. Taken as given; refused only
+               where it CONTRADICTS the toggle (recorded WITHDRAWN with
+               stores=False; recorded BACK_UP or MATCHED with stores=True)
+    where      `busmodel/declarations.py` alone under `tools/*/src`, through
+               `_recorded`, which emits the toggle alone wherever the toggle
+               derives the record's disposition. Asserted by inspection in
+               `test_refusals.py`. Tests may use it
+    result     every reproduction in `test_published_tables.py` passes
+               unchanged; the SUNK refusal is still reached and tested
+
+### A12.3 What moved
+
+    busmodel      `BusSpec.stores` replaces `disposition` (was WITHDRAWN by
+                  default; unchanged in effect). `STORAGE` is the default basis.
+                  `BusSolution.stores_nothing` reports D1's no-residual case and
+                  the rendered table lists those lines. `out_of_scope_draw`
+                  mirrors the new branch
+    realization   `BusDeclaration.stores` replaces `disposition`, whose default
+                  was BACK_UP — storage OFF, contradicting D1 and busmodel.
+                  `_draw` sizes a storing consumer on what it produces; it now
+                  returns (draw, peak, usage). `Bus.stores_nothing` added
+    both          `derive_disposition` in `realization.contracts` is the one
+                  table; busmodel imports it as it already imports `Disposition`
+
+    worked_case_A4, scenario of record, busmodel and realization agreeing
+                             machines   iron ingot demand   iron ore /min
+    STORAGE (as declared)       29          204.00            210.00
+    storage off everywhere      23          115.89            115.89
+    storing, nothing to store: smart_plating, rotor
+
+A6.3's AVERAGE and USAGE columns respectively. The oracle comparison (A9) now
+runs on both states and agrees on machines, automated demand, withdrawal,
+every consumer's draw and peak, and supply.
+
+### A12.4 Two things D1 exposed
+
+**A8.2's defect would have come back through the storing path.** `_demand`
+derived `external` as the solve's continuous figure less `automated`. With a
+storing consumer drawing what it produces, `automated` carries the integrality
+slack again. `external` now subtracts the consumers' USAGE, kept separately
+from the draw. Continuous worked fixture, 132 screws/min asked against 92 of
+usage: 6 machines (239/min); subtracting the draw gives 5.
+
+**Realization's MATCHED clock starved consumers.** It clocked to
+`withdrawal_per_min` alone, which was right for A4.1's Iron Plate build line —
+the only MATCHED line any case declared, with no consumers. Q3 now derives
+MATCHED for any storage-off line with a withdrawal, and D1 says such a line
+"clocks down to what its consumers need". RIP with storage off, feeding Smart
+Plating 2/min and withdrawn at 2/min, ran at 2/min. The clock is now the
+line's whole demand over nameplate — busmodel's rule — and is the same number
+wherever a MATCHED line has no consumers.
+
+    BEHAVIOUR CHANGE   a MATCHED line with in-scope consumers or external demand
+                       clocks higher. `test_rate_is_derived_from_machines_at_the_lane_clock`
+                       moved from 1/min on one Assembler to 3/min on two at 75%
+    NOT A PRIOR        A9 recorded MATCHED supply agreeing between the layers;
+    CONCLUSION         it did, on the one MATCHED bus it had. Recorded here
+    CHANGED            because the rule changed, not because A9 was wrong
+
+**The zero-clock contradiction dissolves for a storing bill line.** The
+concrete bill line in `test_stock_to_realization.py` stores by default now, so
+it runs at 100% and produces the 15/min `projected_coverage` divides by; no 0%
+warning. The contradiction is still pinned, on the same line with storage off.
+
+### A12.5 Tests
+
+Every new or changed assertion was confirmed to fail with its rule reverted:
+the storing draw, `external` on usage, the STORAGE branch, both defaults, the
+realization default, the MATCHED clock, the out-of-scope mirror, both
+`stores_nothing`, the record-path contradiction check, the CLI default, and the
+rendered report line. The peak guardrail runs on NON-storing consumers in
+realization: a storing consumer's nameplate is its draw, and nine more storing
+Rotor Assemblers do draw ten times the screws.
+
+    counts   container, collected: busmodel 75 -> 82, realization 224 -> 240,
+             tests/ (staged subset) 228 -> 234. 584 pass across the staged
+             suites. One run of ten showed one failure whose name was not
+             captured; nine runs after it were clean. Not reproduced
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not pinned    the 1 Smart Plating/min figures (17 machines and 120.0 iron
+                  ore/min storing; 7 and 23.25 storage off). They came from a
+                  scratch driver, and 120.0 is Greg's in-game figure
+    not modelled  the exact split D1 assumes. With plain splitters the residual
+                  does not reach storage in ratio (hand calculation, 2026-09-23)
+    not wired     container capacity. D1's nameplate draw holds for capacity /
+                  residual (A7.3). That window has a consumer again
+    not built     D2 (goal-paced targets, the time-to-completion override) and
+                  D3 (carry-forward across declared stages)
+    unreachable   BACK_UP with a withdrawal and SUNK, except by the record path.
+                  A future routing value (storage / sink / off) would replace
+                  the bool; not decided
