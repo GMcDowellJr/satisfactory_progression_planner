@@ -832,3 +832,335 @@ separately — it changes what §8.2 is for rather than correcting a figure.
     unverified     idle power draw ≈ 0, unchanged. A5.2's claim that the states
                    differ in power but not in average draw assumes an idling
                    machine costs nothing
+
+## Amendment 6 — 2026-09-22. The peak stops sizing, and A5.3's cascade is computed
+
+Appended forward-only. **Amendment 5 changed no code and said so**; this is the
+code change, and it moves one published conclusion between columns. Nothing
+above is edited.
+
+Every figure below was computed in an agent container on 2026-09-22 from
+`tools/busmodel` at the scenario of record (1.25x inputs, 2.0x Project
+Assembly), against `declarations.worked_case_A4`. Each is pinned by
+`tools/busmodel/tests/test_published_tables.py` section 7, so the table is a
+regression target rather than a run nobody can repeat.
+
+### A6.1 `presents_peak_draw` is removed, not renamed, and `SizingBasis.PEAK` is refused
+
+A5.2 says the field "loses its reason to exist as a SIZING switch". Reading it
+again against its only call site says something stronger:
+
+    presents_peak_draw=(build_plate_disposition is Disposition.BACK_UP)
+
+It was DERIVED FROM THE DISPOSITION at the declaration site. It was never a
+declaration — it was a rule written out by hand at the one place that needed
+it. So it is removed rather than demoted to a report-only field: a declaration
+nothing reads lets a caller state a preference that silently does not apply,
+and a caller who still passes the keyword now gets a `TypeError`, which is the
+loud break a rename would have been.
+
+`SizingBasis.PEAK` is kept as a value and **refused by `solve`**, naming A5.2
+and naming the three fields that carry the peak instead. Deleting the member
+would answer a caller with an `AttributeError`, which says nothing about why.
+`--basis peak` still reaches that refusal on purpose.
+
+`SizingBasis.USAGE` is a NEW value rather than a redefinition of `AVERAGE` —
+the same forward-only rule `WithdrawalBasis` follows. `AVERAGE`'s docstring is
+corrected to say what it always computed and does not claim to be right:
+
+    AVERAGE   THE BASIS OF RECORD. A MIXTURE and not an average — a WITHDRAWN
+              consumer draws its NAMEPLATE, everything else draws its usage.
+              A5.2 says that split is an artefact of the observation window
+              rather than a model. It stays because the published tables were
+              computed on it and reproducing them is this package's first job
+    USAGE     A5.2's basis. Every consumer draws its usage, in every state
+
+Collapsing `AVERAGE` into usage was measured before it was rejected: it breaks
+seven of the published reproductions, which is the oracle losing its first job
+to gain a better name.
+
+### A6.2 A4.2's central comparison is RE-BASED, not retracted
+
+This is the conclusion that moves, and it is the reason this amendment exists
+rather than a commit message.
+
+A4.2 concluded that a full-rate Iron Plate build line "does not merely cost
+more power, it costs a smelter producing plates nobody consumes." That
+conclusion was computed on the peak basis. On the usage basis it does not hold,
+and A5.2 predicts exactly that — the states do not differ in what a line costs
+its source bus on average.
+
+    computed 2026-09-22, MATCHED build line vs full-rate BACK_UP, one field
+    changed and everything else held:
+
+                            MATCHED      full-rate     delta
+    ingot demand /min        204.00        204.00       0.00   was 36.00
+    ingot machines                7             7          0   was +1
+    ingot PEAK demand /min   204.00        240.00      36.00
+    peak shortfall /min        0.00         30.00      30.00
+
+**The 36/min did not disappear. It changed columns.** It was always a peak
+figure; the model was sizing against it and reporting it as a demand.
+
+**And the finding survives, sharper.** The full-rate line asks the ingot bus
+for 240/min against a supply of 210 while it refills — 30/min it cannot have.
+Splitters round-robin and do not prioritise, so that shortfall is paid by Wire,
+Iron Plate and Iron Rod, which hold 98% of the bus between them; the build line
+itself holds 2.0%. A4.2's answer to "what does the full-rate line cost" becomes
+*it starves its neighbours during a refill* instead of *it costs a smelter*.
+
+    NOT ANSWERED   how much that costs. The duration is capacity/slack and no
+                   container capacity reaches this layer, so the shortfall is
+                   reported as a rate and its duration is not guessed
+    SUPERSEDED     A4.2's "+1 SMELTER" line, in provenance. The comparison is
+                   restated in `test_amendment_4_iron_plate_build_line`, whose
+                   docstring names what it stopped asserting
+
+### A6.3 A5.3's cascade, computed
+
+A5.3 derived the direction from two rows and said "NOT COMPUTED — the full
+cascade." This is it. Same declaration, same scenario, one claim changed: a
+WITHDRAWN consumer draws its usage rather than its nameplate.
+
+    bus                 AVERAGE                 USAGE
+                        m   demand   residual   m   demand   residual
+    smart_plating       1     2.00       0.00   1     2.00       0.00
+    rip                 1     4.00       1.62   1     4.00       1.62
+    rotor               1     4.00       0.00   1     4.00       0.00
+    screws              4   124.00      36.00   4   124.00      36.00
+    wire_iron           3    46.88      20.62   2    33.33      11.67
+    wire_copper         1    14.00      16.00   1    14.00      16.00
+    cable               1     3.00      27.00   1     3.00      27.00
+    concrete            1     6.00       9.00   1     6.00       9.00
+    iron_plate          2    24.38      15.62   1    17.33       2.67
+    iron_plate_build    1     2.00       0.00   1     2.00       0.00
+    iron_rod            5    64.00      11.00   4    55.00       5.00
+    iron_ingot          7   204.00       6.00   4   115.89       4.11
+    copper_ingot        1    15.00      15.00   1     7.00      23.00
+
+    TOTAL              29  machines,           23  machines,
+                       21.747 continuous       16.989 continuous
+
+    out-of-scope Iron Ore   210.00/min          115.89/min
+
+**A5.3's consequence holds, and is stronger than its prediction.** Six machines
+come off, and NONE of them is a build line: Cable, Concrete and the Iron Plate
+build line are one machine on both bases, held there by the machine floor.
+Every machine removed comes off Iron Ingot (7 → 4), Iron Rod (5 → 4), Iron
+Plate (2 → 1) and Wire_iron (3 → 2), which are production buses. Sizing for
+usage shrinks the production chain, not the build lines.
+
+    NOT A CORRECTION OF A3.5   A3.5 stands as written and is still not a
+                               regression target, for the reason A4.1 already
+                               gives: its withdrawal column sits inside the
+                               demand sum on two rows and outside it on four.
+                               This is a NEW table over `worked_case_A4`, which
+                               is the topology with that defect removed
+    A5.3's own arithmetic      predicted Iron Rod demand "about 43" against
+                               the 55.00 computed here. The gap is A3.5's
+                               Rotor row at 50% utilisation, which
+                               `worked_case_A4` does not reproduce because its
+                               withdrawal is inside Rotor's own demand. The
+                               DIRECTION was right and the figure was on the
+                               older topology
+
+### A6.4 What the peak reports now, and the guardrail that keeps it there
+
+The peak is computed on every solve, under either basis, and it is REPORTED:
+
+    ConsumerShare.peak_per_min        one consumer's nameplate on this bus,
+                                      equal to its average under MATCHED
+    BusSolution.peak_demand_per_min   external + every consumer's peak + the
+                                      declared withdrawal
+    BusSolution.peak_shortfall_per_min    max(0, peak demand − supply)
+
+Wire_copper is the sharpest row and was invisible before: Cable draws 3.00/min
+on average and 90.00/min at nameplate, so the peak asks 95.00/min of a bus
+supplying 30.00 — a shortfall of 65.00/min. Under the old peak basis that sized
+Wire_copper at four Constructors and the transient vanished into a machine
+count. It now sizes at one on both bases and the 65.00 is reported.
+
+**A peak that can move a machine count is `presents_peak_draw` again under a
+new name**, so the guardrail is structural rather than a note: the sizing reads
+`demand_per_min` alone, and a test re-solves a declaration whose peaks differ
+by a factor of ten and asserts that every machine count, every residual and
+every clock is unchanged.
+
+### What this amendment does not establish
+
+    not decided    whether `USAGE` should become the default. `AVERAGE` stays
+                   the default only because the published tables were computed
+                   on it; that is a reproduction argument, not a modelling one,
+                   and the two will have to be separated
+    not changed    the realization layer. A5.2's third consequence — that
+                   `realization.buses` computes a consumer's draw as
+                   `machines × per-machine rate`, which is the peak — is
+                   untouched here. `busmodel` and the bodies it checks now
+                   disagree on this, by design and not by accident, and the
+                   oracle is the one that moved
+    not modelled   the transient's DURATION. capacity/slack needs a container
+                   capacity, and none reaches this layer
+    unverified     idle power draw ≈ 0, unchanged from A5. A5.2's claim that
+                   the states differ in power but not in average draw still
+                   assumes an idling machine costs nothing
+    not recomputed the storage review's sections 5, 6.1 and 7 under `USAGE`.
+                   They reproduce on `AVERAGE` and were not re-run on the new
+                   basis; what they would say is unknown rather than unchanged
+
+## Amendment 7 — 2026-09-22. Three in-game reads, and the transient acquires a duration
+
+Appended forward-only. Nothing above is edited, including amendment 6, which
+was written earlier the same day and is corrected forward at A7.4.
+
+    source   Greg, in session 2026-09-22, game settings menu and in-game
+             reads. Three of the five outstanding game observations named by
+             the 10:30 handoff; the fluid-unit read is still outstanding
+
+This is amendment 1's document type rather than amendment 5's: it records
+observations and what they close, not a change of framing.
+
+### A7.1 An idle machine draws no power. The assumption is discharged
+
+    stated   "when a machine is idle it draws no power"
+
+Every amendment since A5 has carried `idle power draw ≈ 0, unverified` in its
+own "does not establish", and A6 inherited it unchanged. It is now observed.
+
+It does more than remove a caveat: it is what makes the POWER half of A5.2
+correct rather than merely assumed. `_lane_power` treats backpressure as a DUTY
+CYCLE and prices it linearly, and a set clock as convex at `power_exponent`
+1.321929. Linear-from-zero is exactly right when the idle end of the duty cycle
+costs nothing, and it is wrong by a constant if idling costs anything at all.
+
+    CONSEQUENCE  MATCHED is strictly cheaper in power than BACK_UP at the same
+                 average throughput, for every utilisation below 1. That was
+                 the model's behaviour already; it is now the model's behaviour
+                 for a reason
+    CLOSED       the `unverified` line carried by A5 and A6
+
+### A7.2 The Power Shard ceiling is known, and A5.4's gap closes
+
+    stated   1 shard -> 150%, 2 -> 200%, 3 -> 250%. Shard CRAFTING follows the
+             recipe multiplier — a 2x run needs 2 blue slugs per shard against
+             1 at 1x — while the MAM unlock does not: 1 blue slug at both
+
+A5.4 recorded that "the shard → clock ceiling is NOT in
+planning_data/game/reference: the only clock columns there are
+extraction_rates.csv's nominal/max_250 pair", and concluded that a shard's
+supply chain was representable while what it buys was not. The ceiling is
+`100 + 50 × shards`, capped at three shards, and 250% agrees with the
+`max_250` column already carried for extractors.
+
+**Overclocking is therefore now fully representable**: the shard supply chain
+(already), the clock ceiling (now), and the power cost (already, through
+`power_exponent`).
+
+    FLAGGED, NOT WIRED   representable is not the same as wired to an
+                         objective. A layer that can price "overclock this
+                         machine versus add another" is answering a build
+                         question, which is the drift the standing guardrail
+                         exists to prevent. A5.4 listed overclocking under
+                         OPTIONS rather than under the model, and this
+                         amendment does not move it
+    SECOND READING       the crafting/unlock split is evidence for a modelling
+                         choice already made: `unlock_cost` reads
+                         `schematic_costs.csv` and is not scenario-scaled,
+                         while recipe inputs are. One MAM node is evidence for
+                         Milestone costs, not proof, and MAM schematics are
+                         excluded from `schematics_at_tier` in any case
+
+### A7.3 Container capacity reaches the model. The time constant is computable
+
+    stated   Storage Container 24 slots, Industrial Storage Container 48 slots.
+             Fluid Buffer 400 m3, Industrial Fluid Buffer 2400 m3. No change
+             with tier or with any multiplier
+
+The missing half was only ever the slot count. The other half has been in the
+repo all along: `items.csv` carries `cached_stack_size` per item — SS_ONE 1,
+SS_SMALL 50, SS_MEDIUM 100, SS_BIG 200, SS_HUGE 500 — and items.csv is the sole
+resource authority. So
+
+    capacity(container, item) = slots x cached_stack_size(item)
+
+and it is CANONICAL and SCENARIO-INVARIANT, which puts it alongside building
+construction cost rather than alongside a recipe amount.
+
+A5.1's time constant, computed at last, over `worked_case_A4` under
+`SizingBasis.USAGE`, scenario of record, one Storage Container per bus:
+
+    bus             item          stack       R/min    capacity   saturates in
+    screws          Screws          500       36.00      12,000        333 min
+    cable           Cable           200       27.00       4,800        178 min
+    copper_ingot    Copper Ingot    100       23.00       2,400        104 min
+    wire_copper     Wire            500       16.00      12,000         12.5 h
+    concrete        Concrete        500        9.00      12,000         22.2 h
+    iron_plate      Iron Plate      200        2.67       4,800         30.0 h
+    smart_plating   Smart Plating    50        0.00       1,200          never
+    rotor           Rotor           100        0.00       2,400          never
+
+**Saturation time is a property of SCALE, not of the container.** It is
+capacity over slack, and slack grows with the factory while a container does
+not, so a bigger line saturates its container faster. The hours above are a
+consequence of `worked_case_A4` being four machines wide at its widest. This
+reconciles the record with the standing observation that storage fills quickly
+in a real factory: both are the same formula at different scales.
+
+**Three buses never saturate at all**, because their residual is zero by design
+(A3.4). For those, A4.2's post-saturation regime never arrives and the
+BACK_UP/MATCHED distinction has nothing to bite on.
+
+### A7.4 The refill transient is not brief, and A6.2's phrasing is corrected
+
+A6.2 concluded that a full-rate build line "starves its neighbours for the
+duration of a refill" and reported the shortfall as a rate because the duration
+was not modelled. The duration is now bounded, and the phrasing was too kind:
+the transient is hours, not a spike.
+
+Worked, the Cable line against Wire_copper, same solve as above:
+
+    Cable container, Mk1                                     4,800 units
+    refill from empty at NAMEPLATE 30/min                        160 min
+    wire Cable needs at nameplate                                90/min
+    wire_copper supplies                                         30/min
+    Cable is therefore throttled to                     8.33 - 10.00/min
+    refill from empty, actual                              480 - 576 min
+
+The range is whether the player keeps taking their 5/min withdrawal from
+Wire_copper during the refill; splitters round-robin and do not prioritise, so
+both ends are reachable and neither is chosen here.
+
+**The refilling line is throttled by the very bus it is starving.** That is a
+feedback loop, and the demand pass is a single reverse-topological traversal
+that refuses loops for the reason recorded in
+`toggle_propagation_and_demand_pass.md` §5. So the model reports the shortfall
+as a rate and a capacity-derived bound, and does not iterate to the true
+figure.
+
+    SUPERSEDED   A6.2's "for the duration of a refill", in implication rather
+                 than in substance. The shortfall and the 98/2 split of who
+                 pays it stand exactly as computed
+    NOT TAKEN    solving the transient. It is a fixed point, and acquiring one
+                 here would put in the stock/flow layers exactly what §5 keeps
+                 out of them
+
+### What this amendment does not establish
+
+    still open   the fluid unit. `items.csv` gives SS_FLUID a
+                 `cached_stack_size` of 50000 with no unit named, while the
+                 buffer capacities above are read in m3. Reconciling them is
+                 the same read as the outstanding "observe a fluid recipe at
+                 1.25x and read the UNIT", which now has a second consumer
+    not modelled the player's drawdown. A6.4 reported a shortfall rate; A7.4
+                 adds a capacity-derived bound on its duration. How much a
+                 player actually pulls is not a modelled quantity and no
+                 amendment here makes it one
+    not wired    container capacity. It is computable as of this amendment and
+                 nothing reads it — no type carries a container, and the
+                 saturation column above was produced by a script, not by the
+                 model
+    not taken    fluid buffers as storage. Greg's own reading is that they are
+                 not: a full buffer stops the machines feeding it and clears
+                 only by manual flush or by downstream consumption, so a fluid
+                 line has no WITHDRAWN analogue. Recorded, not modelled
+    unchanged    the AWESOME Sink, the somersloop axis, and every parked item
+                 A6 carried forward

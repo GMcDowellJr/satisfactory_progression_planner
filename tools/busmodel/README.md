@@ -60,14 +60,20 @@ residuals do not pool.
 
 **Steady state is per bus, not per factory.** Several run at once:
 
-    WITHDRAWN   drained continuously, producers at 100%. Draw is nameplate and
-                the average equals the peak. Residual is rounding slop
-    BACK_UP     producers idle at utilisation demand/supply. Average draw is
-                actual need; a build-material line's PEAK draw is nameplate
+    WITHDRAWN   drained continuously, producers at 100%. Residual is rounding
+                slop
+    BACK_UP     producers idle at utilisation demand/supply
     MATCHED     clocked to the average withdrawal. Supply equals demand, so the
                 residual is zero and the draw is constant
     SUNK        refused by name — the AWESOME Sink is absent from the reference
                 layer
+
+**A5.2, 2026-09-22: the states do not differ in what a line costs its source
+bus on average.** Average draw is USAGE in every state — backpressure is a duty
+cycle, not a clock, so a bus at utilisation u draws u × nameplate whether a
+clock set it or the belts idled it. What differs is POWER (convex in a clock,
+linear in a duty cycle) and peak DURATION. The peak is nameplate for any state
+whose supply exceeds its demand, and equals the average under MATCHED.
 
 **Two recovered rules**, neither stated by the documents this reproduces, both
 named options rather than compiled into the arithmetic:
@@ -84,20 +90,42 @@ named options rather than compiled into the arithmetic:
     python -m busmodel --repo . storage_review_T1-2 --multiplier 1.0
     python -m busmodel --repo . crossover_B --multiplier 1.25
 
-`--basis peak` sizes a bus against its BACK_UP consumers' nameplate draw rather
-than their average. The published tables were all computed on the average basis,
-which is the default.
+`--basis` takes `average` or `usage`.
+
+    average   THE BASIS OF RECORD, and the default. A MIXTURE, not an average:
+              a WITHDRAWN consumer draws its nameplate and everything else
+              draws its usage. Every published table was computed on it, which
+              is the only reason it is still here
+    usage     A5.2's basis. Every consumer draws its usage, in every state
+    peak      REFUSED as of 2026-09-22. It was a sizing mode and is not one any
+              more; `solve` raises and names where the peak went. `--basis peak`
+              still reaches that refusal on purpose, because argparse's
+              "invalid choice" explains nothing
+
+**The peak is reported on every solve, under either basis**, as
+`ConsumerShare.peak_per_min`, `BusSolution.peak_demand_per_min` and
+`BusSolution.peak_shortfall_per_min`. Nothing sizes against it — the machine
+count reads `demand_per_min` alone, and `tests/test_refusals.py` asserts that a
+run whose peaks differ wildly moves no machine count, no residual and no clock.
+The shortfall answers A5.2's question: splitters round-robin and do not
+prioritise, so a refill transient is paid by the PRODUCTION consumers sharing
+the bus. Its DURATION is capacity/slack and is not modelled, because no
+container capacity reaches this layer.
 
 ## What it does NOT assert, and why
 
-A3.5's 27-machine table is **not** a regression target. Its withdrawal column
-sits inside the demand sum on Concrete and Wire_copper and outside it on four
-other rows, under one verdict column, so `supply − draw = R` reconciles on nine
-of its eleven rows and fails on two. `worked_case_A4` is the same topology with
-every withdrawal inside its own bus's demand — the uniformity A4.1 buys
-structurally — and it is therefore NOT byte-identical to A3.5 and is not meant to
-be. Recomputing A3.5 under A4.1 is the handoff's next action 4, and this is its
-input.
+A3.5's 27-machine table is **not** a regression target, and did not become one
+on 2026-09-22. Its withdrawal column sits inside the demand sum on Concrete and
+Wire_copper and outside it on four other rows, under one verdict column, so
+`supply − draw = R` reconciles on nine of its eleven rows and fails on two.
+`worked_case_A4` is the same topology with every withdrawal inside its own
+bus's demand — the uniformity A4.1 buys structurally — and it is therefore NOT
+byte-identical to A3.5 and is not meant to be.
+
+**`worked_case_A4` under `--basis usage` IS a target**, as of 2026-09-22:
+23 machines against the average basis's 29, with all six removed machines
+coming off production buses and none off a build line. Amendment 6 publishes
+that table; `test_published_tables.py` section 7 pins it.
 
 ## One contradiction between the two declared cases, carried rather than resolved
 
