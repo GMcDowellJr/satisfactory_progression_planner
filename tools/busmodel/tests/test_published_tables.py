@@ -642,3 +642,95 @@ def test_the_peak_is_reported_on_both_bases_and_sizes_neither(scenario_of_record
         assert bus.demand_per_min == pytest.approx(14.00, abs=TOL)
         assert bus.peak_demand_per_min == pytest.approx(95.00, abs=TOL)
         assert bus.peak_shortfall_per_min == pytest.approx(65.00, abs=TOL)
+
+
+# --------------------------------------------------------------------------
+# 8. the storage review under USAGE, 2026-09-23. Amendment 11
+# --------------------------------------------------------------------------
+#
+# Sections 1-3 above reproduce the review on `RECORD` and are unchanged. These
+# are NEW tables — what the same declarations say on the model's basis — and
+# they are pinned for the reason section 7 is: a recompute nobody can repeat is
+# not a finding.
+
+def _storage_review_declarations(canonical, scenario_of_record):
+    return (
+        ("T1-2 @1x", decls.storage_review_t1_2(canonical), canonical),
+        ("T1-2 @1.25x", decls.storage_review_t1_2(scenario_of_record), scenario_of_record),
+        ("base RIP @1x", decls.storage_review_t1_2_base_rip(canonical), canonical),
+    )
+
+
+def test_the_storage_review_declares_no_demand(canonical, scenario_of_record):
+    """A11.1. External demand is zero (the recovered rule), no line declares a
+    withdrawal, and every line is WITHDRAWN — so on USAGE nothing in the
+    declaration is demanded, and every bus sits at the one-machine floor with
+    its whole output as residual.
+
+    Sections 5 and 7 therefore measured the review's own stated assumption
+    (§9: "every modelled line runs at 100% clock") propagated upstream through
+    the floor machines. Their record totals are 15, 18 and 16; every machine
+    above 9 in each is a floor machine's nameplate draw."""
+    for label, decl, data in _storage_review_declarations(canonical, scenario_of_record):
+        assert decl.external_per_min == {}, label
+        assert all(b.withdrawal_per_min is None for b in decl.buses), label
+        usage = solve(decl, data, sizing_basis=SizingBasis.USAGE)
+        assert usage.total_continuous_machines == pytest.approx(0.0), label
+        assert usage.total_machines == len(decl.buses) == 9, label
+        for bus in usage.buses:
+            assert bus.machines == 1, (label, bus.bus_id)
+            assert bus.residual_per_min == pytest.approx(bus.supply_per_min), (label, bus.bus_id)
+
+
+def test_section_7s_regimes_are_indistinguishable_on_usage(canonical):
+    """A11.2. Stitched against base RIP differs by 15 against 16 machines and
+    a 35% iron-ingot delta on RECORD. On USAGE both are 9 floor machines with
+    no out-of-scope draw at all: RIP has no demand, so its recipe moves
+    nothing. The record's delta is the upstream footprint of ONE RIP machine at
+    full rate under each recipe — a real figure, but a per-machine one."""
+    stitched = solve(decls.storage_review_t1_2(canonical), canonical,
+                     sizing_basis=SizingBasis.USAGE)
+    base = solve(decls.storage_review_t1_2_base_rip(canonical), canonical,
+                 sizing_basis=SizingBasis.USAGE)
+    assert stitched.total_machines == base.total_machines == 9
+    for bus in stitched.buses:
+        assert base[bus.bus_id].machines == bus.machines, bus.bus_id
+        assert base[bus.bus_id].demand_per_min == pytest.approx(bus.demand_per_min), bus.bus_id
+    for solution, decl in ((stitched, decls.storage_review_t1_2(canonical)),
+                           (base, decls.storage_review_t1_2_base_rip(canonical))):
+        assert all(v == pytest.approx(0.0)
+                   for v in out_of_scope_draw(decl, canonical, solution).values())
+
+
+#: A11.3. Section 6.1 with every consumer at the config's OWN declared demand
+#: rather than at 100% of its installed capacity. Negative rows only, as in
+#: section 2 above. Computed in an agent container 2026-09-23.
+SECTION_6_1_AT_DECLARED_DEMAND = {
+    ("canonical", "T1-2"): {},
+    ("canonical", "T3-4"): {decls.I_WIRE: -17.10},
+    ("scenario_of_record", "T1-2"): {decls.I_SCREW: -12.00},
+    ("scenario_of_record", "T3-4"): {decls.I_SCREW: -12.00, decls.I_WIRE: -26.98},
+}
+
+
+@pytest.mark.parametrize("scenario_name,phase", sorted(SECTION_6_1_AT_DECLARED_DEMAND))
+def test_section_6_1_at_declared_demand(request, scenario_name, phase):
+    """Section 6.1 has no sizing basis: its draw is the config's installed
+    capacity at 100%, which is nameplate by construction, and it reproduces
+    unchanged. Its USAGE analogue draws each consumer at the config's own
+    declared demand — a consistency check of the demand column against
+    itself. At 1x T1-2 all three negatives vanish (Screws -50 -> 0: Rotor is
+    declared at 2/min, half its machine). What survives is T3-4 Wire at 1x, and
+    at 1.25x Screws in both phases, where the multiplier raises Rotor's screw
+    draw above the 50 the config declares."""
+    data = request.getfixturevalue(scenario_name)
+    if phase == "T1-2":
+        decl, declared = decls.storage_review_t1_2(data), decls.STORAGE_REVIEW_T1_2_DECLARED_DEMAND
+    else:
+        decl, declared = decls.storage_review_t3_4(data), decls.STORAGE_REVIEW_T3_4_DECLARED_DEMAND
+    rows = balance_check(decl, data, declared, declared)
+    actual = {r.bus_id: r.delta_per_min for r in rows if r.delta_per_min < -1e-9}
+    expected = SECTION_6_1_AT_DECLARED_DEMAND[(scenario_name, phase)]
+    assert set(actual) == set(expected), (scenario_name, phase)
+    for bus_id, delta in expected.items():
+        assert actual[bus_id] == pytest.approx(delta, abs=0.05), (scenario_name, phase, bus_id)
