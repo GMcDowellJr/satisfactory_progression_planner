@@ -1873,3 +1873,69 @@ multiplication outside `carry_estimate`.
     not built     wall clock per stage (P7); a stage sequence of any kind —
                   carry_estimate takes the prior rates and the gap as handed
                   in and does not know what a stage is
+
+## Amendment 15 — 2026-09-24. Several goals on one T (D4 P6), and the fill over T (D4 P7)
+
+Appended forward-only. A13 and A14 stand. The D4 locks, including (e), the
+phase-span reframe, are recorded in goal_run_driver.md amendment 4; this
+amendment builds the two parts D4 placed on the scheduler side.
+
+    code      progression/schedule.py (PhaseRates, phase_rates),
+              tools/storage_view.py, tests/test_progression_schedule.py (+7),
+              tests/test_goal_run.py (+1), tests/test_storage_view.py (8)
+    measured  agent container, against e8b02d3 plus goal run A5 plus this
+              change. Not Greg's machine
+
+### A15.1 One horizon for a phase's goals — anchored on a goal the caller names
+
+Decided by Greg 2026-09-24: T is anchored on a NAMED goal. With several goals
+on one T, a max over goals would pick a binding goal, which the comparator
+guard forbids (goal run O3). So the caller names the anchor and its rate;
+`horizon_from_anchor` gives T as before; every goal's rate is its total / T.
+
+    phase 2, SP anchored at 1/min    T = 1000 min; SP 1.0, VF 1.0, AW 0.1 /min
+    AW anchored at 0.2/min           T = 500;      every rate doubles
+
+"Smart Plating trickles in the background" is expressed by which goal the
+caller names and at what rate, not chosen here.
+
+Refused: an anchor that names no goal; a goal id twice; an item twice (its
+targets would add); a non-positive total. `phase_rates` builds no
+`OutputTarget` — the caller does, outside goal_run (G1). Its arithmetic is
+division only, so A13's inspection test (add and divide; one multiplication,
+in `carry_estimate`) holds unamended. The import test admits `dataclasses`,
+a standard-library record type, for `PhaseRates`.
+
+Not built: a phase-2 run. VF and AW need tier-3/4 lines (steel, modular
+frames, stators) and a partition no one has declared yet.
+
+### A15.2 The fill over T, against A7.3 capacity — a view, reported
+
+`tools/storage_view.py`, beside `chain_view.py` and under the same rules
+(it calls no layer, ranks nothing, rows carry the report's own buses, no
+bool field). Per bus, in report order:
+
+    fill        storage_per_min x T. On a paced line this equals the item's
+                owed bill by construction (asserted)
+    capacity    A7.3: slots x cached_stack_size (items.csv) x containers,
+                with slots and count DECLARED per bus by the caller. The
+                24 / 48 slot figures are exposed as constants, not defaults
+    reported    minutes to fill (inf when nothing is stored: A7.3's
+                "never"), fill as a fraction of capacity. Over 1.0 is a
+                number, not a refusal
+
+A13.5's case, one Storage Container per bus:
+
+    T = 50      screws 1000 of 12,000 (600 min to fill); plate 1125 of 4,800
+    T = 1000    plate 22,500 units: 4.69 containers' worth
+
+That second line is the standing observation ("storage fills quickly") as a
+figure: the phase-span T multiplies every paced rate. Nothing here says what
+to build about it.
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not built     a phase-2 partition and run; wall clock per stage
+    not modelled  saturation feeding back into anything: the view is read by
+                  nothing

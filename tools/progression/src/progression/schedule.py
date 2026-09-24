@@ -30,6 +30,7 @@ different number passed to the same place, so no second path is needed.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from production_adapter.contracts import ItemId
 
@@ -137,4 +138,68 @@ def carry_estimate(prior_rates: Mapping[ItemId, float], gap_min: float) -> Carry
         gap_min=gap_min,
         prior_rates=rates,
         estimated_units={item_id: rate * gap_min for item_id, rate in rates.items()},
+    )
+
+
+# --------------------------------------------------------------------------
+# P6 (D4), 2026-09-24: several goals on one horizon over a phase span
+# --------------------------------------------------------------------------
+#
+# Crossover record amendment 15. A stage is the Project Assembly phase span
+# (D4 (e)): phase 2's Smart Plating, Versatile Framework and Automated Wiring
+# share one T. Greg's call: T is ANCHORED on a goal the caller NAMES, and
+# every goal's target rate is its total over that T. Not a max over goals —
+# that would pick a binding goal, which the comparator guard forbids (O3).
+# Which goal anchors is the caller's declaration; nothing here compares them.
+
+
+@dataclass(frozen=True)
+class PhaseRates:
+    """One horizon and a target rate per goal, in caller order.
+
+    `rates` is (goal_id, item_id, rate/min) — the shape a caller turns into
+    `OutputTarget`s. Building them is the caller's (G1): this module builds
+    no request.
+    """
+
+    horizon_min: float
+    anchor_goal_id: str
+    rates: tuple[tuple[str, ItemId, float], ...]
+
+
+def phase_rates(
+    goals: tuple[tuple[str, ItemId, float], ...],
+    *,
+    anchor_goal_id: str,
+    anchor_rate_per_min: float,
+) -> PhaseRates:
+    """T = the named goal's total / its rate; each goal's rate = total / T.
+
+    The anchor's own rate comes back as total / T, which is its declared rate
+    up to float division. REFUSED: an anchor that names no goal, a goal id
+    twice, an item twice (its targets would add), a non-positive total.
+    """
+    ids = [g for g, _, _ in goals]
+    items = [i for _, i, _ in goals]
+    if len(ids) != len(set(ids)):
+        raise ScheduleError("a goal id appears twice; state each goal once")
+    if len(items) != len(set(items)):
+        raise ScheduleError(
+            "two goals name one item, so its target rates would add. State one "
+            "goal per item for a phase."
+        )
+    for goal_id, _item_id, total in goals:
+        if total <= 0:
+            raise ScheduleError(f"{goal_id}: a goal total must be positive, got {total}")
+    anchor = [total for goal_id, _, total in goals if goal_id == anchor_goal_id]
+    if not anchor:
+        raise ScheduleError(
+            f"the anchor {anchor_goal_id!r} names no goal. The horizon is set by a "
+            "goal the caller names; it is not chosen here."
+        )
+    horizon = horizon_from_anchor(anchor[0], anchor_rate_per_min)
+    return PhaseRates(
+        horizon_min=horizon,
+        anchor_goal_id=anchor_goal_id,
+        rates=tuple((goal_id, item_id, total / horizon) for goal_id, item_id, total in goals),
     )

@@ -685,3 +685,67 @@ def test_standing_keeps_the_floor_argument(record_coal_standing):
     floor = {b.bus_id: b.machines for b in record_coal_standing.floor.realization.buses}
     for b in record_coal_standing.paced.realization.buses:
         assert b.machines >= floor[b.bus_id], b.bus_id
+
+
+# --------------------------------------------------------------------------
+# Amendment 5 — the power ledger over the case of record. Report only
+# --------------------------------------------------------------------------
+
+from progression import power  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def power_tables():
+    return power.load_power_tables(REPO)
+
+
+def test_record_ledger_plans_the_whole_coal_step(record, power_tables):
+    """Nothing standing: no base, the Mk1 step is 300 MW PLANNED. Demand is the
+    paced lines plus the step's extractors at nameplate (2x5 + 2x20)."""
+    led = power.ledger(
+        power_tables, production_mw=record.paced.realization.total_power_mw,
+        bootstrap=MK1_COAL_STEP, standing_net=record.paced.stock.standing_net,
+        generators=(),
+    )
+    assert (led.base_mw, led.planned_mw) == (0.0, 300.0)
+    assert led.known_demand_mw == pytest.approx(157.8094, abs=5e-5)
+    assert led.base_and_planned_less_demand_mw == pytest.approx(142.1906, abs=5e-5)
+    assert led.ore_extraction_mw is None
+
+
+def test_ledger_with_the_coal_step_standing_and_burners_in_reserve(
+    data, project_assembly, power_tables,
+):
+    """Greg's early-game picture: burners standing, fed, held as reserve; the
+    coal step standing as base. Burners are declared standing too, so they
+    ride as surplus in the netting and change no bill."""
+    standing = stock.StandingBuildings(MK1_COAL_STEP.buildings + (
+        ("Build_GeneratorBiomass_Automated_C", 4),))
+    r = goal_run.paced_run(**_record_kwargs(data, project_assembly, standing=standing))
+    assert r.paced.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 14), (SMELTER, 5))
+    led = power.ledger(
+        power_tables, production_mw=r.paced.realization.total_power_mw,
+        bootstrap=MK1_COAL_STEP, standing_net=r.paced.stock.standing_net,
+        generators=(
+            power.GeneratorReading(COAL_GEN, 4, power.Role.BASE, True, fuel="Desc_Coal_C"),
+            power.GeneratorReading("Build_GeneratorBiomass_Automated_C", 4,
+                                   power.Role.RESERVE, True),
+        ),
+    )
+    assert (led.base_mw, led.reserve_mw, led.planned_mw) == (300.0, 120.0, 0.0)
+    assert led.known_demand_mw == pytest.approx(125.6885, abs=5e-5)
+    assert led.base_less_demand_mw == pytest.approx(174.3115, abs=5e-5)
+    (coal, _) = led.fuel
+    assert (coal.fuel_per_min, coal.supplemental_per_min) == (60.0, 180.0)
+
+
+def test_phase_two_goals_feed_phase_rates_unaltered(data, project_assembly):
+    """Crossover A15 (P6): the table's phase-2 goals, anchored on Smart Plating
+    at 1/min, share T = 1000 min. Building OutputTargets from the rates is the
+    caller's (G1); goal_run builds none."""
+    goals = goal_run.goals_for_phases(data, project_assembly, (2,))
+    rates = schedule.phase_rates(
+        goals, anchor_goal_id=goals[0][0], anchor_rate_per_min=1.0)
+    assert rates.horizon_min == 1000.0
+    assert [(i, r) for _, i, r in rates.rates] == pytest.approx(
+        [(SP, 1.0), ("Desc_SpaceElevatorPart_2_C", 1.0), ("Desc_SpaceElevatorPart_3_C", 0.1)])

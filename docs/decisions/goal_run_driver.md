@@ -316,3 +316,66 @@ so its line stores nothing.
     standing) are shown, since (c) gives no default and they cannot be read
     several goals on one T over a phase span (P6), scheduler side, outside
     goal_run (G1); the A7.3 storage-fill report (P7)
+
+## Amendment 5 — 2026-09-24. The power ledger (D4 P5)
+
+Appended forward-only. Amendment 4 stands; this builds what it left as "not
+built" for the ledger.
+
+    code      progression/power.py, tests/test_progression_power.py (17),
+              tests/test_goal_run.py (+2), tests/test_progression_import_
+              boundary.py (power.py added to the scanned set)
+    measured  agent container, against e8b02d3 plus this change. Not Greg's
+              machine
+
+Decided by Greg 2026-09-24, on the question amendment 4 left open:
+
+    L1  bootstrap generators still OWED are PLANNED supply: their own line,
+        at nameplate, `fed` left unset (None) because an unbuilt generator
+        cannot be read. Never summed into base or reserve
+
+Made here, not asked:
+
+    L2  the ledger takes the production draw as a NUMBER (the realization's
+        `total_power_mw`), so `progression` gains no realization import and
+        `stock` stays the one module touching `realization.contracts`
+    L3  generator readings are a second declaration beside
+        `StandingBuildings`, and must agree with it: per generator class, the
+        readings' counts sum to the standing count, or the ledger refuses. A
+        coal generator read but not declared standing would supply without
+        netting the bootstrap, then be planned again. So burners are declared
+        standing too; they ride as surplus in the netting and change no bill
+    L4  demand counts the bootstrap TARGET's extractors (standing or owed) at
+        nameplate. With S2 this overstates demand twice over while the step
+        is unbuilt; both errors are in the conservative direction
+    L5  three balances, all BEFORE ore extraction (unknown): base, base +
+        reserve, base + planned. The third is a separate figure, not base
+        widened: it reads "once the bootstrap stands, if every planned
+        generator is fed"
+    L6  fuel and supplemental draw per fed reading when its fuel is declared;
+        unknown (None) when not, rather than guessing among the class's fuels.
+        Variable-output generators (geothermal) are refused, not reported
+        with an invented nameplate
+
+Guardrails, from the source, each confirmed to fail on a mutation: no field
+of the report is a bool (no verdict); no min, max, sort or round; no layer
+called (bill_for, net_buildings, net_of, cost_of, solve, realize, run,
+paced_run). Mutations checked: reserve summed into base; zero-count planned
+lines; standing generators not cross-checked against readings.
+
+Figures, the case of record (T = 50, paced pass):
+
+    nothing standing          base 0, planned 300 (4 coal), demand 157.81
+                              (107.81 lines + 10 miners + 40 water, nameplate)
+                              base + planned - demand = 142.19
+    coal step standing,       base 300, reserve 120, planned 0,
+    4 burners fed as reserve  demand 125.69 (75.69 + 50); base - demand
+                              = 174.31; coal 60/min, water 180 m3/min
+
+goal_run itself is unchanged: the ledger is built by the caller from a
+report, so G1-G3 and the once-per-layer count are untouched.
+
+### Not built
+
+    several goals on one T over a phase span (P6); the A7.3 storage-fill
+    report (P7)

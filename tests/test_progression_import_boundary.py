@@ -69,6 +69,7 @@ def test_the_scan_sees_every_module():
     assert {p.name for p in _module_files()} == {
         "__init__.py", "pool.py", "unlocks.py", "stock.py",
         "schedule.py",   # A13 (D2), 2026-09-23
+        "power.py",      # goal run A5 (D4 P5), 2026-09-24
     }
 
 

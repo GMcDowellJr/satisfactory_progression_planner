@@ -92,7 +92,10 @@ def test_it_imports_no_layer():
             imported.update(a.name for a in n.names)
         elif isinstance(n, ast.ImportFrom):
             imported.add(("." * n.level) + (n.module or ""))
-    assert imported <= {"__future__", "collections.abc", "production_adapter.contracts"}
+    # `dataclasses` admitted 2026-09-24 for `PhaseRates` (crossover A15): a
+    # standard-library record type, not a layer
+    assert imported <= {"__future__", "collections.abc", "dataclasses",
+                        "production_adapter.contracts"}
 
 
 # --------------------------------------------------------------------------
@@ -135,3 +138,44 @@ def test_a_carry_estimate_has_nothing_shaped_like_a_declaration():
     contents are read. `stock.net_of` refuses the type outright as well."""
     est = schedule.carry_estimate({"x": 1.0}, 1.0)
     assert not hasattr(est, "units")
+
+
+# --------------------------------------------------------------------------
+# P6 — several goals on one T, anchored on a goal the caller names (A15)
+# --------------------------------------------------------------------------
+
+SP, VF, AW = "Desc_SpaceElevatorPart_1_C", "Desc_SpaceElevatorPart_2_C", "Desc_SpaceElevatorPart_3_C"
+PHASE_2 = (("sp", SP, 1000.0), ("vf", VF, 1000.0), ("aw", AW, 100.0))
+
+
+def test_phase_2_anchored_on_smart_plating_at_one_per_minute():
+    """T = 1000 min; VF paces to 1/min, AW to 0.1/min. Caller order kept."""
+    got = schedule.phase_rates(PHASE_2, anchor_goal_id="sp", anchor_rate_per_min=1.0)
+    assert got.horizon_min == 1000.0
+    assert got.anchor_goal_id == "sp"
+    assert got.rates == (("sp", SP, 1.0), ("vf", VF, 1.0), ("aw", AW, 0.1))
+
+
+def test_the_anchor_is_the_callers_and_moves_t():
+    """Anchoring AW at 0.2/min gives T = 500, and every rate doubles."""
+    got = schedule.phase_rates(PHASE_2, anchor_goal_id="aw", anchor_rate_per_min=0.2)
+    assert got.horizon_min == pytest.approx(500.0)
+    assert [r for _, _, r in got.rates] == pytest.approx([2.0, 2.0, 0.2])
+
+
+def test_every_goal_completes_at_t():
+    got = schedule.phase_rates(PHASE_2, anchor_goal_id="vf", anchor_rate_per_min=2.5)
+    totals = {g: t for g, _, t in PHASE_2}
+    for goal_id, _, rate in got.rates:
+        assert totals[goal_id] / rate == pytest.approx(got.horizon_min)
+
+
+@pytest.mark.parametrize("goals, anchor, match", [
+    (PHASE_2, "nope", "names no goal"),
+    (PHASE_2 + (("sp", "x", 1.0),), "sp", "goal id appears twice"),
+    (PHASE_2 + (("sp2", SP, 5.0),), "sp", "one item"),
+    ((("sp", SP, 0.0),), "sp", "must be positive"),
+])
+def test_a_phase_that_cannot_be_paced_is_refused(goals, anchor, match):
+    with pytest.raises(schedule.ScheduleError, match=match):
+        schedule.phase_rates(goals, anchor_goal_id=anchor, anchor_rate_per_min=1.0)
