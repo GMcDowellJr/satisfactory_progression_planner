@@ -1939,3 +1939,219 @@ to build about it.
     not built     a phase-2 partition and run; wall clock per stage
     not modelled  saturation feeding back into anything: the view is read by
                   nothing
+
+## Amendment 16 — 2026-09-24. The phase span split at unlocks (D5); goal progress is MODELLED
+
+Appended forward-only. Design note: project doc
+`d5-phase-span-substages-design-2026-09-24.md` (a draft, left as written).
+
+    code      progression/span.py, tests/test_progression_span.py (14),
+              tests/test_progression_import_boundary.py (span.py scanned)
+    measured  agent container, against 8d63f87 plus this change. Not Greg's
+              machine
+
+### A16.1 Why — A15.1 paced every goal over the whole span
+
+Schematic_3-4_C unlocks steel and Versatile Framework; Schematic_4-1_C
+unlocks Stator and Automated Wiring. A tier-3 solve with an AW target has no
+recipe. A15.1 paced AW at 100 / 1000 = 0.1/min, which assumes its line runs
+from minute 0.
+
+### A16.2 Decided by Greg, 2026-09-24
+
+    S1  SPLIT AT UNLOCKS: the span becomes sub-stages at the milestone
+        boundaries; each sub-stage is its own paced run (the caller's, G1)
+    S2  GOAL PROGRESS IS MODELLED AND NETS: at a boundary, a goal's
+        remaining = total - rate x elapsed. THIS SUPERSEDES A14 FOR GOAL
+        PROGRESS. A14 still governs the item bill (a derived carry never nets
+        a bill); goal progress is a separate quantity and now nets
+    S3  BOUNDARIES ARE ANCHORED ON A GOAL reaching a quantity ("4-1 when SP
+        hits 600"), not declared minutes. Only coherent under S2
+
+### A16.3 Consequences, stated
+
+    basis     everything `split_span` returns is an ESTIMATE, not a floor. If
+              play falls behind the model, remaining is understated and later
+              rates are too low. `SpanPlan.basis` carries MODELLED and has no
+              other value
+    rates     with modelled progress and one end T, a goal's rate after it
+              opens is total / (T - open) in every later sub-stage (remaining
+              over time-left is constant). Sub-stages change WHICH goals and
+              lines exist, not a goal's rate
+    order     boundaries resolve in the caller's order; each anchors only on a
+              goal already open. The anchor goal is open from 0 (T is its
+              total at its rate over the span)
+    guard     no min, max, sort or round; no request built. Kept out of
+              schedule.py so A13's add-and-divide inspection test stands
+              unamended
+
+Worked, pinned in the tests: SP 1000 / VF 1000 / AW 100, SP at 1/min, 3-4 at
+SP 200 and 4-1 at SP 600 -> sub-stages 0-200 (SP), 200-600 (SP, VF 1.25/min),
+600-1000 (SP, VF, AW 0.25/min). A15.1 gave VF 1.0 and AW 0.1.
+
+### A16.4 Correction to A15.2 — recorded forward
+
+A15.2 read "T = 1000, plate 22,500 units: 4.69 containers' worth" as the
+"storage fills quickly" observation. It multiplied T = 50 RATES by T = 1000.
+A line PACED over its own T stores its bill by construction; in the phase-2
+scratch run (one T = 1000, D5 note §3) every storing line sits at 0.09-0.41
+of one Storage Container. Overfill arises when rates are NOT re-paced to a
+longer T (lines left at an earlier stage's rates, or flat out). The A15.2
+test pins the arithmetic it states and remains true of it.
+
+### A16.5 Scratch figures (NOT pinned)
+
+Draft partition (one bus per item, all storing, build-material lines as the
+case of record), placeholder bootstrap (Greg's steel step), unlocks per
+sub-stage tier (2 / 3 / 4 — the first is a placeholder, the span starts in
+tier 3). Paced machines: 15 -> 22 -> 26; MW 33.82 -> 67.78 -> 96.46.
+
+Each sub-stage bills its WHOLE floor build. Machines standing from the
+previous sub-stage are not netted, because D4 makes standing a DECLARED
+reading and nothing here declares one. Open for Greg: under S2's logic,
+does the previous sub-stage's build count as standing at the next boundary
+(modelled standing), or stay declared?
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not built     a sub-stage driver (the caller loops over stages; the loop
+                  sits outside goal_run by G1/G2); the phase-2 partition as
+                  Greg's declaration
+
+## Amendment 17 — 2026-09-24. The previous sub-stage's build carried as standing
+
+Appended forward-only. Answers A16.5's open question. Greg's calls, chat
+2026-09-24.
+
+    code      progression/stock.py (ModelledStanding, standing_after; bill_for
+              and net_buildings take either standing type);
+              progression/power.py (SupplyLine.basis; modelled generators);
+              realization/contracts.py (third WithdrawalBasis);
+              tools/goal_run.py (StockDeclaration.standing either type;
+              paced_run standing_estimate)
+    tests     tests/test_progression_standing_carry.py (13);
+              tests/test_goal_run.py (+6); test_contracts_construction.py
+              tripwire widened deliberately (two bases -> three)
+    measured  agent container, against 8d63f87 plus A16 plus this change.
+              917 passed, 1 skipped. Not Greg's machine
+
+### A17.1 Decided by Greg, 2026-09-24
+
+    T1  THE PREVIOUS SUB-STAGE'S BUILD COUNTS AS STANDING at the next
+        boundary. This SUPERSEDES D4's "only a declared reading nets"
+        (goal_run_driver.md amendment 4, P1) for the sub-stage carry only.
+        D4 is unchanged for the standing set at a span's start
+    T2  WHAT CARRIES is the PACED build plus that sub-stage's bootstrap (not
+        the floor build): what the plan says stands when the sub-stage ends
+    T3  A BILL NETTED AGAINST THE CARRY IS NOT A FLOOR, and says so: a third
+        WithdrawalBasis, DERIVED_NET_OF_MODELLED_STANDING, shape "stock".
+        A bill netted against a declared reading keeps
+        DERIVED_WHOLE_GAME_FLOOR. Labelled by provenance, not by number: the
+        same counts declared or carried net to the same quantities
+    T4  GENERATORS in the carry enter the next ledger as BASE, fed, fuel
+        undeclared, each SupplyLine labelled MODELLED. No GeneratorReading is
+        taken beside a carry (refused)
+    T5  A DECLARED READING AT A BOUNDARY REPLACES THE CARRY. One `standing`
+        slot holds one or the other; the carry may ride beside a reading as
+        paced_run's `standing_estimate`, carried and never read
+
+### A17.2 Consequences, stated
+
+    arithmetic  standing_after = bootstrap + machines + net.surplus, per class.
+                By D4 conservation that is standing + owed. Addition only;
+                asserted from the source
+    per class   netting stays per producer class (D4). In game a re-recipe is
+                free, so a constructor on rod in one sub-stage covers one on
+                screws in the next; that is a property of the game, not an
+                assignment
+    estimate    if play falls behind the previous sub-stage, fewer machines
+                stand than carried and the next bill is understated. With A16
+                S2, both goal progress and standing at a boundary are now
+                modelled: a sub-stage plan after the first is an estimate
+                end to end unless a reading replaces the carry
+    coverage    `covers=True` under the third basis means "covers the
+                estimate". Coverage.basis carries which
+    SupplyLine  gains `basis` (READ default; PLANNED on A5's planned lines;
+                MODELLED on carried generators). A5's figures are unchanged
+
+### A17.3 Measured (pinned in test_goal_run.py)
+
+The case of record run twice, the second with the first's paced build plus
+the Mk1 coal step carried (3 Asm / 18 Con / 6 Sml + 2 miners, 4 coal, 2
+water). Floor bill: the unlock-cost term alone. Paced: 3 / 13 / 5, 65.26 MW,
+nothing owed; surplus 5 Con, 1 Sml. Every bill labelled
+DERIVED_NET_OF_MODELLED_STANDING.
+
+### A17.4 Defect noted at site
+
+`test_net_buildings_refuses_anything_but_a_declared_reading` renamed
+`..._a_standing_set`: after T1 the old name was false. Same assertion.
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not built     the sub-stage driver (still the caller's loop, G1)
+    not declared  the phase-2 per-sub-stage table (boundaries, recipes open,
+                  unlock cost timing, bootstrap, buses): asked of Greg
+                  2026-09-24, open
+
+## Amendment 18 — 2026-09-24. One bucket per phase; late goals in a lag table
+
+Appended forward-only. Greg, chat 2026-09-24: the sub-stages "move the
+problem into more and smaller buckets". The unknown is the player's pace,
+and splitting the span only relocates it into declared boundary minutes.
+
+    code      progression/lag.py; tests/test_progression_lag.py (11);
+              tests/test_progression_import_boundary.py (lag.py scanned)
+    measured  agent container, against 8d63f87 plus this change. 895
+              passed, 1 skipped. Not Greg's machine
+
+### A18.1 Decided by Greg, 2026-09-24
+
+    B1  ONE BUCKET PER PROJECT ASSEMBLY PHASE. Goal rates at the ratio of
+        the totals, anchored as A15.1 (`schedule.phase_rates`): phase 2 is
+        SP 1.0, VF 1.0, AW 0.1 per SP/min
+    B2  T IS A NORMALISATION, NOT A PLAY-TIME ESTIMATE. The output reads
+        "per 1 anchor/min"; a player scales it to their own pace
+    B3  A GOAL THAT OPENS LATE IS REPORTED, NOT PACED: a lag table, for
+        opening points the caller lists as FRACTIONS OF T, giving both ways
+        out — finish late by `open` at the ratio rate, or catch up at
+        total / (T - open). No default points and no recommended row
+    B4  HOLD THE COMMIT: A16's and A17's code does not land. Their text
+        stays in this record as written
+
+### A18.2 What this supersedes
+
+    A16 S1 (split at unlocks), S2 (modelled goal progress nets) and S3
+        (boundaries anchored on a goal): superseded. `split_span` is not
+        in the repository. A16's finding stands: a goal whose recipe is not
+        open cannot be a solve target, which is now why it is a lag row
+        rather than a sub-stage
+    A16.4 (correction to A15.2): stands; it is about arithmetic, not stages
+    A17 T1-T5 (carried standing, the third WithdrawalBasis, modelled
+        generators): superseded before landing. With one bucket per phase
+        there is no boundary to carry across. D4 governs standing at a
+        phase's start, unchanged. The code is kept outside git as
+        `Claude outputs/a16_a17_code_superseded.patch` (against 8d63f87),
+        not applied
+    Phase-2 table from 2026-09-24 (boundaries, per-sub-stage recipes and
+        bootstrap, bus filtering): withdrawn with the sub-stages. Two
+        answers carry over to the one bucket: every schematic bought inside
+        the phase is billed in it (unlock cost timing collapses to this);
+        an Encased Industrial Beam line is in the phase-2 partition (4-3
+        and 4-4 cost 50 each; not a Project Assembly part in phases 1-3)
+
+### A18.3 The arithmetic, stated
+
+    catch-up multiple   1 / (1 - f). 1.14 at f = 1/8, 1.33 at 1/4, 2 at
+                        1/2, 10 at 0.9: it grows without bound as f -> 1
+    finish late         (1 + f) T at the ratio rate
+    pace-free           both depend on f alone, not on T; asserted by
+                        running one fraction at two anchor rates
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not built     a phase-2 run on one bucket with the EIB line; the lag
+                  table in any report (goal_run does not call it)

@@ -34,6 +34,10 @@ temp/
 # committed on 2026-09-21.
 COMMIT_MSG*.txt
 
+# Agent-session artefacts on Greg's machine (patches kept outside git,
+# drafts). Ignored so `git add -A` cannot sweep them in.
+Claude outputs/
+
 # Do not accidentally add old release archives
 satisfactory_planning_data_v*.zip
 satisfactory_route_tool_v*.zip
