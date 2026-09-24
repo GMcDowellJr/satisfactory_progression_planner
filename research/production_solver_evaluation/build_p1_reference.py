@@ -76,7 +76,7 @@ for suffix in EXTRACT:
 
 def write(name, rows, fields):
     with open(os.path.join(OUT, name), "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields); w.writeheader(); w.writerows(rows)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n"); w.writeheader(); w.writerows(rows)
     print(f"wrote {name}: {len(rows)} rows")
 
 write("production_buildings.csv", sorted(producers.values(), key=lambda r: r["producer_class"]),

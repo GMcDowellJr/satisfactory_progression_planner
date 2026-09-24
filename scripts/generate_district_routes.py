@@ -254,9 +254,9 @@ def _solve_pair_worker(job: dict) -> dict:
             "elapsed_s": time.perf_counter() - started,
         }
     except LayeredRouteError as exc:
-        exc.diagnostic.to_csv(pair_dir / "layered_failure_frontier.csv", index=False)
+        exc.diagnostic.to_csv(pair_dir / "layered_failure_frontier.csv", index=False, lineterminator="\n")
         (pair_dir / "layered_failure_summary.json").write_text(
-            json.dumps(exc.summary, indent=2), encoding="utf-8"
+            json.dumps(exc.summary, indent=2), encoding="utf-8", newline="\n"
         )
         return {
             "a": a,
@@ -268,7 +268,7 @@ def _solve_pair_worker(job: dict) -> dict:
             "elapsed_s": time.perf_counter() - started,
         }
     except Exception as exc:
-        (pair_dir / "error.txt").write_text(repr(exc), encoding="utf-8")
+        (pair_dir / "error.txt").write_text(repr(exc), encoding="utf-8", newline="\n")
         return {
             "a": a,
             "b": b,
@@ -502,7 +502,7 @@ def main():
                 directed_rows.append(row)
 
     summary_df = pd.DataFrame(directed_rows).sort_values(["origin", "destination"])
-    summary_df.to_csv(out_root / "district_route_summary.csv", index=False)
+    summary_df.to_csv(out_root / "district_route_summary.csv", index=False, lineterminator="\n")
 
     matrix = pd.DataFrame(index=letters, columns=letters, dtype=float)
     for k in letters:
@@ -513,7 +513,7 @@ def main():
             matrix.loc[a, b] = km
             matrix.loc[b, a] = km
     matrix.index.name = "origin"
-    matrix.to_csv(out_root / "regional_route_length_matrix_km.csv")
+    matrix.to_csv(out_root / "regional_route_length_matrix_km.csv", lineterminator="\n")
 
     if scim_path.exists() and registration_path.exists():
         scim_image, scim_extent = registered_scim(
@@ -564,7 +564,7 @@ def main():
         ),
     }
     (out_root / "run_manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
+        json.dumps(manifest, indent=2), encoding="utf-8", newline="\n"
     )
 
     print()

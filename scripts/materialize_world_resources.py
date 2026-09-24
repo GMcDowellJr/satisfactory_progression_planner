@@ -60,7 +60,7 @@ def main() -> None:
     sockets = canonical / "world_resource_sockets.csv"
     with sockets.open("w", newline="", encoding="utf-8") as f:
         fields = ["socket_id","source_object_id","source_class","source_kind","east_m","north_m","elevation_m","core_socket_id","source_game_build","source_sha256"]
-        w = csv.DictWriter(f, fieldnames=fields); w.writeheader()
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n"); w.writeheader()
         for n in nodes:
             core = n.get("core", "")
             if core and core not in ids:
@@ -81,7 +81,7 @@ def main() -> None:
     assignments = configuration / "resource_assignments.csv"
     with assignments.open("w", newline="", encoding="utf-8") as f:
         fields = ["world_config_id","socket_id","resource_id","resource_descriptor","purity","assignment_source","source_game_build","source_sha256"]
-        w = csv.DictWriter(f, fieldnames=fields); w.writeheader()
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n"); w.writeheader()
         for n in nodes:
             desc = n.get("resource")
             rid = "geothermal_geyser" if not desc else RESOURCE_MAP[desc]

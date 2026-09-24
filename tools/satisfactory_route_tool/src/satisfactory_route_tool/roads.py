@@ -96,7 +96,7 @@ def extract_road_prior(image_path: str, field: WorkingField, out_dir: str, crop=
         "road_cells":int(resized.sum()),
         "road_band_cells":int(band.sum()),
     }
-    (out/"scim_road_prior_meta.json").write_text(json.dumps(meta,indent=2),encoding="utf-8")
+    (out/"scim_road_prior_meta.json").write_text(json.dumps(meta,indent=2),encoding="utf-8", newline="\n")
 
     plt.figure(figsize=(9,9))
     plt.imshow(map_img)

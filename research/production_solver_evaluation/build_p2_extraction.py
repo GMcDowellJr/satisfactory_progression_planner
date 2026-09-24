@@ -89,7 +89,7 @@ for ec, c in sorted(extractors.items()):
 def write(name, rows, fields, key):
     rows = sorted(rows, key=key)
     with open(os.path.join(OUT, name), "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields); w.writeheader(); w.writerows(rows)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n"); w.writeheader(); w.writerows(rows)
     print(f"wrote {name}: {len(rows)} rows")
 
 write("extraction_buildings.csv", buildings,

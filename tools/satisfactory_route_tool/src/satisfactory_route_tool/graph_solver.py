@@ -972,6 +972,6 @@ def solve_surface_graph(
 def write_result(result:SolveResult,out_dir):
     import json
     out=Path(out_dir); out.mkdir(parents=True,exist_ok=True)
-    result.route.to_csv(out/'route_points.csv',index=False)
-    result.validation.to_csv(out/'route_validation.csv',index=False)
-    (out/'route_summary.json').write_text(json.dumps(result.summary,indent=2),encoding='utf-8')
+    result.route.to_csv(out/'route_points.csv',index=False, lineterminator="\n")
+    result.validation.to_csv(out/'route_validation.csv',index=False, lineterminator="\n")
+    (out/'route_summary.json').write_text(json.dumps(result.summary,indent=2),encoding='utf-8', newline="\n")

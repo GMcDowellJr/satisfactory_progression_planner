@@ -131,7 +131,7 @@ def restamp(stamp: dict, path: pathlib.Path, sha: str, size: int) -> None:
     new["captured_on"] = datetime.date.today().isoformat()
     new["repo_copy_path"] = ""
     with open(STAMP, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(new))
+        w = csv.DictWriter(f, fieldnames=list(new), lineterminator="\n")
         w.writeheader()
         w.writerow(new)
     script, manual = derived_tables()

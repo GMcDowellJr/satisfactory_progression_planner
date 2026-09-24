@@ -29,20 +29,20 @@ def main(argv=None):
     out=Path(a.out).resolve(); out.mkdir(parents=True,exist_ok=True)
     if a.alternatives <= 1:
         result=shortest_corridor(nodes,edges,tuple(a.origin),tuple(a.destination),field.east0_m,field.north0_m,field.step_m)
-        result.points.to_csv(out/'corridor_route_points.csv',index=False)
-        result.edges.to_csv(out/'corridor_route_edges.csv',index=False)
-        (out/'corridor_route_summary.json').write_text(json.dumps(result.summary,indent=2),encoding='utf-8')
+        result.points.to_csv(out/'corridor_route_points.csv',index=False, lineterminator="\n")
+        result.edges.to_csv(out/'corridor_route_edges.csv',index=False, lineterminator="\n")
+        (out/'corridor_route_summary.json').write_text(json.dumps(result.summary,indent=2),encoding='utf-8', newline="\n")
         print(json.dumps(result.summary,indent=2)); return 0
     results=corridor_alternatives(nodes,edges,tuple(a.origin),tuple(a.destination),field.east0_m,field.north0_m,field.step_m,
                                   count=a.alternatives,separation_m=a.separation_m,avoidance_penalty=a.avoidance_penalty)
     summaries=[]
     for i,result in enumerate(results,1):
         sub=out/f'alt_{i}'; sub.mkdir(parents=True,exist_ok=True)
-        result.points.to_csv(sub/'corridor_route_points.csv',index=False)
-        result.edges.to_csv(sub/'corridor_route_edges.csv',index=False)
-        (sub/'corridor_route_summary.json').write_text(json.dumps(result.summary,indent=2),encoding='utf-8')
+        result.points.to_csv(sub/'corridor_route_points.csv',index=False, lineterminator="\n")
+        result.edges.to_csv(sub/'corridor_route_edges.csv',index=False, lineterminator="\n")
+        (sub/'corridor_route_summary.json').write_text(json.dumps(result.summary,indent=2),encoding='utf-8', newline="\n")
         summaries.append(result.summary)
-    (out/'corridor_alternatives_summary.json').write_text(json.dumps(summaries,indent=2),encoding='utf-8')
+    (out/'corridor_alternatives_summary.json').write_text(json.dumps(summaries,indent=2),encoding='utf-8', newline="\n")
     print(json.dumps(summaries,indent=2)); return 0
 
 if __name__=='__main__': raise SystemExit(main())

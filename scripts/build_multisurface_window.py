@@ -50,7 +50,7 @@ def main(argv=None):
         'three_plus_layer_cells':int((layer_count(g)>=3).sum()),
         'contract':'triangles are world-space planner east/north/up metres; base terrain is inserted as a surface, never overwritten by max-Z',
     }
-    (out/'summary.json').write_text(json.dumps(summary,indent=2))
+    (out/'summary.json').write_text(json.dumps(summary,indent=2), newline="\n")
     print(json.dumps(summary,indent=2))
     return 0
 if __name__=='__main__': raise SystemExit(main())

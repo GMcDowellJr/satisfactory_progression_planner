@@ -494,13 +494,13 @@ def analyze_plane_fit(repo_root: Path, world_manifest: Path, policy_path: Path, 
                                 "center_counts_by_highest_class":{name:int(np.count_nonzero(rank_grid==SIZE_RANK[name])) for name in enabled}})
 
     df=pd.DataFrame(all_rows); rects=pd.DataFrame(rect_rows)
-    df.to_csv(output_dir/"build_surfaces.csv",index=False); rects.to_csv(output_dir/"build_surface_rectangles.csv",index=False)
-    (output_dir/"build_surface_membership_index.json").write_text(json.dumps({"analysis_model":"horizontal_plane_fit","variants":index},indent=2)+"\n",encoding="utf-8")
+    df.to_csv(output_dir/"build_surfaces.csv",index=False, lineterminator="\n"); rects.to_csv(output_dir/"build_surface_rectangles.csv",index=False, lineterminator="\n")
+    (output_dir/"build_surface_membership_index.json").write_text(json.dumps({"analysis_model":"horizontal_plane_fit","variants":index},indent=2)+"\n",encoding="utf-8", newline="\n")
     summary={"world_extract_id":manifest["world_extract_id"],"game_build":raster.build,"policy_id":policy["policy_id"],"analysis_model":"horizontal_plane_fit",
              "resolutions_m":[float(x) for x in resolutions],"clearance_tolerances_m":[float(x) for x in tolerances],"surface_region_count":int(len(df)),
              "rectangle_candidate_count":int(len(rects)),"counts_by_size":{} if df.empty else {str(k):int(v) for k,v in df["size_class"].value_counts().to_dict().items()},
              "note":"Each rectangle is one horizontal plane fitted to known ground-support cells. V9 supports multiple physical footprint proportions per class; coverage_<class>_labels stores class-specific footprint union while coverage_labels retains the combined union and labels retains qualifying-center region identity. With prefer_ground_provenance, landscape/fill defines ground while cliff-only top surfaces are reported as vertical-layer ambiguity."}
-    (output_dir/"summary.json").write_text(json.dumps(summary,indent=2)+"\n",encoding="utf-8")
+    (output_dir/"summary.json").write_text(json.dumps(summary,indent=2)+"\n",encoding="utf-8", newline="\n")
     qa={"status":"PASS","world_build_alignment":manifest.get("alignment",{}).get("status"),"source_grid":raster.meta["grid"],"variants":qa_variants,
         "diagnostics":{"horizontal_resolution_independent_of_clearance_tolerance":True,"platform_is_single_horizontal_plane":True,
                        "cell_surface_percentile":float(ap.get("cell_surface_percentile",95.0)),"terrain_penetration_at_working_resolution":"prevented for representative cell surface",
@@ -508,5 +508,5 @@ def analyze_plane_fit(repo_root: Path, world_manifest: Path, policy_path: Path, 
                        "max_clearance_factor":ap.get("max_clearance_factor",3.0),"water_mode":ap.get("water_mode","exclude"),"terrain_surface_mode":ap.get("terrain_surface_mode","all_top_surface"),
                        "ground_provenance_codes":ap.get("ground_provenance_codes",[1,3]),"overhead_surface_codes":ap.get("overhead_surface_codes",[4,5]),
                        "minimum_fit_known_fraction":ap.get("minimum_fit_known_fraction",1.0),"minimum_edge_known_fraction":ap.get("minimum_edge_known_fraction",1.0)}}
-    (output_dir/"qa.json").write_text(json.dumps(qa,indent=2)+"\n",encoding="utf-8")
+    (output_dir/"qa.json").write_text(json.dumps(qa,indent=2)+"\n",encoding="utf-8", newline="\n")
     return df

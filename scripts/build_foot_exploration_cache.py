@@ -440,7 +440,7 @@ def write_snap_csv(path: Path, rows: list[dict]) -> None:
         "nearest_nuclear_hog_spawner_m", "hazard_json",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore", lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
 
@@ -631,7 +631,7 @@ def main() -> int:
         )
 
     write_snap_csv(out_dir / "poi_topology_snap.csv", rows)
-    (out_dir / "poi_topology_snap.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "poi_topology_snap.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8", newline="\n")
 
     suspicious = sorted(
         [r for r in rows if r.get("snap_status") == "SNAPPED"],
@@ -656,7 +656,7 @@ def main() -> int:
         "pois": str(pois_path),
         "hazards": str(hazards_path),
     }
-    (out_dir / "manifest.json").write_text(json.dumps(counts, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "manifest.json").write_text(json.dumps(counts, indent=2) + "\n", encoding="utf-8", newline="\n")
 
     print(json.dumps(counts, indent=2))
     print(f"wrote {out_dir}")

@@ -248,7 +248,7 @@ CANDIDATE_FIELDS = [
 
 def write_csv(path: Path, fields: list[str], rows: list[dict]) -> None:
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore", lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
 
@@ -350,7 +350,7 @@ def main() -> int:
 
     write_csv(out_dir / "poi_topology_snap.csv", SNAP_FIELDS, snap_rows)
     write_csv(out_dir / "poi_topology_snap_candidates.csv", CANDIDATE_FIELDS, candidate_rows)
-    (out_dir / "poi_topology_snap.json").write_text(json.dumps(snap_rows, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "poi_topology_snap.json").write_text(json.dumps(snap_rows, indent=2) + "\n", encoding="utf-8", newline="\n")
 
     suspicious = sorted(
         [r for r in snap_rows if r.get("snap_status") == "SNAPPED"],
@@ -392,7 +392,7 @@ def main() -> int:
             "No ramp count, connector cost, safe/unsafe label, or POI-pair shortest-path matrix is canonicalized here.",
         ],
     }
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(manifest, indent=2))
     return 0
 

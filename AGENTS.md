@@ -138,13 +138,18 @@ root, only the files listed in `root_files` are covered.
   is LF in the index and in the working copy, and the two manifests are
   `-text` so their CRLF is stored as written. `--check` on a fresh clone is
   in sync anywhere, and `--write` is safe from a container.
-- **Writers can still put CRLF in a working copy.** `csv.writer` defaults to
-  `"\r\n"`, and text-mode writes on Windows translate `"\n"`. Git stores LF
-  on commit, but the file on disk stays CRLF, and a manifest written then
-  hashes bytes no clone will have. After a script rewrites a data file,
-  commit it and refresh the working copy before `--write`
-  (delete the file, then `git checkout -- <file>`). Better still, write LF
-  (`newline=""` plus `lineterminator="\n"`).
+- **Every Python writer pins LF**, and `tests/test_writers_emit_lf.py`
+  checks this from the source of `scripts/`, `tools/` and `research/`:
+  - `csv.writer` / `csv.DictWriter` and `to_csv`: `lineterminator="\n"`
+  - `write_text`: `newline="\n"`
+  - text-mode `open`: `newline="\n"`, or `newline=""` under a csv writer
+
+  The defaults would write CRLF: csv on every OS, the rest on Windows. Git
+  stores LF on commit, but leaves the CRLF file on disk and reports it as
+  clean, so a manifest written at that point hashes bytes no clone will have.
+  If something outside that test (an editor, another tool) leaves a file
+  CRLF, commit it, then delete the file and `git checkout -- <file>` before
+  running `--write`.
 - Adding a directory or a root-level file to the integrity baseline means
   changing the scope in `regenerate_manifests.py`. Do that on purpose, never
   as a side effect.
