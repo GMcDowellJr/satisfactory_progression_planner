@@ -117,3 +117,64 @@ D3's decisions live. What bears on this record:
     O2   still no bill feedback into `withdrawal_bill`
     new  `carry_estimate` is carried to the report and read nowhere else,
          asserted from the source. With nothing declared, nothing nets
+
+## Amendment 3 — 2026-09-23. The per-chain view
+
+Appended forward-only. Greg's item from the 19:25 handoff ("after D3"): the
+caller declares which buses share a chain, and the report groups by chain.
+A view only; no sizing moves.
+
+    code      tools/chain_view.py, tests/test_chain_view.py (19 tests)
+    measured  agent container, against d1181210 plus this change. Not Greg's
+              machine
+
+Decided by Greg 2026-09-23, on questions put to him this session:
+
+    C1  OVERLAP ALLOWED. A bus may sit in several chains, and each chain's
+        totals include it. Chain totals therefore do not add up to the build:
+        the build total is read from the report and printed once, and every
+        shared bus is named
+    C2  BELT LOAD IS PER BELT plus the chain's BOUNDARY. No figure is summed
+        across items. What the chain draws from outside it is listed per
+        (item, source bus), which is the feed a separately built chain needs
+    C3  a paced run is shown FLOOR | PACED side by side
+
+Made here, not asked:
+
+    C4  a bus is shown with FLOW (its lanes' output at their clocks: the
+        average the belt carries) beside NAMEPLATE (`supply_per_min`). The
+        handoff's "belt load" did not say which. Supply alone overstates a
+        BACK_UP line's flow (storage-off ingot: 23.25 flowing on a 30.00
+        nameplate), and flow alone understates what a belt must fit while
+        backed-up machines run (A5.2). The boundary draws are lane input
+        rates, so they are on the flow basis
+    C5  no belt Mk is shown. `Lane.trunk` is the tier's trunk, not what the
+        bus needs, and `LaneInput.carrier` is per lane input. A minimum
+        sufficient Mk for a bus's output would be a new selection; not built
+    C6  buses in no chain are listed as `(unchained)`, never dropped
+    C7  chain_view imports realization types only — not goal_run, not
+        progression — so the caller passes `paced.floor.realization` and
+        `paced.paced.realization` in
+
+Guardrails, from the source and by identity, each confirmed to fail on a
+mutation that breaks it:
+
+    V1  calls no layer and no `dataclasses.replace`; imports no goal_run,
+        progression, backend or realize
+    V2  no min, max, sorted or sort; caller order kept for chains and buses
+    V3  a view's buses ARE the report's objects
+
+Figures, A13.5's case (first-50 partition, 1x/1x/1x, tier 2, T = 50,
+nothing declared), with Greg's chains mapped onto the partition by this
+session. The mapping is an inference — ingot is read as the plate chain's
+feed rather than a member, and rotor is placed in the rod chain:
+
+                           machines floor | paced
+    smelting                  1 | 4     iron_ingot
+    plate_rip                 2 | 3     iron_plate, rip
+    rod_rotor_screws_rip      4 | 9     iron_rod, rotor, screws, rip
+    smart_plating             1 | 1     smart_plating
+    build                     7 | 16    RIP shared, so chains sum to 8 | 17
+
+The pacing grows the smelting and rod chains most. plate_rip draws 31.20
+screws/min paced across its boundary from the rod chain.
