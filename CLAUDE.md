@@ -14,10 +14,10 @@
   `.git`, not the one you expected. Keep it self-contained, list at most five
   ranked next actions, and make the part above the fold readable in two
   minutes.
-- **In a cloud container** the full suite runs (`uv run pytest -q`) but the
-  manifests can't be regenerated correctly (see Manifests above). Report the
-  suite result as `Container: N passed, M skipped`. That's not the same
-  measurement as a run on Greg's machine.
+- **In a cloud container** the full suite runs (`uv run pytest -q`), and the
+  manifests can be regenerated there (see Manifests above). Report the suite
+  result as `Container: N passed, M skipped`. That's not the same measurement
+  as a run on Greg's machine.
 - Keep scratch work (one-off drivers, recompute models) in the session
   scratchpad or `scratchpad/` (gitignored), never in `tools/`, until it has a
   test and a decision behind it.

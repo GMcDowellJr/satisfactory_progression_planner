@@ -128,18 +128,23 @@ in an `unresolved` list. Don't coerce them silently.
 
 Two integrity manifests: `REPO_MANIFEST.csv` (repo-relative) and
 `planning_data/manifest.csv` (relative to `planning_data/`). Both are
-`path,bytes,sha256`, sorted, with CRLF line endings. The scope is declared in
-`tools/regenerate_manifests.py`. At the repo root, only the files listed in
-`root_files` are covered.
+`path,bytes,sha256`, sorted, with CRLF line endings. They hash **working-copy
+bytes**. The scope is declared in `tools/regenerate_manifests.py`. At the repo
+root, only the files listed in `root_files` are covered.
 
 - Convention: every content commit is followed by a separate
   `Regenerate manifests` commit (`python tools/regenerate_manifests.py --write`).
-- **Hashes are taken on Greg's Windows checkout, where files have CRLF line
-  endings.** A Linux clone has LF, so `--check` reports drift on a clean tree
-  there (about 13 data files as of 2026-09-24). **Don't run `--write` from a
-  Linux or macOS container.** That would rewrite correct hashes with LF hashes.
-  In a container, leave the manifests alone and say in your summary that they
-  need regenerating on Windows.
+- `.gitattributes` makes a checkout's bytes the same on every platform. Text
+  is LF in the index and in the working copy, and the two manifests are
+  `-text` so their CRLF is stored as written. `--check` on a fresh clone is
+  in sync anywhere, and `--write` is safe from a container.
+- **Writers can still put CRLF in a working copy.** `csv.writer` defaults to
+  `"\r\n"`, and text-mode writes on Windows translate `"\n"`. Git stores LF
+  on commit, but the file on disk stays CRLF, and a manifest written then
+  hashes bytes no clone will have. After a script rewrites a data file,
+  commit it and refresh the working copy before `--write`
+  (delete the file, then `git checkout -- <file>`). Better still, write LF
+  (`newline=""` plus `lineterminator="\n"`).
 - Adding a directory or a root-level file to the integrity baseline means
   changing the scope in `regenerate_manifests.py`. Do that on purpose, never
   as a side effect.

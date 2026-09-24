@@ -112,7 +112,7 @@ MANIFESTS = [
         out="REPO_MANIFEST.csv",
         root=".",
         roots=["docs", "planning_data", "scripts", "tests", "tools"],
-        root_files=[".gitignore", "README.md", "VERSIONS.json"],
+        root_files=[".gitattributes", ".gitignore", "README.md", "VERSIONS.json"],
         exclude=["planning_data/analysis/derived"],
     ),
 ]
