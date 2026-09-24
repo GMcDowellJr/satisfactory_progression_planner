@@ -53,6 +53,7 @@ for _src in ("production_adapter", "realization"):
         sys.path.insert(0, _path)
 
 from production_adapter.contracts import ItemId, ProducerClass  # noqa: E402
+from production_adapter.gamedata import ReferenceData  # noqa: E402
 from realization import Bus, RealizationReport  # noqa: E402
 
 
@@ -147,29 +148,48 @@ def sheet(
 
 
 def _short(item_id: str) -> str:
-    return item_id.removeprefix("Desc_").removesuffix("_C")
+    return item_id.removeprefix("Desc_").removeprefix("Build_").removesuffix("_C")
 
 
-def render(s: RateSheet) -> str:
-    """Plain text. Figures to 3 places by format only; the sheet holds full floats."""
+def _item(data: ReferenceData | None, item_id: ItemId) -> str:
+    """Display name from items.csv when `data` is given, else the trimmed id."""
+    if data is not None and item_id in data.items:
+        return data.items[item_id].display_name
+    return _short(item_id)
+
+
+def _producer(data: ReferenceData | None, producer_class: ProducerClass) -> str:
+    if data is not None and producer_class in data.producers:
+        return data.producers[producer_class].display_name
+    return _short(producer_class)
+
+
+def render(s: RateSheet, data: ReferenceData | None = None) -> str:
+    """Plain text. Figures to 3 places by format only; the sheet holds full floats.
+
+    `data` supplies display names (items.csv, producers); without it the
+    trimmed ids print. Names change no figure.
+    """
+    (anchor,) = [g for g in s.goals if g.goal_id == s.anchor_goal_id]
     out = [
         f"RATE SHEET  {s.phase}",
-        f"  at anchor {s.anchor_goal_id} = {s.anchor_rate_per_min:.3f}/min"
+        f"  at {_item(data, anchor.item_id)} = {s.anchor_rate_per_min:.3f}/min"
         f"  (holds at this rate only; another rate is another run)",
         f"  T = {s.horizon_min:.1f} min   power {s.total_power_mw:.2f} MW",
         "",
         "  goals",
     ]
     for g in s.goals:
-        out.append(f"    {_short(g.item_id):28s} {g.rate_per_min:9.3f}/min"
+        out.append(f"    {_item(data, g.item_id):28s} {g.rate_per_min:9.3f}/min"
                    f"  total {g.total_required:9.1f}  in {g.minutes_to_complete:9.1f} min")
-    out += ["", f"  {'bus':26s} {'machines @ clock':28s} {'supply':>8s} {'flow':>9s}"
-                f" {'downstr':>9s} {'storage':>9s} {'other':>9s}  raw"]
+    out += ["", f"  {'bus':26s} {'item':24s} {'machines @ clock':30s} {'supply':>8s}"
+                f" {'flow':>9s} {'downstr':>9s} {'storage':>9s} {'other':>9s}  raw"]
     for r in s.rows:
-        clocks = ", ".join(f"{l.machines}x{_short(l.producer_class.removeprefix('Build_'))}"
-                           f"@{l.clock_percent:.1f}%" for l in r.lanes)
-        raw = ", ".join(f"{_short(i)} {q:.3f}" for i, q in r.raw)
-        out.append(f"  {r.bus.bus_id:26s} {clocks:28s} {r.supply_per_min:8.2f}"
-                   f" {r.flow_per_min:9.3f} {r.downstream_per_min:9.3f}"
-                   f" {r.storage_per_min:9.3f} {r.other_per_min:9.3f}  {raw}")
+        clocks = ", ".join(f"{l.machines}x {_producer(data, l.producer_class)}"
+                           f" @{l.clock_percent:.1f}%" for l in r.lanes)
+        raw = ", ".join(f"{_item(data, i)} {q:.3f}" for i, q in r.raw)
+        out.append(f"  {r.bus.bus_id:26s} {_item(data, r.bus.item_id):24s} {clocks:30s}"
+                   f" {r.supply_per_min:8.2f} {r.flow_per_min:9.3f}"
+                   f" {r.downstream_per_min:9.3f} {r.storage_per_min:9.3f}"
+                   f" {r.other_per_min:9.3f}  {raw}")
     return "\n".join(out)

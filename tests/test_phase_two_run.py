@@ -1,5 +1,9 @@
 """Phase 2 (tiers 3-4) in one bucket, per crossover A18. Figures pinned.
 
+AMENDED 2026-09-24 (crossover A22): the declaration below now lives in
+tools/phases/phase2.py and the run in tools/phase_run.py; this file pins
+their figures. The description stands.
+
     partition   one bus per item, all storing, plus the build-material lines
                 and an Encased Industrial Beam line. Confirmed as-is by Greg,
                 2026-09-24
@@ -31,102 +35,26 @@ import sys
 
 import pytest
 
-from production_adapter import OutputTarget, SolveRequest, load
-from production_adapter.gamedata import load_construction, load_logistics
-from production_adapter.lp_backend import LpBackend, PowerStatistic
-from progression import at_tier, lag, power, schedule, stock, unlocks
-from realization import BusDeclaration, RealizationRequest, SourceEdge
+from progression import lag, power
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
-GOAL_RUN_PATH = REPO / "tools" / "goal_run.py"
-_spec = importlib.util.spec_from_file_location("goal_run", GOAL_RUN_PATH)
-goal_run = importlib.util.module_from_spec(_spec)
-sys.modules["goal_run"] = goal_run
-_spec.loader.exec_module(goal_run)
+_spec = importlib.util.spec_from_file_location("phase_run", REPO / "tools" / "phase_run.py")
+phase_run = sys.modules.get("phase_run") or importlib.util.module_from_spec(_spec)
+if "phase_run" not in sys.modules:
+    sys.modules["phase_run"] = phase_run
+    _spec.loader.exec_module(phase_run)
+rate_sheet = phase_run.rate_sheet
 
-B, S = BusDeclaration, SourceEdge
-#: item ids
-I = dict(SP="Desc_SpaceElevatorPart_1_C", VF="Desc_SpaceElevatorPart_2_C", AW="Desc_SpaceElevatorPart_3_C",
- MF="Desc_ModularFrame_C", STA="Desc_Stator_C", BEAM="Desc_SteelPlate_C", PIPE="Desc_SteelPipe_C",
- STI="Desc_SteelIngot_C", RIP="Desc_IronPlateReinforced_C", ROT="Desc_Rotor_C", SCR="Desc_IronScrew_C",
- PLT="Desc_IronPlate_C", ROD="Desc_IronRod_C", ING="Desc_IronIngot_C", ORE="Desc_OreIron_C", COAL="Desc_Coal_C",
- CU="Desc_CopperIngot_C", CUO="Desc_OreCopper_C", WIRE="Desc_Wire_C", CABLE="Desc_Cable_C", SHEET="Desc_CopperSheet_C",
- STONE="Desc_Stone_C", CON="Desc_Cement_C", EIB="Desc_SteelPlateReinforced_C")
-#: the phase-2 partition (see module docstring)
-BUSES = (
- B(bus_id="smart_plating", item_id=I["SP"], sources=(S(I["RIP"],"rip"), S(I["ROT"],"rotor"))),
- B(bus_id="versatile_framework", item_id=I["VF"], sources=(S(I["MF"],"modular_frame"), S(I["BEAM"],"steel_beam"))),
- B(bus_id="automated_wiring", item_id=I["AW"], sources=(S(I["STA"],"stator"), S(I["CABLE"],"cable"))),
- B(bus_id="modular_frame", item_id=I["MF"], sources=(S(I["RIP"],"rip"), S(I["ROD"],"iron_rod"))),
- B(bus_id="stator", item_id=I["STA"], sources=(S(I["PIPE"],"steel_pipe"), S(I["WIRE"],"wire"))),
- B(bus_id="steel_beam", item_id=I["BEAM"], sources=(S(I["STI"],"steel_ingot"),)),
- B(bus_id="steel_pipe", item_id=I["PIPE"], sources=(S(I["STI"],"steel_ingot"),)),
- B(bus_id="steel_ingot", item_id=I["STI"], sources=(S(I["ORE"],None), S(I["COAL"],None))),
- B(bus_id="rip", item_id=I["RIP"], sources=(S(I["PLT"],"iron_plate"), S(I["SCR"],"screws"))),
- B(bus_id="rotor", item_id=I["ROT"], sources=(S(I["ROD"],"iron_rod"), S(I["SCR"],"screws"))),
- B(bus_id="screws", item_id=I["SCR"], sources=(S(I["ROD"],"iron_rod"),)),
- B(bus_id="iron_plate", item_id=I["PLT"], sources=(S(I["ING"],"iron_ingot"),)),
- B(bus_id="iron_rod", item_id=I["ROD"], sources=(S(I["ING"],"iron_ingot"),)),
- B(bus_id="iron_ingot", item_id=I["ING"], sources=(S(I["ORE"],None),)),
- B(bus_id="copper_ingot", item_id=I["CU"], sources=(S(I["CUO"],None),)),
- B(bus_id="wire", item_id=I["WIRE"], sources=(S(I["CU"],"copper_ingot"),)),
- B(bus_id="cable", item_id=I["CABLE"], sources=(S(I["WIRE"],"wire"),)),
- B(bus_id="copper_sheet", item_id=I["SHEET"], recipe_id="Recipe_CopperSheet_C", sources=(S(I["CU"],"copper_ingot"),)),
- B(bus_id="concrete", item_id=I["CON"], recipe_id="Recipe_Concrete_C", sources=(S(I["STONE"],None),)),
- B(bus_id="encased_industrial_beam", item_id=I["EIB"], recipe_id="Recipe_EncasedIndustrialBeam_C",
-   sources=(S(I["BEAM"],"steel_beam"), S(I["CON"],"concrete"))),
-)
-
-
+#: The declaration (tools/phases/phase2.py) — moved out of this file 2026-09-24
+DECL = phase_run.declaration(2)
+I = DECL.I
 MINER, COAL_GEN, WATER = "Build_MinerMk1_C", "Build_GeneratorCoal_C", "Build_WaterPump_C"
-#: P1 (Greg, 2026-09-24 12:30): the phase-2 POWER bootstrap is the Mk1 coal
-#: step "for now". Declared; power is outside the A19 rule
-MK1_COAL_STEP = stock.BootstrapSet(tier=4, buildings=((MINER, 2), (COAL_GEN, 4), (WATER, 2)))
-
-
-def _add(first, second):
-    """One BootstrapSet by ADDITION per producer class. Order is first's, then
-    second's new classes in second's order. No min, max, sort or round."""
-    counts = dict(first.buildings)
-    for pc, n in second.buildings:
-        counts[pc] = counts.get(pc, 0) + n
-    return stock.BootstrapSet(tier=first.tier, buildings=tuple(counts.items()))
 
 
 @pytest.fixture(scope="module")
 def phase2():
-    data = load(REPO)
-    pa = stock.load_project_assembly(REPO, data)
-    goals = goal_run.goals_for_phases(data, pa, (2,))
-    rates = schedule.phase_rates(goals, anchor_goal_id=goals[0][0], anchor_rate_per_min=1.0)
-    backend = LpBackend(power_statistic=PowerStatistic.MEAN)
-    solve = SolveRequest(
-        outputs=tuple(OutputTarget(i, r) for _, i, r in rates.rates),
-        allowed_recipes=at_tier(REPO, 4).allowed_recipes,
-    )
-    derived = stock.derive_bootstrap(
-        data, tuple(u.recipe_id for u in backend.solve(solve, data).recipes),
-        open_before=at_tier(REPO, 2).recipe_ids,
-        extractors_open=unlocks.extractors_open_at_tier(REPO, 2),
-        tier=4,
-    )
-    bootstrap = _add(derived.bootstrap, MK1_COAL_STEP)
-    kw = dict(
-        data=data,
-        backend=backend,
-        solve=solve,
-        logistics=load_logistics(REPO),
-        realization=RealizationRequest(design_tier=4, buses=BUSES),
-        goals=goals,
-        construction=load_construction(REPO),
-        declared_stock=goal_run.StockDeclaration(
-            bootstrap=bootstrap,
-            unlocks=unlocks.schematics_in_tiers(REPO, (3, 4)),
-            unlock_costs=unlocks.schematic_costs(REPO),
-        ),
-        horizon_min=rates.horizon_min,
-    )
-    return rates, derived, bootstrap, goal_run.paced_run(**kw)
+    pr = phase_run.run(DECL)
+    return pr.rates, pr.derived, pr.bootstrap, pr.report
 
 
 def _ore(report, bus_id, ore):
@@ -201,7 +129,8 @@ def test_phase2_bootstrap_is_the_a19_minimum(phase2):
 
 
 def test_phase2_bootstrap_adds_the_coal_step(phase2):
-    """P1 / A20: derived minimum + declared power step, by addition per class."""
+    """P1 / A20: derived minimum + declared power step, by addition per class
+    (`stock.add_bootstrap`; the declaration's POWER_STEP)."""
     _, _, bootstrap, _ = phase2
     assert bootstrap.buildings == (
         (MINER, 4), (FDY, 1), (ASM, 3), (CON_, 2), (COAL_GEN, 4), (WATER, 2))
@@ -227,17 +156,10 @@ def test_phase2_ledger_plans_the_coal_step(phase2):
 # The per-phase rate sheet over this run (tools/rate_sheet.py). A view only
 # --------------------------------------------------------------------------
 
-_rs_spec = importlib.util.spec_from_file_location("rate_sheet", REPO / "tools" / "rate_sheet.py")
-rate_sheet = importlib.util.module_from_spec(_rs_spec)
-sys.modules.setdefault("rate_sheet", rate_sheet)
-_rs_spec.loader.exec_module(rate_sheet)
-
-
 @pytest.fixture(scope="module")
 def sheet2(phase2):
-    rates, _, _, r = phase2
-    return rate_sheet.sheet(r.paced.realization, r.paced.goals, phase="phase 2 (tiers 3-4)",
-                            anchor_goal_id=rates.anchor_goal_id, horizon_min=r.horizon_min)
+    rates, derived, bootstrap, r = phase2
+    return phase_run.sheet_of(phase_run.PhaseRun(DECL, rates, derived, bootstrap, r))
 
 
 def test_rate_sheet_is_the_paced_build_row_for_row(phase2, sheet2):
@@ -277,3 +199,37 @@ def test_rate_sheet_refuses_an_anchor_the_run_lacks(phase2):
     with pytest.raises(rate_sheet.RateSheetError):
         rate_sheet.sheet(r.paced.realization, r.paced.goals, phase="x",
                          anchor_goal_id="no such goal", horizon_min=r.horizon_min)
+
+
+def test_rate_sheet_renders_display_names(phase2, sheet2):
+    """Names come from items.csv / producers when data is passed; no figure moves."""
+    _, _, _, r = phase2
+    text = rate_sheet.render(sheet2, r.paced.data)
+    assert "at Smart Plating = 1.000/min" in text
+    for name in ("Versatile Framework", "Automated Wiring", "Concrete", "Assembler", "Iron Ore"):
+        assert name in text, name
+    assert "Desc_" not in text and "Build_" not in text
+    assert rate_sheet.render(sheet2).count("\n") == text.count("\n")
+
+
+def test_phase_run_at_another_anchor_rate_is_another_run():
+    """A21 in practice: 2 SP/min is a run, not the 1/min sheet doubled."""
+    pr = phase_run.run(DECL, anchor_rate_per_min=2.0)
+    assert pr.report.horizon_min == 500.0
+    assert [g.rate_per_min for g in pr.report.paced.goals] == pytest.approx([2.0, 2.0, 0.2])
+    (ingot,) = [b for b in pr.report.paced.realization.buses if b.bus_id == "iron_ingot"]
+    flow = sum(l.output_rate_per_min for l in ingot.lanes)
+    assert flow == pytest.approx(132.445)
+    assert flow > 2 * 65.793
+
+
+def test_phase_run_cli_prints_the_sheet(capsys):
+    assert phase_run.main(["--phase", "2"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("RATE SHEET  phase 2 (tiers 3-4)")
+    assert "at Smart Plating = 1.000/min" in out
+
+
+def test_phase_run_refuses_an_undeclared_phase():
+    with pytest.raises(phase_run.PhaseRunError):
+        phase_run.declaration(99)

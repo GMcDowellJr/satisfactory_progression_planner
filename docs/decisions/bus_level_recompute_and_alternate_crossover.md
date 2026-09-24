@@ -2318,3 +2318,51 @@ Appended forward-only. Greg, chat 2026-09-24.
     not built   a CLI or file output (render is plain text only); the
                 goal table prints item ids, not display names
     not run     the full suite on Greg's machine
+
+## Amendment 22 — 2026-09-24. A phase is a declaration module; a run is a CLI argument
+
+Appended forward-only. Greg, chat 2026-09-24.
+
+    code      tools/phases/phase2.py (the declaration, data as code);
+              tools/phase_run.py (run, sheet_of, main);
+              progression/stock.py (add_bootstrap); tools/rate_sheet.py
+              (render takes ReferenceData for display names)
+    tests     tests/test_phase_two_run.py (fixture via phase_run; +3: a run
+              at 2/min, the CLI, an undeclared phase refused; +1 names);
+              tests/test_progression_bootstrap_minimum.py (+2)
+    measured  agent container, against 2cb2dbb plus this change. 925
+              passed, 1 skipped. Not Greg's machine
+
+### A22.1 Decided by Greg, 2026-09-24
+
+    D1  A PHASE'S DECLARATION lives in tools/phases/phase<N>.py as code:
+        LABEL, PHASE, TIERS, PREVIOUS_TIER, RECIPE_TIER, DESIGN_TIER,
+        ANCHOR_ITEM, POWER_STEP, BUSES. `phase_run.run(decl,
+        anchor_rate_per_min=...)` composes it exactly as the phase-2 test
+        fixture did; the test imports the declaration and pins figures
+    D2  `uv run python tools/phase_run.py --phase N --anchor-rate R` prints
+        the rate sheet of a run AT R (A21: another rate is another run)
+
+Supersedes, forward: A20's "not moved: `_add` ... test-local until a second
+caller" — phase_run is the second caller, and the helper is now
+`stock.add_bootstrap` (refuses sets for different tiers). A21's "not built:
+a CLI ... display names" — both built.
+
+### A22.2 Measured with the CLI's run (report only; nothing standing)
+
+    anchor  paced machines (Asm/Con/Fdy/Sml)  lines MW  known demand  vs 300 planned
+    1/min   8 / 14 / 1 / 4                      67.31      127.31        +172.69
+    2/min   10 / 19 / 2 / 6                    147.45      207.45         +92.55
+    3/min   13 / 27 / 2 / 8                    226.83      286.83         +13.17
+
+The Mk1 coal step's margin is rate-dependent. "Known demand" still omits ore
+extraction for the lines (the ledger's `None`), so each margin is an upper
+bound: the miners feeding the lines (iron alone is 94.3/min at 1/min) are
+not in the figure at any rate.
+
+### What this amendment does not establish
+
+    open        whether POWER_STEP should vary with the anchor rate (the
+                A22.2 margins); Greg's call
+    not built   a phase-3 declaration (needs oil lines)
+    not run     the full suite on Greg's machine

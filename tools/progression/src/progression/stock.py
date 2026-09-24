@@ -726,3 +726,22 @@ def derive_bootstrap(
         new_recipes=tuple(new),
         extractors=tuple(extractors),
     )
+
+
+def add_bootstrap(first: BootstrapSet, second: BootstrapSet) -> BootstrapSet:
+    """Two bootstrap sets as one, by ADDITION per producer class (crossover A20).
+
+    The A19 derived minimum plus a declared power step is the use: miners
+    2 + 2 = 4. Order is `first`'s, then `second`'s new classes in `second`'s
+    order. No min, max, sort or round. REFUSED: sets for different tiers —
+    which tier the sum bootstraps would be a choice.
+    """
+    if first.tier != second.tier:
+        raise StockPassError(
+            f"bootstrap sets for tiers {first.tier} and {second.tier}; declare both "
+            "for the tier being brought online"
+        )
+    counts: dict[ProducerClass, int] = dict(first.buildings)
+    for producer_class, count in second.buildings:
+        counts[producer_class] = counts.get(producer_class, 0) + count
+    return BootstrapSet(tier=first.tier, buildings=tuple(counts.items()))

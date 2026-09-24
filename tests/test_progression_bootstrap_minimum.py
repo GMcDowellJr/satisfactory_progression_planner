@@ -94,3 +94,19 @@ def test_derive_bootstrap_ranks_nothing():
         for n in ast.walk(fn) if isinstance(n, ast.Call)
     }
     assert {"min", "max", "sorted", "sort", "round"}.isdisjoint(called)
+
+
+# add_bootstrap (crossover A20; moved from test_phase_two_run.py's `_add`)
+
+def test_add_bootstrap_sums_per_class_in_first_then_second_order():
+    a = stock.BootstrapSet(tier=4, buildings=((MINER1, 2), ("Build_FoundryMk1_C", 1)))
+    b = stock.BootstrapSet(tier=4, buildings=((MINER1, 2), ("Build_GeneratorCoal_C", 4), (WATER, 2)))
+    assert stock.add_bootstrap(a, b).buildings == (
+        (MINER1, 4), ("Build_FoundryMk1_C", 1), ("Build_GeneratorCoal_C", 4), (WATER, 2))
+
+
+def test_add_bootstrap_refuses_mixed_tiers():
+    a = stock.BootstrapSet(tier=4, buildings=((MINER1, 2),))
+    b = stock.BootstrapSet(tier=2, buildings=((MINER1, 2),))
+    with pytest.raises(stock.StockPassError):
+        stock.add_bootstrap(a, b)
