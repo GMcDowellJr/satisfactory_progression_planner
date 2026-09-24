@@ -113,6 +113,12 @@ class BootstrapSet:
     it bootstraps. Nothing here reads it — it is not a lookup key, because
     resolving a tier to anything is `unlocks.py`'s and is the parked question
     that blocks UNLOCK_COST.
+
+    AMENDED 2026-09-24 (crossover A19). Greg: the bootstrap is "always the
+    minimum to begin producing new items". That rule makes the PRODUCTION
+    bootstrap derivable: `derive_bootstrap` below. "Not derivable" above
+    stands for anything outside the rule (a power step, storage, a target
+    larger than the minimum), which is still declared.
     """
 
     tier: int
@@ -627,4 +633,96 @@ def net_buildings(
         owed_bootstrap=owed_bootstrap,
         surplus=surplus,
         standing=standing,
+    )
+
+
+# --------------------------------------------------------------------------
+# A19: the minimum bootstrap, derived. 2026-09-24.
+# --------------------------------------------------------------------------
+#
+# Greg, 2026-09-24: "bootstrap is always the minimum to begin producing new
+# items -- for steel that's ... 1 miner for coal, 1 for iron, 1 foundry, 1
+# constructor for beam, 1 for pipe and versatile frameworks which needs 1
+# assembler, beams and modular frame (which then assumes either another set of
+# lanes or transport from another factory)". As a rule:
+#
+#   NEW RECIPE   a recipe the phase's solve uses that was not open before the
+#                phase (`open_before`, the previous tier's recipe set)
+#   PRODUCERS    one machine of each new recipe's producer class
+#   EXTRACTORS   one per distinct raw resource a new recipe consumes, of the
+#                one extractor class open before the phase. Inputs that are
+#                not new (modular frame) are assumed to arrive: existing lanes
+#                or transport, per Greg
+#
+# Power is not an item, so a power step is outside the rule and stays declared.
+
+
+#: How a derived set came to be. Carried beside it, not inside `BootstrapSet`.
+DERIVED_MINIMUM = (
+    "DERIVED: one producer per recipe new this phase, one extractor per raw "
+    "resource those recipes consume (crossover A19). A minimum; excludes power"
+)
+
+
+@dataclass(frozen=True)
+class DerivedBootstrap:
+    bootstrap: BootstrapSet
+    #: (recipe_id, producer_class), in the solve's order
+    new_recipes: tuple[tuple[str, ProducerClass], ...]
+    #: (resource item, extractor class), first-seen order
+    extractors: tuple[tuple[ItemId, ProducerClass], ...]
+    basis: str = DERIVED_MINIMUM
+
+
+def derive_bootstrap(
+    data: ReferenceData,
+    recipes_used: tuple[str, ...],
+    *,
+    open_before: tuple[str, ...],
+    extractors_open: dict[ItemId, tuple[ProducerClass, ...]],
+    tier: int,
+) -> DerivedBootstrap:
+    """The A19 minimum. Every input is handed in; nothing is chosen here.
+
+    `recipes_used` is the recipe ids of the phase's solve (a SolveResponse's
+    `recipes`, in its order). `open_before` is
+    `unlocks.at_tier(repo, previous tier).recipe_ids`. `extractors_open` is
+    `unlocks.extractors_open_at_tier(repo, previous tier)`.
+
+    REFUSED: no new recipe (a bootstrap names at least one building); a raw
+    resource with no extractor open before the phase, or with more than one
+    (which one is the caller's declaration). Addition only; no min, max, sort
+    or round.
+    """
+    before = set(open_before)
+    new = [(r, data.recipes[r].producer_class) for r in recipes_used if r not in before]
+    if not new:
+        raise StockPassError(
+            "the solve uses no recipe that was closed before the phase, so the A19 "
+            "minimum is empty. Declare a bootstrap, or check open_before."
+        )
+    resources: list[ItemId] = []
+    for recipe_id, _ in new:
+        for item_id, _rate in data.recipes[recipe_id].inputs:
+            if item_id in data.resource_items and item_id not in resources:
+                resources.append(item_id)
+    extractors: list[tuple[ItemId, ProducerClass]] = []
+    for item_id in resources:
+        classes = extractors_open.get(item_id, ())
+        if len(classes) != 1:
+            raise StockPassError(
+                f"{item_id}: {len(classes)} extractor classes open before the phase "
+                f"{classes}. The A19 minimum takes exactly one; declare the bootstrap."
+            )
+        extractors.append((item_id, classes[0]))
+
+    counts: dict[ProducerClass, int] = {}
+    for _item, extractor in extractors:
+        counts[extractor] = counts.get(extractor, 0) + 1
+    for _recipe, producer_class in new:
+        counts[producer_class] = counts.get(producer_class, 0) + 1
+    return DerivedBootstrap(
+        bootstrap=BootstrapSet(tier=tier, buildings=tuple(counts.items())),
+        new_recipes=tuple(new),
+        extractors=tuple(extractors),
     )

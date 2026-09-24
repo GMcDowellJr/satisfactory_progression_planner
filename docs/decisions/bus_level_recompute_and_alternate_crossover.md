@@ -2155,3 +2155,65 @@ and splitting the span only relocates it into declared boundary minutes.
     not run       the full suite on Greg's machine
     not built     a phase-2 run on one bucket with the EIB line; the lag
                   table in any report (goal_run does not call it)
+
+## Amendment 19 — 2026-09-24. Phase 2 in one bucket; the minimum bootstrap, derived
+
+Appended forward-only. Greg, chat 2026-09-24.
+
+    code      progression/stock.py (derive_bootstrap, DerivedBootstrap);
+              progression/unlocks.py (extractors_open_at_tier;
+              schematics_in_tiers gains `exclude`)
+    tests     tests/test_phase_two_run.py (7), figures pinned;
+              tests/test_progression_bootstrap_minimum.py (7)
+    measured  agent container, against c4010fc plus this change. 909
+              passed, 1 skipped. Not Greg's machine
+
+### A19.1 Decided by Greg, 2026-09-24
+
+    M1  EVERY MILESTONE of a phase's tiers is billed; exclusion is
+        available (`schematics_in_tiers(..., exclude=...)`, refused for an
+        id the tiers lack)
+    M2  THE PHASE-2 PARTITION is confirmed as-is: one bus per item, all
+        storing, build-material lines, an Encased Industrial Beam line
+    M3  THE BOOTSTRAP IS ALWAYS THE MINIMUM TO BEGIN PRODUCING NEW ITEMS.
+        Steel, in his words: 1 miner for coal, 1 for iron, 1 foundry, 1
+        constructor each for beam and pipe, 1 assembler for VF; inputs that
+        are not new (modular frame) arrive by other lanes or transport
+
+### A19.2 M3 as a rule (derived, and what it leaves declared)
+
+    new recipe   used by the phase's solve, not open at the previous tier
+    producers    one of each new recipe's producer class
+    extractors   one per distinct raw resource the new recipes consume, of
+                 the single extractor class open at the previous tier;
+                 none or several open -> REFUSED (a declaration)
+    outside      power (not an item), storage, and any target larger than
+                 the minimum stay DECLARED
+
+Phase 2 derives: 2 Miner Mk.1 (iron, coal), 1 foundry, 2 constructors
+(beam, pipe), 3 assemblers (VF, stator, AW). Greg's example covered steel
+only; stator and AW are new at 4-1, so the rule adds their assemblers.
+
+Supersedes, forward: `BootstrapSet`'s "Not derivable" (docstring amended at
+the site) for the production minimum. Does NOT change the case of record's
+Mk1 coal step (goal_run_driver.md amendment 4), which is a power step and
+outside M3; its figures stand.
+
+### A19.3 Phase 2 figures (pinned; M1-M3; no power step, nothing standing)
+
+    goals     SP 1.0, VF 1.0, AW 0.1 per SP/min; T = 1000
+    floor     23 machines (Asm 8 / Con 11 / Fdy 1 / Sml 3)     52.33 MW
+    paced     25 machines (Asm 8 / Con 12 / Fdy 1 / Sml 4)     67.36 MW
+    ore       iron 63.89 + 28.55 (steel), coal 28.55, copper 7.08,
+              limestone 7.98 /min
+    bill      wire 4524, concrete 2060, cable 1414, RIP 764, rod 615,
+              pipe 600, rotor 564, beam 500, sheet 500, MF 495, plate 420,
+              EIB 100. Portable Miner unresolved (the miners' build cost)
+
+### What this amendment does not establish
+
+    open        the phase-2 POWER bootstrap: tier 3 opens coal power, and
+                67 MW paced is past what biomass supplies. Declared, not
+                derived; not yet declared
+    not run     the full suite on Greg's machine
+    not built   the per-phase rate sheet

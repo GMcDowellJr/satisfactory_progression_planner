@@ -42,7 +42,9 @@ import csv
 import pathlib
 from dataclasses import dataclass
 
-from production_adapter.contracts import AllowedRecipes, ItemId, RecipeId, RecipeMode
+from production_adapter.contracts import (
+    AllowedRecipes, ItemId, ProducerClass, RecipeId, RecipeMode,
+)
 
 from .pool import PoolAvailability, available_at
 
@@ -259,6 +261,7 @@ def schematic_costs(
 def schematics_in_tiers(
     repo_root: str | pathlib.Path,
     tiers: tuple[int, ...],
+    exclude: tuple[SchematicId, ...] = (),
 ) -> tuple[SchematicId, ...]:
     """The schematics whose tech_tier is IN `tiers`. Incremental, not cumulative.
 
@@ -276,14 +279,61 @@ def schematics_in_tiers(
     reads tier 2, 4-2_C reads 3 and 5-3_C reads 4. The class names look like
     pre-1.0 numbering with a correct 1.0 tier; that is an INFERENCE, open until
     read in game (D3 note section 6).
+
+    `exclude` (crossover A19, Greg 2026-09-24: "include every milestone and
+    allow for exclusion later"): schematics the player will not buy. Every
+    one of the tiers' schematics is in by default; an excluded id that the
+    tiers do not contain is REFUSED, so a typo cannot silently exclude
+    nothing.
     """
     wanted = set(tiers)
     for tier in wanted:
         if tier < 0:
             raise ValueError(f"tier must be non-negative, got {tier}")
     ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
-    return tuple(sorted(
+    found = tuple(sorted(
         s["schematic_id"]
         for s in _rows(ref / "schematics.csv")
         if s["schematic_type"] in PROGRESSION_TYPES and int(s["tech_tier"]) in wanted
     ))
+    unknown = [x for x in exclude if x not in found]
+    if unknown:
+        raise UnlockDataError(
+            f"exclude names {unknown}, which tiers {tuple(tiers)} do not contain"
+        )
+    return tuple(x for x in found if x not in set(exclude))
+
+
+def extractors_open_at_tier(
+    repo_root: str | pathlib.Path,
+    tier: int,
+) -> dict[ItemId, tuple[ProducerClass, ...]]:
+    """Per raw resource, the extractor classes whose BUILD recipe is unlocked by
+    a schematic reached at `tier`. Crossover A19.
+
+    Joins resource_extraction_map.csv (resource -> extractor, in table order)
+    to building_recipes.csv (building class -> build recipe) and
+    schematic_recipe_unlocks.csv, through `Build_X_C -> Desc_X_C` (the join
+    `ConstructionData.for_producer` asserts). A resource with no open
+    extractor is absent. A filter: it returns classes and chooses none.
+    """
+    if tier < 0:
+        raise ValueError(f"tier must be non-negative, got {tier}")
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    reached = {
+        s["schematic_id"] for s in _rows(ref / "schematics.csv") if _reached_at_tier(s, tier)
+    }
+    open_recipes = {
+        r["recipe_id"] for r in _rows(ref / "schematic_recipe_unlocks.csv")
+        if r["schematic_id"] in reached
+    }
+    open_buildings = {
+        r["building_class"] for r in _rows(ref / "building_recipes.csv")
+        if r["recipe_id"] in open_recipes
+    }
+    by_item: dict[ItemId, list[ProducerClass]] = {}
+    for r in _rows(ref / "resource_extraction_map.csv"):
+        extractor = r["extractor_class"]
+        if "Desc_" + extractor[len("Build_"):] in open_buildings:
+            by_item.setdefault(r["item_id"], []).append(extractor)
+    return {item: tuple(classes) for item, classes in by_item.items()}
