@@ -104,3 +104,16 @@ bears on this record:
          feeds a RATE, into a different field with a different meaning
     refused   a Project Assembly term in the stock declaration (P1), and two
               storing buses of one item, since the item's bill would pace both
+
+## Amendment 2 — 2026-09-23. `on_hand` and `carry_estimate` (D3)
+
+Appended forward-only. Recorded in the crossover record's amendment 14, where
+D3's decisions live. What bears on this record:
+
+    G1   paced_run still builds no declaration. It receives a
+         `DeclaredOnHand` the caller built
+    G2   `run` unchanged; paced_run still calls it exactly twice. Netting sits
+         between the calls and is one `stock.net_of` call, not a pass
+    O2   still no bill feedback into `withdrawal_bill`
+    new  `carry_estimate` is carried to the report and read nowhere else,
+         asserted from the source. With nothing declared, nothing nets

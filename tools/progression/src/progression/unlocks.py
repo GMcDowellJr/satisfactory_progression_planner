@@ -254,3 +254,36 @@ def schematic_costs(
             (row["item_id"], float(row["amount"]))
         )
     return {k: tuple(sorted(v)) for k, v in by_schematic.items()}
+
+
+def schematics_in_tiers(
+    repo_root: str | pathlib.Path,
+    tiers: tuple[int, ...],
+) -> tuple[SchematicId, ...]:
+    """The schematics whose tech_tier is IN `tiers`. Incremental, not cumulative.
+
+    D3 P6 (Greg, 2026-09-23): which schematics a stage buys stays the caller's
+    declaration, and this is an optional helper for building one — the same
+    shape as `goal_run.goals_for_phases`. Which tiers a stage covers is
+    declared too: the Project Assembly table's `delivery_unlocks` is prose,
+    and so is not parsed into a mapping. What the player has already bought is
+    caller state; pass the set still owed.
+
+    Same three types as `_reached_at_tier`. A filter: it returns ids and never
+    a quantity, which `unlock_cost` sums.
+
+    Only as right as the `tech_tier` column. Schematic_3-2_C (Logistics Mk.2)
+    reads tier 2, 4-2_C reads 3 and 5-3_C reads 4. The class names look like
+    pre-1.0 numbering with a correct 1.0 tier; that is an INFERENCE, open until
+    read in game (D3 note section 6).
+    """
+    wanted = set(tiers)
+    for tier in wanted:
+        if tier < 0:
+            raise ValueError(f"tier must be non-negative, got {tier}")
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    return tuple(sorted(
+        s["schematic_id"]
+        for s in _rows(ref / "schematics.csv")
+        if s["schematic_type"] in PROGRESSION_TYPES and int(s["tech_tier"]) in wanted
+    ))

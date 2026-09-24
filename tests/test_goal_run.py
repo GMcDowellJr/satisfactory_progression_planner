@@ -439,3 +439,95 @@ def test_paced_run_calls_run_twice_and_never_in_a_loop():
     for node in ast.walk(fn):
         if isinstance(node, loops):
             assert "run" not in _called_names(node)
+
+
+# ==========================================================================
+# D3 — a declared inventory nets the floor bill; an estimate rides along
+# ==========================================================================
+
+#: 500 plates and every rotor the stage owes, held at stage open. Invented
+#: for the test, not a reading of Greg's save.
+ON_HAND = stock.DeclaredOnHand(((PLT, 500.0), (ROT, 62.0), ("Desc_Wire_C", 40.0)))
+
+
+@pytest.fixture(scope="module")
+def netted(data, project_assembly):
+    return goal_run.paced_run(**_paced_kwargs(data, project_assembly, on_hand=ON_HAND))
+
+
+def test_with_nothing_declared_nothing_nets(paced):
+    """P8: the default reproduces A13.5, and the report says nothing netted."""
+    assert paced.net is None
+    assert paced.carry_estimate is None
+
+
+def test_the_helper_names_the_set_the_test_filtered_by_hand():
+    """P6: `schematics_in_tiers` and A13's hand filter agree on tier 2."""
+    assert unlocks.schematics_in_tiers(REPO, (TIER,)) == TIER_2_BOUGHT
+
+
+def test_held_stock_lowers_its_rate_by_units_over_t(paced, netted):
+    """500 plates held: 22.5 -> 12.5/min. Rotors fully held: 1.24 -> 0."""
+    assert netted.storage_rates[PLT] == pytest.approx(paced.storage_rates[PLT] - 500.0 / 50.0)
+    assert netted.storage_rates[PLT] == pytest.approx(12.5)
+    assert netted.storage_rates[ROT] == 0.0
+    for item in (RIP, ROD, SCR):
+        assert netted.storage_rates[item] == pytest.approx(paced.storage_rates[item])
+
+
+def test_the_net_is_the_floor_bill_less_the_declaration(netted):
+    assert netted.net.on_hand is ON_HAND
+    assert netted.net.owed == pytest.approx(
+        stock.net_of(netted.floor.stock.bills, ON_HAND).owed)
+    # Wire is billed (tier-2 unlocks) but no declared bus makes it, so the
+    # 40 held net against it and pace nothing: no line reads the rate.
+    wire = netted.floor.stock.bills["Desc_Wire_C"]
+    assert netted.net.owed["Desc_Wire_C"] == pytest.approx(
+        wire.bootstrap_units + wire.remainder_units - 40.0)
+    assert netted.net.surplus == {}
+
+
+def test_a_fully_held_item_stores_nothing(netted):
+    """P5 again: the rotor line clocks to usage."""
+    (rotor,) = [b for b in netted.paced.realization.buses if b.bus_id == "rotor"]
+    assert rotor.stores_nothing
+
+
+def test_netting_keeps_the_floor_argument(netted):
+    floor = {b.bus_id: b.machines for b in netted.floor.realization.buses}
+    for b in netted.paced.realization.buses:
+        assert b.machines >= floor[b.bus_id], b.bus_id
+
+
+def test_netting_moves_nothing_upstream_of_the_bill(paced, netted):
+    """The floor pass does not see the inventory: same build, same bill."""
+    assert netted.floor.machines == paced.floor.machines
+    assert netted.floor.stock.bills == paced.floor.stock.bills
+
+
+def test_netted_first_fifty_takes_thirteen_machines_and_80_6_ore(netted):
+    """First figures with a declared inventory (the invented ON_HAND above).
+    Measured in the container on 2026-09-23 and pinned: 16 -> 13 machines,
+    109.55 -> 80.6 ore/min against the un-netted paced build."""
+    assert netted.paced.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 7), (SMELTER, 3))
+    assert _ore_per_min(netted.paced) == pytest.approx(80.6)
+
+
+def test_a_carry_estimate_is_carried_and_moves_nothing(data, project_assembly, paced):
+    """P1: shown beside, never nets. With no declaration, the rates are
+    exactly A13's however large the estimate."""
+    est = schedule.carry_estimate(paced.storage_rates, 1000.0)
+    report = goal_run.paced_run(**_paced_kwargs(data, project_assembly, carry_estimate=est))
+    assert report.carry_estimate is est
+    assert report.net is None
+    assert report.storage_rates == paced.storage_rates
+    assert report.paced.machines == paced.paced.machines
+
+
+def test_paced_run_never_reads_the_estimate():
+    """By inspection: the parameter is passed to the report and nowhere else."""
+    (fn,) = [n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == "paced_run"]
+    uses = [n for n in ast.walk(fn) if isinstance(n, ast.Name) and n.id == "carry_estimate"]
+    assert len(uses) == 1
+    kw = [n for n in ast.walk(fn) if isinstance(n, ast.keyword) and n.arg == "carry_estimate"]
+    assert len(kw) == 1 and isinstance(kw[0].value, ast.Name)

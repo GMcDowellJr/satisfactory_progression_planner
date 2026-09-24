@@ -315,3 +315,34 @@ def test_schematic_costs_reads_real_amounts():
         "Desc_IronPlate_C": 100.0,
         "Desc_IronRod_C": 100.0,
     }
+
+
+# --------------------------------------------------------------------------
+# D3 P6: schematics_in_tiers, an optional helper. The set stays declared
+# --------------------------------------------------------------------------
+
+from progression import unlocks as _u  # noqa: E402
+
+def test_schematics_in_tier_2_are_the_five_milestones_a13_declared():
+    """The five A13.5 paced, filtered by hand in test_goal_run.py."""
+    got = _u.schematics_in_tiers(REPO, (2,))
+    assert got == (
+        "Schematic_2-1_C", "Schematic_2-2_C", "Schematic_2-3_C",
+        "Schematic_2-5_C", "Schematic_3-2_C",
+    )
+
+
+def test_schematics_in_tiers_is_incremental_and_partitions_the_cumulative_set():
+    """Tiers {0, 1, 2} together are exactly schematics_at_tier(2)."""
+    assert set(_u.schematics_in_tiers(REPO, (0, 1, 2))) == set(_u.schematics_at_tier(REPO, 2))
+    assert set(_u.schematics_in_tiers(REPO, (2,))).isdisjoint(_u.schematics_in_tiers(REPO, (1,)))
+
+
+def test_schematics_in_tiers_returns_ids_and_never_a_quantity():
+    got = _u.schematics_in_tiers(REPO, (1, 2))
+    assert all(isinstance(s, str) for s in got)
+
+
+def test_schematics_in_tiers_refuses_a_negative_tier():
+    with pytest.raises(ValueError):
+        _u.schematics_in_tiers(REPO, (-1,))

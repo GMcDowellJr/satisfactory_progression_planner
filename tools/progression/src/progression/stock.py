@@ -394,3 +394,94 @@ def bill_for(
             basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
         )
     return StockPass(bills=bills, unresolved=tuple(sorted(set(unresolved))))
+
+
+# --------------------------------------------------------------------------
+# D3: stock on hand at stage open, netted against the bill. 2026-09-23.
+# --------------------------------------------------------------------------
+#
+# Greg's decisions on the D3 note (project doc
+# d3-carry-forward-design-2026-09-23.md): carry is DECLARED; a derived
+# estimate may be shown beside it but NEVER nets, including when nothing is
+# declared (P1); netting lives here because it is quantity arithmetic (P2);
+# it is against the item's whole bill, not a half (P3).
+#
+# WHY ONLY A DECLARED INVENTORY NETS. The bill is a floor: bill <= true bill.
+# Netting gives bill - carry, and that stays a floor only if carry >= true
+# carry, i.e. only if carry is a CEILING. A read of the player's inventory is
+# a measurement. A modelled carry understates whenever lines ran faster than
+# paced, which is how the pre-Smart-Plating window is played, and so breaks
+# the floor. The restriction is in the signature: `net_of` takes a
+# `DeclaredOnHand` and refuses anything else, so an estimate cannot be passed
+# in by accident.
+
+
+@dataclass(frozen=True)
+class DeclaredOnHand:
+    """Units of each item the player HOLDS at stage open. Read, not modelled.
+
+    Pairs, like `BootstrapSet.buildings`, so the declaration is hashable and
+    keeps the caller's order. An item named twice is refused rather than
+    summed: two readings of one item is a declaration error, not a total.
+    """
+
+    units: tuple[tuple[ItemId, float], ...]
+
+    def __post_init__(self) -> None:
+        seen = [item_id for item_id, _ in self.units]
+        if len(seen) != len(set(seen)):
+            raise ValueError("an item appears twice in the on-hand declaration; state one count")
+        for item_id, amount in self.units:
+            if amount < 0:
+                raise ValueError(f"{item_id}: on-hand units cannot be negative, got {amount}")
+
+
+@dataclass(frozen=True)
+class NetStock:
+    """A bill netted against a declared inventory. Nothing clamped silently.
+
+        owed      one entry per BILLED item, in bill order: whole bill less
+                  what is held, or 0.0 when the holding covers it
+        surplus   what is held beyond the bill: billed items in bill order,
+                  then unbilled held items in declaration order. Includes
+                  held items no bill names — they carry on,
+                  and dropping them would lose the reading
+
+    Conservation, per item: owed + on_hand == bill + surplus. Asserted in the
+    tests. The `WithdrawalBill` objects are untouched; this is a separate
+    object and its basis is the declaration it was netted against.
+    """
+
+    owed: dict[ItemId, float]
+    surplus: dict[ItemId, float]
+    on_hand: DeclaredOnHand
+
+
+def net_of(bills: dict[ItemId, WithdrawalBill], on_hand: DeclaredOnHand) -> NetStock:
+    """Each item's whole bill, bootstrap plus remainder, less what is held.
+
+    A sign test splits the difference into `owed` or `surplus`. That is a
+    branch on one number, not a comparison between alternatives: there is no
+    min, max or sort here, and asserted so.
+    """
+    if not isinstance(on_hand, DeclaredOnHand):
+        raise StockPassError(
+            f"net_of takes a DeclaredOnHand, got {type(on_hand).__name__}. Only "
+            "a read inventory nets: a modelled carry can understate, and an "
+            "understated carry breaks the floor (D3 P1)."
+        )
+    held = dict(on_hand.units)
+    owed: dict[ItemId, float] = {}
+    surplus: dict[ItemId, float] = {}
+    for item_id, bill in bills.items():
+        difference = bill.bootstrap_units + bill.remainder_units - held.get(item_id, 0.0)
+        if difference > 0:
+            owed[item_id] = difference
+        else:
+            owed[item_id] = 0.0
+            if difference < 0:
+                surplus[item_id] = -difference
+    for item_id, amount in on_hand.units:
+        if item_id not in bills and amount > 0:
+            surplus[item_id] = amount
+    return NetStock(owed=owed, surplus=surplus, on_hand=on_hand)

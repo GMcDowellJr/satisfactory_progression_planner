@@ -35,6 +35,10 @@ that `run` itself stays single-pass:
              (`progression.schedule`)
     paced    storing lines clocked to that rate -> the reported build
 
+D3 nets the floor bill against a DECLARED inventory between the first two
+steps, when one is given. A modelled carry estimate rides along to the report
+and never nets (the netted bill stays a floor only if carry is a ceiling).
+
 The paced demand is usage plus a non-negative rate, so every paced line has at
 least the floor's machines, and a bill summed over the floor is a FLOOR of the
 paced build's. That is enough, by Greg's standing position that a floor
@@ -214,6 +218,12 @@ class PacedRunReport:
     storage_rates: dict[ItemId, float]
     floor: GoalRunReport
     paced: GoalRunReport
+    #: D3. The floor bill netted against the declared inventory; None when
+    #: nothing was declared, in which case the rates are the whole bill over T
+    net: stock.NetStock | None = None
+    #: D3 P1. Carried to the report as handed in and never read here. It
+    #: cannot net: `stock.net_of` refuses its type
+    carry_estimate: schedule.CarryEstimate | None = None
 
 
 def paced_run(
@@ -227,6 +237,8 @@ def paced_run(
     construction: ConstructionData,
     declared_stock: StockDeclaration,
     horizon_min: float,
+    on_hand: stock.DeclaredOnHand | None = None,
+    carry_estimate: schedule.CarryEstimate | None = None,
 ) -> PacedRunReport:
     """A13 (D2). The floor pass, the rates, the paced pass. Nothing chosen here.
 
@@ -246,6 +258,13 @@ def paced_run(
 
     A storing line whose item has no bill is paced to 0.0. It clocks to usage
     and reports `stores_nothing` (P5).
+
+    D3 (2026-09-23). `on_hand` is the inventory the player READ at stage open.
+    When given, the floor bill is netted against it (`stock.net_of`) and the
+    storing lines are paced to what is still OWED over T; an item the holding
+    covers paces to 0.0 and reports `stores_nothing` (P5 again). When absent,
+    nothing nets and every figure is A13's. `carry_estimate` is shown beside it
+    in the report and never nets, including when `on_hand` is absent (P1).
     """
     if declared_stock.project_assembly is not None or declared_stock.phases is not None:
         raise PacedRunError(
@@ -270,7 +289,12 @@ def paced_run(
     )
     floor = run(realization=floor_request, **common)
 
-    rates = schedule.storage_rates(floor.stock.bills, horizon_min)
+    if on_hand is None:
+        net = None
+        rates = schedule.storage_rates(floor.stock.bills, horizon_min)
+    else:
+        net = stock.net_of(floor.stock.bills, on_hand)
+        rates = schedule.rates_of(net.owed, horizon_min)
     paced_request = dataclasses.replace(
         realization,
         buses=tuple(
@@ -286,4 +310,6 @@ def paced_run(
         storage_rates=rates,
         floor=floor,
         paced=paced,
+        net=net,
+        carry_estimate=carry_estimate,
     )

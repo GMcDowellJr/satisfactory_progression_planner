@@ -1768,3 +1768,108 @@ enum test names the fifth state, as its docstring asked.
                   rate x T must fit somewhere
     open          which schematics a stage buys is the caller's declaration.
                   Nothing derives it, and deriving it is D3's question
+
+## Amendment 14 — 2026-09-23. Carry-forward (D3): a declared inventory nets the bill
+
+Appended forward-only. Nothing above is edited. Carries D3 out of A13's "not
+built" list and settles A13's "open" line on which schematics a stage buys.
+
+    decided   Greg, in session 2026-09-23, on the D3 design note (project doc
+              d3-carry-forward-design-2026-09-23.md):
+      P1  carry is DECLARED: the inventory the player reads at stage open. A
+          modelled estimate (prior rate x gap) may be SHOWN beside it and
+          NEVER nets, including when nothing is declared. Greg chose "both,
+          declared wins" over the note's "declared only"; the no-declaration
+          case was then asked separately and answered "never nets"
+      P2  netting lives in `stock` (`net_of` -> `NetStock`: owed, surplus),
+          reported and never clamped silently
+      P3  against the item's whole bill, not a half
+      P4  `schedule` gains a sibling `rates_of`; `storage_rates` unchanged
+      P5  an item the holding covers paces to 0.0 and reports stores_nothing
+      P6  which schematics a stage buys stays DECLARED. Optional helper
+          `unlocks.schematics_in_tiers`; stage -> tiers is declared too
+      P7  build and expedition time have no sizing consumer once carry is
+          declared. Wall clock per stage is a report with no consumer; not
+          built
+      P8  `paced_run(on_hand=None, carry_estimate=None)`; the default is A13
+      P2-P5 and P8 were accepted as proposed ("build as proposed")
+    measured  agent container, 2026-09-23. Not Greg's machine
+
+### A14.1 Why only a declared inventory nets
+
+A13.2's floor is `bill <= true_bill`. Netting gives `bill - carry`, and for
+that to stay below `true_bill - true_carry` it suffices that
+`carry >= true_carry`. **Once carry is subtracted, the floor needs carry to be
+a CEILING**, the opposite of every other term. A read inventory is a
+measurement. A modelled carry understates whenever lines ran faster than paced
+— the way the pre-Smart-Plating window is played — and so breaks the floor.
+
+The guard is structural: `stock.net_of` refuses any argument that is not a
+`DeclaredOnHand`, and `schedule.CarryEstimate` is a separate type with no
+`units` pairs. `paced_run` names `carry_estimate` exactly once, in the report
+constructor, asserted from the source.
+
+### A14.2 Where the arithmetic lives
+
+    stock      DeclaredOnHand, NetStock, net_of. A sign test splits each
+               difference into owed or surplus; no min, max, sort or round,
+               asserted. Conservation per item: owed + on_hand == bill +
+               surplus. An on-hand item no bill names is surplus, not dropped
+    schedule   rates_of (divides). carry_estimate: rate x gap, the one
+               multiplication in the module, admitted by the amended
+               arithmetic test only inside that function. It is the inverse
+               of the module's job and its result cannot be netted
+    unlocks    schematics_in_tiers: tech_tier IN the declared set, the same
+               three types. A filter; returns ids
+    goal_run   paced_run nets the FLOOR bill between the two passes when
+               on_hand is given. Still two `run` calls, no loop; G1 holds
+
+The floor pass never sees the inventory, so its build and bill are unchanged
+by netting (asserted). The paced rate is non-negative after netting, so
+A13.2's per-line `paced >= floor` still holds (asserted).
+
+### A14.3 First figures
+
+Phase 1, 1x/1x/1x, tier 2, first-50 partition, T = 50, A13's declaration.
+The inventory is INVENTED for the test, not a reading of Greg's save:
+500 Iron Plate, 62 Rotor, 40 Wire.
+
+                            machines (Asm/Con/Sml)   iron ore /min
+    PACED, nothing declared    16  (3 / 9 / 4)            109.55   A13.5
+    PACED, netted              13  (3 / 7 / 3)             80.60
+
+    rates  plate 22.50 -> 12.50, rotor 1.24 -> 0 (stores_nothing);
+           RIP, rod, screw unchanged
+    wire   billed (tier-2 unlocks) but no declared bus makes it; the 40 held
+           net against it and pace nothing
+
+Each unit held lowers its item's rate by 1/T. A13.5's figures therefore
+overstate paced rates by exactly on_hand_i / T per item; a real reading is
+what closes that.
+
+### A14.4 The Schematic_3-2_C oddity, resolved by inference only
+
+`3-2_C` (Logistics Mk.2) reads tech_tier 2, `4-2_C` reads 3, `5-3_C` reads 4.
+The class names look like pre-1.0 numbering with a correct 1.0 tier, and the
+tier-2 set matches the 1.0 tier 2 as recalled. INFERENCE, not measured. P6's
+helper is only as right as the column; an in-game read of tier 2 settles it.
+
+### A14.5 Tests
+
+Every guard was confirmed to fail with it reverted: net_of accepting a
+non-declaration, an estimate moving the rates, `on_hand` ignored, and a
+multiplication outside `carry_estimate`.
+
+    counts   container, staged subset (tests/ and tools/realization/tests):
+             135 relevant before -> 168; 194 pass together, six runs clean
+
+### What this amendment does not establish
+
+    not run       the full suite on Greg's machine
+    not read      a real inventory; every netted figure above uses an
+                  invented one
+    not modelled  container capacity against a paced fill or against a gap
+                  (A7.3); the estimate ignores saturation and says so
+    not built     wall clock per stage (P7); a stage sequence of any kind —
+                  carry_estimate takes the prior rates and the gap as handed
+                  in and does not know what a stage is

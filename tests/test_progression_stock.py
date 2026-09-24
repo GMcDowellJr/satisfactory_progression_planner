@@ -534,3 +534,89 @@ def test_a_half_supplied_term_is_refused(data, construction, kwargs, match):
             bootstrap=stock.BootstrapSet(tier=1, buildings=(("Build_ConstructorMk1_C", 1),)),
             machines=(), **kwargs,
         )
+
+
+# ==========================================================================
+# D3 — net_of: a bill less a DECLARED inventory. 2026-09-23
+# ==========================================================================
+
+import ast as _ast  # noqa: E402
+
+from progression import schedule as _schedule  # noqa: E402
+from realization.contracts import WithdrawalBill as _Bill  # noqa: E402
+
+
+def _bill(boot: float, rest: float) -> _Bill:
+    return _Bill(
+        bootstrap_units=boot, remainder_units=rest,
+        terms=frozenset(stock.BASE_TERMS | {BillTerm.UNLOCK_COST}),
+        basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
+    )
+
+
+_BILLS = {"plate": _bill(25.0, 1100.0), "screw": _bill(0.0, 1000.0), "rotor": _bill(0.0, 62.0)}
+
+
+def test_net_of_owes_the_whole_bill_less_what_is_held():
+    """P3: against the whole bill, not a half. 500 plates held of 1125."""
+    net = stock.net_of(_BILLS, stock.DeclaredOnHand((("plate", 500.0),)))
+    assert net.owed == {"plate": 625.0, "screw": 1000.0, "rotor": 62.0}
+    assert net.surplus == {}
+
+
+def test_net_of_keeps_bill_order_and_every_billed_item():
+    """An item the holding covers is owed 0.0, not dropped: its line must
+    still be paced (to zero) and report stores_nothing (P5)."""
+    net = stock.net_of(_BILLS, stock.DeclaredOnHand((("rotor", 62.0),)))
+    assert list(net.owed) == list(_BILLS)
+    assert net.owed["rotor"] == 0.0
+
+
+def test_net_of_reports_surplus_including_items_no_bill_names():
+    held = stock.DeclaredOnHand((("screw", 1300.0), ("wire", 40.0), ("cable", 0.0)))
+    net = stock.net_of(_BILLS, held)
+    assert net.owed["screw"] == 0.0
+    assert net.surplus == {"screw": 300.0, "wire": 40.0}
+
+
+@pytest.mark.parametrize("held", [0.0, 10.0, 1125.0, 5000.0])
+def test_net_of_conserves_units(held):
+    """owed + on_hand == bill + surplus, per item."""
+    net = stock.net_of(_BILLS, stock.DeclaredOnHand((("plate", held),)))
+    bill = _BILLS["plate"].bootstrap_units + _BILLS["plate"].remainder_units
+    assert net.owed["plate"] + held == pytest.approx(bill + net.surplus.get("plate", 0.0))
+
+
+def test_net_of_leaves_the_bills_untouched():
+    before = dict(_BILLS)
+    stock.net_of(_BILLS, stock.DeclaredOnHand((("plate", 500.0),)))
+    assert _BILLS == before
+
+
+def test_net_of_refuses_a_carry_estimate():
+    """P1: a modelled carry never nets, not even when nothing is declared."""
+    est = _schedule.carry_estimate({"plate": 22.5}, 20.0)
+    with pytest.raises(stock.StockPassError, match="DeclaredOnHand"):
+        stock.net_of(_BILLS, est)
+    with pytest.raises(stock.StockPassError):
+        stock.net_of(_BILLS, {"plate": 500.0})
+
+
+@pytest.mark.parametrize("units", [(("x", -1.0),), (("x", 1.0), ("x", 2.0))])
+def test_a_bad_declaration_is_refused(units):
+    with pytest.raises(ValueError):
+        stock.DeclaredOnHand(units)
+
+
+def test_net_of_ranks_nothing():
+    """Read from the source: no min, max, sort or rounding in net_of."""
+    src = (
+        pathlib.Path(stock.__file__).read_text(encoding="utf-8")
+    )
+    (fn,) = [n for n in _ast.parse(src).body
+             if isinstance(n, _ast.FunctionDef) and n.name == "net_of"]
+    called = {
+        (n.func.id if isinstance(n.func, _ast.Name) else getattr(n.func, "attr", ""))
+        for n in _ast.walk(fn) if isinstance(n, _ast.Call)
+    }
+    assert {"min", "max", "sorted", "sort", "round"}.isdisjoint(called)
