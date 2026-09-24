@@ -2276,3 +2276,45 @@ figures are now A20.3's.
                 second caller (the rate sheet or a CLI) needs it
     not run     the full suite on Greg's machine
     not built   the per-phase rate sheet
+
+## Amendment 21 — 2026-09-24. The per-phase rate sheet; a sheet holds at its run's rate
+
+Appended forward-only. Greg, chat 2026-09-24.
+
+    code      tools/rate_sheet.py (sheet, render). A view only
+    tests     tests/test_rate_sheet.py (4, guardrails R1-R4);
+              tests/test_phase_two_run.py (+4, phase-2 figures)
+    measured  agent container, against 08e3b03 plus this change. 919
+              passed, 1 skipped. Not Greg's machine
+
+### A21.1 Found, then decided by Greg, 2026-09-24
+
+    found   rates are NOT linear in the anchor rate. Phase 2 run at 2
+            SP/min against 1 SP/min: T halves, goal rates double exactly,
+            but the iron and copper lines sit 0.2-0.7% above double
+            (iron ingot 66.222 vs 65.793 per 1/min). A faster run builds
+            more machines, and their build-material bill is billed back
+            into the storage rates. Machine counts and nameplate supply
+            do not scale at all
+    R1      THE SHEET IS A VIEW OF A RUN AT THE PLAYER'S RATE. It never
+            multiplies; another rate is another run. The handoff's "items/min
+            per 1 anchor/min" framing is superseded by this, forward
+    R2      columns per line: machines and clock per lane (held at this
+            rate only), nameplate supply, flow, downstream draw, storage,
+            other (= flow - downstream - storage; the goal delivery on a
+            goal line), raw inputs from nodes
+
+### A21.2 Guardrails (asserted from source)
+
+    R1  calls no layer, no dataclasses.replace; imports no goal_run,
+        progression, backend or realize
+    R2  no min, max, sorted, sort or round; rows keep the report's order
+    R3  no bool field on a row, sheet or lane clock
+    R4  `sheet` takes no rate or factor, and its body neither multiplies
+        nor divides. The anchor rate is READ from the run's anchor goal
+
+### What this amendment does not establish
+
+    not built   a CLI or file output (render is plain text only); the
+                goal table prints item ids, not display names
+    not run     the full suite on Greg's machine

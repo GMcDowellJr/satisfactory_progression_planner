@@ -221,3 +221,59 @@ def test_phase2_ledger_plans_the_coal_step(phase2):
     assert led.known_demand_mw == pytest.approx(127.3149, abs=5e-5)
     assert led.base_and_planned_less_demand_mw == pytest.approx(172.6851, abs=5e-5)
     assert led.ore_extraction_mw is None
+
+
+# --------------------------------------------------------------------------
+# The per-phase rate sheet over this run (tools/rate_sheet.py). A view only
+# --------------------------------------------------------------------------
+
+_rs_spec = importlib.util.spec_from_file_location("rate_sheet", REPO / "tools" / "rate_sheet.py")
+rate_sheet = importlib.util.module_from_spec(_rs_spec)
+sys.modules.setdefault("rate_sheet", rate_sheet)
+_rs_spec.loader.exec_module(rate_sheet)
+
+
+@pytest.fixture(scope="module")
+def sheet2(phase2):
+    rates, _, _, r = phase2
+    return rate_sheet.sheet(r.paced.realization, r.paced.goals, phase="phase 2 (tiers 3-4)",
+                            anchor_goal_id=rates.anchor_goal_id, horizon_min=r.horizon_min)
+
+
+def test_rate_sheet_is_the_paced_build_row_for_row(phase2, sheet2):
+    _, _, _, r = phase2
+    assert [row.bus for row in sheet2.rows] == list(r.paced.realization.buses)
+    for row, bus in zip(sheet2.rows, r.paced.realization.buses):
+        assert row.bus is bus
+    assert sheet2.anchor_rate_per_min == pytest.approx(1.0)
+    assert sheet2.total_power_mw == r.paced.realization.total_power_mw
+
+
+def test_rate_sheet_phase2_figures(sheet2):
+    """Measured in the container 2026-09-24 against d309971; A20.3's run."""
+    got = {row.bus.bus_id: (row.flow_per_min, row.downstream_per_min,
+                            row.storage_per_min, row.other_per_min) for row in sheet2.rows}
+    assert got["smart_plating"] == pytest.approx((1.0, 0.0, 0.0, 1.0))
+    assert got["versatile_framework"] == pytest.approx((1.0, 0.0, 0.0, 1.0))
+    assert got["automated_wiring"] == pytest.approx((0.1, 0.0, 0.0, 0.1))
+    assert got["wire"] == pytest.approx((12.392, 7.868, 4.524, 0.0))
+    assert got["iron_ingot"] == pytest.approx((65.793, 65.793, 0.0, 0.0))
+    assert got["concrete"] == pytest.approx((2.68, 0.6, 2.08, 0.0))
+    for bus_id, (_f, _d, _s, other) in got.items():
+        if bus_id not in ("smart_plating", "versatile_framework", "automated_wiring"):
+            assert other == pytest.approx(0.0, abs=1e-9), bus_id
+
+
+def test_rate_sheet_raw_inputs_match_the_ore_pins(phase2, sheet2):
+    _, _, _, r = phase2
+    raw = {row.bus.bus_id: dict(row.raw) for row in sheet2.rows}
+    assert raw["steel_ingot"] == pytest.approx({I["ORE"]: 28.55, I["COAL"]: 28.55})
+    assert raw["iron_ingot"] == pytest.approx({I["ORE"]: _ore(r.paced, "iron_ingot", I["ORE"])})
+    assert raw["rip"] == {}
+
+
+def test_rate_sheet_refuses_an_anchor_the_run_lacks(phase2):
+    _, _, _, r = phase2
+    with pytest.raises(rate_sheet.RateSheetError):
+        rate_sheet.sheet(r.paced.realization, r.paced.goals, phase="x",
+                         anchor_goal_id="no such goal", horizon_min=r.horizon_min)
