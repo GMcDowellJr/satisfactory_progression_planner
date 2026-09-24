@@ -90,6 +90,9 @@ class StockDeclaration:
     unlock_costs: dict[SchematicId, tuple[tuple[ItemId, float], ...]] | None = None
     project_assembly: tuple[stock.ProjectAssemblyRequirement, ...] | None = None
     phases: tuple[int, ...] | None = None
+    #: D4 (amendment 4). Machines placed at stage open that the plan may use.
+    #: None nets nothing and every figure is as before
+    standing: stock.StandingBuildings | None = None
 
 
 @dataclass(frozen=True)
@@ -190,6 +193,7 @@ def run(
         unlock_costs=declared_stock.unlock_costs,
         project_assembly=declared_stock.project_assembly,
         phases=declared_stock.phases,
+        standing=declared_stock.standing,
     )
     return GoalRunReport(
         data=data,

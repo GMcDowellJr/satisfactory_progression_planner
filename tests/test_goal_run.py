@@ -531,3 +531,157 @@ def test_paced_run_never_reads_the_estimate():
     assert len(uses) == 1
     kw = [n for n in ast.walk(fn) if isinstance(n, ast.keyword) and n.arg == "carry_estimate"]
     assert len(kw) == 1 and isinstance(kw[0].value, ast.Name)
+
+
+# ==========================================================================
+# Amendment 4 — the case of record, and machines standing at stage open (D4)
+# ==========================================================================
+#
+# The case of record (Greg, 2026-09-24, "for now"): the first-50 partition
+# plus the build-material lines, each carrying its recipe_id (P30); the Mk1
+# coal step as the bootstrap TARGET; on hand = 10% of each item's whole floor
+# bill, a declared placeholder until a real reading, built HERE by the caller
+# from a first run's floor bill. The A12-A14 fixtures above are kept as they
+# were: their figures are still true of their declarations.
+
+CU_ORE, CU, WIRE, CABLE, SHEET, STONE, CONCRETE = (
+    "Desc_OreCopper_C", "Desc_CopperIngot_C", "Desc_Wire_C", "Desc_Cable_C",
+    "Desc_CopperSheet_C", "Desc_Stone_C", "Desc_Cement_C",
+)
+BUILD_MATERIAL = (
+    BusDeclaration(bus_id="copper_ingot", item_id=CU, recipe_id="Recipe_IngotCopper_C",
+                   sources=(SourceEdge(CU_ORE, None),)),
+    BusDeclaration(bus_id="wire", item_id=WIRE, recipe_id="Recipe_Wire_C",
+                   sources=(SourceEdge(CU, "copper_ingot"),)),
+    BusDeclaration(bus_id="cable", item_id=CABLE, recipe_id="Recipe_Cable_C",
+                   sources=(SourceEdge(WIRE, "wire"),)),
+    BusDeclaration(bus_id="copper_sheet", item_id=SHEET, recipe_id="Recipe_CopperSheet_C",
+                   sources=(SourceEdge(CU, "copper_ingot"),)),
+    BusDeclaration(bus_id="concrete", item_id=CONCRETE, recipe_id="Recipe_Concrete_C",
+                   sources=(SourceEdge(STONE, None),)),
+)
+RECORD = DECLARED + BUILD_MATERIAL
+MINER, COAL_GEN, WATER = "Build_MinerMk1_C", "Build_GeneratorCoal_C", "Build_WaterPump_C"
+MK1_COAL_STEP = stock.BootstrapSet(tier=TIER, buildings=((MINER, 2), (COAL_GEN, 4), (WATER, 2)))
+
+
+def _record_kwargs(data, project_assembly, *, standing=None, **over):
+    kw = _paced_kwargs(data, project_assembly, buses=RECORD, **over)
+    kw["declared_stock"] = goal_run.StockDeclaration(
+        bootstrap=MK1_COAL_STEP,
+        unlocks=unlocks.schematics_in_tiers(REPO, (TIER,)),
+        unlock_costs=unlocks.schematic_costs(REPO),
+        standing=standing,
+    )
+    return kw
+
+
+def _ten_percent(report):
+    """The placeholder: 10% of each billed item's whole floor bill."""
+    return stock.DeclaredOnHand(tuple(
+        (i, 0.1 * (b.bootstrap_units + b.remainder_units))
+        for i, b in report.floor.stock.bills.items()
+    ))
+
+
+def _ore(report, bus_id, ore):
+    return sum(i.rate_per_min for lane in _bus(report, bus_id).lanes
+               for i in lane.inputs if i.item_id == ore)
+
+
+@pytest.fixture(scope="module")
+def record(data, project_assembly):
+    return goal_run.paced_run(**_record_kwargs(data, project_assembly))
+
+
+@pytest.fixture(scope="module")
+def record_ten(data, project_assembly, record):
+    return goal_run.paced_run(**_record_kwargs(
+        data, project_assembly, on_hand=_ten_percent(record)))
+
+
+#: The Mk1 coal step already built at stage open.
+COAL_STANDING = stock.StandingBuildings(MK1_COAL_STEP.buildings)
+
+
+@pytest.fixture(scope="module")
+def record_coal_standing(data, project_assembly):
+    return goal_run.paced_run(**_record_kwargs(
+        data, project_assembly, standing=COAL_STANDING))
+
+
+def test_record_floor_is_twelve_machines_and_its_whole_bill(record):
+    """Measured in the container 2026-09-24 (08:35 scratch driver), re-derived
+    by this run and pinned."""
+    assert record.floor.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 7), (SMELTER, 2))
+    whole = {i: b.bootstrap_units + b.remainder_units
+             for i, b in record.floor.stock.bills.items()}
+    assert whole == pytest.approx({
+        CABLE: 656.0, CONCRETE: 720.0, SHEET: 40.0, RIP: 188.0, PLT: 1120.0,
+        ROD: 710.0, SCR: 1000.0, ROT: 122.0, WIRE: 516.0,
+    })
+
+
+def test_record_paced_is_27_machines(record):
+    assert record.paced.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 18), (SMELTER, 6))
+    assert _ore(record.paced, "iron_ingot", ORE) == pytest.approx(148.62)
+    assert _ore(record.paced, "copper_ingot", CU_ORE) == pytest.approx(19.88)
+    assert _ore(record.paced, "concrete", STONE) == pytest.approx(43.20)
+    assert record.paced.realization.total_power_mw == pytest.approx(107.8094, abs=5e-5)
+
+
+def test_record_with_ten_percent_on_hand_is_26_machines(record, record_ten):
+    """The floor pass does not see the inventory; the paced pass does. The
+    08:35 handoff printed these to two places (136.08, 17.89); pinned here in
+    full."""
+    assert record_ten.floor.stock.bills == record.floor.stock.bills
+    assert record_ten.paced.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 17), (SMELTER, 6))
+    assert _ore(record_ten.paced, "iron_ingot", ORE) == pytest.approx(136.083)
+    assert _ore(record_ten.paced, "copper_ingot", CU_ORE) == pytest.approx(17.892)
+    assert _ore(record_ten.paced, "concrete", STONE) == pytest.approx(38.88)
+    assert record_ten.paced.realization.total_power_mw == pytest.approx(97.9009, abs=5e-5)
+
+
+def test_no_standing_declared_nets_no_buildings(record, storing, paced):
+    """D4 P4: the default reproduces every figure, and says nothing netted."""
+    assert goal_run.StockDeclaration(bootstrap=BOOTSTRAP).standing is None
+    for report in (storing, paced.floor, paced.paced, record.floor, record.paced):
+        assert report.stock.standing_net is None
+
+
+def test_a_standing_coal_step_zeroes_the_bootstrap_half(record, record_coal_standing):
+    """Both passes are netted; the floor BUILD does not move, only its bill."""
+    r = record_coal_standing
+    assert r.floor.machines == record.floor.machines
+    for report in (r.floor, r.paced):
+        net = report.stock.standing_net
+        assert net.standing is COAL_STANDING
+        assert net.owed_bootstrap == {MINER: 0, COAL_GEN: 0, WATER: 0}
+        assert net.surplus == {}
+        assert all(b.bootstrap_units == 0.0 for b in report.stock.bills.values())
+    assert r.floor.stock.bills[RIP].remainder_units == record.floor.stock.bills[RIP].remainder_units
+
+
+def test_record_with_the_coal_step_standing_is_22_machines(record_coal_standing):
+    """First figures with a standing reading. Measured in the container
+    2026-09-24 and pinned: 27 -> 22 machines against the record."""
+    r = record_coal_standing
+    assert r.paced.machines == ((ASSEMBLER, 3), (CONSTRUCTOR, 14), (SMELTER, 5))
+    assert _ore(r.paced, "iron_ingot", ORE) == pytest.approx(110.52)
+    assert _ore(r.paced, "copper_ingot", CU_ORE) == pytest.approx(15.88)
+    assert _ore(r.paced, "concrete", STONE) == pytest.approx(42.00)
+    assert r.paced.realization.total_power_mw == pytest.approx(75.6885, abs=5e-5)
+
+
+def test_copper_sheet_is_billed_only_by_the_water_extractors(record, record_coal_standing):
+    """With the extractors standing no bill names Copper Sheet, so its line
+    paces to 0.0 and stores nothing (P5)."""
+    assert SHEET in record.floor.stock.bills
+    assert SHEET not in record_coal_standing.floor.stock.bills
+    assert _bus(record_coal_standing.paced, "copper_sheet").stores_nothing
+
+
+def test_standing_keeps_the_floor_argument(record_coal_standing):
+    floor = {b.bus_id: b.machines for b in record_coal_standing.floor.realization.buses}
+    for b in record_coal_standing.paced.realization.buses:
+        assert b.machines >= floor[b.bus_id], b.bus_id

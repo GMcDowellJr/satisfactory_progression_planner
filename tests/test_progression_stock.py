@@ -620,3 +620,122 @@ def test_net_of_ranks_nothing():
         for n in _ast.walk(fn) if isinstance(n, _ast.Call)
     }
     assert {"min", "max", "sorted", "sort", "round"}.isdisjoint(called)
+
+
+# --------------------------------------------------------------------------
+# D4 — machines standing at stage open (goal_run_driver.md amendment 4)
+# --------------------------------------------------------------------------
+#
+# Standing nets per producer class against the whole demand, lines first and
+# then the bootstrap (Greg, 2026-09-24). The bootstrap here is the Mk1 coal
+# step, the case of record's target: 2 miners, 4 coal generators, 2 water
+# extractors.
+
+MK1_COAL = stock.BootstrapSet(tier=2, buildings=(
+    ("Build_MinerMk1_C", 2), ("Build_GeneratorCoal_C", 4), ("Build_WaterPump_C", 2),
+))
+#: One class in both halves (Constructor), so the order is observable.
+LINES = (("Build_ConstructorMk1_C", 5), ("Build_AssemblerMk1_C", 2))
+BOTH = stock.BootstrapSet(tier=2, buildings=(
+    ("Build_ConstructorMk1_C", 2), ("Build_GeneratorCoal_C", 4),
+))
+
+
+def _conserved(net, bootstrap, machines):
+    lines, boot = dict(machines), dict(bootstrap.buildings)
+    held = dict(net.standing.buildings)
+    for pc in set(lines) | set(boot) | set(held):
+        left = net.owed_machines.get(pc, 0) + net.owed_bootstrap.get(pc, 0) + held.get(pc, 0)
+        right = lines.get(pc, 0) + boot.get(pc, 0) + net.surplus.get(pc, 0)
+        assert left == right, pc
+
+
+@pytest.mark.parametrize("held", [0, 3, 5, 6, 7, 9])
+def test_standing_covers_the_lines_first_then_the_bootstrap(held):
+    """5 constructors on lines, 2 in the bootstrap. Held 3 -> 2 lines owed, 2
+    boot owed; 6 -> 0 and 1; 9 -> 0, 0, surplus 2."""
+    net = stock.net_buildings(
+        BOTH, LINES, stock.StandingBuildings((("Build_ConstructorMk1_C", held),)))
+    expect = {0: (5, 2, 0), 3: (2, 2, 0), 5: (0, 2, 0), 6: (0, 1, 0), 7: (0, 0, 0), 9: (0, 0, 2)}
+    lines_owed, boot_owed, spare = expect[held]
+    assert net.owed_machines["Build_ConstructorMk1_C"] == lines_owed
+    assert net.owed_bootstrap["Build_ConstructorMk1_C"] == boot_owed
+    assert net.surplus.get("Build_ConstructorMk1_C", 0) == spare
+    _conserved(net, BOTH, LINES)
+
+
+def test_net_buildings_conserves_and_keeps_caller_order():
+    standing = stock.StandingBuildings((
+        ("Build_GeneratorBiomass_Automated_C", 4), ("Build_GeneratorCoal_C", 5),
+        ("Build_AssemblerMk1_C", 1),
+    ))
+    net = stock.net_buildings(MK1_COAL, LINES, standing)
+    _conserved(net, MK1_COAL, LINES)
+    assert list(net.owed_machines) == [pc for pc, _ in LINES]
+    assert list(net.owed_bootstrap) == [pc for pc, _ in MK1_COAL.buildings]
+    # a bootstrap class first, then the standing-only burner class
+    assert net.surplus == {"Build_GeneratorCoal_C": 1, "Build_GeneratorBiomass_Automated_C": 4}
+    assert net.standing is standing
+
+
+def test_no_standing_reading_leaves_the_bill_gross(data, construction):
+    gross = stock.bill_for(data, construction, bootstrap=MK1_COAL, machines=LINES)
+    zero = stock.bill_for(data, construction, bootstrap=MK1_COAL, machines=LINES,
+                          standing=stock.StandingBuildings(()))
+    assert gross.standing_net is None
+    assert zero.bills == gross.bills
+    assert zero.unresolved == gross.unresolved
+
+
+def test_a_standing_coal_step_empties_the_bootstrap_half(data, construction):
+    """The 4:2 step already built: every bootstrap half is 0, the lines' half is
+    unchanged, and the Portable Miner gap goes with the owed miners."""
+    gross = stock.bill_for(data, construction, bootstrap=MK1_COAL, machines=LINES)
+    netted = stock.bill_for(data, construction, bootstrap=MK1_COAL, machines=LINES,
+                            standing=stock.StandingBuildings(MK1_COAL.buildings))
+    lines_only = stock.cost_of(construction, LINES)
+    assert {i: b.remainder_units for i, b in netted.bills.items()} == pytest.approx(lines_only)
+    assert all(b.bootstrap_units == 0.0 for b in netted.bills.values())
+    assert I_PORTABLE_MINER in {i for _, i in gross.unresolved}
+    assert I_PORTABLE_MINER not in {i for _, i in netted.unresolved}
+
+
+def test_over_declared_standing_keeps_the_bill_a_floor(data, construction):
+    """Each item's netted whole bill is <= its gross whole bill."""
+    gross = stock.bill_for(data, construction, bootstrap=MK1_COAL, machines=LINES)
+    for standing in (
+        (("Build_ConstructorMk1_C", 2),),
+        (("Build_ConstructorMk1_C", 50), ("Build_AssemblerMk1_C", 50), ("Build_GeneratorCoal_C", 50)),
+    ):
+        netted = stock.bill_for(data, construction, bootstrap=MK1_COAL, machines=LINES,
+                                standing=stock.StandingBuildings(standing))
+        for item_id, bill in netted.bills.items():
+            g = gross.bills[item_id]
+            assert (bill.bootstrap_units + bill.remainder_units
+                    <= g.bootstrap_units + g.remainder_units + 1e-9), item_id
+
+
+@pytest.mark.parametrize("buildings", [
+    (("Build_ConstructorMk1_C", -1),),
+    (("Build_ConstructorMk1_C", 1), ("Build_ConstructorMk1_C", 2)),
+])
+def test_a_bad_standing_declaration_is_refused(buildings):
+    with pytest.raises(ValueError):
+        stock.StandingBuildings(buildings)
+
+
+def test_net_buildings_refuses_anything_but_a_declared_reading():
+    with pytest.raises(stock.StockPassError, match="StandingBuildings"):
+        stock.net_buildings(MK1_COAL, LINES, {"Build_ConstructorMk1_C": 5})
+
+
+def test_net_buildings_ranks_nothing():
+    """Read from the source: no min, max, sort or rounding in net_buildings."""
+    src = pathlib.Path(stock.__file__).read_text(encoding="utf-8")
+    (fn,) = [n for n in _ast.parse(src).body
+             if isinstance(n, _ast.FunctionDef) and n.name == "net_buildings"]
+    called = {
+        (n.func.id if isinstance(n.func, _ast.Name) else getattr(n.func, "attr", ""))
+        for n in _ast.walk(fn) if isinstance(n, _ast.Call)
+    }
+    assert {"min", "max", "sorted", "sort", "round"}.isdisjoint(called)

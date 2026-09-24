@@ -178,3 +178,141 @@ feed rather than a member, and rotor is placed in the rod chain:
 
 The pacing grows the smelting and rod chains most. plate_rip draws 31.20
 screws/min paced across its boundary from the rod chain.
+
+## Amendment 4 — 2026-09-24. The case of record, and machines standing (D4)
+
+Appended forward-only. The goal run's decisions and amendments 1-3 stand.
+Design note: project doc `d4-buildings-standing-design-2026-09-24.md` (a
+draft, left as written). Every lock below is Greg's, in chat, 2026-09-24, and
+marked by him "for now".
+
+    code      progression/stock.py (StandingBuildings, NetBuildings,
+              net_buildings, bill_for(standing=)), tools/goal_run.py
+              (StockDeclaration.standing), tests/test_progression_stock.py,
+              tests/test_goal_run.py
+    measured  agent container, against c1562f2a plus this change. Not Greg's
+              machine
+
+### Definitions
+
+    on hand      ITEMS in storage at stage open (DeclaredOnHand). Nets the
+                 item bill
+    standing     PLACED machines at stage open that the player lets this
+                 stage's plan use (StandingBuildings). Nets building demand
+                 per producer class. Declared by COMMITMENT, not by run state:
+                 an idle, backed-up or storage-full machine on a line the plan
+                 needs counts; one the player won't repurpose doesn't, whatever
+                 its state
+    power        NOT netted per line. Generators are supply in the power
+                 ledger, fungible across a connected grid. Standing coal
+                 generators do net against the bootstrap's coal-generator
+                 count (same producer class); biomass burners have no class to
+                 net against and appear only as ledger supply (base or
+                 reserve, fed or not). Separate grids are not modelled; a
+                 generator on another grid is declared as not supplying
+
+### The case of record
+
+    target      the Mk1 coal step, 2 Miner Mk1 : 4 Coal Generator : 2 Water
+                Extractor (what one Mk1 belt carries; the extractors
+                underclocked). Replaces 1 miner + 1 biomass burner. The 2:1:1
+                minimum stays a valid declaration and is useful as a power
+                floor under standing burners
+    partition   the first-50 lines plus copper ingot, wire, cable, copper
+                sheet and concrete, each build-material line carrying its
+                `recipe_id` (P30)
+    on hand     10% of each item's whole floor bill (bootstrap + remainder),
+                a declared PLACEHOLDER until a real reading. Built by the
+                caller from a first run's floor bill, which is independent of
+                on hand (asserted)
+
+The A12-A14 fixtures in test_goal_run.py are kept, not replaced: their
+figures are still true of their declarations. The record is a new section.
+
+### D4 locks
+
+    (e)  PHASE-SPAN REFRAME. For Project Assembly goals a stage is the phase
+         span: phase 2's SP 1000 / VF 1000 / AW 100 share one T, and SP made
+         along the way counts through `project_goals`, never by netting.
+         A14 (a derived carry never nets) STANDS
+    (a)  a machine the player won't let the plan use is declared as not
+         standing. No "committed" field
+    (b)  standing nets the class's whole demand: bootstrap + lines
+    (c)  no default for generators: each standing generator is declared base
+         or reserve, and fed or not
+    (d)  generator fuel and water appear in the power ledger only, not in the
+         solve
+    P1-P7 as proposed in the note, with the above and the two resolutions
+    below
+
+### Resolved this session
+
+    S1  LINES NET FIRST. P3 said standing nets with no order; P4 costs the
+        owed machines, and the bill's two halves (bootstrap, remainder) need
+        an order to split them. Greg's call: standing covers the class's
+        LINES first and the rest covers the bootstrap. What is left over is
+        surplus, reported. Conservation per class, asserted:
+            owed_lines + owed_bootstrap + standing
+                == lines + bootstrap + surplus
+    S2  POWER LEDGER BASIS: extractors at NAMEPLATE (100%), labelled so.
+        Demand is then overstated, so base - demand is the conservative
+        figure. A declared clock can be added later without changing that
+        label's meaning
+
+### What was built
+
+    stock      `StandingBuildings` (pairs, caller order, a class twice
+               refused, negatives refused, zero allowed); `net_buildings`
+               (two sign tests per class, no min/max/sort/round, asserted);
+               `bill_for(standing=None)` costs each half over its OWED
+               machines and carries `StockPass.standing_net`. Unresolved
+               costs follow the owed sets, so a fully standing miner no
+               longer reports the Portable Miner gap
+    BootstrapSet   docstring defect fixed at the site: it said coal power is
+               "at least 1 coal generator, 1 water extractor, 1 miner", a
+               minimum with 1 miner where Greg revised to 2 on 2026-09-23.
+               It now names the set a TARGET. The non-empty invariant stays
+    goal_run   `StockDeclaration.standing`, default None. `run` and
+               `paced_run` are otherwise unchanged: G1 (builds no
+               BootstrapSet), G2 (one call per layer; two `run` calls),
+               G3 (no ranking) still hold, asserted by the existing tests.
+               Both passes of a paced run net the same reading
+
+Mutations confirmed to fail the new tests: the bootstrap netted before the
+lines; a `max` in `net_buildings`; the standing reading not passed through
+`run`.
+
+### Figures
+
+1 Smart Plating/min, T = 50, 1x/1x/1x, tier 2, `schematics_in_tiers(2)`, the
+record's partition and target. Paced pass; power is production lines only.
+
+                            floor   paced (Asm/Con/Sml)   Fe / Cu / Ls ore /min       MW
+    record                   12     27 (3/18/6)   148.62 / 19.88 / 43.20      107.81
+    record + 10% on hand     12     26 (3/17/6)   136.083 / 17.892 / 38.88     97.90
+    record, coal standing    12     22 (3/14/5)   110.52 / 15.88 / 42.00       75.69
+
+The first two re-derive the 08:35 handoff's scratch figures (which printed
+136.08 / 17.89). Floor bill, record (whole units): Cable 656, Concrete 720,
+Copper Sheet 40, RIP 188, Plate 1120, Rod 710, Screw 1000, Rotor 122,
+Wire 516. With the coal step standing, the bootstrap half is zero on every
+item and Copper Sheet leaves the bill (only the water extractors bill it),
+so its line stores nothing.
+
+### Known looseness, recorded
+
+    miners   ore extraction is outside the solve, so ore miners are in no
+             line's demand. A standing miner on an iron node therefore nets
+             the bootstrap's coal miners. The bill stays a floor (looser);
+             the declaration rule is the (a) rule: declare only miners the
+             bootstrap may use
+    extras   standing machines beyond the FLOOR build's lines are surplus
+             even when the paced build could use them: the bill is summed
+             over the floor (A13.2), so there is nothing for them to net
+
+### Not built
+
+    PowerLedger (P5, S2). Open: how bootstrap generators still OWED (not yet
+    standing) are shown, since (c) gives no default and they cannot be read
+    several goals on one T over a phase span (P6), scheduler side, outside
+    goal_run (G1); the A7.3 storage-fill report (P7)

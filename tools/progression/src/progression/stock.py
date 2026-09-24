@@ -92,15 +92,22 @@ class StockPassError(RuntimeError):
 
 @dataclass(frozen=True)
 class BootstrapSet:
-    """The minimum equipment that brings the NEXT tier's chain online. DECLARED.
+    """The equipment this stage wants STANDING to bring the next tier online. DECLARED.
 
-    Not derivable. "Minimum to start a tier" is a judgement about what counts as
-    started, and no table holds it — coal power is at least 1 coal generator, 1
-    water extractor, 1 miner and the infrastructure between them; steel is at
-    least 2 miners, 1 foundry, 2 constructors, 2 storage and the same. Both are
-    stated as MINIMUMS, which is one of the two reasons the bootstrap half is a
-    floor. The other is that the infrastructure in each of them is the spatial
-    term, absent until phase 5.
+    Not derivable. What counts as started is a judgement, and no table holds it.
+    CORRECTED 2026-09-24 (goal_run_driver.md amendment 4): this docstring said
+    coal power is "at least 1 coal generator, 1 water extractor, 1 miner" — a
+    minimum, and with 1 miner where Greg revised to 2 on 2026-09-23. The set is
+    now a TARGET: the case of record declares the Mk1 coal step, 2 miners, 4
+    coal generators and 2 water extractors (what one Mk1 belt carries). The
+    2:1:1 minimum is still a valid declaration; steel is at least 2 miners, 1
+    foundry, 2 constructors, 2 storage. The half stays a floor because the
+    infrastructure between the machines is the spatial term, absent until
+    phase 5, and because a declared target can only leave things out.
+
+    What already stands is a separate reading (`StandingBuildings`), netted in
+    `bill_for`. The set keeps its non-empty invariant: it is the target, not
+    what is left to build (D4 P2).
 
     `tier` is the tier being brought online, carried so a bill can say which one
     it bootstraps. Nothing here reads it — it is not a lookup key, because
@@ -149,6 +156,9 @@ class StockPass:
     #: producer class for a building cost and a schematic id for an unlock
     #: cost — whichever names the row a reader would have to go and look at.
     unresolved: tuple[tuple[str, ItemId], ...]
+    #: D4. The building netting the bills were summed after; None when no
+    #: standing reading was declared, in which case the bills are gross
+    standing_net: "NetBuildings | None" = None
 
 
 @dataclass(frozen=True)
@@ -323,8 +333,15 @@ def bill_for(
     unlock_costs: dict[SchematicId, tuple[tuple[ItemId, float], ...]] | None = None,
     project_assembly: tuple[ProjectAssemblyRequirement, ...] | None = None,
     phases: tuple[int, ...] | None = None,
+    standing: "StandingBuildings | None" = None,
 ) -> StockPass:
     """One `WithdrawalBill` per item the two machine sets consume.
+
+    D4 (2026-09-24). `standing` is the reading of machines already placed at
+    stage open. When given, both sets are netted against it first
+    (`net_buildings`, lines before bootstrap) and each half is costed over
+    its OWED machines; the netting rides on `StockPass.standing_net`. When
+    absent, every figure is as before.
 
         bootstrap_units   the declared bootstrap set, costed
         remainder_units   the settled machine counts, costed
@@ -356,9 +373,17 @@ def bill_for(
             "reported as PROJECT_ASSEMBLY counted."
         )
 
+    if standing is None:
+        net = None
+        boot_set, machine_set = bootstrap.buildings, machines
+    else:
+        net = net_buildings(bootstrap, machines, standing)
+        boot_set = tuple((pc, n) for pc, n in net.owed_bootstrap.items() if n)
+        machine_set = tuple((pc, n) for pc, n in net.owed_machines.items() if n)
+
     terms = set(BASE_TERMS)
-    boot = cost_of(construction, bootstrap.buildings)
-    rest = cost_of(construction, machines)
+    boot = cost_of(construction, boot_set)
+    rest = cost_of(construction, machine_set)
 
     if unlocks is not None:
         terms.add(BillTerm.UNLOCK_COST)
@@ -372,7 +397,7 @@ def bill_for(
             rest[item_id] = rest.get(item_id, 0.0) + amount
 
     unresolved: list[tuple[str, ItemId]] = []
-    for buildings in (bootstrap.buildings, machines):
+    for buildings in (boot_set, machine_set):
         for producer_class, _count in buildings:
             for item_id, _amount in construction.for_producer(producer_class).items:
                 if item_id not in data.items:
@@ -393,7 +418,9 @@ def bill_for(
             terms=frozenset(terms),
             basis=WithdrawalBasis.DERIVED_WHOLE_GAME_FLOOR,
         )
-    return StockPass(bills=bills, unresolved=tuple(sorted(set(unresolved))))
+    return StockPass(
+        bills=bills, unresolved=tuple(sorted(set(unresolved))), standing_net=net,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -485,3 +512,119 @@ def net_of(bills: dict[ItemId, WithdrawalBill], on_hand: DeclaredOnHand) -> NetS
         if item_id not in bills and amount > 0:
             surplus[item_id] = amount
     return NetStock(owed=owed, surplus=surplus, on_hand=on_hand)
+
+
+# --------------------------------------------------------------------------
+# D4: machines standing at stage open, netted per producer class. 2026-09-24.
+# --------------------------------------------------------------------------
+#
+# goal_run_driver.md amendment 4. Standing is a DECLARED reading, the D3 rule:
+# a machine counts when the player lets this stage's plan use it (commitment,
+# not run state), and one the player won't repurpose is left out — no
+# "committed" field (D4 (a)). It nets the class's whole demand, bootstrap and
+# lines (D4 (b)); the LINES are covered first and what is left covers the
+# bootstrap — Greg's call on 2026-09-24, resolving the P3/P4 conflict (P3 said
+# no order; P4 costs the owed machines into two halves, which needs one).
+#
+# Floor check: over-declaring standing shrinks the bill, so it stays <= true
+# and stays a floor, only a looser one. Netting is not assignment: nothing
+# here says WHICH standing machine goes on which lane.
+
+
+@dataclass(frozen=True)
+class StandingBuildings:
+    """Machines PLACED at stage open that this stage's plan may use. Read, not modelled.
+
+    Pairs, like `BootstrapSet.buildings` and `DeclaredOnHand.units`: hashable,
+    caller order kept. A class named twice is refused rather than summed. Zero
+    is a valid reading; a negative is not.
+    """
+
+    buildings: tuple[tuple[ProducerClass, int], ...]
+
+    def __post_init__(self) -> None:
+        seen = [pc for pc, _ in self.buildings]
+        if len(seen) != len(set(seen)):
+            raise ValueError("a producer class appears twice in the standing declaration; state one count")
+        for producer_class, count in self.buildings:
+            if count < 0:
+                raise ValueError(f"{producer_class}: a standing count cannot be negative, got {count}")
+
+
+@dataclass(frozen=True)
+class NetBuildings:
+    """Both machine sets netted against a standing reading. Nothing clamped silently.
+
+        owed_machines    one entry per class in `machines`, in its order
+        owed_bootstrap   one entry per class in the bootstrap, in its order
+        surplus          standing beyond both: bootstrap classes in bootstrap
+                         order, then line-only classes in machines order, then
+                         standing-only classes in declaration order. Kept,
+                         because dropping it would lose the reading
+
+    Conservation, per class:
+        owed_machines + owed_bootstrap + standing == machines + bootstrap + surplus
+    Asserted in the tests.
+    """
+
+    owed_machines: dict[ProducerClass, int]
+    owed_bootstrap: dict[ProducerClass, int]
+    surplus: dict[ProducerClass, int]
+    standing: StandingBuildings
+
+
+def net_buildings(
+    bootstrap: BootstrapSet,
+    machines: tuple[tuple[ProducerClass, int], ...],
+    standing: StandingBuildings,
+) -> NetBuildings:
+    """Per class: standing covers the lines first, then the bootstrap.
+
+    Two sign tests per class, the `net_of` pattern: a branch on one number,
+    not a comparison between alternatives. No min, max, sort or round, and
+    asserted so.
+    """
+    if not isinstance(standing, StandingBuildings):
+        raise StockPassError(
+            f"net_buildings takes a StandingBuildings, got {type(standing).__name__}. "
+            "Only a declared reading nets (D3 P1, D4 P1)."
+        )
+    held = dict(standing.buildings)
+    lines: dict[ProducerClass, int] = {}
+    for producer_class, count in machines:
+        lines[producer_class] = lines.get(producer_class, 0) + count
+    boot = dict(bootstrap.buildings)
+
+    left: dict[ProducerClass, int] = {}
+    owed_machines: dict[ProducerClass, int] = {}
+    for producer_class, count in lines.items():
+        difference = count - held.get(producer_class, 0)
+        if difference > 0:
+            owed_machines[producer_class] = difference
+            left[producer_class] = 0
+        else:
+            owed_machines[producer_class] = 0
+            left[producer_class] = -difference
+
+    owed_bootstrap: dict[ProducerClass, int] = {}
+    surplus: dict[ProducerClass, int] = {}
+    for producer_class, count in boot.items():
+        difference = count - left.get(producer_class, held.get(producer_class, 0))
+        if difference > 0:
+            owed_bootstrap[producer_class] = difference
+        else:
+            owed_bootstrap[producer_class] = 0
+            if difference < 0:
+                surplus[producer_class] = -difference
+    for producer_class, spare in left.items():
+        if producer_class not in boot and spare > 0:
+            surplus[producer_class] = spare
+    for producer_class, count in standing.buildings:
+        if producer_class not in lines and producer_class not in boot and count > 0:
+            surplus[producer_class] = count
+    return NetBuildings(
+        owed_machines=owed_machines,
+        owed_bootstrap=owed_bootstrap,
+        surplus=surplus,
+        standing=standing,
+    )
