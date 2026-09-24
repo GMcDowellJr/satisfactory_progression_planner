@@ -2217,3 +2217,62 @@ outside M3; its figures stand.
                 derived; not yet declared
     not run     the full suite on Greg's machine
     not built   the per-phase rate sheet
+
+## Amendment 20 — 2026-09-24. Phase 2 power bootstrap: the Mk1 coal step, added to the derived minimum
+
+Appended forward-only. Greg, chat 2026-09-24 12:30.
+
+    code      none in src. tests/test_phase_two_run.py: MK1_COAL_STEP and
+              `_add` (test-local; addition per producer class, first's
+              order then second's new classes)
+    tests     tests/test_phase_two_run.py (7 -> 9), figures re-pinned
+    measured  agent container, against 045f4c6 plus this change. 911
+              passed, 1 skipped. Not Greg's machine
+
+### A20.1 Decided by Greg, 2026-09-24
+
+    P1  THE PHASE-2 POWER BOOTSTRAP is the Mk1 coal step "for now": 2
+        Miner Mk.1, 4 coal generators, 2 water extractors. Declared (power
+        is outside M3) and combined with the A19 derived minimum into one
+        BootstrapSet by addition per class: miners 2 + 2 = 4
+
+Resolves A19's open item "the phase-2 POWER bootstrap". A19.3's figures
+stand as the record of the minimum without a power step; the pinned test
+figures are now A20.3's.
+
+### A20.2 The arithmetic, stated
+
+    bootstrap  Miner 4, Foundry 1, Assembler 3, Constructor 2,
+               Coal Gen 4, Water Extractor 2
+    ledger     nothing standing: base 0, PLANNED 300 MW (4 x 75).
+               Known demand = paced lines + bootstrap extractors at
+               nameplate: 4 miners x 5 + 2 extractors x 20 = 60 MW.
+               The 4 miners include A19's 2 production miners (iron,
+               coal for steel); ore extraction for the lines stays
+               unknown (None), so nothing is counted twice
+
+### A20.3 Phase 2 figures (pinned; M1-M3 + P1; nothing standing)
+
+    floor     23 machines (Asm 8 / Con 11 / Fdy 1 / Sml 3)     52.33 MW
+              unchanged: the floor build does not move, only its bill
+    paced     27 machines (Asm 8 / Con 14 / Fdy 1 / Sml 4)     67.31 MW
+              screws 2 -> 3, iron plate 1 -> 2. Total power FALLS
+              0.04 MW against A19.3 with two more machines: the split
+              lines run at lower clocks, and power at clock is
+              superlinear. Not a defect
+    ore       iron 65.79 + 28.55 (steel), coal 28.55, copper 7.28,
+              limestone 8.04 /min (generator coal not included)
+    bill      wire 4524, concrete 2080, cable 1534, RIP 864, rotor 624,
+              rod 615, pipe 600, sheet 540, beam 500, MF 495, plate 440,
+              EIB 100. Portable Miner unresolved
+    ledger    demand 127.31 MW vs planned 300 MW; margin 172.69 MW
+
+### What this amendment does not establish
+
+    open        whether the coal step stays the phase-2 power target ("for
+                now"); a standing reading (Greg often has it built by
+                phase open) would net it to zero, per D4
+    not moved   `_add` into progression/stock.py — test-local until a
+                second caller (the rate sheet or a CLI) needs it
+    not run     the full suite on Greg's machine
+    not built   the per-phase rate sheet

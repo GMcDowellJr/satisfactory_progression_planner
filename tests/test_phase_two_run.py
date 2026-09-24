@@ -15,6 +15,10 @@
                 resource those recipes use -> 2 miners (iron, coal), 1
                 foundry, 2 constructors (beam, pipe), 3 assemblers (VF,
                 stator, AW). Power is outside the rule: no coal step here
+                AMENDED (A20, Greg 2026-09-24 12:30): plus the DECLARED Mk1
+                coal step (2 miners, 4 coal generators, 2 water extractors)
+                by addition per class -> 4 miners. The power ledger is
+                reported over the paced pass
     standing    none declared; on hand none declared
 
 Measured in the agent container 2026-09-24, 1x scenario, LpBackend MEAN.
@@ -30,7 +34,7 @@ import pytest
 from production_adapter import OutputTarget, SolveRequest, load
 from production_adapter.gamedata import load_construction, load_logistics
 from production_adapter.lp_backend import LpBackend, PowerStatistic
-from progression import at_tier, lag, schedule, stock, unlocks
+from progression import at_tier, lag, power, schedule, stock, unlocks
 from realization import BusDeclaration, RealizationRequest, SourceEdge
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -74,6 +78,20 @@ BUSES = (
 )
 
 
+MINER, COAL_GEN, WATER = "Build_MinerMk1_C", "Build_GeneratorCoal_C", "Build_WaterPump_C"
+#: P1 (Greg, 2026-09-24 12:30): the phase-2 POWER bootstrap is the Mk1 coal
+#: step "for now". Declared; power is outside the A19 rule
+MK1_COAL_STEP = stock.BootstrapSet(tier=4, buildings=((MINER, 2), (COAL_GEN, 4), (WATER, 2)))
+
+
+def _add(first, second):
+    """One BootstrapSet by ADDITION per producer class. Order is first's, then
+    second's new classes in second's order. No min, max, sort or round."""
+    counts = dict(first.buildings)
+    for pc, n in second.buildings:
+        counts[pc] = counts.get(pc, 0) + n
+    return stock.BootstrapSet(tier=first.tier, buildings=tuple(counts.items()))
+
 
 @pytest.fixture(scope="module")
 def phase2():
@@ -92,6 +110,7 @@ def phase2():
         extractors_open=unlocks.extractors_open_at_tier(REPO, 2),
         tier=4,
     )
+    bootstrap = _add(derived.bootstrap, MK1_COAL_STEP)
     kw = dict(
         data=data,
         backend=backend,
@@ -101,13 +120,13 @@ def phase2():
         goals=goals,
         construction=load_construction(REPO),
         declared_stock=goal_run.StockDeclaration(
-            bootstrap=derived.bootstrap,
+            bootstrap=bootstrap,
             unlocks=unlocks.schematics_in_tiers(REPO, (3, 4)),
             unlock_costs=unlocks.schematic_costs(REPO),
         ),
         horizon_min=rates.horizon_min,
     )
-    return rates, derived, goal_run.paced_run(**kw)
+    return rates, derived, bootstrap, goal_run.paced_run(**kw)
 
 
 def _ore(report, bus_id, ore):
@@ -120,55 +139,58 @@ ASM, CON_, FDY, SML = ("Build_AssemblerMk1_C", "Build_ConstructorMk1_C",
 
 
 def test_phase2_floor_is_23_machines(phase2):
-    _, _, r = phase2
+    _, _, _, r = phase2
     assert r.horizon_min == 1000.0
     assert r.floor.machines == ((ASM, 8), (CON_, 11), (FDY, 1), (SML, 3))
     assert r.floor.realization.total_power_mw == pytest.approx(52.33, abs=5e-3)
 
 
-def test_phase2_paced_is_25_machines(phase2):
-    _, _, r = phase2
-    assert r.paced.machines == ((ASM, 8), (CON_, 12), (FDY, 1), (SML, 4))
-    assert r.paced.realization.total_power_mw == pytest.approx(67.3555, abs=5e-5)
-    assert _ore(r.paced, "iron_ingot", I["ORE"]) == pytest.approx(63.888)
+def test_phase2_paced_is_27_machines(phase2):
+    """A20: 25 -> 27 with the coal step billed (screws 2 -> 3, plate 1 -> 2).
+    Power FALLS 0.04 MW: the two split lines run at lower clocks, and power at
+    clock is superlinear, so they save more than the other lines add."""
+    _, _, _, r = phase2
+    assert r.paced.machines == ((ASM, 8), (CON_, 14), (FDY, 1), (SML, 4))
+    assert r.paced.realization.total_power_mw == pytest.approx(67.3149, abs=5e-5)
+    assert _ore(r.paced, "iron_ingot", I["ORE"]) == pytest.approx(65.793)
     assert _ore(r.paced, "steel_ingot", I["ORE"]) == pytest.approx(28.55)
     assert _ore(r.paced, "steel_ingot", I["COAL"]) == pytest.approx(28.55)
-    assert _ore(r.paced, "copper_ingot", I["CUO"]) == pytest.approx(7.076)
-    assert _ore(r.paced, "concrete", I["STONE"]) == pytest.approx(7.98)
+    assert _ore(r.paced, "copper_ingot", I["CUO"]) == pytest.approx(7.276)
+    assert _ore(r.paced, "concrete", I["STONE"]) == pytest.approx(8.04)
 
 
 def test_phase2_goals_run_at_their_ratio_rates(phase2):
-    _, _, r = phase2
+    _, _, _, r = phase2
     assert [g.rate_per_min for g in r.paced.goals] == pytest.approx([1.0, 1.0, 0.1])
 
 
 def test_phase2_floor_bill(phase2):
-    _, _, r = phase2
+    _, _, _, r = phase2
     whole = {i: b.total_units for i, b in r.floor.stock.bills.items()}
     assert whole == pytest.approx({
-        I["CABLE"]: 1414.0, I["CON"]: 2060.0, I["SHEET"]: 500.0, I["RIP"]: 764.0,
-        I["PLT"]: 420.0, I["ROD"]: 615.0, I["MF"]: 495.0, I["ROT"]: 564.0,
+        I["CABLE"]: 1534.0, I["CON"]: 2080.0, I["SHEET"]: 540.0, I["RIP"]: 864.0,
+        I["PLT"]: 440.0, I["ROD"]: 615.0, I["MF"]: 495.0, I["ROT"]: 624.0,
         I["PIPE"]: 600.0, I["EIB"]: 100.0, I["BEAM"]: 500.0, I["WIRE"]: 4524.0,
     })
     assert r.floor.stock.unresolved == (("Build_MinerMk1_C", "BP_ItemDescriptorPortableMiner_C"),)
 
 
 def test_phase2_eib_line_paces_to_its_bill(phase2):
-    _, _, r = phase2
+    _, _, _, r = phase2
     assert r.storage_rates[I["EIB"]] == pytest.approx(0.1)
     (eib,) = [b for b in r.paced.realization.buses if b.bus_id == "encased_industrial_beam"]
     assert not eib.stores_nothing
 
 
 def test_phase2_lag_table_beside_the_run(phase2):
-    rates, _, _ = phase2
+    rates, _, _, _ = phase2
     t = lag.lag_table(rates, (0.25,))
     assert [(row.item_id, row.late_by_min, row.catch_up_rate_per_min) for row in t.rows] == (
         pytest.approx([(I["VF"], 250.0, 4 / 3), (I["AW"], 250.0, 0.4 / 3)]))
 
 
 def test_phase2_bootstrap_is_the_a19_minimum(phase2):
-    _, derived, _ = phase2
+    _, derived, _, _ = phase2
     assert derived.bootstrap.buildings == (
         ("Build_MinerMk1_C", 2), (FDY, 1), (ASM, 3), (CON_, 2))
     assert [r for r, _ in derived.new_recipes] == [
@@ -176,3 +198,26 @@ def test_phase2_bootstrap_is_the_a19_minimum(phase2):
         "Recipe_Stator_C", "Recipe_SteelBeam_C", "Recipe_SteelPipe_C"]
     assert derived.extractors == ((I["ORE"], "Build_MinerMk1_C"), (I["COAL"], "Build_MinerMk1_C"))
 
+
+
+def test_phase2_bootstrap_adds_the_coal_step(phase2):
+    """P1 / A20: derived minimum + declared power step, by addition per class."""
+    _, _, bootstrap, _ = phase2
+    assert bootstrap.buildings == (
+        (MINER, 4), (FDY, 1), (ASM, 3), (CON_, 2), (COAL_GEN, 4), (WATER, 2))
+
+
+def test_phase2_ledger_plans_the_coal_step(phase2):
+    """Nothing standing: base 0, the step is 300 MW PLANNED. Known demand is
+    the paced lines plus the bootstrap's extractors at nameplate: all 4 miners
+    (2 derived for steel, 2 for coal) x 5 + 2 water extractors x 20 = 60."""
+    _, _, bootstrap, r = phase2
+    led = power.ledger(
+        power.load_power_tables(REPO), production_mw=r.paced.realization.total_power_mw,
+        bootstrap=bootstrap, standing_net=r.paced.stock.standing_net, generators=(),
+    )
+    assert (led.base_mw, led.planned_mw) == (0.0, 300.0)
+    assert [(p.producer_class, p.count) for p in led.planned] == [(COAL_GEN, 4)]
+    assert led.known_demand_mw == pytest.approx(127.3149, abs=5e-5)
+    assert led.base_and_planned_less_demand_mw == pytest.approx(172.6851, abs=5e-5)
+    assert led.ore_extraction_mw is None
