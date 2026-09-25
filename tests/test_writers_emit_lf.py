@@ -18,8 +18,11 @@ is a docstring; this is the test.
     write_text     newline="\\n"
     open, text w/a newline="\\n", or newline="" (no translation; what csv wants)
 
-One exception, by name: `tools/regenerate_manifests.py` writes the manifests
-CRLF, which is their format, and stores them with write_bytes.
+One exception, by file AND call: `tools/regenerate_manifests.py` may make
+exactly one `csv.writer(..., lineterminator="\\r\\n")` call, because CRLF is
+the manifest format (it stores the result with write_bytes). Every other
+violation in that file still fails. An exemption by path alone would also
+hide any ordinary writer later added to the module.
 """
 from __future__ import annotations
 
@@ -30,8 +33,10 @@ import pytest
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 SCANNED = ("scripts", "tools", "research")
-#: path -> the one call it may make with a non-LF terminator, and why
-CRLF_BY_FORMAT = {"tools/regenerate_manifests.py": "manifests are CRLF by format"}
+#: path -> how many `csv.writer(..., lineterminator="\r\n")` calls it may make.
+#: Nothing else is exempt: manifests are CRLF by format, and that is one call.
+CRLF_BY_FORMAT = {"tools/regenerate_manifests.py": 1}
+CRLF = "\r\n"
 
 LF = "\n"
 
@@ -92,14 +97,29 @@ def violations(tree: ast.AST):
     return out
 
 
+def crlf_csv_writer_lines(tree: ast.AST):
+    """Lines of `csv.writer(..., lineterminator="\\r\\n")` calls: the only
+    shape CRLF_BY_FORMAT can exempt."""
+    return [
+        node.lineno for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "writer" and getattr(node.func.value, "id", None) == "csv"
+        and _const(_kw(node, "lineterminator")) == CRLF
+    ]
+
+
+def unexempted(rel: str, tree: ast.AST):
+    """violations(tree), less the CRLF manifest writer where `rel` may make it."""
+    allowed = set(crlf_csv_writer_lines(tree)) if rel in CRLF_BY_FORMAT else set()
+    return [(line, msg) for line, msg in violations(tree)
+            if not (line in allowed and msg.startswith("csv.writer "))]
+
+
 def test_every_text_writer_pins_lf():
     found = []
     for rel, path in _sources():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
-        for line, msg in violations(tree):
-            if rel in CRLF_BY_FORMAT:
-                continue
-            found.append(f"{rel}:{line}: {msg}")
+        found.extend(f"{rel}:{line}: {msg}" for line, msg in unexempted(rel, tree))
     assert not found, "writers that can emit CRLF:\n" + "\n".join(found)
 
 
@@ -111,11 +131,33 @@ def test_scan_reaches_the_writers_it_governs():
     assert "research/production_solver_evaluation/build_p2_extraction.py" in seen
 
 
-def test_the_manifest_exception_is_still_the_crlf_writer():
-    """The exemption names a file; if that file stops writing CRLF, the
-    exemption is stale and must go."""
-    src = (REPO / "tools/regenerate_manifests.py").read_text(encoding="utf-8")
-    assert 'lineterminator="\\r\\n"' in src
+@pytest.mark.parametrize("rel", sorted(CRLF_BY_FORMAT))
+def test_each_exempt_file_makes_exactly_its_declared_crlf_writers(rel):
+    """Stale both ways: if the file stops writing CRLF the exemption must go,
+    and a second CRLF writer in it is not covered by the first one's."""
+    tree = ast.parse((REPO / rel).read_text(encoding="utf-8"), filename=rel)
+    assert len(crlf_csv_writer_lines(tree)) == CRLF_BY_FORMAT[rel]
+
+
+EXEMPT = next(iter(CRLF_BY_FORMAT))
+
+
+@pytest.mark.parametrize("snippet", [
+    "p.write_text(s, encoding='utf-8')",
+    "open(p, 'w', encoding='utf-8')",
+    "import csv\ncsv.writer(buf)",
+    "import csv\ncsv.DictWriter(buf, fieldnames=x, lineterminator='\\r\\n')",
+])
+def test_the_exempt_file_is_not_exempt_from_other_writers(snippet):
+    """The exemption covers one call shape, not the module (PR #1 review)."""
+    manifest_writer = "import csv\ncsv.writer(buf, lineterminator='\\r\\n')\n"
+    tree = ast.parse(manifest_writer + snippet)
+    assert len(unexempted(EXEMPT, tree)) == 1
+
+
+def test_the_exempt_call_itself_passes():
+    tree = ast.parse("import csv\ncsv.writer(buf, lineterminator='\\r\\n')")
+    assert violations(tree) and not unexempted(EXEMPT, tree)
 
 
 @pytest.mark.parametrize("snippet", [
