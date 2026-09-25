@@ -1,0 +1,21 @@
+# Line endings. The manifests hash working-copy bytes, so every checkout must
+# produce the bytes git stores, on every platform. Found 2026-09-24: the index
+# held LF for every text file, but thirteen data files had been rewritten with
+# CRLF by Python writers on Windows (csv.writer's default lineterminator is
+# "\r\n"; text-mode writes translate "\n"). autocrlf normalized them on commit
+# and left the working copy CRLF. The manifests recorded those CRLF bytes, so no
+# fresh clone on any platform matched them.
+
+# Text is LF in the index and LF on checkout, everywhere.
+* text=auto eol=lf
+
+# The manifests are CRLF by format (tools/regenerate_manifests.py writes
+# lineterminator="\r\n" and its docstring says "byte for byte"). Stored exactly
+# as written, so REPO_MANIFEST.csv's hash of planning_data/manifest.csv matches
+# in every clone.
+REPO_MANIFEST.csv                 -text
+planning_data/manifest.csv        -text
+
+# Binary rasters and the UTF-16 game Docs snapshot. Never converted.
+*.z                               binary
+planning_data/game/source_snapshots/**/*.json  -text

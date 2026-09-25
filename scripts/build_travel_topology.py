@@ -705,7 +705,7 @@ def collect_cross_sector_links(
     if gateway_csv_path is not None:
         gateway_csv_path.parent.mkdir(parents=True, exist_ok=True)
         gateway_file = gateway_csv_path.open("w", newline="", encoding="utf-8")
-        gateway_writer = csv.DictWriter(gateway_file, fieldnames=GATEWAY_FIELDS)
+        gateway_writer = csv.DictWriter(gateway_file, fieldnames=GATEWAY_FIELDS, lineterminator="\n")
         gateway_writer.writeheader()
     hard_grade = float(profile["grade_hard_block"])
     h, w = field.shape
@@ -1145,7 +1145,7 @@ def write_components_csv(path: Path, components: list[dict]) -> None:
         "dominant_region_name",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for rec in components:
             w.writerow({k: rec.get(k) for k in fields})
@@ -1167,14 +1167,14 @@ def write_anchors_csv(path: Path, rows: list[dict]) -> None:
         "structural_class",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for rec in rows:
             w.writerow({k: rec.get(k) for k in fields})
 
 
 def _write_json(path: Path, obj) -> None:
-    path.write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_nodes_csv(path: Path, nodes: list[dict], region_names: dict[int, str]) -> None:
@@ -1186,7 +1186,7 @@ def write_nodes_csv(path: Path, nodes: list[dict], region_names: dict[int, str])
         "global_component_id", "global_component_rank",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for n in nodes:
             row = {k: n.get(k) for k in fields}
@@ -1202,7 +1202,7 @@ def write_edges_csv(path: Path, edges: list[dict]) -> None:
         "min_known_clearance_m",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for e in edges:
             w.writerow({k: e.get(k) for k in fields})
@@ -1587,7 +1587,7 @@ def main() -> int:
 
     (out_dir / "topology_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
 
     print(

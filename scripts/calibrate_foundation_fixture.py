@@ -15,7 +15,7 @@ if expected_path.exists():
     import json
     expected=json.loads(expected_path.read_text(encoding='utf-8'))
     validation=validate_calibration_summary(s,expected)
-    (Path(out)/'validation.json').write_text(json.dumps(validation,indent=2)+'\n',encoding='utf-8')
+    (Path(out)/'validation.json').write_text(json.dumps(validation,indent=2)+'\n',encoding='utf-8', newline="\n")
     print(f"calibration {validation['status']}; ground p95 top clearance: {s['ground_top_clearance_m']['p95']:.2f} m; cliff/overhead centers: {s['cliff_or_overhead_top_surface_center_count']}")
     raise SystemExit(0 if validation['status']=='PASS' else 2)
 print(f"ground p95 top clearance: {s['ground_top_clearance_m']['p95']:.2f} m; cliff/overhead centers: {s['cliff_or_overhead_top_surface_center_count']}")

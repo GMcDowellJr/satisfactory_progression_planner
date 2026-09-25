@@ -654,7 +654,7 @@ def write_route_csv(path: Path, states, lattice):
         "state_type",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for i, state in enumerate(states):
             r, c, zq = lattice.voxel_id(state)
@@ -905,7 +905,7 @@ def main() -> int:
     }
     (out_dir / "ad_clearance_voxel_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
 
     try:

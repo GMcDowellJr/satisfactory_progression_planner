@@ -70,7 +70,7 @@ for k, bid in EXTRACTION_KEYS.items():
                     "area": 0, "buildCost": [], "isFicsmas": False}
 
 json.dump({"buildings": buildings, "recipes": recipes, "resources": resources,
-           "items": items, "handGatheredItems": {}}, open(out,"w"))
+           "items": items, "handGatheredItems": {}}, open(out,"w", newline="\n"))
 print(json.dumps({"recipes": len(recipes), "items": len(items), "resources": len(resources),
                   "buildings": len(buildings),
                   "producers_without_power": missing_power,

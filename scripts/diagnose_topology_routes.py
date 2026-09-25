@@ -465,7 +465,7 @@ def write_csv(path: Path, rows: list[dict]) -> None:
     )
     fields = preferred + extras
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for row in rows:
             w.writerow({k: row.get(k) for k in fields})
@@ -638,15 +638,15 @@ def main() -> int:
 
     (out_dir / "anchor_diagnostics.json").write_text(
         json.dumps(resolved, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     (out_dir / "pair_diagnostics.json").write_text(
         json.dumps(pair_rows, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     (out_dir / "topology_paths.json").write_text(
         json.dumps(path_payload, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     write_csv(out_dir / "pair_diagnostics.csv", pair_rows)
 
@@ -676,7 +676,7 @@ def main() -> int:
     }
     (out_dir / "diagnostic_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
 
     print(f"wrote {out_dir}")

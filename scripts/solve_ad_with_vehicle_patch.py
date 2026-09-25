@@ -222,7 +222,7 @@ def main() -> int:
     }
     (out_dir / "run_manifest.json").write_text(
         json.dumps(run, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
 
     print(

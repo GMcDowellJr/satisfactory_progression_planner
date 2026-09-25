@@ -771,7 +771,7 @@ def main():
                 "ordinary terrain edges are implicit and must be combined by the route consumer",
             ],
         }
-        (out_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        (out_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8", newline="\n")
 
     print(
         f"surface graph complete: {meta['node_count']:,} explicit surface nodes, "

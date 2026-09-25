@@ -233,10 +233,10 @@ def _validate(route: pd.DataFrame, profile):
 
 def write_result(result: SolveResult, out_dir: str, field: WorkingField, roads=None):
     out=Path(out_dir); out.mkdir(parents=True,exist_ok=True)
-    result.route.to_csv(out/"route_points.csv",index=False)
-    result.validation.to_csv(out/"route_validation.csv",index=False)
+    result.route.to_csv(out/"route_points.csv",index=False, lineterminator="\n")
+    result.validation.to_csv(out/"route_validation.csv",index=False, lineterminator="\n")
     import json
-    (out/"route_summary.json").write_text(json.dumps(result.summary,indent=2),encoding="utf-8")
+    (out/"route_summary.json").write_text(json.dumps(result.summary,indent=2),encoding="utf-8", newline="\n")
 
     plt.figure(figsize=(9,7))
     if roads is not None:

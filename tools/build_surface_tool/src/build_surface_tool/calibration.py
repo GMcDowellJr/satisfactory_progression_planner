@@ -32,7 +32,7 @@ def compare_foundation_fixture(repo_root: Path, world_manifest: Path, fixture_cs
     df['is_ground_surface_sample']=ground
     df['is_cliff_or_overhead_top_surface']=overhead
     output_dir=Path(output_dir);output_dir.mkdir(parents=True,exist_ok=True)
-    df.to_csv(output_dir/'terrain_comparison.csv',index=False)
+    df.to_csv(output_dir/'terrain_comparison.csv',index=False, lineterminator="\n")
 
     def pct(a,p): return float(np.nanpercentile(a,p)) if len(a) else None
     g=clearance[ground]; eg=clearance[ground & is_edge]
@@ -65,7 +65,7 @@ def compare_foundation_fixture(repo_root: Path, world_manifest: Path, fixture_cs
         'This fixture is empirical calibration evidence from an existing flat 4 m foundation deck, not a universal placement rule.'
       ]
     }
-    (output_dir/'calibration_summary.json').write_text(json.dumps(summary,indent=2)+'\n',encoding='utf-8')
+    (output_dir/'calibration_summary.json').write_text(json.dumps(summary,indent=2)+'\n',encoding='utf-8', newline="\n")
     return summary
 
 

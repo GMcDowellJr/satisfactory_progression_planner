@@ -188,10 +188,10 @@ def analyze(repo_root: Path, world_manifest: Path, policy_path: Path, output_dir
             ["analysis_resolution_m", "platform_elevation_m", "_size_rank", "core_area_m2", "contiguous_area_m2"],
             ascending=[True, True, False, False, False],
         ).drop(columns="_size_rank")
-    df.to_csv(output_dir / "build_surfaces.csv", index=False)
+    df.to_csv(output_dir / "build_surfaces.csv", index=False, lineterminator="\n")
     (output_dir / "build_surface_membership_index.json").write_text(
         json.dumps({"analysis_model": "elevation_sweep", "variants": membership_entries}, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
 
     summary = {
@@ -205,7 +205,7 @@ def analyze(repo_root: Path, world_manifest: Path, policy_path: Path, output_dir
         "counts_by_size": {} if df.empty else {str(k): int(v) for k, v in df["size_class"].value_counts().to_dict().items()},
         "note": "Rows are per horizontal resolution and sampled platform elevation. Horizontal resolution controls edge detail; vertical step controls which platform elevations are sampled. At a fixed elevation, changing step does not change geometry.",
     }
-    (output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n")
 
     all_monotonic = all(x["monotonic_from_previous_plane"] for x in per_plane_qa)
     qa = {
@@ -224,7 +224,7 @@ def analyze(repo_root: Path, world_manifest: Path, policy_path: Path, output_dir
             "confidence_is_gate": ap.get("minimum_terrain_confidence") is not None,
         },
     }
-    (output_dir / "qa.json").write_text(json.dumps(qa, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "qa.json").write_text(json.dumps(qa, indent=2) + "\n", encoding="utf-8", newline="\n")
     if not all_monotonic:
         raise RuntimeError("elevation sweep violated monotonic usable-area invariant")
     return df

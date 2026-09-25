@@ -43,5 +43,5 @@ def score_pois(pkg: PlannerPackage, route_csv: str, out_dir: str, trip_type="fir
         })
     out=Path(out_dir); out.mkdir(parents=True,exist_ok=True)
     df=pd.DataFrame(rows).sort_values(["recommendation_class","foot_equivalent_outback_m"])
-    df.to_csv(out/"nearby_pois.csv",index=False)
+    df.to_csv(out/"nearby_pois.csv",index=False, lineterminator="\n")
     return df

@@ -343,11 +343,11 @@ def analyze_local_relief(repo_root: Path, world_manifest: Path, policy_path: Pat
                             ascending=[True, True, False, False]).drop(columns="_rank")
     if not rectangles.empty:
         rectangles = rectangles.sort_values(["analysis_resolution_m", "local_relief_tolerance_m", "size_class", "surface_id", "candidate_rank"])
-    df.to_csv(output_dir / "build_surfaces.csv", index=False)
-    rectangles.to_csv(output_dir / "build_surface_rectangles.csv", index=False)
+    df.to_csv(output_dir / "build_surfaces.csv", index=False, lineterminator="\n")
+    rectangles.to_csv(output_dir / "build_surface_rectangles.csv", index=False, lineterminator="\n")
     (output_dir / "build_surface_membership_index.json").write_text(
         json.dumps({"analysis_model": "local_multiscale_relief", "variants": membership_entries}, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     summary = {
         "world_extract_id": manifest["world_extract_id"],
@@ -361,7 +361,7 @@ def analyze_local_relief(repo_root: Path, world_manifest: Path, policy_path: Pat
         "counts_by_size": {} if df.empty else {str(k): int(v) for k, v in df["size_class"].value_counts().to_dict().items()},
         "note": "Irregular regions are zones of qualifying footprint centers. build_surface_rectangles.csv contains the concrete reference footprints demonstrating qualification.",
     }
-    (output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n")
     qa = {
         "status": "PASS",
         "world_build_alignment": manifest.get("alignment", {}).get("status"),
@@ -378,5 +378,5 @@ def analyze_local_relief(repo_root: Path, world_manifest: Path, policy_path: Pat
             "confidence_is_gate": ap.get("minimum_terrain_confidence") is not None,
         },
     }
-    (output_dir / "qa.json").write_text(json.dumps(qa, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "qa.json").write_text(json.dumps(qa, indent=2) + "\n", encoding="utf-8", newline="\n")
     return df

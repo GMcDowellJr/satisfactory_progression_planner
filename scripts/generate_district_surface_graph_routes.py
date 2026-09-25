@@ -341,7 +341,7 @@ def _solve_pair(job: dict) -> dict:
             "elapsed_s": time.perf_counter() - started,
         }
     except Exception as exc:
-        (pair_dir / "error.txt").write_text(repr(exc), encoding="utf-8")
+        (pair_dir / "error.txt").write_text(repr(exc), encoding="utf-8", newline="\n")
         return {
             "a": job["a"],
             "b": job["b"],
@@ -761,7 +761,7 @@ def main():
         rows.append(directed_row(item,sd,so,solved_direction=False))
 
     pd.DataFrame(rows).sort_values(["origin", "destination"]).to_csv(
-        out_root / "district_route_summary.csv", index=False
+        out_root / "district_route_summary.csv", index=False, lineterminator="\n"
     )
 
     pair_results = {(r["a"], r["b"]): r for r in results}
@@ -830,7 +830,7 @@ def main():
         ),
     }
     (out_root / "run_manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
+        json.dumps(manifest, indent=2), encoding="utf-8", newline="\n"
     )
 
     print()

@@ -893,7 +893,7 @@ def write_candidates_csv(path: Path, rows: list[dict], names: dict[int, str]) ->
         "direction",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for row in rows:
             rec = dict(row)
@@ -925,7 +925,7 @@ def write_gateway_csv(path: Path, gateways: list[dict]) -> None:
         "score",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         for row in gateways:
             w.writerow({k: row.get(k) for k in fields})
@@ -1110,15 +1110,15 @@ def main() -> int:
 
     (out_dir / "region_adjacency.json").write_text(
         json.dumps(region_adj_rows, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     (out_dir / "subarea_adjacency.json").write_text(
         json.dumps(palette_adj_rows, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     (out_dir / "gateways.json").write_text(
         json.dumps(gateways, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     write_candidates_csv(
         out_dir / "gateway_candidates.csv",
@@ -1188,7 +1188,7 @@ def main() -> int:
     }
     (out_dir / "run_manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n",
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
 
     print(f"wrote {out_dir}")
