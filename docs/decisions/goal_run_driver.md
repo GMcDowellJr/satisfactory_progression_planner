@@ -379,3 +379,13 @@ report, so G1-G3 and the once-per-layer count are untouched.
 
     several goals on one T over a phase span (P6); the A7.3 storage-fill
     report (P7)
+
+## Amendment 6 — 2026-10-06. Generator fuel moves into the solve (pointer)
+
+Appended forward-only. Resolution (d) and Amendment 5 stand as written for
+what was decided on 2026-09-24. Decided by Greg, 2026-10-06, and recorded in
+the crossover record, Amendment 25 (A25.3 P1): generator fuel and water move
+into the solve under a power balance, because one resource cap is contested
+between power and production. The ledger code is unchanged until that work
+lands; whether a report-only view of the solved balance survives is a build
+choice, not decided here.

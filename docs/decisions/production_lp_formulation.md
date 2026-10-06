@@ -1764,3 +1764,79 @@ best plan for its objective, and section 7.4's weights are a selected goal.
 
 - Where the goal-sorted view lives (CLI `compare`, rate sheet, browser front end).
 - Whether "simple" gets a metric, and which (crossings vs nodes + edges, respec 7.2).
+
+## 22. Amendment, 2026-10-06 — goals: normalisation, and the power goal needs a counterweight
+
+Appended forward-only. Sections 7.4 and 21 stand as written. Source: Greg,
+chat 2026-10-06: his goal definitions, and a separately built HTML planner
+whose power, resource and balanced results barely differ under a 5x power
+setting. Repo read at public master 48046e4.
+
+### 22.1 Greg's goal definitions (conceptual, 2026-10-06)
+
+    balanced   resource + power + complexity scores combined
+    resources  lowest weighted raw-resource burden
+    power      lowest calculated production MW, including underclocking and
+               more machines
+    simple     fewest, "cleanest" production stages
+
+### 22.2 Against the code (report only)
+
+    balanced   Weights() is resources + power + BUILDINGS; complexity is
+               pinned to 0 (fork delta F2). Not what 22.1 describes
+    resources  7.4 sums raw rates unweighted; scarcity was relocated to caps
+               (17.4), not to the objective
+    power      7.4's power term is linear in machine-time at mean_mw.
+               Underclocking is a realization effect
+               (realization.residual.power_at_clock reads power_exponent);
+               the LP cannot see it
+    buildings  exists, and is not "simple"
+    simple     no metric (21.4, unchanged)
+
+### 22.3 Decided by Greg, 2026-10-06
+
+    N1  A COMPOSITE GOAL NORMALISES each metric before blending (e.g. against
+        that metric's own single-goal optimum); the weights and the
+        normalisation are shown (extends 21 R2)
+
+Mechanism behind N1 (found in code, report only): `Scenario.
+machine_power_multiplier` scales `mean_power` inside 7.4's power term. Under a
+raw-unit blend a 5x setting swamps resources and buildings, so "balanced"
+collapses toward "power". A single-metric goal is invariant to that
+multiplier. That the HTML planner shows the same mechanism is inferred; its
+code was not read.
+
+### 22.4 The power goal has no interior optimum (finding)
+
+For a lane at a fixed rate r, N machines at clock c = r / (N * rate_at_100):
+
+    total power  proportional to  N ** (1 - k),   k = power_exponent > 1
+
+This decreases in N with shrinking steps, down to the game's minimum clock.
+Minimising power alone drives toward many machines at very low clocks, so any
+power goal needs a counterweight and is therefore a composite under 21 R2:
+
+    clock bound          e.g. the HTML planner's max clock per machine
+    machine budget       per site (ground space; e.g. northern forest: fewer
+                         machines or vertical). World layer or declared
+    marginal threshold   stop when +1 machine saves less than X MW
+    build cost           each added machine adds to the build-material bill,
+                         which the run must also produce. Iterative; PARKED
+
+Correction (forward): a framing offered in the same session, "power as a sort
+over already-solved plans", is wrong. Machines versus clock is an
+optimisation. Once the LP fixes recipe rates it is separable per lane, so it
+belongs in realization, not the LP.
+
+Greg: how low to underclock depends on how many buildings are needed, where
+they are built (space), and where on the power curve the marginal saving
+becomes negligible; he is unsure how much of that the tooling can direct.
+What it can report: per lane, machines / clock / MW, with the MW saved by each
+added machine. It cannot know site space or the player's threshold.
+
+### 22.5 Open
+
+- The underclock threshold: who declares it (global default, per site, per lane).
+- The normalisation reference (single-goal optimum, or another).
+- Whether the browser front end keeps a max-clock setting as the bound.
+- "simple" metric (21.5, unchanged).

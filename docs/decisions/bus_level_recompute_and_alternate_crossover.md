@@ -2519,3 +2519,109 @@ This is the 2026-09-25 "split by bill" result as one solve.
          (which never sees T, A13 section 2)
     O11  the bill when there is none (open-ended "what to add")
     O12  phase vocabulary: the prototype's phase 2 = tier 2; phase2.py = tiers 3-4
+
+## Amendment 25 — 2026-10-06. Rulings on A23 and A24 open items; power enters the solve
+
+Appended forward-only. Amendments 13-24 stand as written. Source: Greg, chat
+2026-10-06, reviewing the open items of A23 and A24 against public master
+48046e4 and his own `phase_run.py --save` output (player_state/phase1.toml,
+phase2.toml; gitignored, not in the repo).
+
+    code      none
+    measured  nothing run. phase2.toml READ (Greg's machine, 2026-10-06):
+              have-after 8 Asm / 20 Con / 1 Fdy / 6 Sml = phase 1 standing
+              plus A23.2's owed 5 Asm, 2 Con, 1 Fdy; infrastructure
+              2 Miner, 4 Coal Generator, 2 Water Extractor = phase 1's carry
+              only. The A19 bootstrap producers appear nowhere (A23 O7, seen)
+
+### A25.1 Decided by Greg, 2026-10-06 (A23 open items)
+
+    O5   SUBTRACT. Surplus output that pays the bootstrap is removed from
+         what the paced pass reports as stored. A23's double count stays
+         floor-safe for sizing; the reported storage figure is net of the
+         bootstrap draw
+    O7   CARRY FORWARD. The A19-derived bootstrap producers enter have-after.
+         A miner extracts a RESOURCE; its use (power, steel) is a downstream
+         allocation of that output and is never recorded on the miner.
+         Carried miners are tagged by resource, eventually by node.
+         Infrastructure keyed by producer class alone cannot hold this
+         (A25.5 O15). The phase-2 steel bootstrap's 2 miners are 1 coal +
+         1 iron, feeding the foundry; there is no steel resource node
+    O8a  CONFIRMED. Phase 1's declared BOOTSTRAP (the Mk1 coal step) is
+         phase 2's power step: coal power to stabilise and reduce dependence
+         on biomass burners; 4 generators is a good minimum on Mk1 belts.
+         By the end of phase 2 the generator count is expected to match the
+         coal and water extraction available, i.e. cap-derived (A25.3)
+    O8b  CONFIRMED. A standing lane not in the run counts toward surplus
+         output until demand outgrows it (e.g. starter concrete, until large
+         buildings or roads need more than it makes)
+
+### A25.2 Decided by Greg, 2026-10-06 (A24 open items)
+
+    O9   ANCHOR-RATE MODE KEPT AS A SECONDARY QUESTION, reshaped as declared
+         partial rates. The player declares rate and on-hand stock for some
+         goals; the tool returns targets for the rest so nothing waits:
+             T_g      = (bill_g - onhand_g) / rate_g     declared goals g
+             T        = max over declared g
+             target_h = (bill_h - onhand_h) / T          undeclared goals h
+         plus a check that the caps sustain the result. On-hand is a
+         declared reading (D3). This is a mid-phase check-in; planning a
+         phase before it starts (2026-09-24) remains the first use
+    O10  RATES FOLLOW THE BILL (A24.3's shape), not equal rates: "an iron
+         rod is not a modular frame". "Finish together" came from a 100x
+         challenge run and is not a goal in itself; under a bill-proportional
+         solve it is a consequence, and late-unlock goals are A25.5 O13
+    O11  NOT A NO-BILL MODE. "What should this site build" is the
+         bill-driven solve with bill = remainder of the current tier + the
+         next tier, minus what standing production elsewhere already covers.
+         The horizon stops at the next tier: pressure beyond that belongs to
+         later facilities ("do I really need 300 MF/min — maybe, but not at
+         your first MF facility"). Recipe switching under local resources
+         (e.g. local limestone and caterium) falls out of caps + unlocks
+    O12  PHASE 2 = TIERS 3-4 (phase2.py stands). Within a phase, what the
+         player has actually unlocked decides recipes and buildings. That is
+         a declared unlock set (D3: schematics stay declared), not a
+         sub-stage; the D5 sub-stages stay dropped (pacing, not availability)
+
+### A25.3 Decided by Greg, 2026-10-06: power enters the solve
+
+    P1   GENERATOR FUEL AND WATER MOVE INTO THE SOLVE. Supersedes
+         goal_run_driver.md resolution (d) and its Amendment 5 (the
+         report-only power ledger). Generators become recipes (fuel + water
+         -> MW) under a power balance: MW produced >= MW drawn by lanes and
+         extractors. Reason: one cap is contested between power and
+         production (coal at a steel site); a ledger outside the solve
+         cannot see that and double-spends the cap. Greg: it is "all part of
+         the bigger question", and will apply in other places too
+    P2   the balance is at nameplate. Underclocking only lowers draw, so the
+         balance stays floor-safe (proposed; follows from P1)
+    P3   standing generators keep D4 resolution (c): each declared base or
+         reserve, fed or not. Base + fed enter the balance as supply; reserve
+         stays outside it (proposed)
+    P4   LP record D2 (12.1, the power statistic) becomes load-bearing only
+         when a variable-power producer enters a bill. Tiers through steel are
+         fixed-power; the deferral stands
+
+### A25.4 Opportunity cost (report only)
+
+Needs game progression plus map resource quantity and location, and the
+logistics between sites: world layer and routing (A24 S3), "part of the
+larger challenge" (Greg). Until those exist it enters as a DECLARED
+RESERVATION ("hold X coal/min uncommitted"), shown on the sheet. Tripwire:
+the production side does not grow its own approximation of the map.
+
+### A25.5 Open
+
+    O13  late-unlock goals under the bill-proportional solve: the 2026-09-24
+         lag table, or a lambda per unlock window
+    O14  which T a sheet shows: LP 1/lambda, realized after rounding, or both
+         (realization never sees T, A13 section 2)
+    O15  infrastructure schema: resource tag on miners (node later); how
+         bootstrap-derived production machines become lanes of phase N+1
+         (bus and recipe assignment)
+    O16  power in the solve: what replaces POWER_STEP and the A22.2 margins.
+         A23 O6 (ledger reads D4 NetBuildings) now migrates to the solve's
+         supply side, not to the ledger
+    O17  declared reservation: format and where it is entered
+    O18  the A24.3 formulation itself (lambda over the bill within caps) is
+         the adopted SHAPE; its code and tests are a separate step
