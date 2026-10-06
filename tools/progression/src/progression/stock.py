@@ -65,6 +65,8 @@ place or they drift into two.
 """
 from __future__ import annotations
 
+import dataclasses
+import enum
 import pathlib
 from dataclasses import dataclass
 
@@ -165,6 +167,9 @@ class StockPass:
     #: D4. The building netting the bills were summed after; None when no
     #: standing reading was declared, in which case the bills are gross
     standing_net: "NetBuildings | None" = None
+    #: D6 (crossover A23). The per-lane netting the lines half was costed
+    #: after; None when no standing lanes were declared
+    lane_net: "NetLanes | None" = None
 
 
 @dataclass(frozen=True)
@@ -340,6 +345,8 @@ def bill_for(
     project_assembly: tuple[ProjectAssemblyRequirement, ...] | None = None,
     phases: tuple[int, ...] | None = None,
     standing: "StandingBuildings | None" = None,
+    lanes: "tuple[tuple[LaneKey, int], ...] | None" = None,
+    standing_lanes: "StandingLanes | None" = None,
 ) -> StockPass:
     """One `WithdrawalBill` per item the two machine sets consume.
 
@@ -351,6 +358,14 @@ def bill_for(
 
         bootstrap_units   the declared bootstrap set, costed
         remainder_units   the settled machine counts, costed
+
+    D6 (crossover A23). `standing_lanes` is the per-lane reading, with
+    `lanes` the run's needed machines per (bus, recipe, class) — given
+    together or not at all, and `lanes` regroups to exactly `machines`.
+    The LINES half is costed over each lane's to-build (`net_lanes`); the
+    BOOTSTRAP half is costed whole: a standing lane's surplus machines never
+    pay bootstrap buildings (D6 G2', "don't demo machines to make
+    machines"). Refused beside `standing`: one reading, one netting.
 
     `machines` is the factory as it will stand — settled counts, handed in. This
     pass does not derive them and cannot; see the module docstring.
@@ -379,7 +394,32 @@ def bill_for(
             "reported as PROJECT_ASSEMBLY counted."
         )
 
-    if standing is None:
+    if (lanes is None) != (standing_lanes is None):
+        raise StockPassError(
+            "lanes and standing_lanes are given together or not at all. A "
+            "standing reading with no lanes to net has nothing to meet, and "
+            "lanes with no reading net nothing (D6)."
+        )
+    if standing is not None and standing_lanes is not None:
+        raise StockPassError(
+            "standing (per class, D4) and standing_lanes (per lane, D6) are "
+            "two readings of one factory; declare one. D6 G3 replaces D4."
+        )
+    lane_net = None
+    if standing_lanes is not None:
+        regrouped: dict[ProducerClass, int] = {}
+        for (_bus, _recipe, producer_class), count in lanes:
+            regrouped[producer_class] = regrouped.get(producer_class, 0) + count
+        if regrouped != {pc: n for pc, n in machines if n}:
+            raise StockPassError(
+                "lanes do not regroup to machines: the per-lane list and the "
+                "per-class counts describe different factories"
+            )
+        lane_net = net_lanes(lanes, standing_lanes)
+        net = None
+        boot_set = bootstrap.buildings
+        machine_set = lane_net.owed_machines()
+    elif standing is None:
         net = None
         boot_set, machine_set = bootstrap.buildings, machines
     else:
@@ -426,6 +466,7 @@ def bill_for(
         )
     return StockPass(
         bills=bills, unresolved=tuple(sorted(set(unresolved))), standing_net=net,
+        lane_net=lane_net,
     )
 
 
@@ -745,3 +786,350 @@ def add_bootstrap(first: BootstrapSet, second: BootstrapSet) -> BootstrapSet:
     for producer_class, count in second.buildings:
         counts[producer_class] = counts.get(producer_class, 0) + count
     return BootstrapSet(tier=first.tier, buildings=tuple(counts.items()))
+
+
+# --------------------------------------------------------------------------
+# D6: standing per LANE, with provenance. 2026-09-24 (crossover A23).
+# --------------------------------------------------------------------------
+#
+# Project doc d6-phase-defaults-and-lane-standing-design-2026-09-24.md,
+# Amendments 1-2, decided by Greg 2026-09-24:
+#
+#   G1   phase N's standing defaults to the tool's phase N-1 plan, else a
+#        PLACEHOLDER run of N-1. A MODELLED list may net (supersedes D4 P1 /
+#        D3 P1 for buildings); the guard is structural: PROVENANCE is a
+#        required field, and the sheet prints it
+#   G3   standing is per lane, key (bus_id, recipe_id, producer_class).
+#        Nothing moves across lanes; the recipe is part of the key, so a Cast
+#        Screw lane never meets a standard-screw lane
+#   G2'  surplus MACHINES never pay the bootstrap; surplus OUTPUT (items to
+#        storage) may pay the bootstrap's build bill
+#   O1'  (a) surplus output = surplus machines x nameplate x T. An upper
+#        bound, and admissible for that reason: bill - carry stays a floor
+#        iff carry >= true carry, so an OVERSTATED carry only loosens the
+#        floor. D3 P1 kept modelled carry out because it UNDERSTATES
+#   O4   buildings that are not lanes (generators, water extractors,
+#        miners) are a second list, INFRASTRUCTURE, per class, that nets
+#        only a declared POWER_STEP, before A20's addition; never the A19
+#        derived minimum
+#
+# No layout: a lane entry holds bus, recipe, class and count and nothing
+# else. Netting is not assignment, as in D4.
+
+#: (bus_id, recipe_id, producer_class)
+LaneKey = tuple[str, str, ProducerClass]
+
+
+class StandingProvenance(enum.Enum):
+    """Where a standing list came from. Required; never inferred."""
+
+    #: a file the player wrote or edited
+    DECLARED = "declared"
+    #: the saved "have after" of phase N-1 at its anchor rate
+    SAVED_PLAN = "saved_plan"
+    #: a run of phase N-1 made for this call; nothing saved; revise me
+    PLACEHOLDER = "placeholder"
+
+
+@dataclass(frozen=True)
+class StandingSource:
+    """The provenance record a standing list carries (D6 G1). No bool field.
+
+        DECLARED     path required; phase and rate as the file states them
+        SAVED_PLAN   phase, rate and path required
+        PLACEHOLDER  phase and rate required; no path (nothing was saved)
+    """
+
+    kind: StandingProvenance
+    phase: int | None = None
+    anchor_rate_per_min: float | None = None
+    path: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.kind, StandingProvenance):
+            raise ValueError(f"provenance must be a StandingProvenance, got {self.kind!r}")
+        if self.kind is StandingProvenance.DECLARED and self.path is None:
+            raise ValueError("a DECLARED standing list names the file it was read from")
+        if self.kind is not StandingProvenance.DECLARED and (
+            self.phase is None or self.anchor_rate_per_min is None
+        ):
+            raise ValueError(
+                f"a {self.kind.name} standing list names the phase and rate it is "
+                "the have-after of"
+            )
+        if self.kind is StandingProvenance.SAVED_PLAN and self.path is None:
+            raise ValueError("a SAVED_PLAN standing list names the file it was read from")
+        if self.kind is StandingProvenance.PLACEHOLDER and self.path is not None:
+            raise ValueError("a PLACEHOLDER was made for this call; nothing was saved or read")
+
+
+@dataclass(frozen=True)
+class StandingLanes:
+    """Machines placed at phase open, per lane, plus non-lane infrastructure.
+
+    `source` is REQUIRED: a list with no provenance cannot be built (D6 G1).
+    Pairs, caller order kept. A key named twice is refused rather than
+    summed; zero is a valid count, a negative is not.
+    """
+
+    lanes: tuple[tuple[LaneKey, int], ...]
+    infrastructure: tuple[tuple[ProducerClass, int], ...]
+    source: StandingSource
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.source, StandingSource):
+            raise ValueError(
+                "a standing list carries its provenance (D6 G1); got "
+                f"{type(self.source).__name__}"
+            )
+        keys = [k for k, _ in self.lanes]
+        if len(keys) != len(set(keys)):
+            raise ValueError("a lane appears twice in the standing list; state one count")
+        for key, count in self.lanes:
+            if not (isinstance(key, tuple) and len(key) == 3
+                    and all(isinstance(part, str) and part for part in key)):
+                raise ValueError(
+                    f"{key!r}: a lane key is (bus_id, recipe_id, producer_class), "
+                    "three non-empty strings and nothing else"
+                )
+            if count < 0:
+                raise ValueError(f"{key}: a standing count cannot be negative, got {count}")
+        classes = [pc for pc, _ in self.infrastructure]
+        if len(classes) != len(set(classes)):
+            raise ValueError("a class appears twice in the infrastructure list; state one count")
+        for producer_class, count in self.infrastructure:
+            if count < 0:
+                raise ValueError(f"{producer_class}: a standing count cannot be negative, got {count}")
+
+
+@dataclass(frozen=True)
+class LaneNet:
+    """One lane, netted. Conservation: to_build + standing == needed + surplus."""
+
+    key: LaneKey
+    needed: int
+    standing: int
+    to_build: int
+    surplus: int
+
+
+@dataclass(frozen=True)
+class NetLanes:
+    """The run's lanes netted against a standing list. Nothing clamped silently.
+
+        rows         one per needed lane, in the run's order
+        not_in_run   standing lanes the run does not have (another recipe, a
+                     bus this phase does not declare): needed 0, surplus all,
+                     listed so the reading is not lost. They net NOTHING
+    """
+
+    rows: tuple[LaneNet, ...]
+    not_in_run: tuple[LaneNet, ...]
+    standing: StandingLanes
+
+    def owed_machines(self) -> tuple[tuple[ProducerClass, int], ...]:
+        """To-build regrouped per class, in row order; zero classes left out
+        (the `machines_of` shape). A regrouping, not a count."""
+        counts: dict[ProducerClass, int] = {}
+        for row in self.rows:
+            if row.to_build:
+                pc = row.key[2]
+                counts[pc] = counts.get(pc, 0) + row.to_build
+        return tuple(counts.items())
+
+    def have_after(self) -> tuple[tuple[LaneKey, int], ...]:
+        """Per lane, standing + to build: what stands when the phase closes.
+        Surplus lanes keep their machines (D6). Rows, then not-in-run."""
+        return tuple((r.key, r.standing + r.to_build) for r in self.rows + self.not_in_run)
+
+
+def net_lanes(
+    needed: tuple[tuple[LaneKey, int], ...],
+    standing: StandingLanes,
+) -> NetLanes:
+    """Per lane, two sign tests (the `net_of` pattern). No min, max, sort or round.
+
+    Only an exact key meets: the recipe and class are part of it, so nothing
+    moves between lanes (D6 G3).
+    """
+    if not isinstance(standing, StandingLanes):
+        raise StockPassError(
+            f"net_lanes takes a StandingLanes, got {type(standing).__name__}. A "
+            "standing list carries its provenance (D6 G1)."
+        )
+    keys = [k for k, _ in needed]
+    if len(keys) != len(set(keys)):
+        raise StockPassError("a lane appears twice in the needed list; regroup it first")
+    held = dict(standing.lanes)
+    rows: list[LaneNet] = []
+    for key, count in needed:
+        have = held.get(key, 0)
+        difference = count - have
+        if difference > 0:
+            rows.append(LaneNet(key, count, have, difference, 0))
+        else:
+            rows.append(LaneNet(key, count, have, 0, -difference))
+    wanted = set(keys)
+    not_in_run = tuple(
+        LaneNet(key, 0, count, 0, count)
+        for key, count in standing.lanes if key not in wanted
+    )
+    return NetLanes(rows=tuple(rows), not_in_run=not_in_run, standing=standing)
+
+
+@dataclass(frozen=True)
+class NetInfrastructure:
+    """A declared POWER_STEP netted against standing infrastructure (D6 O4).
+
+        owed      one entry per power-step class, in its order
+        surplus   standing beyond it: power-step classes first, then
+                  standing-only classes in declaration order
+
+    Conservation, per class: owed + standing == power_step + surplus.
+    """
+
+    owed: dict[ProducerClass, int]
+    surplus: dict[ProducerClass, int]
+    standing: StandingLanes
+
+
+def net_infrastructure(
+    power_step: tuple[tuple[ProducerClass, int], ...],
+    standing: StandingLanes,
+) -> NetInfrastructure:
+    """Only the declared power step nets, BEFORE it is added to the derived
+    minimum; the A19 minimum is never netted (D6 O4). Two sign tests per
+    class; no min, max, sort or round."""
+    if not isinstance(standing, StandingLanes):
+        raise StockPassError(
+            f"net_infrastructure takes a StandingLanes, got {type(standing).__name__}"
+        )
+    held = dict(standing.infrastructure)
+    owed: dict[ProducerClass, int] = {}
+    surplus: dict[ProducerClass, int] = {}
+    for producer_class, count in power_step:
+        difference = count - held.get(producer_class, 0)
+        if difference > 0:
+            owed[producer_class] = difference
+        else:
+            owed[producer_class] = 0
+            if difference < 0:
+                surplus[producer_class] = -difference
+    step = dict(power_step)
+    for producer_class, count in standing.infrastructure:
+        if producer_class not in step and count > 0:
+            surplus[producer_class] = count
+    return NetInfrastructure(owed=owed, surplus=surplus, standing=standing)
+
+
+#: How surplus output is quantified (D6 O1' (a)). Carried beside the figure.
+SURPLUS_NAMEPLATE = (
+    "UPPER BOUND: surplus lane machines x recipe nameplate (every output, at "
+    "100%) x T, inputs assumed fed (D6 O1' (a)). Overstating keeps the bill a floor"
+)
+
+
+@dataclass(frozen=True)
+class LaneOutput:
+    key: LaneKey
+    surplus_machines: int
+    #: (item, units over T), the recipe's outputs in its order
+    units: tuple[tuple[ItemId, float], ...]
+
+
+@dataclass(frozen=True)
+class SurplusOutput:
+    """Items standing lanes make beyond the phase's need, over T. MODELLED.
+
+    Carries the standing list's provenance and its basis, because it nets
+    (D6 G2', superseding D3 P1 for this one source) and a netted modelled
+    quantity must say where it came from.
+    """
+
+    units: dict[ItemId, float]
+    by_lane: tuple[LaneOutput, ...]
+    horizon_min: float
+    source: StandingSource
+    basis: str = SURPLUS_NAMEPLATE
+
+
+def surplus_output(data: ReferenceData, net: NetLanes, horizon_min: float) -> SurplusOutput:
+    """O1' (a), per surplus lane in row order then not-in-run order.
+
+    A not-in-run lane counts: its machines stand and, fed, make its recipe's
+    outputs, which is the same upper-bound assumption as any surplus lane.
+    REFUSED: a non-positive horizon; a lane whose recipe the reference layer
+    does not carry.
+    """
+    if horizon_min <= 0:
+        raise StockPassError(f"a horizon must be positive, got {horizon_min}")
+    units: dict[ItemId, float] = {}
+    by_lane: list[LaneOutput] = []
+    for row in net.rows + net.not_in_run:
+        if not row.surplus:
+            continue
+        recipe = data.recipes.get(row.key[1])
+        if recipe is None:
+            raise StockPassError(
+                f"{row.key}: recipe {row.key[1]} is not in the reference data, so its "
+                "surplus output cannot be quantified"
+            )
+        lane_units = tuple(
+            (item_id, rate * row.surplus * horizon_min) for item_id, rate in recipe.outputs
+        )
+        for item_id, amount in lane_units:
+            units[item_id] = units.get(item_id, 0.0) + amount
+        by_lane.append(LaneOutput(row.key, row.surplus, lane_units))
+    return SurplusOutput(
+        units=units, by_lane=tuple(by_lane), horizon_min=horizon_min,
+        source=net.standing.source,
+    )
+
+
+@dataclass(frozen=True)
+class BootstrapPayment:
+    """The bootstrap half of each bill, paid down by surplus output (D6 G2').
+
+        bills   the bills with `bootstrap_units` replaced by what is still
+                owed; `remainder_units`, terms and basis untouched. The
+                remainder is NOT paid: G2' names the bootstrap's bill only
+        paid    per billed item, units the surplus paid (0.0 when none)
+        left    surplus beyond the bootstrap half: billed items in bill
+                order, then unbilled surplus items in surplus order
+
+    Conservation, per item: owed + paid == bootstrap_units, and
+    paid + left == surplus units.
+    """
+
+    bills: dict[ItemId, WithdrawalBill]
+    paid: dict[ItemId, float]
+    left: dict[ItemId, float]
+    surplus: SurplusOutput
+
+
+def pay_bootstrap(bills: dict[ItemId, WithdrawalBill], surplus: SurplusOutput) -> BootstrapPayment:
+    """Two sign tests per item, the `net_of` pattern. No min, max, sort or round."""
+    if not isinstance(surplus, SurplusOutput):
+        raise StockPassError(
+            f"pay_bootstrap takes a SurplusOutput, got {type(surplus).__name__}. Only "
+            "surplus output with its provenance pays the bootstrap (D6 G2'); any "
+            "other carry is D3's and nets through net_of"
+        )
+    paid_bills: dict[ItemId, WithdrawalBill] = {}
+    paid: dict[ItemId, float] = {}
+    left: dict[ItemId, float] = {}
+    for item_id, bill in bills.items():
+        available = surplus.units.get(item_id, 0.0)
+        difference = bill.bootstrap_units - available
+        if difference > 0:
+            paid_bills[item_id] = dataclasses.replace(bill, bootstrap_units=difference)
+            paid[item_id] = available
+        else:
+            paid_bills[item_id] = dataclasses.replace(bill, bootstrap_units=0.0)
+            paid[item_id] = bill.bootstrap_units
+            if difference < 0:
+                left[item_id] = -difference
+    for item_id, amount in surplus.units.items():
+        if item_id not in bills and amount > 0:
+            left[item_id] = amount
+    return BootstrapPayment(bills=paid_bills, paid=paid, left=left, surplus=surplus)

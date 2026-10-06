@@ -55,3 +55,6 @@ uv.lock.bak
 # Not in REPO_MANIFEST.csv (485 MB). Canonical heightmap and snapshots live
 # under planning_data/world/. Regenerated, not versioned.
 data/
+
+# D6 player state: saved phase plans (have-after), the player's, not canon.
+player_state/

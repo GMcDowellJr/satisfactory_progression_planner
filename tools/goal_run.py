@@ -35,6 +35,11 @@ that `run` itself stays single-pass:
              (`progression.schedule`)
     paced    storing lines clocked to that rate -> the reported build
 
+D6 (crossover A23): with standing LANES declared, the floor bill's bootstrap
+half is first paid down by the standing lanes' surplus OUTPUT (G2', O1' (a):
+an upper bound, which only loosens the floor). The surplus is the FLOOR
+pass's, because the floor bill is what paces (D6 O5, stated in A23).
+
 D3 nets the floor bill against a DECLARED inventory between the first two
 steps, when one is given. A modelled carry estimate rides along to the report
 and never nets (the netted bill stays a floor only if carry is a ceiling).
@@ -93,6 +98,11 @@ class StockDeclaration:
     #: D4 (amendment 4). Machines placed at stage open that the plan may use.
     #: None nets nothing and every figure is as before
     standing: stock.StandingBuildings | None = None
+    #: D6 (crossover A23). Machines standing per LANE, with provenance. The
+    #: lines half nets per lane; the bootstrap half is never netted by
+    #: machines (G2'), and in `paced_run` surplus OUTPUT pays it. Refused
+    #: beside `standing` by `stock.bill_for`
+    standing_lanes: stock.StandingLanes | None = None
 
 
 @dataclass(frozen=True)
@@ -129,6 +139,19 @@ def machines_of(report: RealizationReport) -> tuple[tuple[ProducerClass, int], .
         for lane in bus.lanes:
             if lane.machines:
                 counts[lane.producer_class] = counts.get(lane.producer_class, 0) + lane.machines
+    return tuple(counts.items())
+
+
+def lanes_of(report: RealizationReport) -> tuple[tuple[stock.LaneKey, int], ...]:
+    """Lane machines summed per (bus_id, recipe_id, producer_class), in
+    discovery order (D6 G3). A regrouping like `machines_of`, at the grain a
+    standing list is keyed by; a lane with no machines is not listed."""
+    counts: dict[stock.LaneKey, int] = {}
+    for bus in report.buses:
+        for lane in bus.lanes:
+            if lane.machines:
+                key = (bus.bus_id, lane.recipe_id, lane.producer_class)
+                counts[key] = counts.get(key, 0) + lane.machines
     return tuple(counts.items())
 
 
@@ -184,6 +207,7 @@ def run(
     report = realize(response, data, capabilities, extraction, realization)
     projected = project_goals(report.buses, goals)
     machines = machines_of(report)
+    lanes = lanes_of(report) if declared_stock.standing_lanes is not None else None
     bill = stock.bill_for(
         data,
         construction,
@@ -194,6 +218,8 @@ def run(
         project_assembly=declared_stock.project_assembly,
         phases=declared_stock.phases,
         standing=declared_stock.standing,
+        lanes=lanes,
+        standing_lanes=declared_stock.standing_lanes,
     )
     return GoalRunReport(
         data=data,
@@ -228,6 +254,9 @@ class PacedRunReport:
     #: D3 P1. Carried to the report as handed in and never read here. It
     #: cannot net: `stock.net_of` refuses its type
     carry_estimate: schedule.CarryEstimate | None = None
+    #: D6 G2'. The floor bill's bootstrap half paid down by standing lanes'
+    #: surplus OUTPUT; None when no standing lanes were declared
+    bootstrap_payment: stock.BootstrapPayment | None = None
 
 
 def paced_run(
@@ -293,11 +322,20 @@ def paced_run(
     )
     floor = run(realization=floor_request, **common)
 
+    if declared_stock.standing_lanes is None:
+        payment = None
+        bills = floor.stock.bills
+    else:
+        payment = stock.pay_bootstrap(
+            floor.stock.bills,
+            stock.surplus_output(data, floor.stock.lane_net, horizon_min),
+        )
+        bills = payment.bills
     if on_hand is None:
         net = None
-        rates = schedule.storage_rates(floor.stock.bills, horizon_min)
+        rates = schedule.storage_rates(bills, horizon_min)
     else:
-        net = stock.net_of(floor.stock.bills, on_hand)
+        net = stock.net_of(bills, on_hand)
         rates = schedule.rates_of(net.owed, horizon_min)
     paced_request = dataclasses.replace(
         realization,
@@ -316,4 +354,5 @@ def paced_run(
         paced=paced,
         net=net,
         carry_estimate=carry_estimate,
+        bootstrap_payment=payment,
     )

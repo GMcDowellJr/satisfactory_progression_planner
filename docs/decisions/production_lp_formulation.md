@@ -1715,3 +1715,52 @@ and is not yet resolvable.
 - The CLI has no `--weights` beyond four named presets, deliberately: arbitrary
   weight tuples belong in a script rather than an argument parser, and the named
   ones are the Pareto corners section 3.4 of the selection record sweeps.
+
+## 21. Amendment, 2026-10-06 — the ranking guard, restated
+
+Appended forward-only. Sections 14.1 and 14.2 stand as written. Source: Greg,
+chat 2026-10-06, while reviewing a separate allocation-planner prototype:
+"no ranking" feels overstated; being able to select a goal (power, balanced,
+resource, simple, ...) and have results sorted best-for-that-goal would help.
+
+### 21.1 What 14.1 actually scoped
+
+14.1's "QUANTIFY ONLY. No best, no rank, no score, no sort" was Greg's call for
+the comparator, `analysis.compare()`. Later notes generalised it to "analysis
+tooling". At solve level it was never coherent: the LP already returns the
+best plan for its objective, and section 7.4's weights are a selected goal.
+
+### 21.2 Decided by Greg, 2026-10-06
+
+    R1  SORTING BY A GOAL THE PLAYER SELECTED IS ALLOWED. It is a view, not
+        a decision: the metric is named by the caller and shown with the order
+    R2  A COMPOSITE GOAL SHOWS ITS WEIGHTS in the output. A goal that blends
+        metrics at weights the reader cannot see is the implicit scalarisation
+        output-contract respec 7.2 rejects
+    R3  NEVER RANK ACROSS FEASIBLE SETS. 14.2's feasibility guard is
+        unchanged: runs with different supply, scenario or recipe set are
+        "not comparable", and no sort may place them on one list
+    R4  TIES AND NEAR-TIES ARE SHOWN, not broken silently
+
+### 21.3 What does not change
+
+    analysis.compare()   still returns variants in caller order, never a single
+                         variant; its by-inspection tests stand. A goal-sorted
+                         view is a SEPARATE layer above it, so the comparator
+                         itself still cannot recommend
+    feasibility guard    unchanged (R3)
+
+### 21.4 Found while recording (report only)
+
+    goals already exist  tools/production_cli.py WEIGHT_PRESETS: balanced,
+                         resources, power, buildings
+    "balanced"           is Weights(), a composite. Under R2 its weights must
+                         be printed wherever it is used to order anything
+    "simple"             has no term: w_complexity raises (7.4, fork delta F2).
+                         A goal with no LP metric cannot be offered until one
+                         exists; that is F2's separate decision
+
+### 21.5 Open
+
+- Where the goal-sorted view lives (CLI `compare`, rate sheet, browser front end).
+- Whether "simple" gets a metric, and which (crossings vs nodes + edges, respec 7.2).

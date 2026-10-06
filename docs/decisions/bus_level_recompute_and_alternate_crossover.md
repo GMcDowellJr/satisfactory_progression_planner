@@ -2366,3 +2366,156 @@ not in the figure at any rate.
                 A22.2 margins); Greg's call
     not built   a phase-3 declaration (needs oil lines)
     not run     the full suite on Greg's machine
+
+## Amendment 23 — 2026-09-24. Phase 1 as a declaration; standing per lane, with provenance (D6)
+
+Appended forward-only. Greg, chat 2026-09-24. Design: project doc
+d6-phase-defaults-and-lane-standing-design-2026-09-24.md, Amendments 1-2.
+
+    code      tools/phases/phase1.py (new; the case of record);
+              tools/phase_run.py (declared BOOTSTRAP or A19 + POWER_STEP;
+              run(standing=); have_after, resolve_standing, read_standing,
+              write_plan, standing_of; --standing / --save);
+              progression/stock.py (StandingProvenance, StandingSource,
+              StandingLanes, net_lanes, net_infrastructure, surplus_output,
+              pay_bootstrap; bill_for(lanes=, standing_lanes=));
+              tools/goal_run.py (StockDeclaration.standing_lanes, lanes_of,
+              PacedRunReport.bootstrap_payment); tools/rate_sheet.py
+              (standing, render_standing); .gitignore (player_state/)
+    tests     tests/test_phase_standing.py (new, 38). Guardrails
+              mutation-checked in the container (6 mutations, each caught)
+    measured  agent container, against ac8cb89 plus this change. 986
+              passed, 1 skipped. Not Greg's machine
+
+### A23.1 Decided by Greg, 2026-09-24
+
+    G1   phase N's standing defaults to the tool's phase N-1 plan, else a
+         PLACEHOLDER run of N-1 at 1/min. A modelled list nets; the guard
+         is structural: `StandingLanes.source` is required, no field is a
+         bool, and the sheet header prints the provenance
+    G3   standing is per lane, key (bus_id, recipe_id, producer_class).
+         Nothing moves across lanes; a lane of another recipe is listed
+         "standing, not in this run" and nets nothing
+    G2'  surplus MACHINES never pay bootstrap buildings ("don't demo
+         machines to make machines"); surplus OUTPUT may pay the bootstrap
+         half of the bill, never the remainder
+    O1'  (a): surplus output = surplus machines x recipe nameplate x T, an
+         upper bound. Admissible: bill - carry stays a floor iff carry >=
+         true carry, so overstating only loosens the floor
+    O4   non-lane buildings (generators, water extractors, miners) are a
+         second list, INFRASTRUCTURE, per class, netting only a declared
+         step before A20's addition; the A19 minimum is never netted
+    P1   phase1.py declares BOOTSTRAP outright (the record's Mk1 coal step);
+         phase_run refuses BOOTSTRAP beside POWER_STEP / PREVIOUS_TIER
+    O2   saved plans in player_state/phase<N>.toml, gitignored
+    O3   placeholder rate 1/min on the anchor
+
+Supersedes, forward: D3 P1 and D4 P1 ("only a declared reading nets") for
+standing buildings and for surplus output paying the bootstrap half; D3 P1
+stands for every other modelled carry. D4's class netting (`net_buildings`,
+lines then bootstrap) is RETIRED FROM phase_run: phase_run passes only
+`standing_lanes`. It is NOT yet retired from goal_run: the
+`StockDeclaration.standing` field and its D4 tests (and the power ledger,
+which reads `NetBuildings`) stand until migrated; `bill_for` refuses both
+readings together.
+
+Correction to the D6 note, forward: its "Floor and paced builds are
+unchanged by standing (D4)" holds for the FLOOR only. Standing shrinks the
+floor bill, which paces the storing lines, so the PACED build moves (as it
+did under D4: the record with the coal step standing, 27 -> 22).
+
+### A23.2 Measured (report only)
+
+    phase 1 via phase_run, nothing standing: the case of record's pins
+        floor 3/7/-/2, paced 3/18/-/6 (Asm/Con/Fdy/Sml), 107.8094 MW
+    phase 2 at 1/min on the PLACEHOLDER phase 1 (1/min):
+        floor  8/11/1/3 (unchanged)      paced 8/12/1/4 (A22.2: 8/14/1/4)
+        lines 66.7418 MW (A22.2: 67.31)  owed lines 5 Asm, 2 Con, 1 Fdy
+        infrastructure meets POWER_STEP whole: owed 0/0/0; bootstrap is the
+        A19 minimum alone (2 Miner, 1 Fdy, 3 Asm, 2 Con)
+        surplus output paid 20 Iron Plate of the bootstrap bill (the two
+        miners' plates); no other surplus item is billed to the bootstrap
+    placeholder and saved-plan resolution print identical sheets but for
+    the provenance line (diffed in the container)
+
+### What this amendment does not establish
+
+    open  O5  surplus output is the FLOOR pass's (the floor bill paces).
+              The paced pass puts more machines on storing lanes, so part
+              of that surplus is counted as paying the bootstrap and as
+              serving storage. Floor-safe; a choice to confirm
+    open  O6  power ledger still reads D4 NetBuildings; standing generators
+              under D6 are INFRASTRUCTURE. Not migrated
+    open  O7  have-after carries lanes (standing + to build) and
+              infrastructure (standing + the declared step's owed); the A19
+              derived producers are carried NOWHERE. Whether they become
+              lanes of phase N+1 is Greg's call
+    open  O8  applied without an explicit ruling: phase 1's declared
+              BOOTSTRAP nets against infrastructure like a POWER_STEP (both
+              are declared steps); a standing lane not in the run counts
+              toward surplus output (its machines stand)
+    not run   the full suite on Greg's machine
+
+## Amendment 24 — 2026-10-06. Supply-first: the horizon is an output
+
+Appended forward-only. Amendments 13-23 stand as written. Source: Greg, chat
+2026-10-06, reviewing an allocation-planner prototype ("best use of local
+resources given where I am in the game") against this work. Prior input:
+project doc supply-first-design-notes-2026-09-25.md, candidate 1, which named
+this conflict and said it needed a dated record.
+
+    code      none
+    measured  nothing run
+
+### A24.1 Decided by Greg, 2026-10-06 (direction)
+
+    S1  TIME IS A BYPRODUCT OF WHAT YOU CAN MAKE. Local output is capped by
+        the resources available; you cannot make more locally than that
+    S2  GOING FASTER MEANS TAPPING MORE NODES. A different supply is a
+        different run (LP record 14.2: not comparable)
+    S3  MOVING MATERIALS BETWEEN FACTORIES IS LOGISTICS, a different set of
+        tools. The production side takes caps; it does not route (LP record
+        17.3-17.4: caps come from the world layer)
+
+### A24.2 What this supersedes, and what it leaves open
+
+    A13 / A15.1 / A18.1 B1   T = anchor total / anchor rate. Under S1 the
+        horizon is computed from supply, not declared through an anchor rate.
+        SUPERSEDED AS THE PRIMARY MODE. Whether the anchor-rate run survives
+        as a secondary mode ("what supply would rate X need") is OPEN
+    A18.1 B2   "T is a normalisation, not a play-time estimate". Under S1, T
+        is derived from supply. It is still not play time: build and
+        expedition time have no role in sizing (D3) and stay a report
+    A21        "a sheet holds at its run's rate" stands; the run's rate now
+        comes from supply rather than the player's anchor
+
+### A24.3 Proposed formulation (NOT adopted)
+
+    fixed    resource caps (world layer), standing lanes (A23 / D6),
+             recipe set, scenario
+    solve    max lambda  s.t.  output_i >= lambda * bill_i,  within caps
+    report   T = 1 / lambda; per-item finish times
+    goal     a secondary objective among lambda-optimal plans, selected by
+             the player (LP record section 21)
+
+This is the 2026-09-25 "split by bill" result as one solve.
+
+### A24.4 Relation to the allocation prototype (report only)
+
+    question   "what should this site add" is the question
+               tools/production_cli.py already REFUSES as `what_next`
+               ("Phase 4 — it needs run state"). Supply-first inputs (caps,
+               standing lanes) are that run state
+    shape      no bill: value bands per product as the objective. Under LP
+               record 21 that is a selectable, named goal with visible
+               weights, not a hidden policy
+    not taken  its code. Review: project doc
+               allocation-planner-review-2026-10-06.md
+
+### A24.5 Open
+
+    O9   anchor-rate mode: replaced, or kept as secondary
+    O10  A24.3 formulation, and where lambda sits relative to realization
+         (which never sees T, A13 section 2)
+    O11  the bill when there is none (open-ended "what to add")
+    O12  phase vocabulary: the prototype's phase 2 = tier 2; phase2.py = tiers 3-4

@@ -38,6 +38,13 @@ Guardrails, asserted from the source in `tests/test_rate_sheet.py`:
     R4  no scale: `sheet` takes no rate or factor, and nothing in the module
         multiplies a report rate
 
+D6 (crossover A23): `standing` builds a second table beside the sheet, one row
+per lane, needed / standing / to build / surplus, headed by the standing
+list's PROVENANCE (G1: no default is silent). It copies the numbers
+`stock.net_lanes` returned and computes none; `sheet` is unchanged (R4).
+Surplus OUTPUT paying the bootstrap (G2') and the infrastructure netting
+(O4) are listed under it, as returned, with their basis.
+
 Location: `tools/` root beside `storage_view.py`, for the same reason (C7).
 """
 from __future__ import annotations
@@ -145,6 +152,98 @@ def sheet(
         goals=tuple(goals),
         rows=tuple(rows),
     )
+
+
+@dataclass(frozen=True)
+class LaneRow:
+    """One lane of the standing table, copied from a `stock.LaneNet`."""
+
+    bus_id: str
+    recipe_id: str
+    producer_class: ProducerClass
+    needed: int
+    standing: int
+    to_build: int
+    surplus: int
+    #: "in run" or "standing, not in this run" (D6 G3: nets nothing)
+    status: str
+
+
+@dataclass(frozen=True)
+class StandingTable:
+    #: the provenance line the header prints (D6 G1)
+    provenance: str
+    rows: tuple[LaneRow, ...]
+    #: (class, standing, owed, surplus) for the declared power step, or ()
+    infrastructure: tuple[tuple[ProducerClass, int, int, int], ...]
+    #: (item, bootstrap paid from surplus output), billed items with a payment
+    paid: tuple[tuple[ItemId, float], ...]
+    #: the surplus output's basis line, or "" when nothing was paid
+    basis: str
+
+
+def provenance_line(source) -> str:
+    """A `stock.StandingSource` (or None) as the header's words. Read only."""
+    if source is None:
+        return "standing  none declared (phase 1: nothing is placed before it)"
+    kind = source.kind.name
+    if kind == "DECLARED":
+        return f"standing  DECLARED  file {source.path}"
+    if kind == "SAVED_PLAN":
+        return (f"standing  SAVED_PLAN  have-after of phase {source.phase} at "
+                f"{source.anchor_rate_per_min:.3f}/min, file {source.path}")
+    return (f"standing  PLACEHOLDER  a run of phase {source.phase} at "
+            f"{source.anchor_rate_per_min:.3f}/min made for this call; nothing "
+            "saved -- placeholder, revise me")
+
+
+def standing(lane_net, *, source, infrastructure=None, payment=None) -> StandingTable:
+    """The D6 table from a run's `stock.NetLanes` (None: no standing), the
+    `stock.NetInfrastructure` and `stock.BootstrapPayment` as returned.
+    Copies; computes nothing."""
+    rows: list[LaneRow] = []
+    if lane_net is not None:
+        for status, group in (("in run", lane_net.rows),
+                              ("standing, not in this run", lane_net.not_in_run)):
+            for r in group:
+                rows.append(LaneRow(r.key[0], r.key[1], r.key[2], r.needed,
+                                    r.standing, r.to_build, r.surplus, status))
+    infra: list[tuple[ProducerClass, int, int, int]] = []
+    if infrastructure is not None:
+        held = dict(infrastructure.standing.infrastructure)
+        for pc, owed in infrastructure.owed.items():
+            infra.append((pc, held.get(pc, 0), owed, infrastructure.surplus.get(pc, 0)))
+        for pc, spare in infrastructure.surplus.items():
+            if pc not in infrastructure.owed:
+                infra.append((pc, held.get(pc, 0), 0, spare))
+    paid = () if payment is None else tuple((i, u) for i, u in payment.paid.items() if u)
+    return StandingTable(
+        provenance=provenance_line(source), rows=tuple(rows),
+        infrastructure=tuple(infra), paid=paid,
+        basis="" if payment is None else payment.surplus.basis,
+    )
+
+
+def render_standing(t: StandingTable, data: ReferenceData | None = None) -> str:
+    out = ["", f"  {t.provenance}"]
+    if t.rows:
+        out.append(f"  {'bus':26s} {'recipe':28s} {'class':24s} {'needed':>6s}"
+                   f" {'standing':>8s} {'to build':>8s} {'surplus':>7s}")
+        for r in t.rows:
+            tail = "" if r.status == "in run" else f"  ({r.status})"
+            out.append(f"  {r.bus_id:26s} {_short(r.recipe_id):28s}"
+                       f" {_producer(data, r.producer_class):24s} {r.needed:6d}"
+                       f" {r.standing:8d} {r.to_build:8d} {r.surplus:7d}{tail}")
+    if t.infrastructure:
+        out.append("  infrastructure vs the declared power step (class: standing / owed / surplus)")
+        for pc, held, owed, spare in t.infrastructure:
+            out.append(f"    {_producer(data, pc):28s} {held:4d} {owed:4d} {spare:4d}")
+    if t.paid:
+        out.append("  bootstrap bill paid from surplus output (units)")
+        for item_id, units in t.paid:
+            out.append(f"    {_item(data, item_id):28s} {units:10.1f}")
+        out.append(f"    basis: {t.basis}")
+    return "\n".join(out)
 
 
 def _short(item_id: str) -> str:
