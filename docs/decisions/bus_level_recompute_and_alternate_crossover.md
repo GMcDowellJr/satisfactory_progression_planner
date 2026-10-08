@@ -2919,3 +2919,68 @@ visible ("one cap is contested between power and production").
          generators from phase 1 are not yet declared; `GRID_MW` stands in
     O31  extraction power at the declared clock (base x clock^1.321929)
          as a report beside the nameplate constant
+
+## Amendment 30 — 2026-10-08. Finding: a solve-chosen recipe set meets a declared partition (step 8 blocked on a ruling)
+
+Appended forward-only. Amendments 13-29 stand as written. Source: this
+session, 2026-10-08, preparing realization over the district plan (plan
+note step 8; A28.2 O26, A29.3 O29).
+
+    code      none
+    measured  container 2026-10-08, the three fixture plans: items made by
+              more than one recipe —
+                shipped caps-only   Rotor: Steel Rotor 0.863 + Rotor 0.895
+                shipped with power  none (Rotor base only; Steel Rotor idle)
+                readme              Rotor: Steel Rotor 0.216 + Rotor 0.224
+              The mix is resource-driven, not a tie: the two rotor recipes
+              spend coal and iron differently and the caps price them
+              differently at the margin
+
+### A30.1 The conflict (report only)
+
+    realization   THE PARTITION IS DECLARED, NOT DERIVED (contracts.py; bus
+                  record §1 as amended). One recipe per bus: a bus whose item
+                  the solve made with several recipes is refused unless
+                  `BusDeclaration.recipe_id` names one, and a named recipe
+                  the solve did not run is refused too (buses.py, P30)
+    district      the solve chooses recipes district-wide (v5.5 rule 3, LP
+                  record 12 "alternate mixing"), and its choice changes with
+                  the case: Steel Rotor is in the caps-only plans and idle in
+                  the power plan. A declaration written for one plan is
+                  refused on the next
+
+So the fixture cannot carry one BUSES tuple that realizes every case, and
+no declaration can follow a choice the solve makes. This is a ruling, not
+a patch.
+
+### A30.2 Options for Greg
+
+    R1  MIXED BUS. A bus with several RecipeUses becomes several LANES, one
+        per recipe, sized from derived demand split in the solve's proportion.
+        `Lane.recipe_id` is already per lane; the change is in
+        buses.buses_from_response (refusal -> split) and in the oracle
+        (busmodel must reproduce the split). Keeps district-wide route choice;
+        the partition declares buses and sources only, never a recipe.
+        Recommended long-term
+    R2  ONE RECIPE PER ITEM IN THE DISTRICT SOLVE, declared: the fixture's
+        EXPLICIT set names exactly one recipe per intermediate (the built
+        factory's: Steel Rotor, not Rotor), so the LP chooses rates only.
+        No layer changes; loses alternate mixing for that run, and needs
+        a filter that refuses an EXPLICIT set with two recipes for one
+        item rather than letting the mix reappear. Workable for the
+        fixture today
+    R3  A POST-PASS that collapses a mixed item to its dominant recipe and
+        re-solves. A choice the tool makes with no declaration behind it:
+        against "layers report; they don't choose". Not recommended
+
+Under R1 or R2 the remaining step-8 work is the same: a declared partition
+for the fixture (buses and sources for the alternate family), realize()
+over the plan, the realized raw draw and machine-sized power beside the
+LP's figures (945.05 MW is machine-time at mean power; the built figure
+is what the player pays), and the trickle lane's own minimum clock.
+
+### A30.3 Open
+
+    O32  R1, R2 or R3 (Greg)
+    O33  under R1: how the oracle states a split bus (busmodel.BusSpec
+         carries one recipe_id today)
