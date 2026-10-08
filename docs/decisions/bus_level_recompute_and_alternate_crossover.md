@@ -3274,3 +3274,42 @@ today."
          area's coal, water and later oil, maximising MW, and the split
          with production as a declared choice or a traded one
     O43  spare 30 MW stays the v5.4.1 setting; nothing re-examined it
+
+## Amendment 36 — 2026-10-09. The PWA imports the district plan (v5.5 Stage 7; A26.1 C1 closed on the client side)
+
+Appended forward-only. Amendments 13-35 stand as written. Source: Greg,
+chat 2026-10-08: "go straight to the pwa import -- planned versus
+installed feels like a different tool".
+
+    code      repo: district_run's export carries `names` (display names
+              for every item, recipe, producer and generator id the
+              document mentions), pinned. Outside the repo: the PWA at
+              v5.5.0 (SatisfactoryPlannerDynamic_v5_5_0_DistrictImport, a
+              zip delivered in chat) gains a "District Plan" tab that loads
+              the JSON by file picker or paste, keeps the last plan in the
+              browser's localStorage, and renders it. It computes nothing
+    measured  headless Chromium 1194 (dump-dom), 2026-10-09: both exported
+              plans (power solved; power reported) render 8 and 7 cards
+              with no raw id in the output, no initialization error, the
+              legacy tabs intact; a wrong schema is refused with a message.
+              Inline script and sw.js pass node --check
+
+### A36.1 Taken in code
+
+    P1   THE CLIENT RENDERS; THE REPO SOLVES (A26.1 C1). The tab reads
+         schema "district-plan/1" and refuses any other by name. Every
+         rate, machine, clock and megawatt shown is the file's; the only
+         transformation is naming (the `names` block, with a readable
+         fallback for a building id the block does not carry)
+    P2   THE v5.4 DISTRICT PLANNER TAB STAYS, labelled "(v5.4)", unchanged.
+         Its allocator is superseded, not removed: removal is Greg's call
+    P3   PLANNED-VS-INSTALLED (v5.5 Stage 6, plan note step 9) IS PARKED as
+         a different tool (Greg). A23 standing lanes remain the declared
+         input it would read
+
+### A36.2 Open
+
+    O44  where the zip lives: the PWA is not in this repository
+         (ARCHITECTURE "Client boundary"); a `clients/` directory here
+         would put it under the manifests and the LF rule. Greg's call
+    O45  Pyodide (A27.4 O24) would remove the file hop; not started

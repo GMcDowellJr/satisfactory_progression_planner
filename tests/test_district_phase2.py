@@ -341,6 +341,14 @@ def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped_rep
     assert doc["baseline"] is not None and len(doc["baseline"]["recipes"]) == 16
     assert len(doc["realization"]["buses"]) == 21 and doc["realization"]["design_tier"] == 4
     assert doc["unverified"] == list(district_run.UNVERIFIED)
+    # names for every id the document mentions (the client has no reference layer)
+    names = doc["names"]
+    assert names["items"][I["VF"]] == "Versatile Framework" and names["items"]["Desc_OreGold_C"] == "Caterium Ore"
+    assert names["recipes"][STEEL_SOLID] == "Alternate: Solid Steel Ingot"
+    assert names["producers"]["Build_AssemblerMk1_C"] == "Assembler"
+    assert all(t["item_id"] in names["items"] for t in doc["targets"])
+    assert all(b["recipe_id"] in names["recipes"] for b in doc["realization"]["buses"])
+    assert all(x["item_id"] in names["items"] for x in doc["discovery"])
 
 
 # --- guardrails ------------------------------------------------------------

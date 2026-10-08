@@ -445,10 +445,32 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         },
         "baseline_error": dr.baseline_error,
         "unverified": list(UNVERIFIED),
+        # display names for every id the document mentions, so a client renders
+        # without a copy of the reference layer (the PWA has none, A27.3)
+        "names": _names(dr, data),
     }
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=1)
         f.write("\n")
+
+
+def _names(dr: DistrictRun, data) -> dict:
+    items: set[str] = set(dr.bill) | {c.item_id for c in dr.gross_caps} | {n.item_id for n in dr.definition.nodes}
+    items |= {f.item_id for f in dr.response.plan.items} | {i for i, _ in dr.standing.draws}
+    items |= {x.item_id for x in dr.reach} | {i for x in dr.reach for i in x.missing_raws}
+    recipes: set[str] = set(dr.recipe_ids) | {u.recipe_id for u in dr.response.plan.recipes}
+    if dr.baseline is not None:
+        items |= {f.item_id for f in dr.baseline.items}
+        recipes |= {u.recipe_id for u in dr.baseline.recipes}
+    producers: set[str] = {u.producer_class for u in dr.response.plan.recipes}
+    if dr.realization is not None:
+        producers |= {l.producer_class for b in dr.realization.buses for l in b.lanes}
+    return {
+        "items": {i: data.items[i].display_name for i in items if i in data.items},
+        "recipes": {r: data.recipes[r].display_name for r in recipes if r in data.recipes},
+        "producers": {p: data.producers[p].display_name for p in producers if p in data.producers},
+        "generators": {g: g.replace("Build_", "").replace("_C", "") for g, _, _ in dr.standing.generators},
+    }
 
 
 def main(argv=None) -> int:
