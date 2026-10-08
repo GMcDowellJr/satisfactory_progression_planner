@@ -2702,3 +2702,77 @@ master 2dc60c3. Review: project doc v55-district-plan-review-2026-10-08.md.
     O22  product discovery (v5.5 Stage 2): enumerate terminal products
          reachable from caps + unlocks, independent of rates. Not in the
          LP; a graph pass over gamedata. Not scoped here
+
+## Amendment 27 — 2026-10-08. A26 open items: clocks are inputs, the district solve is supply-side, the export is imported
+
+Appended forward-only. Amendments 13-26 stand as written. Source: Greg, chat
+2026-10-08, on A26.3 O19-O21.
+
+    code      none
+    measured  nothing run. PWA v5.4.4 index.html read: no localStorage, no
+              file input, no FileReader; state lives only in the form
+              controls. Two clock controls: allocExtractClock (extractor
+              clock) and allocClock (maximum machine clock, 25 % in the
+              shipped test). A26's O19 conflated the two fixtures' values
+              of the first with the v5.4.1 README's "25 % maximum
+              realization clock", which is the second
+
+### A27.1 Decided by Greg, 2026-10-08
+
+    K1   O19 CLOSED: NOT A DECISION. The extraction clock is the miners'
+         under/overclock, an INPUT of DistrictDefinition like the machine
+         clock. The tooling takes both; a fixture carries the values it
+         carries. The Phase 2 fixture therefore has two named cases
+         (extraction 100 % and 25 %, both at machine clock 25 %) and
+         neither is "the" reference
+    K2   THE DISTRICT SOLVE IS SUPPLY-SIDE AND HAS NO BILL. "What can this
+         site make with its resources and current progression" is a
+         different question from "is that enough for the milestone or
+         phase". Related, separate. This narrows A26.2's "portfolio" row:
+         the A24.3 lambda-over-bill solve is the BILL-SIDE tool (phase
+         planning, A25.2 O11) and is not the district planner's objective.
+         A24.4's reading stands: with no bill, the objective is a
+         selectable, named goal over the outputs with its weights printed
+         (LP 21 R1-R2), within caps and the power balance (A25.3)
+    K3   O20 DISSOLVES under K2. Installed production is a district-side
+         figure (standing lanes, A23: built, fed, surplus) and the district
+         plan reports it. Whether that surplus pays a phase bill is the
+         bill-side's question, already ruled by D6 / A25.1 O5
+
+### A27.2 Proposed (NOT adopted): the district objective under K2
+
+    solve    max  sum_i w_i * x_i        x_i = rate of selected output i
+             s.t. x_i >= min_i           declared minimum rate (trickle = a
+                                         small min_i, never a clock)
+                  w_i = 0  excludes i;  the PWA's Trickle / Normal /
+                  Prioritize are three printed weight values
+                  caps (DistrictDefinition), power balance, recipe set
+    variety  "balanced variety" (v5.5 rule 1) is the min_i row, not a
+             weight: every selected product is held above its floor
+             before the weights spend the rest. Infeasible floors return
+             the binding cap or power row per product (A26.2 diagnostics)
+    bridge   the bill-side tool reads the district plan's x_i against the
+             phase bill and reports cover and shortfall per item. It runs
+             AFTER the district solve and changes nothing in it
+
+### A27.3 O21, the export: explained, with a default (NOT adopted)
+
+Greg's question: the plan is presented in the web UI, so is that where
+the export is written? The PWA is a static site with no backend and no
+storage of its own (measured above), so nothing can be "written there"
+by the repo. The export is a file the repo's CLI writes on the machine
+that runs it; the PWA IMPORTS it (a file input it does not yet have) and
+may then keep it in its own browser storage. Default proposed: the CLI
+writes `<state-dir>/district_<name>.json` next to `phase_run --save`'s
+TOML; the PWA gains an import control. A later step can run the repo's
+Python in the browser (Pyodide ships scipy, so `linprog` with HiGHS runs
+client-side), which removes the file hop and keeps offline use. Not this
+step.
+
+### A27.4 Open
+
+    O23  the bill-side bridge: a CLI flag on phase_run or a third joint at
+         tools/ root that reads a district JSON and a phase declaration
+    O24  Pyodide: whether the PWA eventually hosts the solver itself, which
+         is still "the repo solves" under A26.1 C1 (same code, no second
+         solver), or stays on file import
