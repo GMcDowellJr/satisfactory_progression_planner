@@ -3155,3 +3155,69 @@ session, 2026-10-08, under Greg's "continue".
          (the whole bill in proportion, 15 items here) with EXCLUDE as the
          declaration, rather than three chosen. The solve supports either;
          the measured horizon would change
+
+## Amendment 34 — 2026-10-08. Rulings on O39, O30 and O32: exclusions declared, standing generators stated, one recipe per bus
+
+Appended forward-only. Amendments 13-33 stand as written. Source: Greg,
+chat 2026-10-08: "Exclusions declared for now. 4 coal generators make
+300mw. Stating how much power the factory consumes is enough for now.
+Single recipe per bus would be cleaner."
+
+    code      this session (A34.2)
+    measured  container 2026-10-08, shipped case (100 %), 1.25x / 5x, bill
+              phase 2 + tiers 3-5, 15 of 18 items targets: scale 0.002031
+              /min, horizon 492.4 min; iron binds (coal 121 of 180 left
+              after the generators' 60); realized 54 machines (13 Asm,
+              25 Con, 3 Fdy, 13 Sml), 1140.20 MW at clock beside 1257.52 MW
+              machine-time; draw with extraction 1215.20 MW against 300 MW
+              standing: SHORT by 915.20 MW. With --power solve (the balance
+              row, 300 MW supply, no new generators): scale 0.000320,
+              horizon 3120.9 min, lanes held to 195 MW
+
+### A34.1 Decided by Greg, 2026-10-08
+
+    E1   O39: EVERY MAKEABLE BILL ITEM IS A TARGET; the declaration names
+         EXCLUSIONS (BILL_EXCLUDED), not selections. Retires BILL_TARGETS
+    E2   O30: STANDING GENERATORS ARE DECLARED AND THEIR SUPPLY STATED: 4
+         coal generators, 300 MW. For now the plan STATES the factory's
+         draw against that supply; power does not constrain the district
+         solve. Retires GRID_MW 900 (the PWA's "existing/imported grid")
+    E3   O32: ONE RECIPE PER BUS (A30 R2). The partition names each bus's
+         recipe, one per item, and the solve's recipe set is read from the
+         partition. A30 R1 (mixed bus) is not taken
+
+### A34.2 Taken in code by the agent (revisable by Greg)
+
+    F1   `partition_recipes` derives the EXPLICIT set from BUSES and refuses
+         a bus without a recipe or two recipes for one item; the tier plus
+         the declared unlocks must grant every one (refused by name)
+    F2   STANDING GENERATORS ARE FED FIRST: `standing_generation` reads the
+         generator_fuels rows (300 MW; 60 coal + 180 water per minute) and
+         `caps_less_draws` takes that off the district's caps before the
+         solve (A25.3 P3 "fed"; A25.4 a declared reservation). Coal for
+         production is 180/min, water 60/min
+    F3   POWER MODES on the joint: `report` (default, E2: the draw at the
+         LP's machine-time and at the realized clocks, plus nameplate
+         extraction, against the standing MW, with the shortfall named),
+         `solve` (A29's row with the standing MW as supply and no new
+         generators; SPARE_MW still declared), `none` (D5)
+    F4   the fixture's partition grows to 21 buses (Smart Plating,
+         Automated Wiring, Cable) so every makeable bill item has its
+         declared recipe; BILL_EXCLUDED is empty
+    F5   A NODE MAY DECLARE ITS OWN CLOCK (`NodeCount.extraction_clock`).
+         Found by refusal: at the 25 % case the two water extractors gave
+         60 m3/min and the standing generators need 180, so the composer
+         refused the case by name. The water nodes now run at 100 % in
+         every case; the case clock is the miners'
+
+### A34.3 Open
+
+    O40  the shortfall is 915 MW at 5x on 300 MW standing: whether the
+         district's next question is "how many generators" (A29's columns
+         answer it under `solve`) or "what to make on 300 MW" (the `solve`
+         mode's answer: a quarter-hour of bill per hour). Greg's E2 says
+         state it; nothing more is taken
+    O41  Concrete took spare limestone beyond its share (share 0.0101 vs
+         scale 0.0020) under A31 V5's bill-share weights; whether spare
+         capacity should go to intermediates the bill lists or only to
+         terminal parts

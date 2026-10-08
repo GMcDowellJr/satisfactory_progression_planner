@@ -172,6 +172,19 @@ def test_a_node_may_name_its_own_extractor_class():
     assert caps[:2] == (ResourceCap(IRON, 60.0), ResourceCap(WATER, 120.0))
 
 
+def test_a_node_may_run_at_its_own_clock():
+    """A34.2 F5: the water extractors at 100 % while the miners' case is 25 %."""
+    d = DistrictDefinition(
+        nodes=(NodeCount(IRON, "pure", 1),
+               NodeCount(WATER, "none", 2, extractor_class="Build_WaterPump_C", extraction_clock=1.0)),
+        extractor_class=MK1, extraction_clock=0.25,
+    )
+    caps = resource_caps(d, WATER_RATES, RESOURCES)
+    assert caps[:2] == (ResourceCap(IRON, 30.0), ResourceCap(WATER, 240.0))
+    with pytest.raises(DistrictError, match="extraction_clock 3"):
+        NodeCount(WATER, "none", 1, extraction_clock=3.0)
+
+
 def test_extraction_nameplate_mw_counts_every_declared_extractor():
     from progression import extraction_nameplate_mw
     d = DistrictDefinition(
@@ -263,3 +276,51 @@ def test_discovery_keeps_the_order_asked(data):
     from progression import discover
     out = discover(data, IRON_SET, _caps(Desc_OreIron_C=30.0), (CABLE, PLATE))
     assert [x.item_id for x in out] == [CABLE, PLATE]
+
+
+# --- A34: the partition's recipe set; standing generators ----------------------
+
+def test_partition_recipes_is_one_recipe_per_item_in_declaration_order():
+    from progression import partition_recipes
+    assert partition_recipes((
+        ("plate", "Desc_IronPlate_C", "Recipe_IronPlate_C"),
+        ("ingot", "Desc_IronIngot_C", "Recipe_IngotIron_C"),
+        ("plate_2", "Desc_IronPlate_C", "Recipe_IronPlate_C"),      # same item, same recipe: fine
+    )) == ("Recipe_IronPlate_C", "Recipe_IngotIron_C")
+
+
+def test_partition_refuses_two_recipes_for_one_item_and_a_bus_without_one():
+    from progression import partition_recipes
+    with pytest.raises(DistrictError, match="one recipe per item"):
+        partition_recipes((("a", "Desc_Rotor_C", "Recipe_Rotor_C"), ("b", "Desc_Rotor_C", "Recipe_Alternate_Rotor_C")))
+    with pytest.raises(DistrictError, match="names each bus's recipe"):
+        partition_recipes((("a", "Desc_Rotor_C", None),))
+
+
+def test_standing_generation_sums_mw_and_draws(data):
+    from production_adapter.gamedata import load_generators
+    from progression import standing_generation
+    st = standing_generation(load_generators(REPO), (("Build_GeneratorCoal_C", "Desc_Coal_C", 4),))
+    assert st.mw == 300.0
+    assert dict(st.draws) == {"Desc_Coal_C": 60.0, "Desc_Water_C": 180.0}
+
+
+def test_standing_generation_refuses_an_unknown_pair_and_a_zero_count():
+    from production_adapter.gamedata import load_generators
+    from progression import standing_generation
+    rows = load_generators(REPO)
+    with pytest.raises(DistrictError, match="0 rows"):
+        standing_generation(rows, (("Build_GeneratorCoal_C", "Desc_OreIron_C", 1),))
+    with pytest.raises(DistrictError, match="at least 1"):
+        standing_generation(rows, (("Build_GeneratorCoal_C", "Desc_Coal_C", 0),))
+
+
+def test_caps_less_draws_reduces_and_refuses():
+    from progression import caps_less_draws
+    caps = (ResourceCap(COAL, 240.0), ResourceCap(WATER, 240.0), ResourceCap(IRON, 90.0))
+    out = caps_less_draws(caps, ((COAL, 60.0), (WATER, 180.0)))
+    assert out == (ResourceCap(COAL, 180.0), ResourceCap(WATER, 60.0), ResourceCap(IRON, 90.0))
+    with pytest.raises(DistrictError, match="against a cap of 240"):
+        caps_less_draws(caps, ((COAL, 241.0),))
+    with pytest.raises(DistrictError, match="no cap"):
+        caps_less_draws(caps, ((COPPER, 1.0),))

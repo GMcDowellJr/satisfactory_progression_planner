@@ -10,27 +10,32 @@ v5.5 plan requires the fixture to preserve, resolved by display name through
     nodes        3 pure Iron, 2 pure Coal, 1 pure Limestone, 1 normal Caterium,
                  plus 2 Water Extractors (phase 1's carry, A25.1 O7 / A20)
     extractor    Miner Mk.1 for the ores; the water nodes name their own
-    power        A25.3 P1 in the solve (A29): coal generators may be built,
-                 900 MW existing/imported grid and 30 MW spare as Greg's
-                 PWA scenario states them; extraction at nameplate (P2)
+    power        A34 (Greg, 2026-10-08): 4 standing coal generators, 300 MW,
+                 fed from the district's own coal and water (their draw
+                 comes off the caps first); the plan STATES the factory's
+                 draw against that supply. Power is not in the solve here;
+                 district_run --power puts it in (A29) with the standing
+                 300 MW as the supply and no new generators
     clocks       extraction: "shipped" 100 % (TEST_V5_4_3_DISTRICT_SCENARIO.js)
                  and "readme" 25 % (README_V5_4_4); machine clock 25 % (both)
     reserve      0
     scenario     1.25x recipe cost, 5x machine power (A25 / the challenge run)
-    recipes      at_tier(4) standard recipes + DECLARED: the two MAM caterium
-                 base recipes (the tier filter withholds research) and the
-                 five alternates of the built factory
+    recipes      ONE PER ITEM, read from the partition (A34, Greg: "single
+                 recipe per bus"); the tier filter plus the DECLARED names
+                 (MAM caterium, the five alternates) must grant every one,
+                 else the run refuses
     bill         A31 (Greg, 2026-10-08: value is what is needed later). The
                  three terminal products the v5.5 plan names are BILL
                  products: their proportions come from Project Assembly
                  phase 2 plus the milestone costs of tiers 3, 4 and 5 (the
                  current tiers and the next, A25.2 O11). Measured 2026-10-08:
                  VF 1000, EIB 600, Motor 200 (Motor appears in no tier 3-4
-                 milestone; tier 5 is why it is in the bill at all). Weight
-                 1.0 each: spare capacity is worth what the bill says. No
-                 floors: a bill product gets its proportion or the solve
-                 says which cap stops it. EXTRAS is empty; it is where a
-                 declared trickle outside the bill would go
+                 milestone; tier 5 is why it is in the bill at all). A34
+                 (Greg): EVERY makeable bill item is a target unless
+                 BILL_EXCLUDED names it; weight 1.0 each. No floors: a bill
+                 product gets its proportion or the solve says which cap
+                 stops it. EXTRAS is empty; it is where a declared trickle
+                 outside the bill would go
     baseline     the v5.4.4 shipped-fixture portfolio, for the Stage 0 row
                  (measured 2026-10-08, node v22.22.0)
 
@@ -65,6 +70,7 @@ I = dict(
     VF="Desc_SpaceElevatorPart_2_C", MOTOR="Desc_Motor_C", EIB="Desc_SteelPlateReinforced_C",
     PIPE="Desc_SteelPipe_C", BEAM="Desc_SteelPlate_C", ROT="Desc_Rotor_C",
     CON="Desc_Cement_C", QW="Desc_HighSpeedWire_C", WATER="Desc_Water_C",
+    SP="Desc_SpaceElevatorPart_1_C", AW="Desc_SpaceElevatorPart_3_C", CABLE="Desc_Cable_C",
     RIP="Desc_IronPlateReinforced_C", STA="Desc_Stator_C", MF="Desc_ModularFrame_C",
     STI="Desc_SteelIngot_C", SCR="Desc_IronScrew_C", PLT="Desc_IronPlate_C",
     ROD="Desc_IronRod_C", ING="Desc_IronIngot_C", WIRE="Desc_Wire_C", CAT="Desc_GoldIngot_C",
@@ -75,14 +81,14 @@ NODES = (
     NodeCount(I["COAL"], "pure", 2),
     NodeCount(I["STONE"], "pure", 1),
     NodeCount(I["GOLD"], "normal", 1),
-    NodeCount(I["WATER"], "none", 2, extractor_class="Build_WaterPump_C"),
+    #: at 100 % in every case (A34.2 F5): they feed the standing generators
+    NodeCount(I["WATER"], "none", 2, extractor_class="Build_WaterPump_C", extraction_clock=1.0),
 )
 EXTRACTOR = "Build_MinerMk1_C"
-#: power in the solve (A29): generator classes the district may build, the
-#: declared outside supply, and the required margin. Values from Greg's
-#: v5.4.1 reproduction settings (900 MW grid, 30 MW spare)
-GENERATORS = ("Build_GeneratorCoal_C",)
-GRID_MW = 900.0
+#: A34: standing generators (class, fuel, count), fed from the district's caps.
+#: Greg, 2026-10-08: "4 coal generators make 300 MW"
+STANDING_GENERATORS = (("Build_GeneratorCoal_C", I["COAL"], 4),)
+#: the required margin when power is put IN the solve (--power); the v5.4.1 setting
 SPARE_MW = 30.0
 #: A27.1 K1: two cases, both inputs. Keys are the CLI's --case values.
 EXTRACTION_CLOCK_CASES = {"shipped": 1.0, "readme": 0.25}
@@ -105,13 +111,16 @@ DECLARED_RECIPE_NAMES = (
 #: schematic tiers whose milestone costs are still owed
 BILL_PHASES = (2,)
 BILL_TIERS = (3, 4, 5)
-#: bill products: (item, weight). Units come from the bill at run time
-BILL_TARGETS = ((I["VF"], 1.0), (I["MOTOR"], 1.0), (I["EIB"], 1.0))
+#: A34: bill items NOT to make here, by id. Everything else makeable is a target
+BILL_EXCLUDED: tuple[str, ...] = ()
+#: weight of every bill product (A31 V5: 1.0 = worth what the bill says)
+BILL_WEIGHT = 1.0
 #: extras outside the bill (A27.2 shape): none declared
 EXTRAS: tuple[DistrictTarget, ...] = ()
 
 B, S = BusDeclaration, SourceEdge
 R = dict(
+    SP="Recipe_SpaceElevatorPart_1_C", AW="Recipe_SpaceElevatorPart_3_C", CABLE="Recipe_Cable_C",
     VF="Recipe_SpaceElevatorPart_2_C", MOTOR="Recipe_Motor_C", EIB="Recipe_EncasedIndustrialBeam_C",
     MF="Recipe_ModularFrame_C", RIP="Recipe_Alternate_ReinforcedIronPlate_2_C",   # Stitched Iron Plate
     ROT="Recipe_Rotor_C", STA="Recipe_Alternate_Stator_C",                          # Quickwire Stator
@@ -124,8 +133,15 @@ R = dict(
 )
 #: every line: declared recipe, explicit clock, not storing (see module docstring)
 X = dict(stores=False, clock_mode=ClockMode.EXPLICIT)
-#: the partition (see module docstring). 18 buses, one per plan recipe
+#: the partition (see module docstring): one bus per item the site makes of the
+#: bill, its recipe declared; the solve's recipe set is read from here (A34)
 BUSES = (
+    B(bus_id="smart_plating", item_id=I["SP"], recipe_id=R["SP"],
+      sources=(S(I["RIP"], "rip"), S(I["ROT"], "rotor"),), **X),
+    B(bus_id="automated_wiring", item_id=I["AW"], recipe_id=R["AW"],
+      sources=(S(I["STA"], "stator"), S(I["CABLE"], "cable"),), **X),
+    B(bus_id="cable", item_id=I["CABLE"], recipe_id=R["CABLE"],
+      sources=(S(I["WIRE"], "wire"),), **X),
     B(bus_id="versatile_framework", item_id=I["VF"], recipe_id=R["VF"],
       sources=(S(I["MF"], "modular_frame"), S(I["BEAM"], "steel_beam"),), **X),
     B(bus_id="motor", item_id=I["MOTOR"], recipe_id=R["MOTOR"],

@@ -11,10 +11,15 @@ layer returns, and adds no arithmetic of its own:
               BILL_PHASES (Project Assembly rows, scenario-scaled) and
               BILL_TIERS (schematic costs); BILL_TARGETS take their units
               from it and are refused when the bill has none (A31)
-    solve     LpBackend.solve_district (A27.2: weighted outputs with floors,
-              goal as the tie-break), with power in the solve (A29) unless
-              --no-power: generators from the declaration's GENERATORS, grid
-              and spare as declared, extraction at nameplate from the nodes
+    recipes   partition_recipes(BUSES): one recipe per item, declared (A34);
+              at_tier(RECIPE_TIER, declared=<names resolved>) must grant each
+    standing  standing_generation(STANDING_GENERATORS): gross MW and the fuel
+              and water drawn off the caps first (A34)
+    solve     LpBackend.solve_district: bill proportions (A31), every makeable
+              bill item a target unless BILL_EXCLUDED (A34). Power: --power
+              report (default: the draw stated against the standing MW),
+              solve (A29 balance row, standing MW as supply, no new
+              generators), none
     realize   realization.realize over the plan with the declaration's BUSES
               (one recipe per item, declared) and its nodes: whole machines,
               explicit clocks, power at those clocks (v5.5 Stage 5; A32).
@@ -60,15 +65,16 @@ for _src in ("production_adapter", "progression", "realization"):
         sys.path.insert(0, _path)
 
 from production_adapter import (  # noqa: E402
-    DistrictRequest, DistrictResponse, OutputTarget, PowerBalance, SolveRequest, SolveResponse,
-    Weights, load,
+    AllowedRecipes, DistrictRequest, DistrictResponse, OutputTarget, PowerBalance, RecipeMode,
+    SolveRequest, SolveResponse, Weights, load,
 )
 from production_adapter.gamedata import load_generators, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from production_adapter import DistrictTarget  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, at_tier, bill_units, discover, extraction_nameplate_mw,
-    recipe_ids_by_name, resource_caps, resources_in_reference_order, unlocks,
+    DistrictDefinition, StandingSupply, at_tier, bill_units, caps_less_draws, discover,
+    extraction_nameplate_mw, partition_recipes, recipe_ids_by_name, resource_caps,
+    resources_in_reference_order, standing_generation, unlocks,
 )
 from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
@@ -114,7 +120,12 @@ class DistrictRun:
     case: str
     goal: str
     definition: DistrictDefinition
+    #: caps left for production after the standing generators' draw (A34)
     caps: tuple
+    gross_caps: tuple
+    standing: StandingSupply
+    extraction_mw: float
+    power_mode: str
     recipe_ids: tuple[str, ...]
     #: the whole bill, every item, as composed (A31); targets took theirs from it
     bill: dict[str, float]
@@ -130,7 +141,10 @@ class DistrictRun:
 
 
 def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
-        power: bool = True, realization: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
+        power: str = "report", realization: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
+    """`power`: "report" (A34 default: standing supply beside the draw),
+    "solve" (A29: the balance row with the standing MW as supply and no new
+    generators), or "none" (D5: nothing about power at all)."""
     if case not in decl.EXTRACTION_CLOCK_CASES:
         raise DistrictRunError(
             f"{decl.LABEL}: no extraction clock case {case!r}; "
@@ -138,6 +152,8 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         )
     if goal not in GOALS:
         raise DistrictRunError(f"no goal {goal!r}; known: {list(GOALS)}")
+    if power not in ("report", "solve", "none"):
+        raise DistrictRunError(f"power must be report, solve or none; got {power!r}")
     data = load(repo, decl.SCENARIO)
     capabilities, rates = load_logistics(repo)
     definition = DistrictDefinition(
@@ -145,9 +161,25 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         extraction_clock=decl.EXTRACTION_CLOCK_CASES[case],
         reserve_fraction=decl.RESERVE, label=f"{decl.LABEL} [{case}]",
     )
-    caps = resource_caps(definition, rates, resources_in_reference_order(data))
+    gross_caps = resource_caps(definition, rates, resources_in_reference_order(data))
+
+    # A34: the recipe set IS the partition's; the tier plus the declared
+    # unlocks must grant every recipe in it
+    recipe_ids = partition_recipes(tuple((b.bus_id, b.item_id, b.recipe_id) for b in decl.BUSES))
     declared = recipe_ids_by_name(data, decl.DECLARED_RECIPE_NAMES)
     tier = at_tier(repo, decl.RECIPE_TIER, declared=declared)
+    not_granted = [r for r in recipe_ids if r not in tier.recipe_ids]
+    if not_granted:
+        raise DistrictRunError(
+            f"{decl.LABEL}: the partition names recipes tier {decl.RECIPE_TIER} and the declared "
+            f"unlocks do not grant: {not_granted}"
+        )
+    allowed = AllowedRecipes(mode=RecipeMode.EXPLICIT, recipe_ids=recipe_ids)
+
+    # A34: standing generators, fed first from the district's own caps
+    standing = standing_generation(load_generators(repo), decl.STANDING_GENERATORS)
+    caps = caps_less_draws(gross_caps, standing.draws)
+
     pa = stock.load_project_assembly(repo, data)
     costs = unlocks.schematic_costs(repo)
     sources = [
@@ -161,37 +193,29 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         for sid in unlocks.schematics_in_tiers(repo, decl.BILL_TIERS) if sid in costs
     ]
     bill = bill_units(tuple(sources))
-    reach = discover(data, tier.recipe_ids, caps, tuple(bill))
-    unreachable = [i for i, _ in decl.BILL_TARGETS if not any(r.makeable for r in reach if r.item_id == i)]
-    if unreachable:
-        raise DistrictRunError(
-            f"{decl.LABEL}: bill products {unreachable} cannot be made here at all "
-            "(discovery): " + "; ".join(
-                f"{r.item_id} needs {list(r.missing_raws)}" for r in reach if r.item_id in unreachable
-            )
-        )
-    missing = [i for i, _ in decl.BILL_TARGETS if i not in bill]
-    if missing:
-        raise DistrictRunError(
-            f"{decl.LABEL}: bill products {missing} have no units in the bill from phases "
-            f"{decl.BILL_PHASES} and tiers {decl.BILL_TIERS}; declare them as EXTRAS or widen the bill"
-        )
+    reach = discover(data, recipe_ids, caps, tuple(bill))
+    stray = [i for i in decl.BILL_EXCLUDED if i not in bill]
+    if stray:
+        raise DistrictRunError(f"{decl.LABEL}: BILL_EXCLUDED names items not in the bill: {stray}")
+    # A34 (Greg): every makeable bill item is a target unless excluded
     targets = tuple(
-        DistrictTarget(i, weight=w, bill_units=bill[i]) for i, w in decl.BILL_TARGETS
+        DistrictTarget(x.item_id, weight=decl.BILL_WEIGHT, bill_units=bill[x.item_id])
+        for x in reach if x.makeable and x.item_id not in decl.BILL_EXCLUDED
     ) + tuple(decl.EXTRAS)
+    if not targets:
+        raise DistrictRunError(f"{decl.LABEL}: no makeable bill item is left after BILL_EXCLUDED")
+
+    tables = load_power_tables(repo)
+    extraction_mw = extraction_nameplate_mw(definition, tables.extractors)
     balance = None
-    if power:
-        tables = load_power_tables(repo)
-        generators = tuple(
-            g for g in load_generators(repo) if g.generator_class in decl.GENERATORS
-        )
+    if power == "solve":
         balance = PowerBalance(
-            generators=generators, grid_mw=decl.GRID_MW, spare_mw=decl.SPARE_MW,
-            extraction_mw=extraction_nameplate_mw(definition, tables.extractors),
+            generators=(), grid_mw=standing.mw, spare_mw=decl.SPARE_MW,
+            extraction_mw=extraction_mw,
         )
     request = DistrictRequest(
-        targets=targets, allowed_recipes=tier.allowed_recipes,
-        resource_caps=caps, weights=GOALS[goal], power=balance,
+        targets=targets, allowed_recipes=allowed, resource_caps=caps,
+        weights=GOALS[goal], power=balance,
     )
     backend = LpBackend(power_statistic=PowerStatistic.MEAN)
     response = backend.solve_district(request, data)
@@ -200,20 +224,20 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
     if baseline:
         demand = SolveRequest(
             outputs=tuple(OutputTarget(i, r) for i, r in decl.V544_SHIPPED_RATES),
-            allowed_recipes=tier.allowed_recipes, weights=GOALS[goal],
+            allowed_recipes=allowed, weights=GOALS[goal],
         )
         try:
             base = backend.solve(demand, data)
         except Infeasible as e:
             base_err = str(e)
     report = None
-    if realization and getattr(decl, "BUSES", None):
+    if realization:
         nodes = tuple(
             NodeDeclaration(
                 item_id=n.item_id,
                 extractor_class=n.extractor_class or definition.extractor_class,
                 purity=n.purity, count=n.count,
-                clock_percent=definition.extraction_clock * 100.0,
+                clock_percent=n.clock(definition.extraction_clock) * 100.0,
             )
             for n in definition.nodes
         )
@@ -223,8 +247,10 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         )
     return DistrictRun(
         decl=decl, case=case, goal=goal, definition=definition, caps=caps,
-        recipe_ids=tier.recipe_ids, bill=bill, reach=reach, request=request, response=response,
-        baseline=base, baseline_error=base_err, realization=report,
+        gross_caps=gross_caps, standing=standing, extraction_mw=extraction_mw,
+        power_mode=power, recipe_ids=recipe_ids, bill=bill, reach=reach,
+        request=request, response=response, baseline=base, baseline_error=base_err,
+        realization=report,
     )
 
 
@@ -249,9 +275,13 @@ def report(dr: DistrictRun, data) -> str:
         "", "caps (declaration order)",
     ]
     draw = {x.item_id: x.rate_per_min for x in r.plan.raw_inputs}
+    gross = {c.item_id: c.rate_per_min for c in dr.gross_caps}
+    standing_draw = dict(dr.standing.draws)
     for c in dr.caps:
-        if c.rate_per_min > 0.0:
-            out.append(f"  {_name(data.items, c.item_id):18s} {draw.get(c.item_id, 0.0):9.3f} / {c.rate_per_min:g}")
+        if c.rate_per_min > 0.0 or gross.get(c.item_id, 0.0) > 0.0:
+            fed = f"  (nodes {gross[c.item_id]:g}, standing generators {standing_draw[c.item_id]:g})" \
+                if c.item_id in standing_draw else ""
+            out.append(f"  {_name(data.items, c.item_id):18s} {draw.get(c.item_id, 0.0):9.3f} / {c.rate_per_min:g}{fed}")
     out.append(f"  every other raw resource capped at 0 ({sum(1 for c in dr.caps if c.rate_per_min == 0.0)}: the district is closed)")
     out += ["", f"bill: {len(dr.bill)} items from phases {list(dr.decl.BILL_PHASES)} and tiers "
             f"{list(dr.decl.BILL_TIERS)}; {sum(1 for t in r.targets if t.bill_units)} made here; "
@@ -282,8 +312,22 @@ def report(dr: DistrictRun, data) -> str:
     for b in r.binding:
         out.append(f"  {_name(data.items, b.item_id):18s} cap {b.cap_per_min:g}  shadow {b.shadow_price + 0.0:.4g}")
     out += ["", "power"]
-    if r.power is None:
-        out.append("  outside the solve (--no-power): the LP figure below excludes extraction, D5")
+    st = dr.standing
+    gens = ", ".join(f"{n} x {g} on {_name(data.items, f)}" for g, f, n in st.generators) or "none"
+    out.append(f"  standing supply {st.mw:.2f} MW ({gens}), fed "
+               + ", ".join(f"{_name(data.items, i)} {v:g}/min" for i, v in st.draws))
+    if r.power is None and dr.power_mode == "report":
+        lane_mw = r.plan.power.scenario_mw
+        realized = dr.realization.total_power_mw if dr.realization is not None else None
+        draw_mw = (realized if realized is not None else lane_mw) + dr.extraction_mw
+        out.append(f"  factory draw: lanes {lane_mw:.2f} MW machine-time"
+                   + (f" ({realized:.2f} MW realized at clock)" if realized is not None else "")
+                   + f" + extraction (nameplate) {dr.extraction_mw:.2f} MW = {draw_mw:.2f} MW"
+                   f" against {st.mw:.2f} MW standing: "
+                   + (f"{st.mw - draw_mw:.2f} MW to spare" if draw_mw <= st.mw else
+                      f"SHORT by {draw_mw - st.mw:.2f} MW (reported, not solved: A34)"))
+    elif r.power is None:
+        out.append("  outside the solve (power=none): the LP figure below excludes extraction, D5")
     else:
         pw = r.power
         out.append(f"  lanes {pw.lane_mw:.2f} + extraction (nameplate) {pw.extraction_mw:.2f} + spare "
@@ -375,6 +419,10 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         "weighted_output": dr.response.weighted_output,
         "binding": [dataclasses.asdict(b) for b in dr.response.binding],
         "power": None if dr.response.power is None else dataclasses.asdict(dr.response.power),
+        "standing": dataclasses.asdict(dr.standing),
+        "extraction_mw": dr.extraction_mw,
+        "power_mode": dr.power_mode,
+        "gross_caps": [dataclasses.asdict(c) for c in dr.gross_caps],
         "plan": dataclasses.asdict(dr.response.plan),
         "baseline": None if dr.baseline is None else dataclasses.asdict(dr.baseline),
         "realization": None if dr.realization is None else {
@@ -406,12 +454,13 @@ def main(argv=None) -> int:
     ap.add_argument("--case", required=True, help="an EXTRACTION_CLOCK_CASES key of the declaration")
     ap.add_argument("--goal", default="balanced", choices=tuple(GOALS))
     ap.add_argument("--baseline", action="store_true", help="also solve the V544 rates as demands")
-    ap.add_argument("--no-power", action="store_true", help="leave power outside the solve (D5)")
+    ap.add_argument("--power", default="report", choices=("report", "solve", "none"),
+                    help="report (A34 default), solve (A29 balance row), none (D5)")
     ap.add_argument("--no-realize", action="store_true", help="skip realization over the plan")
     ap.add_argument("--export", type=pathlib.Path, default=None, help="write the plan JSON here")
     args = ap.parse_args(argv)
     decl = declaration(args.declaration)
-    dr = run(decl, case=args.case, goal=args.goal, baseline=args.baseline, power=not args.no_power,
+    dr = run(decl, case=args.case, goal=args.goal, baseline=args.baseline, power=args.power,
              realization=not args.no_realize)
     data = load(REPO, decl.SCENARIO)
     print(report(dr, data))

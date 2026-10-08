@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from production_adapter.contracts import ItemId, ProducerClass, RecipeId, ResourceCap
+from production_adapter.contracts import GeneratorFuel, ItemId, ProducerClass, RecipeId, ResourceCap
 from production_adapter.gamedata import ExtractionRate, ReferenceData
 
 #: The game's overclock ceiling, as extraction_rates.csv's max_250 column states it.
@@ -65,10 +65,22 @@ class NodeCount:
     #: None: the definition's extractor. Set for a node of another kind (a
     #: Water Extractor beside the miners); the (class, purity) row must exist
     extractor_class: ProducerClass | None = None
+    #: None: the definition's extraction clock. Set when this node runs at its
+    #: own (A34.2 F5: the water extractors feeding standing generators run at
+    #: 100 % whatever the miners' case clock is)
+    extraction_clock: float | None = None
 
     def __post_init__(self) -> None:
         if self.count < 1:
             raise DistrictError(f"{self.item_id} {self.purity}: count must be at least 1")
+        if self.extraction_clock is not None and not 0.0 < self.extraction_clock <= MAX_CLOCK:
+            raise DistrictError(
+                f"{self.item_id} {self.purity}: extraction_clock {self.extraction_clock} is "
+                f"outside (0, {MAX_CLOCK}]"
+            )
+
+    def clock(self, default: float) -> float:
+        return default if self.extraction_clock is None else self.extraction_clock
 
 
 @dataclass(frozen=True)
@@ -131,7 +143,7 @@ def resource_caps(
             raise DistrictError(f"{node.item_id} is not a raw resource; a node cannot declare it")
         rate = _rate_for(rates, node.extractor_class or definition.extractor_class, node.purity)
         cap = (
-            node.count * rate.nominal_rate_min * definition.extraction_clock
+            node.count * rate.nominal_rate_min * node.clock(definition.extraction_clock)
             * (1.0 - definition.reserve_fraction)
         )
         per_item[node.item_id] = per_item.get(node.item_id, 0.0) + cap
@@ -264,6 +276,87 @@ def discover(
         )
         for item in items
     )
+
+
+def partition_recipes(
+    buses: tuple[tuple[str, ItemId, RecipeId | None], ...],
+) -> tuple[RecipeId, ...]:
+    """The solve's recipe set, FROM the declared partition (A34, Greg: one
+    recipe per bus). Each bus is (bus_id, item_id, recipe_id); every bus
+    must name its recipe, and two buses of one item must name the same one.
+    Returned in declaration order, each recipe once. The partition is then
+    the single statement of which recipe makes which item, and the solve
+    chooses rates only.
+    """
+    out: list[RecipeId] = []
+    by_item: dict[ItemId, RecipeId] = {}
+    for bus_id, item, recipe in buses:
+        if recipe is None:
+            raise DistrictError(f"{bus_id}: a district partition names each bus's recipe")
+        if by_item.get(item, recipe) != recipe:
+            raise DistrictError(
+                f"{bus_id}: {item} is made by {recipe} here and by {by_item[item]} on "
+                "another bus; one recipe per item (A34)"
+            )
+        by_item[item] = recipe
+        if recipe not in out:
+            out.append(recipe)
+    return tuple(out)
+
+
+@dataclass(frozen=True)
+class StandingSupply:
+    """Declared standing generators: their gross MW and the fuel and water they
+    draw per minute from the district's own caps (A25.3 P3 "base + fed";
+    A25.4 a declared reservation). Reported; the caps are reduced by it."""
+
+    mw: float
+    draws: tuple[tuple[ItemId, float], ...]
+    generators: tuple[tuple[ProducerClass, ItemId, int], ...]
+
+
+def standing_generation(
+    rows: tuple[GeneratorFuel, ...],
+    standing: tuple[tuple[ProducerClass, ItemId, int], ...],
+) -> StandingSupply:
+    """Count x gross MW and count x burn/supplemental rates, from the
+    generator_fuels rows; an unknown (generator, fuel) pair or a count below
+    one is refused by name."""
+    mw = 0.0
+    draws: dict[ItemId, float] = {}
+    for generator_class, fuel, count in standing:
+        if count < 1:
+            raise DistrictError(f"{generator_class}/{fuel}: count must be at least 1")
+        hits = [g for g in rows if g.generator_class == generator_class and g.fuel_item_id == fuel]
+        if len(hits) != 1:
+            raise DistrictError(
+                f"generator_fuels.csv has {len(hits)} rows for ({generator_class}, {fuel})"
+            )
+        g = hits[0]
+        mw += count * g.power_mw
+        draws[fuel] = draws.get(fuel, 0.0) + count * g.burn_rate_per_min
+        for item, rate in g.supplemental:
+            draws[item] = draws.get(item, 0.0) + count * rate
+    return StandingSupply(mw=mw, draws=tuple(draws.items()), generators=tuple(standing))
+
+
+def caps_less_draws(
+    caps: tuple[ResourceCap, ...], draws: tuple[tuple[ItemId, float], ...],
+) -> tuple[ResourceCap, ...]:
+    """The caps left for production after a declared fixed draw. A draw on an
+    item with no cap, or above its cap, is refused: the standing generators
+    cannot be fed from what the district does not have."""
+    by_item = {c.item_id: c for c in caps}
+    for item, rate in draws:
+        cap = by_item.get(item)
+        if cap is None or cap.rate_per_min is None:
+            raise DistrictError(f"{item}: a standing draw of {rate:g}/min on a resource with no cap")
+        if rate > cap.rate_per_min + 1e-9:
+            raise DistrictError(
+                f"{item}: standing generators draw {rate:g}/min against a cap of {cap.rate_per_min:g}"
+            )
+        by_item[item] = ResourceCap(item, cap.rate_per_min - rate)
+    return tuple(by_item[c.item_id] for c in caps)
 
 
 def _normalise(name: str) -> str:
