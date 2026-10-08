@@ -289,6 +289,81 @@ def test_readme_with_power_is_the_caps_only_plan_on_the_grid(readme, readme_powe
     assert pw.margin_mw == pytest.approx(499.5709, abs=1e-3)
 
 
+# --- realization over the plan (A32; v5.5 Stage 5 and "factory parity") -----
+
+def _lanes(dr, bus_id):
+    [bus] = [b for b in dr.realization.buses if b.bus_id == bus_id]
+    return bus.lanes
+
+
+def test_realization_reproduces_the_plans_rates_bus_by_bus(shipped_power):
+    """Every target's realized output equals the solve's rate, and every
+    intermediate lane's output equals its consumers' draw (A32.2 Z2):
+    stores=False clocks the line to its consumers. The residual realization
+    reports is nameplate minus draw, the idle headroom of whole machines
+    backing up (Disposition.BACK_UP), not stored overflow; on a terminal bus
+    the draw is out of scope, so the whole nameplate is reported there
+    (buses.py `_demand`), and the export is the lane's clocked output."""
+    rz = shipped_power.realization
+    assert rz is not None and len(rz.buses) == 18
+    targets = {t.item_id: t.rate_per_min for t in shipped_power.response.targets}
+    for bus in rz.buses:
+        out = sum(l.output_rate_per_min for l in bus.lanes)
+        # 1e-4: realization's clock percentages carry their own rounding
+        if bus.item_id in targets:
+            assert out == pytest.approx(targets[bus.item_id], abs=1e-4)
+        else:
+            assert out == pytest.approx(bus.automated_demand_per_min, abs=1e-4), bus.bus_id
+        assert bus.residual.disposition.name == "BACK_UP"
+        assert bus.residual.rate_per_min == pytest.approx(
+            bus.supply_per_min - bus.automated_demand_per_min, abs=1e-4,
+        ), bus.bus_id
+
+
+def test_realization_sizes_whole_machines_at_explicit_clocks(shipped_power):
+    rz = shipped_power.realization
+    counts: dict[str, int] = {}
+    for bus in rz.buses:
+        for lane in bus.lanes:
+            counts[lane.producer_class] = counts.get(lane.producer_class, 0) + lane.machines
+    assert counts == {"Build_AssemblerMk1_C": 7, "Build_ConstructorMk1_C": 16,
+                      "Build_FoundryMk1_C": 4, "Build_SmelterMk1_C": 12}
+    [vf] = _lanes(shipped_power, "versatile_framework")
+    assert (vf.machines, vf.clock_percent) == (1, pytest.approx(76.5834, abs=1e-3))
+    [steel] = _lanes(shipped_power, "steel_ingot")
+    assert steel.machines == 4 and steel.recipe_id == "Recipe_Alternate_IngotSteel_1_C"
+    # the iron ingot bus splits into two lanes on a Mk.3 belt at tier 4
+    assert [l.machines for l in _lanes(shipped_power, "iron_ingot")] == [6, 5]
+
+
+def test_realized_power_is_at_the_clock_and_at_the_scenario_multiplier(shipped_power):
+    """908.12 MW realized against the LP's 989.84 MW machine-time: the clock
+    exponent saves power the LP cannot see, so the solve's balance is
+    floor-safe (A25.3 P2, confirmed). Both figures carry the 5x multiplier
+    (A32.1): one Assembler at 100 % would be 75 MW."""
+    rz = shipped_power.realization
+    assert rz.total_power_mw == pytest.approx(908.1155, abs=1e-3)
+    assert rz.total_power_mw < shipped_power.response.plan.power.scenario_mw
+    [vf] = _lanes(shipped_power, "versatile_framework")
+    assert vf.power_mw == pytest.approx(75.0 * (vf.clock_percent / 100.0) ** 1.321929, rel=1e-6)
+
+
+def test_realization_of_the_readme_case(readme_power):
+    rz = readme_power.realization
+    counts: dict[str, int] = {}
+    for bus in rz.buses:
+        for lane in bus.lanes:
+            counts[lane.producer_class] = counts.get(lane.producer_class, 0) + lane.machines
+    assert sum(counts.values()) == 20
+    assert rz.total_power_mw == pytest.approx(247.5206, abs=1e-3)
+    [steel] = _lanes(readme_power, "steel_ingot")
+    assert (steel.machines, steel.clock_percent) == (1, pytest.approx(100.0, abs=1e-6))
+
+
+def test_realization_can_be_skipped(shipped):
+    assert district_run.run(DECL, case="shipped", power=False, realization=False).realization is None
+
+
 # --- Stage 0 baseline row ---------------------------------------------------
 
 def test_baseline_v544_portfolio_overdraws_three_resources(shipped):
@@ -350,6 +425,7 @@ def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped, tm
     assert {b["item_id"] for b in doc["binding"]} >= {I["COAL"], I["ORE"]}
     assert len(doc["plan"]["recipes"]) == 18
     assert doc["baseline"] is not None and len(doc["baseline"]["recipes"]) == 16
+    assert len(doc["realization"]["buses"]) == 18 and doc["realization"]["design_tier"] == 4
     assert doc["unverified"] == list(district_run.UNVERIFIED)
 
 
@@ -372,5 +448,5 @@ def test_the_declaration_is_data():
     declaration computes nothing (A22)."""
     tree = ast.parse(pathlib.Path(DECL.__file__).read_text(encoding="utf-8"))
     assert not [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
-    assert _called_names(tree) <= {"dict", "NodeCount", "DistrictTarget", "Scenario"}
+    assert _called_names(tree) <= {"dict", "NodeCount", "DistrictTarget", "Scenario", "B", "S"}
     assert not [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]

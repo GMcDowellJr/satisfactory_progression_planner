@@ -260,8 +260,9 @@ def test_total_power_is_the_sum_of_the_lanes(report):
     assert report.total_power_mw == pytest.approx(
         sum(l.power_mw for b in report.buses for l in b.lanes)
     )
-    # 3 Assemblers at 15 MW and 5 Constructors at 4 MW, all at 100%.
-    assert report.total_power_mw == pytest.approx(65.0)
+    # 3 Assemblers at 15 MW and 5 Constructors at 4 MW, all at 100%: 65 MW
+    # at 1x, and the scenario of record is 2x power (crossover A32.1).
+    assert report.total_power_mw == pytest.approx(2 * 65.0)
 
 
 def test_the_report_carries_the_declared_tier_and_the_node_declarations(report):

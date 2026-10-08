@@ -34,25 +34,40 @@ v5.5 plan requires the fixture to preserve, resolved by display name through
     baseline     the v5.4.4 shipped-fixture portfolio, for the Stage 0 row
                  (measured 2026-10-08, node v22.22.0)
 
+    partition    one bus per item, its recipe DECLARED (a tripwire: a plan
+                 that picks another recipe is refused by name, A30), every
+                 line clocked explicitly and NOT storing (stores=False), so
+                 the realized rates are the plan's rates (v5.5 "factory
+                 parity"); the residual realization reports is idle
+                 headroom of whole machines, not overflow. extra_producers 0: the
+                 minimum machine set. The PWA's 25 % maximum machine clock
+                 (MACHINE_CLOCK) is NOT applied: realization has no
+                 machines-versus-clock policy (LP 22.4, A29.3 O29)
+
 `tools/district_run.py` composes it; tests/test_district_phase2.py pins it.
 """
 from __future__ import annotations
 
 from production_adapter import DistrictTarget, Scenario
 from progression import NodeCount
+from realization import BusDeclaration, ClockMode, SourceEdge
 
 LABEL = "phase 2 reference district (tiers 3-4)"
 PHASE = 2
 TIERS = (3, 4)
 RECIPE_TIER = 4
-#: realization's preferred clock (v5.5 rule 2 keeps it distinct from a trickle)
+#: the PWA scenario's maximum machine clock. Carried, NOT applied (see partition)
 MACHINE_CLOCK = 0.25
+DESIGN_TIER = 4
 
 I = dict(
     ORE="Desc_OreIron_C", COAL="Desc_Coal_C", STONE="Desc_Stone_C", GOLD="Desc_OreGold_C",
     VF="Desc_SpaceElevatorPart_2_C", MOTOR="Desc_Motor_C", EIB="Desc_SteelPlateReinforced_C",
     PIPE="Desc_SteelPipe_C", BEAM="Desc_SteelPlate_C", ROT="Desc_Rotor_C",
     CON="Desc_Cement_C", QW="Desc_HighSpeedWire_C", WATER="Desc_Water_C",
+    RIP="Desc_IronPlateReinforced_C", STA="Desc_Stator_C", MF="Desc_ModularFrame_C",
+    STI="Desc_SteelIngot_C", SCR="Desc_IronScrew_C", PLT="Desc_IronPlate_C",
+    ROD="Desc_IronRod_C", ING="Desc_IronIngot_C", WIRE="Desc_Wire_C", CAT="Desc_GoldIngot_C",
 )
 
 NODES = (
@@ -94,6 +109,60 @@ BILL_TIERS = (3, 4, 5)
 BILL_TARGETS = ((I["VF"], 1.0), (I["MOTOR"], 1.0), (I["EIB"], 1.0))
 #: extras outside the bill (A27.2 shape): none declared
 EXTRAS: tuple[DistrictTarget, ...] = ()
+
+B, S = BusDeclaration, SourceEdge
+R = dict(
+    VF="Recipe_SpaceElevatorPart_2_C", MOTOR="Recipe_Motor_C", EIB="Recipe_EncasedIndustrialBeam_C",
+    MF="Recipe_ModularFrame_C", RIP="Recipe_Alternate_ReinforcedIronPlate_2_C",   # Stitched Iron Plate
+    ROT="Recipe_Rotor_C", STA="Recipe_Alternate_Stator_C",                          # Quickwire Stator
+    BEAM="Recipe_SteelBeam_C", PIPE="Recipe_SteelPipe_C",
+    STI="Recipe_Alternate_IngotSteel_1_C",                                           # Solid Steel Ingot
+    PLT="Recipe_IronPlate_C", ROD="Recipe_IronRod_C", SCR="Recipe_Screw_C",
+    WIRE="Recipe_Alternate_Wire_1_C",                                                # Iron Wire
+    ING="Recipe_IngotIron_C", CON="Recipe_Concrete_C", CAT="Recipe_IngotCaterium_C",
+    QW="Recipe_Quickwire_C",
+)
+#: every line: declared recipe, explicit clock, not storing (see module docstring)
+X = dict(stores=False, clock_mode=ClockMode.EXPLICIT)
+#: the partition (see module docstring). 18 buses, one per plan recipe
+BUSES = (
+    B(bus_id="versatile_framework", item_id=I["VF"], recipe_id=R["VF"],
+      sources=(S(I["MF"], "modular_frame"), S(I["BEAM"], "steel_beam"),), **X),
+    B(bus_id="motor", item_id=I["MOTOR"], recipe_id=R["MOTOR"],
+      sources=(S(I["ROT"], "rotor"), S(I["STA"], "stator"),), **X),
+    B(bus_id="encased_industrial_beam", item_id=I["EIB"], recipe_id=R["EIB"],
+      sources=(S(I["BEAM"], "steel_beam"), S(I["CON"], "concrete"),), **X),
+    B(bus_id="modular_frame", item_id=I["MF"], recipe_id=R["MF"],
+      sources=(S(I["RIP"], "rip"), S(I["ROD"], "iron_rod"),), **X),
+    B(bus_id="rip", item_id=I["RIP"], recipe_id=R["RIP"],
+      sources=(S(I["PLT"], "iron_plate"), S(I["WIRE"], "wire"),), **X),
+    B(bus_id="rotor", item_id=I["ROT"], recipe_id=R["ROT"],
+      sources=(S(I["ROD"], "iron_rod"), S(I["SCR"], "screws"),), **X),
+    B(bus_id="stator", item_id=I["STA"], recipe_id=R["STA"],
+      sources=(S(I["PIPE"], "steel_pipe"), S(I["QW"], "quickwire"),), **X),
+    B(bus_id="steel_beam", item_id=I["BEAM"], recipe_id=R["BEAM"],
+      sources=(S(I["STI"], "steel_ingot"),), **X),
+    B(bus_id="steel_pipe", item_id=I["PIPE"], recipe_id=R["PIPE"],
+      sources=(S(I["STI"], "steel_ingot"),), **X),
+    B(bus_id="steel_ingot", item_id=I["STI"], recipe_id=R["STI"],
+      sources=(S(I["ING"], "iron_ingot"), S(I["COAL"], None),), **X),
+    B(bus_id="iron_plate", item_id=I["PLT"], recipe_id=R["PLT"],
+      sources=(S(I["ING"], "iron_ingot"),), **X),
+    B(bus_id="iron_rod", item_id=I["ROD"], recipe_id=R["ROD"],
+      sources=(S(I["ING"], "iron_ingot"),), **X),
+    B(bus_id="screws", item_id=I["SCR"], recipe_id=R["SCR"],
+      sources=(S(I["ROD"], "iron_rod"),), **X),
+    B(bus_id="wire", item_id=I["WIRE"], recipe_id=R["WIRE"],
+      sources=(S(I["ING"], "iron_ingot"),), **X),
+    B(bus_id="iron_ingot", item_id=I["ING"], recipe_id=R["ING"],
+      sources=(S(I["ORE"], None),), **X),
+    B(bus_id="concrete", item_id=I["CON"], recipe_id=R["CON"],
+      sources=(S(I["STONE"], None),), **X),
+    B(bus_id="caterium_ingot", item_id=I["CAT"], recipe_id=R["CAT"],
+      sources=(S(I["GOLD"], None),), **X),
+    B(bus_id="quickwire", item_id=I["QW"], recipe_id=R["QW"],
+      sources=(S(I["CAT"], "caterium_ingot"),), **X),
+)
 
 #: v5.4.4 on its shipped fixture (100 % extraction), items per minute. Stator
 #: and Motor received 0 there. The Stage 0 baseline row re-solves THESE rates as

@@ -34,6 +34,23 @@ class Producer:
     def is_variable_power(self) -> bool:
         return self.power_model == "variable"
 
+    def scaled(self, factor: float) -> "Producer":
+        """Base power under the scenario's machine-power multiplier (A32).
+
+        `Recipe.power` has been scaled by `with_scenario` since the scenario
+        layer was written; the producer's own `base_power_mw`, which
+        `realization.residual.power_at_clock` reads, was not. A realized
+        figure under the 5x run was therefore reported at 1x. Found
+        2026-10-08 while realizing the district plan.
+        """
+        if factor == 1.0:
+            return self
+        return Producer(
+            producer_class=self.producer_class, display_name=self.display_name,
+            power_model=self.power_model, base_power_mw=self.base_power_mw * factor,
+            power_exponent=self.power_exponent,
+        )
+
 
 @dataclass(frozen=True)
 class PowerRange:
@@ -218,7 +235,9 @@ class ReferenceData:
         return ReferenceData(
             game_build_id=self.game_build_id,
             recipes={k: v.scaled(scenario) for k, v in self.recipes.items()},
-            producers=self.producers,
+            producers={
+                k: v.scaled(scenario.machine_power_multiplier) for k, v in self.producers.items()
+            },
             items=self.items,
             resource_items=self.resource_items,
             scenario=scenario,

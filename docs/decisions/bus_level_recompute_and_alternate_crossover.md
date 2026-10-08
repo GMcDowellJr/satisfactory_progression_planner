@@ -3051,3 +3051,68 @@ proposal below. Reshapes A27.1 K2 and retires A28.1 T4.
          unlocks would list which of the 18 this site can make at all
     O35  "already bought" and "already stored" as declared state netting
          the bill (D3), and standing production elsewhere (O11)
+
+## Amendment 32 — 2026-10-08. Realization over the district plan (step 8); producer power now scales with the scenario
+
+Appended forward-only. Amendments 13-31 stand as written. Source: this
+session, 2026-10-08, under Greg's "continue". Under A31's bill every
+fixture plan makes each item ONE way (measured: the four views use the same
+18 recipes), so a declared partition realizes the plan without the A30
+ruling; A30 O32 stays open for the general case.
+
+    code      tools/phases/district_phase2.py BUSES (18, one per plan recipe,
+              recipe_id declared), DESIGN_TIER 4; district_run realizes the
+              plan when BUSES exist (--no-realize to skip), re-reads the
+              power balance at the realized draw, exports "realization";
+              gamedata.Producer.scaled and ReferenceData.with_scenario now
+              scale base_power_mw by the machine-power multiplier
+    measured  container 2026-10-08, shipped case with power, 1.25x / 5x:
+              39 whole machines (7 Assembler, 16 Constructor, 4 Foundry,
+              12 Smelter) at explicit clocks; realized rates equal the
+              plan's (VF 3.8292, Motor 0.7658, EIB 2.2975); realized machine
+              power 908.12 MW beside the LP's 989.84 MW machine-time;
+              balance re-read with 3 whole coal generators: margin
+              +111.88 MW. Ten "must merge" belt findings at tier 4
+
+### A32.1 Finding: realization's power was unscaled (fixed)
+
+`realization.residual.power_at_clock` reads `Producer.base_power_mw`, and
+`ReferenceData.with_scenario` scaled `Recipe.power` but never the producer.
+Under the 5x run a realized figure was reported at 1x, beside an LP figure
+at 5x. Fixed at the loader: a scenario scales both. Every pre-existing
+case still passes (they run at 1x, where the factor is 1).
+
+### A32.2 Taken in code by the agent (revisable by Greg)
+
+    Z1   THE PARTITION DECLARES EACH BUS'S RECIPE. A tripwire, not a
+         choice: realization refuses a plan whose recipe for that item
+         differs (buses.py P30), so a solve that drifts is caught by name
+         rather than realized as something else
+    Z2   LINES DO NOT STORE AND ARE CLOCKED EXPLICITLY (stores=False,
+         ClockMode.EXPLICIT, AVERAGED). The realized rate of every bus is
+         the plan's rate: v5.5 "factory parity" holds by construction, and
+         power follows the clock exponent. The residual realization reports
+         is nameplate minus draw, the idle headroom of whole machines
+         (BACK_UP), not stored overflow; a terminal bus reports its whole
+         nameplate there because its consumer is out of scope
+    Z3   extra_producers 0: the minimum machine set. The PWA's 25 % maximum
+         machine clock is carried in the declaration and NOT applied;
+         realization has no machines-versus-clock policy (LP 22.4). The
+         realized clocks run 15 % to 96 %
+    Z4   THE BALANCE IS RE-READ AT THE REALIZED DRAW, REPORT ONLY (O29):
+         the solve's fractional generators rounded up to whole ones, grid
+         and spare as declared, extraction at nameplate. The LP's
+         machine-time figure was higher than the realized draw, so the
+         solve's balance is floor-safe (A25.3 P2 confirmed by measurement)
+    Z5   nodes for realization are the district's nodes at the case's clock
+         in percent; purity "none" carries the water extractors
+
+### A32.3 Open
+
+    O36  the belt findings: ten buses "must merge" at tier 4 (belt_mk3).
+         A finding, not an error, and outside the solve (A24.1 S3); the
+         export's `unverified` still lists belts
+    O37  whether the realized draw should feed back into the solve's
+         balance (an iteration) or stay a report. Report for now
+    O38  realized raw draw is not computed by realization (nodes are
+         checked, not drawn); the plan's raw draw stands

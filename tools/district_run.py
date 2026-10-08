@@ -15,6 +15,11 @@ layer returns, and adds no arithmetic of its own:
               goal as the tie-break), with power in the solve (A29) unless
               --no-power: generators from the declaration's GENERATORS, grid
               and spare as declared, extraction at nameplate from the nodes
+    realize   realization.realize over the plan with the declaration's BUSES
+              (one recipe per item, declared) and its nodes: whole machines,
+              explicit clocks, power at those clocks (v5.5 Stage 5; A32).
+              The power balance is RE-READ at the realized draw as a report
+              (A29.3 O29): generators stay the solve's, rounded up
     baseline  LpBackend.solve on the declaration's V544 rates as DEMANDS,
               UNCAPPED, so the raw draw is the answer and the report puts it
               beside each cap: the Stage 0 "shared intermediates" row. Under
@@ -44,6 +49,7 @@ import argparse
 import dataclasses
 import importlib.util
 import json
+import math
 import pathlib
 import sys
 
@@ -66,6 +72,7 @@ from progression import (  # noqa: E402
 )
 from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
+from realization import NodeDeclaration, RealizationRequest, realize  # noqa: E402
 
 EXPORT_SCHEMA = "district-plan/1"
 #: v5.5 rule 6: labelled, never implied buildable
@@ -116,10 +123,12 @@ class DistrictRun:
     #: the Stage 0 row, when asked for; None when the demands are infeasible
     baseline: SolveResponse | None = None
     baseline_error: str | None = None
+    #: realization over the plan, when the declaration carries BUSES
+    realization: object | None = None   # realization.RealizationReport
 
 
 def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
-        power: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
+        power: bool = True, realization: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
     if case not in decl.EXTRACTION_CLOCK_CASES:
         raise DistrictRunError(
             f"{decl.LABEL}: no extraction clock case {case!r}; "
@@ -128,7 +137,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
     if goal not in GOALS:
         raise DistrictRunError(f"no goal {goal!r}; known: {list(GOALS)}")
     data = load(repo, decl.SCENARIO)
-    _, rates = load_logistics(repo)
+    capabilities, rates = load_logistics(repo)
     definition = DistrictDefinition(
         nodes=decl.NODES, extractor_class=decl.EXTRACTOR,
         extraction_clock=decl.EXTRACTION_CLOCK_CASES[case],
@@ -186,10 +195,25 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
             base = backend.solve(demand, data)
         except Infeasible as e:
             base_err = str(e)
+    report = None
+    if realization and getattr(decl, "BUSES", None):
+        nodes = tuple(
+            NodeDeclaration(
+                item_id=n.item_id,
+                extractor_class=n.extractor_class or definition.extractor_class,
+                purity=n.purity, count=n.count,
+                clock_percent=definition.extraction_clock * 100.0,
+            )
+            for n in definition.nodes
+        )
+        report = realize(
+            response.plan, data, capabilities, rates,
+            RealizationRequest(design_tier=decl.DESIGN_TIER, buses=decl.BUSES, nodes=nodes),
+        )
     return DistrictRun(
         decl=decl, case=case, goal=goal, definition=definition, caps=caps,
         recipe_ids=tier.recipe_ids, bill=bill, request=request, response=response,
-        baseline=base, baseline_error=base_err,
+        baseline=base, baseline_error=base_err, realization=report,
     )
 
 
@@ -258,6 +282,31 @@ def report(dr: DistrictRun, data) -> str:
         out.append(f"  {u.recipe_id:46s} {u.machine_equivalents:8.3f} x {u.producer_class}")
     for w in r.plan.warnings:
         out.append(f"  ! {w}")
+    if dr.realization is not None:
+        rz = dr.realization
+        out += ["", f"realization (design tier {rz.design_tier}): whole machines, explicit clocks, "
+                f"power at clock; {len(rz.buses)} buses"]
+        counts: dict[str, int] = {}
+        for bus in rz.buses:
+            for lane in bus.lanes:
+                counts[lane.producer_class] = counts.get(lane.producer_class, 0) + lane.machines
+                out.append(f"  {bus.bus_id:26s} {lane.machines:3d} x {lane.producer_class:24s} "
+                           f"@ {lane.clock_percent:6.2f}%  {lane.output_rate_per_min:9.4f}/min  "
+                           f"{lane.power_mw:8.2f} MW")
+        out.append("  machines: " + ", ".join(f"{n} {c}" for c, n in counts.items()))
+        out.append(f"  realized machine power {rz.total_power_mw:.2f} MW beside the LP's "
+                   f"{r.plan.power.scenario_mw:.2f} MW machine-time (same scenario multiplier)")
+        if r.power is not None:
+            pw = r.power
+            gens = sum(math.ceil(u.count - 1e-9) for u in pw.generators)
+            gen_mw = sum(math.ceil(u.count - 1e-9) * (u.mw / u.count) for u in pw.generators if u.count > 0)
+            margin = gen_mw + pw.grid_mw - rz.total_power_mw - pw.extraction_mw - pw.spare_mw
+            out.append(f"  balance re-read at the realized draw (A29.3 O29, report only): "
+                       f"{gens} whole generators {gen_mw:.2f} MW + grid {pw.grid_mw:.2f} - lanes "
+                       f"{rz.total_power_mw:.2f} - extraction {pw.extraction_mw:.2f} - spare "
+                       f"{pw.spare_mw:.2f} = margin {margin:.2f} MW")
+        for w in rz.warnings:
+            out.append(f"  ! {w}")
     if dr.baseline is not None or dr.baseline_error:
         out += ["", "Stage 0 baseline: v5.4.4 shipped rates as DEMANDS, uncapped; draw beside cap"]
         if dr.baseline_error:
@@ -306,6 +355,20 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         "power": None if dr.response.power is None else dataclasses.asdict(dr.response.power),
         "plan": dataclasses.asdict(dr.response.plan),
         "baseline": None if dr.baseline is None else dataclasses.asdict(dr.baseline),
+        "realization": None if dr.realization is None else {
+            "design_tier": dr.realization.design_tier,
+            "total_power_mw": dr.realization.total_power_mw,
+            "buses": [
+                {"bus_id": b.bus_id, "item_id": b.item_id, "recipe_id": b.recipe_id,
+                 "supply_per_min": b.supply_per_min,
+                 "lanes": [{"recipe_id": l.recipe_id, "producer_class": l.producer_class,
+                            "machines": l.machines, "clock_percent": l.clock_percent,
+                            "output_rate_per_min": l.output_rate_per_min, "power_mw": l.power_mw}
+                           for l in b.lanes]}
+                for b in dr.realization.buses
+            ],
+            "warnings": list(dr.realization.warnings),
+        },
         "baseline_error": dr.baseline_error,
         "unverified": list(UNVERIFIED),
     }
@@ -322,10 +385,12 @@ def main(argv=None) -> int:
     ap.add_argument("--goal", default="balanced", choices=tuple(GOALS))
     ap.add_argument("--baseline", action="store_true", help="also solve the V544 rates as demands")
     ap.add_argument("--no-power", action="store_true", help="leave power outside the solve (D5)")
+    ap.add_argument("--no-realize", action="store_true", help="skip realization over the plan")
     ap.add_argument("--export", type=pathlib.Path, default=None, help="write the plan JSON here")
     args = ap.parse_args(argv)
     decl = declaration(args.declaration)
-    dr = run(decl, case=args.case, goal=args.goal, baseline=args.baseline, power=not args.no_power)
+    dr = run(decl, case=args.case, goal=args.goal, baseline=args.baseline, power=not args.no_power,
+             realization=not args.no_realize)
     data = load(REPO, decl.SCENARIO)
     print(report(dr, data))
     if args.export:
