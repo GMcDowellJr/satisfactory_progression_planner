@@ -7,15 +7,17 @@ README_V5_4_4 regression scenario; the recipe set is the alternate family the
 v5.5 plan requires the fixture to preserve, resolved by display name through
 `gamedata` so an edit to recipes.csv refuses rather than drifts.
 
-    nodes        3 pure Iron, 2 pure Coal, 1 pure Limestone, 1 normal Caterium,
-                 plus 2 Water Extractors (phase 1's carry, A25.1 O7 / A20)
-    extractor    Miner Mk.1 for the ores; the water nodes name their own
-    power        A34 (Greg, 2026-10-08): 4 standing coal generators, 300 MW,
-                 fed from the district's own coal and water (their draw
-                 comes off the caps first); the plan STATES the factory's
-                 draw against that supply. Power is not in the solve here;
-                 district_run --power puts it in (A29) with the standing
-                 300 MW as the supply and no new generators
+    nodes        3 pure Iron, 2 pure Coal, 1 pure Limestone, 1 normal Caterium
+    extractor    Miner Mk.1
+    power        A35 (Greg, 2026-10-08): the question is WHAT FITS ON 300 MW.
+                 4 standing coal generators, 300 MW, fed by coal and water
+                 Greg left OUT of the district's materials (the power plant
+                 is outside the district: no draw off the caps, no water
+                 nodes here). Power is IN the solve by default (A29's row,
+                 300 MW supply, no new generators); --power report states
+                 the unconstrained draw instead. Power capacity itself
+                 ("how much power can this area give") is a separate solve,
+                 not taken
     clocks       extraction: "shipped" 100 % (TEST_V5_4_3_DISTRICT_SCENARIO.js)
                  and "readme" 25 % (README_V5_4_4); machine clock 25 % (both)
     reserve      0
@@ -81,14 +83,14 @@ NODES = (
     NodeCount(I["COAL"], "pure", 2),
     NodeCount(I["STONE"], "pure", 1),
     NodeCount(I["GOLD"], "normal", 1),
-    #: at 100 % in every case (A34.2 F5): they feed the standing generators
-    NodeCount(I["WATER"], "none", 2, extractor_class="Build_WaterPump_C", extraction_clock=1.0),
 )
 EXTRACTOR = "Build_MinerMk1_C"
-#: A34: standing generators (class, fuel, count), fed from the district's caps.
-#: Greg, 2026-10-08: "4 coal generators make 300 MW"
+#: A34/A35: standing generators (class, fuel, count). Greg, 2026-10-08: "4 coal
+#: generators make 300 MW", fed by coal and water left out of the district's
+#: materials, so their draw does NOT come off the caps
 STANDING_GENERATORS = (("Build_GeneratorCoal_C", I["COAL"], 4),)
-#: the required margin when power is put IN the solve (--power); the v5.4.1 setting
+STANDING_FED_FROM_DISTRICT = False
+#: the required margin on the balance row; the v5.4.1 setting
 SPARE_MW = 30.0
 #: A27.1 K1: two cases, both inputs. Keys are the CLI's --case values.
 EXTRACTION_CLOCK_CASES = {"shipped": 1.0, "readme": 0.25}

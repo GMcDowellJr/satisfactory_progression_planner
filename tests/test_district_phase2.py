@@ -3,33 +3,33 @@
 Crossover A26.1 C2: the v5.5 Stage 0 fixture lives here as a declaration,
 composed by tools/district_run.py. Rulings in force: A27 (both clocks are
 inputs), A31 (the bill supplies the proportions), A34 (every makeable bill
-item is a target unless excluded; 4 standing coal generators, 300 MW, fed
-first from the district's caps; one recipe per bus, the solve's recipe set
-read from the partition; power STATED against the standing supply, not
-solved, unless --power solve).
+item is a target unless excluded; one recipe per bus, the solve's recipe
+set read from the partition), A35 (the question is what fits on the 300 MW
+of the 4 standing coal generators, whose coal and water are OUTSIDE the
+district's materials; power in the solve by default, no new generators).
 
 Measured in the agent container 2026-10-08, scenario 1.25x recipe / 5x
 machine power, LpBackend MEAN, goal "balanced" as the tie-break. Bill =
-Project Assembly phase 2 + schematic costs of tiers 3, 4, 5: 18 items.
+Project Assembly phase 2 + schematic costs of tiers 3, 4, 5: 18 items, 15
+makeable here, all targets.
 
-    shipped (100 %)   15 of 18 makeable, all targets; scale 0.002031 /min,
-                      horizon 492.4 min; iron binds; coal 121.2 of the 180
-                      left after the generators' 60; 21 recipes, 54 whole
-                      machines (13 Asm, 25 Con, 3 Fdy, 13 Sml); 1257.52 MW
-                      machine-time, 1140.20 MW realized; draw 1215.20 MW
-                      against 300 MW standing: SHORT by 915.20 MW
-    readme  (25 %)    the miners' 60 coal all go to the generators: no
-                      steel, 9 of 18 makeable; scale 0.001042, horizon
-                      959.4 min; 26 machines, 299.51 MW realized
-    --power solve     the balance row with 300 MW supply and no new
-                      generators: lanes held to 195 MW, scale 0.000320,
-                      horizon 3120.9 min
-    baseline          v5.4.4's shipped portfolio as demands under the
-                      partition's recipes, uncapped: coal 238.75 (cap 180
-                      after the generators), limestone 150.4 (cap 120),
-                      caterium 48; ONE Solid Steel Ingot flow of 3.979
+    on 300 MW (default)   lanes held to 235 MW (300 - 35 extraction - 30
+                          spare): scale 0.000386 /min, horizon 2589.7 min;
+                          iron 68 of 360; 24 whole machines (9 Asm, 10 Con,
+                          1 Fdy, 4 Sml), 174.41 MW realized. The 25 % case
+                          gives the SAME plan: power binds, no cap does, so
+                          the miners' clock does not enter
+    --power report        the unconstrained draw: scale 0.002031, horizon
+                          492.4 min; iron binds; 54 machines; 1140.20 MW
+                          realized + 35 extraction against 300 MW standing:
+                          SHORT by 875.20 MW
+    baseline              v5.4.4's shipped portfolio as demands under the
+                          partition's recipes, uncapped: coal 238.75,
+                          limestone 150.4 (cap 120), caterium 48; ONE Solid
+                          Steel Ingot flow of 3.979
 
-Concrete takes spare limestone beyond its share (A34.3 O41).
+Concrete takes spare limestone beyond its share only when caps bind
+(report mode: A34.3 O41); on 300 MW every item sits at the scale.
 """
 from __future__ import annotations
 
@@ -73,7 +73,8 @@ def _decl(**over):
 
 @pytest.fixture(scope="module")
 def shipped():
-    return district_run.run(DECL, case="shipped", baseline=True)
+    """The default: what fits on 300 MW."""
+    return district_run.run(DECL, case="shipped")
 
 
 @pytest.fixture(scope="module")
@@ -82,8 +83,9 @@ def readme():
 
 
 @pytest.fixture(scope="module")
-def shipped_solve():
-    return district_run.run(DECL, case="shipped", power="solve")
+def shipped_report():
+    """The unconstrained draw, stated against the standing supply."""
+    return district_run.run(DECL, case="shipped", power="report", baseline=True)
 
 
 def _rates(dr):
@@ -110,28 +112,28 @@ def _lanes(dr, bus_id):
 # --- the declaration composes -------------------------------------------
 
 def test_caps_compose_from_extraction_rates_both_cases(shipped, readme):
-    gross = {c.item_id: c.rate_per_min for c in shipped.gross_caps[:5]}
-    assert gross == {I["ORE"]: 360.0, I["COAL"]: 240.0, I["STONE"]: 120.0, I["GOLD"]: 60.0, I["WATER"]: 240.0}
-    gross = {c.item_id: c.rate_per_min for c in readme.gross_caps[:5]}
-    # the water extractors run at 100 % in every case (A34.2 F5)
-    assert gross == {I["ORE"]: 90.0, I["COAL"]: 60.0, I["STONE"]: 30.0, I["GOLD"]: 15.0, I["WATER"]: 240.0}
+    caps = {c.item_id: c.rate_per_min for c in shipped.caps[:4]}
+    assert caps == {I["ORE"]: 360.0, I["COAL"]: 240.0, I["STONE"]: 120.0, I["GOLD"]: 60.0}
+    caps = {c.item_id: c.rate_per_min for c in readme.caps[:4]}
+    assert caps == {I["ORE"]: 90.0, I["COAL"]: 60.0, I["STONE"]: 30.0, I["GOLD"]: 15.0}
 
 
-def test_standing_generators_are_fed_first(shipped, readme):
-    """4 coal generators: 300 MW, 60 coal + 180 water per minute off the caps."""
+def test_the_power_plant_is_outside_the_districts_materials(shipped):
+    """A35 G2: 4 coal generators, 300 MW; their 60 coal + 180 water are not
+    off the caps (STANDING_FED_FROM_DISTRICT False), the water extractors are
+    not district nodes, extraction at nameplate is the 7 miners' 35 MW."""
     st = shipped.standing
     assert st.mw == 300.0 and dict(st.draws) == {I["COAL"]: 60.0, I["WATER"]: 180.0}
-    net = {c.item_id: c.rate_per_min for c in shipped.caps[:5]}
-    assert net == {I["ORE"]: 360.0, I["COAL"]: 180.0, I["STONE"]: 120.0, I["GOLD"]: 60.0, I["WATER"]: 60.0}
-    net = {c.item_id: c.rate_per_min for c in readme.caps[:5]}
-    assert net[I["COAL"]] == 0.0 and net[I["WATER"]] == 60.0
-    assert shipped.extraction_mw == 75.0            # 7 x Mk.1 at 5 MW + 2 water at 20 MW
+    assert DECL.STANDING_FED_FROM_DISTRICT is False
+    assert shipped.caps == shipped.gross_caps
+    assert len(DECL.NODES) == 4 and shipped.extraction_mw == 35.0
 
 
 def test_the_district_is_closed(shipped):
     assert len(shipped.caps) == 13
-    assert all(c.rate_per_min == 0.0 for c in shipped.caps[5:])
-    assert COPPER in {c.item_id for c in shipped.caps[5:]}
+    assert all(c.rate_per_min == 0.0 for c in shipped.caps[4:])
+    assert COPPER in {c.item_id for c in shipped.caps[4:]}
+    assert I["WATER"] in {c.item_id for c in shipped.caps[4:]}
 
 
 def test_the_recipe_set_is_the_partitions_one_per_item(shipped):
@@ -166,16 +168,13 @@ def test_the_bill_is_composed_from_phase_2_and_tiers_3_to_5(shipped):
 
 
 def test_discovery_lists_what_the_site_can_make_of_the_bill(shipped, readme):
-    """15 of 18 on iron, coal, limestone, caterium and water: Copper Sheet,
-    Plastic and Rubber have no recipe in the partition. At 25 % the
-    generators take every unit of coal, so nothing with steel in it: 9."""
+    """15 of 18 on iron, coal, limestone and caterium: Copper Sheet, Plastic
+    and Rubber have no recipe in the partition. Independent of the clock."""
     reach = {x.item_id: x for x in shipped.reach}
     assert len(reach) == 18 and sum(1 for x in reach.values() if x.makeable) == 15
     assert all(reach[i].no_recipe for i in ("Desc_CopperSheet_C", "Desc_Plastic_C", "Desc_Rubber_C"))
     assert [x.item_id for x in shipped.reach] == list(shipped.bill)   # bill order
-    reach = {x.item_id: x for x in readme.reach}
-    assert sum(1 for x in reach.values() if x.makeable) == 9
-    assert not reach[I["VF"]].makeable and reach[I["VF"]].missing_raws == (I["COAL"],)
+    assert sum(1 for x in readme.reach if x.makeable) == 15
 
 
 def test_every_makeable_bill_item_is_a_target_unless_excluded(shipped):
@@ -194,33 +193,37 @@ def test_an_exclusion_removes_a_target_and_a_stray_exclusion_is_refused():
         district_run.run(_decl(BILL_EXCLUDED=("Desc_Plastic_C", "Desc_Nope_C")), case="shipped", realization=False)
 
 
-# --- the plan, shipped case ------------------------------------------------
+# --- the plan on 300 MW (A35, the default) ------------------------------------
 
-def test_every_bill_product_gets_its_proportion(shipped):
+def test_what_fits_on_300_mw(shipped):
+    """Lanes held to 235 MW; every bill product at the scale; no cap binds."""
     r = shipped.response
-    assert r.scale == pytest.approx(0.00203085, abs=1e-7)
-    assert r.horizon_min == pytest.approx(492.404, abs=1e-2)
+    assert shipped.power_mode == "solve"
+    assert r.scale == pytest.approx(0.00038615, abs=1e-7)
+    assert r.horizon_min == pytest.approx(2589.686, abs=1e-2)
     rates = _rates(shipped)
-    assert rates[I["SP"]] == pytest.approx(2.030854, abs=1e-5)
-    assert rates[I["VF"]] == pytest.approx(2.030854, abs=1e-5)
-    assert rates[I["AW"]] == pytest.approx(0.203085, abs=1e-5)
-    assert rates[I["MOTOR"]] == pytest.approx(0.406171, abs=1e-5)
-    for t in r.targets:
-        assert t.share >= r.scale - 1e-9
-    # concrete takes the spare limestone beyond its share (O41)
-    [concrete] = [t for t in r.targets if t.item_id == I["CON"]]
-    assert concrete.share == pytest.approx(0.0101260, abs=1e-6)
-    assert r.weighted_output == pytest.approx(6.13265, abs=1e-4)
-    assert r.power is None and shipped.power_mode == "report"
-
-
-def test_iron_binds_and_coal_is_left_over(shipped):
-    binding = {b.item_id: b for b in shipped.response.binding}
-    assert I["ORE"] in binding and I["COAL"] not in binding
-    assert binding[I["ORE"]].shadow_price == pytest.approx(5.641e-6, rel=1e-2)
-    assert _raw(shipped.response.plan) == pytest.approx(
-        {I["ORE"]: 360.0, I["COAL"]: 121.242, I["STONE"]: 120.0, I["GOLD"]: 10.8041}, abs=1e-3,
+    assert rates[I["SP"]] == pytest.approx(0.386146, abs=1e-5)
+    assert rates[I["VF"]] == pytest.approx(0.386146, abs=1e-5)
+    assert rates[I["MOTOR"]] == pytest.approx(0.077229, abs=1e-5)
+    # at the scale within a part in a thousand: the spare-capacity stage lifts
+    # one share by 1e-7 where a lane has a sliver of room
+    assert [t.share for t in r.targets] == pytest.approx([r.scale] * 15, rel=1e-3)
+    assert r.weighted_output == pytest.approx(0.81684, abs=1e-4)
+    assert r.binding == ()
+    pw = r.power
+    assert pw.grid_mw == 300.0 and pw.spare_mw == 30.0 and pw.extraction_mw == 35.0
+    assert pw.generators == () and pw.binding
+    assert pw.lane_mw == pytest.approx(235.0, abs=1e-6)
+    assert _raw(r.plan) == pytest.approx(
+        {I["ORE"]: 68.4506, I["COAL"]: 23.0529, I["STONE"]: 10.5032, I["GOLD"]: 2.0543}, abs=1e-3,
     )
+
+
+def test_on_300_mw_the_miners_clock_does_not_enter(shipped, readme):
+    """Power binds and no cap does, so the 25 % case gives the same plan."""
+    assert _rates(readme) == pytest.approx(_rates(shipped), abs=1e-6)
+    assert readme.response.scale == pytest.approx(shipped.response.scale, abs=1e-9)
+    assert _machines(readme) == _machines(shipped)
 
 
 def test_conservation_holds_on_every_item(shipped):
@@ -229,15 +232,28 @@ def test_conservation_holds_on_every_item(shipped):
         assert flow.net_per_min == pytest.approx(rates.get(flow.item_id, 0.0), abs=1e-6), flow
 
 
-def test_the_power_statement(shipped):
-    """A34 E2: the draw is STATED against the standing 300 MW, not solved."""
-    lp = shipped.response.plan.power.scenario_mw
-    rz = shipped.realization.total_power_mw
+# --- the unconstrained draw (--power report) ------------------------------------
+
+def test_the_unconstrained_draw_is_stated_against_the_standing_supply(shipped_report):
+    r = shipped_report.response
+    assert shipped_report.power_mode == "report" and r.power is None
+    assert r.scale == pytest.approx(0.00203085, abs=1e-7)
+    assert r.horizon_min == pytest.approx(492.404, abs=1e-2)
+    binding = {b.item_id: b for b in r.binding}
+    assert I["ORE"] in binding and binding[I["ORE"]].shadow_price == pytest.approx(5.641e-6, rel=1e-2)
+    assert _raw(r.plan) == pytest.approx(
+        {I["ORE"]: 360.0, I["COAL"]: 121.242, I["STONE"]: 120.0, I["GOLD"]: 10.8041}, abs=1e-3,
+    )
+    # concrete takes the spare limestone beyond its share (O41)
+    [concrete] = [t for t in r.targets if t.item_id == I["CON"]]
+    assert concrete.share == pytest.approx(0.0101260, abs=1e-6)
+    lp = r.plan.power.scenario_mw
+    rz = shipped_report.realization.total_power_mw
     assert lp == pytest.approx(1257.5163, abs=1e-3)
     assert rz == pytest.approx(1140.2006, abs=1e-3)
-    assert rz + shipped.extraction_mw - shipped.standing.mw == pytest.approx(915.2006, abs=1e-3)
-    text = district_run.report(shipped, load(REPO, DECL.SCENARIO))
-    assert "SHORT by 915.20 MW" in text
+    assert sum(_machines(shipped_report).values()) == 54
+    text = district_run.report(shipped_report, load(REPO, DECL.SCENARIO))
+    assert "SHORT by 875.20 MW" in text
 
 
 # --- realization (A32) ---------------------------------------------------------
@@ -260,43 +276,14 @@ def test_realization_reproduces_the_plans_rates_bus_by_bus(shipped):
 
 
 def test_realization_sizes_whole_machines_at_explicit_clocks(shipped):
-    assert _machines(shipped) == {"Build_AssemblerMk1_C": 13, "Build_ConstructorMk1_C": 25,
-                                  "Build_FoundryMk1_C": 3, "Build_SmelterMk1_C": 13}
+    assert _machines(shipped) == {"Build_AssemblerMk1_C": 9, "Build_ConstructorMk1_C": 10,
+                                  "Build_FoundryMk1_C": 1, "Build_SmelterMk1_C": 4}
+    assert shipped.realization.total_power_mw == pytest.approx(174.4063, abs=1e-3)
     [steel] = _lanes(shipped, "steel_ingot")
-    assert steel.machines == 3 and steel.recipe_id == STEEL_SOLID
-    assert [l.machines for l in _lanes(shipped, "iron_ingot")] == [6, 6]
+    assert steel.machines == 1 and steel.recipe_id == STEEL_SOLID
     [vf] = _lanes(shipped, "versatile_framework")
     assert vf.power_mw == pytest.approx(75.0 * (vf.clock_percent / 100.0) ** 1.321929, rel=1e-6)
-
-
-# --- readme case: no coal for steel ------------------------------------------------
-
-def test_the_readme_case_has_no_coal_left_for_steel(readme):
-    r = readme.response
-    assert len(r.targets) == 9
-    assert r.scale == pytest.approx(0.00104235, abs=1e-7)
-    assert r.horizon_min == pytest.approx(959.367, abs=1e-2)
-    assert _raw(r.plan) == pytest.approx({I["ORE"]: 90.0, I["STONE"]: 30.0}, abs=1e-4)
-    assert sum(_machines(readme).values()) == 26
-    assert readme.realization.total_power_mw == pytest.approx(299.5106, abs=1e-3)
-    # a declared bus with no demand keeps realization's floor of one machine, at 0 %
-    [steel] = _lanes(readme, "steel_ingot")
-    assert (steel.machines, steel.clock_percent) == (1, 0.0)
-
-
-# --- power in the solve (A29 under A34: 300 MW, no new generators) -----------------
-
-def test_power_in_the_solve_holds_the_lanes_to_what_is_left(shipped_solve):
-    r = shipped_solve.response
-    assert shipped_solve.power_mode == "solve"
-    pw = r.power
-    assert pw.grid_mw == 300.0 and pw.spare_mw == 30.0 and pw.extraction_mw == 75.0
-    assert pw.generators == () and pw.binding
-    assert pw.lane_mw == pytest.approx(195.0, abs=1e-6)
-    assert r.scale == pytest.approx(0.00032042, abs=1e-7)
-    assert r.horizon_min == pytest.approx(3120.903, abs=1e-2)
-    assert sum(_machines(shipped_solve).values()) == 22
-    assert shipped_solve.realization.total_power_mw == pytest.approx(144.062, abs=1e-3)
+    assert all(l.clock_percent <= 100.0 + 1e-9 for b in shipped.realization.buses for l in b.lanes)
 
 
 def test_floors_on_extras_are_refused_with_the_scale_when_too_high():
@@ -314,39 +301,37 @@ def test_floors_on_extras_are_refused_with_the_scale_when_too_high():
         LpBackend(PowerStatistic.MEAN).solve_district(request, load(REPO, DECL.SCENARIO))
     msg = str(e.value)
     assert "reachable alone but not together" in msg and "fit up to 0." in msg
-    # the caps named are the ones the bisection's feasible point sits on, which
-    # need not be the single limiting one (caterium here, not iron)
-    assert "the caps that bind there" in msg
 
 
 # --- Stage 0 baseline row ---------------------------------------------------
 
-def test_baseline_v544_portfolio_overdraws_under_the_partitions_recipes(shipped):
-    assert shipped.baseline_error is None
-    raw = _raw(shipped.baseline)
+def test_baseline_v544_portfolio_overdraws_under_the_partitions_recipes(shipped_report):
+    assert shipped_report.baseline_error is None
+    raw = _raw(shipped_report.baseline)
     assert raw == pytest.approx({I["COAL"]: 238.75, I["STONE"]: 150.4, I["GOLD"]: 48.0,
                                  I["ORE"]: 313.519444}, abs=1e-4)
-    over = [c.item_id for c in shipped.caps if raw.get(c.item_id, 0.0) > c.rate_per_min + 1e-6]
-    assert over == [I["COAL"], I["STONE"]]
-    uses = {u.recipe_id: u.machine_equivalents for u in shipped.baseline.recipes}
+    over = [c.item_id for c in shipped_report.caps if raw.get(c.item_id, 0.0) > c.rate_per_min + 1e-6]
+    assert over == [I["STONE"]]
+    uses = {u.recipe_id: u.machine_equivalents for u in shipped_report.baseline.recipes}
     assert uses[STEEL_SOLID] == pytest.approx(3.979167, abs=1e-5)
     assert len(uses) == 16
 
 
 # --- export (A27.3) ----------------------------------------------------------
 
-def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped, tmp_path):
+def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped_report, tmp_path):
     data = load(REPO, DECL.SCENARIO)
     path = tmp_path / "district.json"
-    district_run.export(shipped, data, path)
+    district_run.export(shipped_report, data, path)
     raw = path.read_bytes()
     assert b"\r\n" not in raw
     doc = json.loads(raw)
     assert doc["schema"] == district_run.EXPORT_SCHEMA and doc["case"] == "shipped"
     assert doc["power_mode"] == "report" and doc["power"] is None
-    assert doc["standing"]["mw"] == 300.0 and doc["extraction_mw"] == 75.0
+    assert doc["standing"]["mw"] == 300.0 and doc["extraction_mw"] == 35.0
+    assert doc["standing_fed_from_district"] is False
     assert len(doc["gross_caps"]) == 13 and len(doc["district"]["caps"]) == 13
-    assert [n["item_id"] for n in doc["district"]["nodes"]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"], I["WATER"]]
+    assert [n["item_id"] for n in doc["district"]["nodes"]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"]]
     assert doc["goal"] == {"name": "balanced", "resources": 1.0, "power": 1.0, "buildings": 1.0, "complexity": 0.0}
     assert doc["bill"]["phases"] == [2] and doc["bill"]["tiers"] == [3, 4, 5]
     assert doc["bill"]["scale"] == pytest.approx(0.00203085, abs=1e-7)

@@ -141,10 +141,10 @@ class DistrictRun:
 
 
 def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
-        power: str = "report", realization: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
-    """`power`: "report" (A34 default: standing supply beside the draw),
-    "solve" (A29: the balance row with the standing MW as supply and no new
-    generators), or "none" (D5: nothing about power at all)."""
+        power: str = "solve", realization: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
+    """`power`: "solve" (A35 default: what fits on the standing MW; A29's row
+    with no new generators), "report" (the unconstrained draw stated beside
+    the standing supply), or "none" (D5: nothing about power at all)."""
     if case not in decl.EXTRACTION_CLOCK_CASES:
         raise DistrictRunError(
             f"{decl.LABEL}: no extraction clock case {case!r}; "
@@ -176,9 +176,10 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         )
     allowed = AllowedRecipes(mode=RecipeMode.EXPLICIT, recipe_ids=recipe_ids)
 
-    # A34: standing generators, fed first from the district's own caps
+    # A34/A35: standing generators; their fuel comes off the caps only when the
+    # declaration says the district feeds them
     standing = standing_generation(load_generators(repo), decl.STANDING_GENERATORS)
-    caps = caps_less_draws(gross_caps, standing.draws)
+    caps = caps_less_draws(gross_caps, standing.draws) if decl.STANDING_FED_FROM_DISTRICT else gross_caps
 
     pa = stock.load_project_assembly(repo, data)
     costs = unlocks.schematic_costs(repo)
@@ -276,7 +277,7 @@ def report(dr: DistrictRun, data) -> str:
     ]
     draw = {x.item_id: x.rate_per_min for x in r.plan.raw_inputs}
     gross = {c.item_id: c.rate_per_min for c in dr.gross_caps}
-    standing_draw = dict(dr.standing.draws)
+    standing_draw = dict(dr.standing.draws) if dr.decl.STANDING_FED_FROM_DISTRICT else {}
     for c in dr.caps:
         if c.rate_per_min > 0.0 or gross.get(c.item_id, 0.0) > 0.0:
             fed = f"  (nodes {gross[c.item_id]:g}, standing generators {standing_draw[c.item_id]:g})" \
@@ -314,7 +315,9 @@ def report(dr: DistrictRun, data) -> str:
     out += ["", "power"]
     st = dr.standing
     gens = ", ".join(f"{n} x {g} on {_name(data.items, f)}" for g, f, n in st.generators) or "none"
-    out.append(f"  standing supply {st.mw:.2f} MW ({gens}), fed "
+    fed = ("fed from the district's caps: " if dr.decl.STANDING_FED_FROM_DISTRICT
+           else "fed OUTSIDE the district's materials (not off the caps): ")
+    out.append(f"  standing supply {st.mw:.2f} MW ({gens}), " + fed
                + ", ".join(f"{_name(data.items, i)} {v:g}/min" for i, v in st.draws))
     if r.power is None and dr.power_mode == "report":
         lane_mw = r.plan.power.scenario_mw
@@ -422,6 +425,7 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         "standing": dataclasses.asdict(dr.standing),
         "extraction_mw": dr.extraction_mw,
         "power_mode": dr.power_mode,
+        "standing_fed_from_district": bool(dr.decl.STANDING_FED_FROM_DISTRICT),
         "gross_caps": [dataclasses.asdict(c) for c in dr.gross_caps],
         "plan": dataclasses.asdict(dr.response.plan),
         "baseline": None if dr.baseline is None else dataclasses.asdict(dr.baseline),
@@ -454,8 +458,8 @@ def main(argv=None) -> int:
     ap.add_argument("--case", required=True, help="an EXTRACTION_CLOCK_CASES key of the declaration")
     ap.add_argument("--goal", default="balanced", choices=tuple(GOALS))
     ap.add_argument("--baseline", action="store_true", help="also solve the V544 rates as demands")
-    ap.add_argument("--power", default="report", choices=("report", "solve", "none"),
-                    help="report (A34 default), solve (A29 balance row), none (D5)")
+    ap.add_argument("--power", default="solve", choices=("solve", "report", "none"),
+                    help="solve (A35 default: what fits on the standing MW), report, none (D5)")
     ap.add_argument("--no-realize", action="store_true", help="skip realization over the plan")
     ap.add_argument("--export", type=pathlib.Path, default=None, help="write the plan JSON here")
     args = ap.parse_args(argv)
