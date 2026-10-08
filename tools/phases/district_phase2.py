@@ -7,8 +7,12 @@ README_V5_4_4 regression scenario; the recipe set is the alternate family the
 v5.5 plan requires the fixture to preserve, resolved by display name through
 `gamedata` so an edit to recipes.csv refuses rather than drifts.
 
-    nodes        3 pure Iron, 2 pure Coal, 1 pure Limestone, 1 normal Caterium
-    extractor    Miner Mk.1
+    nodes        3 pure Iron, 2 pure Coal, 1 pure Limestone, 1 normal Caterium,
+                 plus 2 Water Extractors (phase 1's carry, A25.1 O7 / A20)
+    extractor    Miner Mk.1 for the ores; the water nodes name their own
+    power        A25.3 P1 in the solve (A29): coal generators may be built,
+                 900 MW existing/imported grid and 30 MW spare as Greg's
+                 PWA scenario states them; extraction at nameplate (P2)
     clocks       extraction: "shipped" 100 % (TEST_V5_4_3_DISTRICT_SCENARIO.js)
                  and "readme" 25 % (README_V5_4_4); machine clock 25 % (both)
     reserve      0
@@ -44,7 +48,7 @@ I = dict(
     ORE="Desc_OreIron_C", COAL="Desc_Coal_C", STONE="Desc_Stone_C", GOLD="Desc_OreGold_C",
     VF="Desc_SpaceElevatorPart_2_C", MOTOR="Desc_Motor_C", EIB="Desc_SteelPlateReinforced_C",
     PIPE="Desc_SteelPipe_C", BEAM="Desc_SteelPlate_C", ROT="Desc_Rotor_C",
-    CON="Desc_Cement_C", QW="Desc_HighSpeedWire_C",
+    CON="Desc_Cement_C", QW="Desc_HighSpeedWire_C", WATER="Desc_Water_C",
 )
 
 NODES = (
@@ -52,8 +56,15 @@ NODES = (
     NodeCount(I["COAL"], "pure", 2),
     NodeCount(I["STONE"], "pure", 1),
     NodeCount(I["GOLD"], "normal", 1),
+    NodeCount(I["WATER"], "none", 2, extractor_class="Build_WaterPump_C"),
 )
 EXTRACTOR = "Build_MinerMk1_C"
+#: power in the solve (A29): generator classes the district may build, the
+#: declared outside supply, and the required margin. Values from Greg's
+#: v5.4.1 reproduction settings (900 MW grid, 30 MW spare)
+GENERATORS = ("Build_GeneratorCoal_C",)
+GRID_MW = 900.0
+SPARE_MW = 30.0
 #: A27.1 K1: two cases, both inputs. Keys are the CLI's --case values.
 EXTRACTION_CLOCK_CASES = {"shipped": 1.0, "readme": 0.25}
 RESERVE = 0.0

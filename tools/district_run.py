@@ -8,7 +8,9 @@ layer returns, and adds no arithmetic of its own:
     caps      progression.district.resource_caps(definition, extraction_rates)
     recipes   progression.at_tier(RECIPE_TIER, declared=<names resolved>)
     solve     LpBackend.solve_district (A27.2: weighted outputs with floors,
-              goal as the tie-break)
+              goal as the tie-break), with power in the solve (A29) unless
+              --no-power: generators from the declaration's GENERATORS, grid
+              and spare as declared, extraction at nameplate from the nodes
     baseline  LpBackend.solve on the declaration's V544 rates as DEMANDS,
               UNCAPPED, so the raw draw is the answer and the report puts it
               beside each cap: the Stage 0 "shared intermediates" row. Under
@@ -48,14 +50,16 @@ for _src in ("production_adapter", "progression", "realization"):
         sys.path.insert(0, _path)
 
 from production_adapter import (  # noqa: E402
-    DistrictRequest, DistrictResponse, OutputTarget, SolveRequest, SolveResponse, Weights,
-    load,
+    DistrictRequest, DistrictResponse, OutputTarget, PowerBalance, SolveRequest, SolveResponse,
+    Weights, load,
 )
-from production_adapter.gamedata import load_logistics  # noqa: E402
+from production_adapter.gamedata import load_generators, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, at_tier, recipe_ids_by_name, resource_caps, resources_in_reference_order,
+    DistrictDefinition, at_tier, extraction_nameplate_mw, recipe_ids_by_name, resource_caps,
+    resources_in_reference_order,
 )
+from progression.power import load_power_tables  # noqa: E402
 
 EXPORT_SCHEMA = "district-plan/1"
 #: v5.5 rule 6: labelled, never implied buildable
@@ -107,7 +111,7 @@ class DistrictRun:
 
 
 def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
-        repo: pathlib.Path = REPO) -> DistrictRun:
+        power: bool = True, repo: pathlib.Path = REPO) -> DistrictRun:
     if case not in decl.EXTRACTION_CLOCK_CASES:
         raise DistrictRunError(
             f"{decl.LABEL}: no extraction clock case {case!r}; "
@@ -125,9 +129,19 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
     caps = resource_caps(definition, rates, resources_in_reference_order(data))
     declared = recipe_ids_by_name(data, decl.DECLARED_RECIPE_NAMES)
     unlocks = at_tier(repo, decl.RECIPE_TIER, declared=declared)
+    balance = None
+    if power:
+        tables = load_power_tables(repo)
+        generators = tuple(
+            g for g in load_generators(repo) if g.generator_class in decl.GENERATORS
+        )
+        balance = PowerBalance(
+            generators=generators, grid_mw=decl.GRID_MW, spare_mw=decl.SPARE_MW,
+            extraction_mw=extraction_nameplate_mw(definition, tables.extractors),
+        )
     request = DistrictRequest(
         targets=decl.TARGETS, allowed_recipes=unlocks.allowed_recipes,
-        resource_caps=caps, weights=GOALS[goal],
+        resource_caps=caps, weights=GOALS[goal], power=balance,
     )
     backend = LpBackend(power_statistic=PowerStatistic.MEAN)
     response = backend.solve_district(request, data)
@@ -184,6 +198,22 @@ def report(dr: DistrictRun, data) -> str:
         out.append("  none")
     for b in r.binding:
         out.append(f"  {_name(data.items, b.item_id):18s} cap {b.cap_per_min:g}  shadow {b.shadow_price:.4f}")
+    out += ["", "power"]
+    if r.power is None:
+        out.append("  outside the solve (--no-power): the LP figure below excludes extraction, D5")
+    else:
+        pw = r.power
+        out.append(f"  lanes {pw.lane_mw:.2f} + extraction (nameplate) {pw.extraction_mw:.2f} + spare "
+                   f"{pw.spare_mw:.2f}  <=  grid {pw.grid_mw:.2f} + generated {pw.generated_mw:.2f}; "
+                   f"margin {pw.margin_mw:.2f} MW" + ("  BINDING" if pw.binding else ""))
+        if pw.binding:
+            out.append(f"  shadow price {pw.shadow_price:.5f} weighted output per MW of supply")
+        for u in pw.generators:
+            supp = "".join(f", {_name(data.items, i)} {v:.2f}/min" for i, v in u.supplemental_per_min)
+            out.append(f"  {u.generator_class:24s} {u.count:8.3f} x {u.mw:8.2f} MW; "
+                       f"{_name(data.items, u.fuel_item_id)} {u.fuel_per_min:.2f}/min{supp}")
+        if not pw.generators:
+            out.append("  no generators built")
     out += ["", f"plan: {len(r.plan.recipes)} recipes, scenario power {r.plan.power.scenario_mw:.1f} MW "
             "(LP machine-time at mean power; extraction excluded, D5)"]
     for u in r.plan.recipes:
@@ -232,6 +262,7 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         "targets": [dataclasses.asdict(t) for t in dr.response.targets],
         "weighted_output": dr.response.weighted_output,
         "binding": [dataclasses.asdict(b) for b in dr.response.binding],
+        "power": None if dr.response.power is None else dataclasses.asdict(dr.response.power),
         "plan": dataclasses.asdict(dr.response.plan),
         "baseline": None if dr.baseline is None else dataclasses.asdict(dr.baseline),
         "baseline_error": dr.baseline_error,
@@ -249,10 +280,11 @@ def main(argv=None) -> int:
     ap.add_argument("--case", required=True, help="an EXTRACTION_CLOCK_CASES key of the declaration")
     ap.add_argument("--goal", default="balanced", choices=tuple(GOALS))
     ap.add_argument("--baseline", action="store_true", help="also solve the V544 rates as demands")
+    ap.add_argument("--no-power", action="store_true", help="leave power outside the solve (D5)")
     ap.add_argument("--export", type=pathlib.Path, default=None, help="write the plan JSON here")
     args = ap.parse_args(argv)
     decl = declaration(args.declaration)
-    dr = run(decl, case=args.case, goal=args.goal, baseline=args.baseline)
+    dr = run(decl, case=args.case, goal=args.goal, baseline=args.baseline, power=not args.no_power)
     data = load(REPO, decl.SCENARIO)
     print(report(dr, data))
     if args.export:

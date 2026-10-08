@@ -182,3 +182,118 @@ def test_a_zero_cap_closes_a_resource_and_reports_its_price(backend, data):
     copper = [b for b in r.binding if b.item_id == COPPER_ORE][0]
     assert copper.cap_per_min == 0.0
     assert copper.shadow_price == pytest.approx(2.0, abs=1e-6)
+
+
+# --- power in the solve (A25.3 P1; mechanics A29) ---------------------------
+#
+# Iron Plate 20/min: 1 smelter (4 MW) + 1 constructor (4 MW) = 8 MW at 1x.
+# Coal generator: 15 coal + 45 water -> 75 MW. Grid and spare are declared.
+
+from production_adapter import GeneratorFuel, PowerBalance  # noqa: E402
+from production_adapter.gamedata import load_generators  # noqa: E402
+
+COAL, WATER = "Desc_Coal_C", "Desc_Water_C"
+
+
+@pytest.fixture(scope="module")
+def coal_gen():
+    rows = [g for g in load_generators(REPO)
+            if g.generator_class == "Build_GeneratorCoal_C" and g.fuel_item_id == COAL]
+    assert len(rows) == 1
+    return rows[0]
+
+
+def test_the_loader_reads_the_coal_generator_row(coal_gen):
+    assert coal_gen == GeneratorFuel(
+        generator_class="Build_GeneratorCoal_C", fuel_item_id=COAL,
+        burn_rate_per_min=15.0, power_mw=75.0, supplemental=((WATER, 45.0),),
+    )
+    fuel_gens = {g.fuel_item_id for g in load_generators(REPO) if g.generator_class == "Build_GeneratorFuel_C"}
+    assert "Desc_LiquidFuel_C" in fuel_gens
+
+
+def _plate_request(power, caps=((IRON_ORE, 30.0),)):
+    return DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE),), allowed_recipes=IRON_SET,
+        resource_caps=tuple(ResourceCap(i, r) for i, r in caps), power=power,
+    )
+
+
+def test_a_generator_is_built_to_cover_the_lanes(backend, data, coal_gen):
+    """8 MW of lanes from a 0 MW grid: 8/75 of a coal generator, burning 1.6
+    coal and 4.8 water per minute. The output is unchanged: power is not
+    scarce, only priced."""
+    r = backend.solve_district(_plate_request(
+        PowerBalance(generators=(coal_gen,)),
+        caps=((IRON_ORE, 30.0), (COAL, 15.0), (WATER, 45.0)),
+    ), data)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 20.0}, abs=1e-6)
+    pw = r.power
+    assert pw.lane_mw == pytest.approx(8.0, abs=1e-6)
+    assert pw.generated_mw == pytest.approx(8.0, abs=1e-6)
+    assert pw.margin_mw == pytest.approx(0.0, abs=1e-6) and pw.binding
+    [g] = pw.generators
+    assert g.count == pytest.approx(8.0 / 75.0, abs=1e-6)
+    assert g.fuel_per_min == pytest.approx(1.6, abs=1e-6)
+    assert dict(g.supplemental_per_min) == pytest.approx({WATER: 4.8}, abs=1e-6)
+    raw = {x.item_id: x.rate_per_min for x in r.plan.raw_inputs}
+    assert raw == pytest.approx({IRON_ORE: 30.0, COAL: 1.6, WATER: 4.8}, abs=1e-6)
+
+
+def test_the_grid_and_the_spare_margin_enter_the_row(backend, data):
+    """10 MW grid, 2 MW spare, no generators: exactly the 8 MW the lanes
+    need. The row is tight and no generator exists to loosen it."""
+    r = backend.solve_district(_plate_request(PowerBalance(grid_mw=10.0, spare_mw=2.0)), data)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 20.0}, abs=1e-6)
+    assert r.power.generators == () and r.power.binding
+    assert r.power.margin_mw == pytest.approx(0.0, abs=1e-6)
+
+
+def test_fuel_is_contested_with_production_and_power_can_be_the_limit(backend, data, coal_gen):
+    """Coal capped at 1.5/min: 0.1 of a generator, 7.5 MW, so the plate chain
+    runs at 7.5/8 and makes 18.75 plate/min although 30 ore would make 20.
+    The power row binds; the ore cap does not."""
+    r = backend.solve_district(_plate_request(
+        PowerBalance(generators=(coal_gen,)),
+        caps=((IRON_ORE, 30.0), (COAL, 1.5), (WATER, 45.0)),
+    ), data)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 18.75}, abs=1e-6)
+    assert r.power.binding
+    assert r.power.shadow_price == pytest.approx(2.5, abs=1e-6)   # 20 plate per 8 MW
+    assert {b.item_id for b in r.binding} == {COAL, WATER} - {WATER}
+    assert r.power.generators[0].count == pytest.approx(0.1, abs=1e-6)
+
+
+def test_no_supply_at_all_means_no_output_not_an_error(backend, data):
+    """Nothing to burn and no grid: the solve reports 0 with the row binding
+    rather than failing, because no floor was declared."""
+    r = backend.solve_district(_plate_request(PowerBalance()), data)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 0.0}, abs=1e-9)
+    assert r.power.binding and r.power.lane_mw == pytest.approx(0.0, abs=1e-9)
+
+
+def test_a_floor_the_power_cannot_carry_is_refused_by_name(backend, data):
+    with pytest.raises(Infeasible, match="even alone: Desc_IronPlate_C 1/min"):
+        backend.solve_district(DistrictRequest(
+            targets=(DistrictTarget(IRON_PLATE, minimum_rate=1.0),), allowed_recipes=IRON_SET,
+            resource_caps=(ResourceCap(IRON_ORE, 30.0),), power=PowerBalance(),
+        ), data)
+
+
+def test_extraction_at_nameplate_is_a_constant_on_the_row(backend, data):
+    """8 MW lanes + 3 MW extraction against an 11 MW grid: tight; against 10
+    MW: 17.5 plate (7/8 of the chain)."""
+    r = backend.solve_district(_plate_request(PowerBalance(grid_mw=11.0, extraction_mw=3.0)), data)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 20.0}, abs=1e-6)
+    r = backend.solve_district(_plate_request(PowerBalance(grid_mw=10.0, extraction_mw=3.0)), data)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 17.5}, abs=1e-6)
+    assert r.power.extraction_mw == 3.0
+
+
+def test_the_demand_solve_is_untouched_by_the_power_columns(backend, data):
+    """`solve` passes no PowerBalance: no generator column, no row. Pinned so
+    the shared matrices cannot grow a row the demand solve did not ask for."""
+    from production_adapter import OutputTarget, SolveRequest
+    p = backend._build(SolveRequest(outputs=(OutputTarget(IRON_PLATE, 20.0),),
+                                    allowed_recipes=IRON_SET), data)
+    assert p.n_g == 0 and p.a_ub is None and p.b_ub is None

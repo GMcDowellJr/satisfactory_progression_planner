@@ -202,6 +202,56 @@ class DistrictTarget:
 
 
 @dataclass(frozen=True)
+class GeneratorFuel:
+    """One generator_fuels.csv row as the solver sees it: a generator burning
+    one fuel. Rates are per generator per minute at 100 %; `power_mw` is the
+    generator's gross output and is NOT scaled by the scenario's machine-power
+    multiplier (the 5x run multiplies consumers, not generators). Loaded by
+    `gamedata.load_generators`, never constructed from a note."""
+
+    generator_class: ProducerClass
+    fuel_item_id: ItemId
+    burn_rate_per_min: float
+    power_mw: float
+    supplemental: tuple[tuple[ItemId, float], ...] = ()   # (item, rate): water
+    byproduct: tuple[tuple[ItemId, float], ...] = ()      # (item, rate): waste
+
+    def __post_init__(self) -> None:
+        if self.burn_rate_per_min <= 0 or self.power_mw <= 0:
+            raise ValueError(f"{self.generator_class}/{self.fuel_item_id}: rates must be positive")
+
+
+@dataclass(frozen=True)
+class PowerBalance:
+    """Power inside the solve (crossover A25.3 P1, mechanics A29).
+
+        generators      the (generator, fuel) pairs the district may build;
+                        each becomes a column consuming fuel and water
+        grid_mw         standing supply declared outside the district: an
+                        existing or imported grid, A25.3 P3 "base + fed"
+        spare_mw        the required margin, held above the draw
+        extraction_mw   the declared extractors at NAMEPLATE (P2), a constant
+
+    The balance row: generated + grid >= lane MW + extraction + spare. Lane
+    MW is the LP's machine-time at the chosen power statistic, which the
+    scenario multiplier scales; generator MW is not scaled.
+    """
+
+    generators: tuple[GeneratorFuel, ...] = ()
+    grid_mw: float = 0.0
+    spare_mw: float = 0.0
+    extraction_mw: float = 0.0
+
+    def __post_init__(self) -> None:
+        for name in ("grid_mw", "spare_mw", "extraction_mw"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be non-negative")
+        seen = [(g.generator_class, g.fuel_item_id) for g in self.generators]
+        if len(seen) != len(set(seen)):
+            raise ValueError("duplicate (generator, fuel) pair")
+
+
+@dataclass(frozen=True)
 class DistrictRequest:
     """A supply-side solve: selected outputs, a recipe set, caps, and the goal
     that breaks ties among plans of equal weighted output.
@@ -216,6 +266,8 @@ class DistrictRequest:
     allowed_recipes: AllowedRecipes = AllowedRecipes()
     resource_caps: tuple[ResourceCap, ...] = ()
     weights: Weights = Weights()
+    #: None: power stays outside the solve, as `solve` leaves it (D5)
+    power: PowerBalance | None = None
 
     def __post_init__(self) -> None:
         if not self.targets:
@@ -262,6 +314,34 @@ class BindingCap:
 
 
 @dataclass(frozen=True)
+class GeneratorUse:
+    generator_class: ProducerClass
+    fuel_item_id: ItemId
+    count: float               # fractional generator-equivalents
+    mw: float
+    fuel_per_min: float
+    supplemental_per_min: tuple[tuple[ItemId, float], ...] = ()
+
+
+@dataclass(frozen=True)
+class DistrictPower:
+    """The balance as solved. `margin_mw` is generated + grid - lane -
+    extraction - spare, which the row holds at >= 0; `binding` says the row
+    was tight and `shadow_price` what one more MW of supply would buy in
+    weighted output. Reported; nothing here judges it."""
+
+    lane_mw: float
+    extraction_mw: float
+    grid_mw: float
+    spare_mw: float
+    generated_mw: float
+    margin_mw: float
+    generators: tuple[GeneratorUse, ...]
+    binding: bool
+    shadow_price: float
+
+
+@dataclass(frozen=True)
 class DistrictResponse:
     """The district plan: a `SolveResponse` plus what each target got and why.
 
@@ -275,3 +355,5 @@ class DistrictResponse:
     weighted_output: float
     goal: Weights
     binding: tuple[BindingCap, ...]
+    #: None when the request carried no PowerBalance
+    power: DistrictPower | None = None

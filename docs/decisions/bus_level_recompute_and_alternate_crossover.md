@@ -2851,3 +2851,71 @@ make decisions as needed; we can revise later".
     O27  the bill-side bridge (A27.4 O23) and the planned-vs-installed
          report (plan note step 9)
     O28  the PWA import control (plan note step 10)
+
+## Amendment 29 — 2026-10-08. Power enters the district solve: the mechanics (A25.3 P1, O16)
+
+Appended forward-only. Amendments 13-28 stand as written. Source: this
+session, 2026-10-08, implementing A25.3 P1 for the district solve under
+Greg's "keep going". Answers A25.5 O16 for the SUPPLY-SIDE solve; the
+demand-driven `solve` is untouched (D5 still holds there, pinned).
+
+    code      gamedata.load_generators (generator_fuels.csv, not scenario-
+              scaled), contracts GeneratorFuel / PowerBalance / GeneratorUse /
+              DistrictPower, generator columns and one balance row in
+              LpBackend._build_core (only when a PowerBalance is given),
+              NodeCount.extractor_class, district.extraction_nameplate_mw,
+              district_run --no-power, the declaration's water nodes, GRID_MW,
+              SPARE_MW, GENERATORS
+    measured  container 2026-10-08, shipped case with power: lanes 945.05 MW,
+              2.0007 coal generators (30.01 coal, 90.03 water /min), the row
+              binding at 0.00287 weighted output per MW; VF 3.3997, Motor
+              0.5000 AT FLOOR, EIB 3.7500, weighted 7.6497 (caps-only:
+              9.0387). Readme case: the 900 MW grid covers 334.47 MW of
+              lanes, no generator, margin 460.53 MW, plan unchanged
+
+### A29.1 Taken in code by the agent (revisable by Greg)
+
+    M1   GENERATORS ARE COLUMNS, NOT RECIPES. A (generator, fuel) row of
+         generator_fuels.csv becomes a continuous column g >= 0 consuming
+         burn_rate fuel and the supplemental (water) per minute through the
+         same item rows the recipes use, and producing MW on one balance
+         row. MW is not an item: it has no leftover, no cap and no price
+         beyond the row's dual
+    M2   THE ROW:  sum_i mw_i x_i  -  sum_j MW_j g_j  <=  grid - spare -
+         extraction.  Lane MW is the LP's machine-time at the chosen power
+         statistic, scenario-scaled (the 5x hits consumers); generator MW is
+         gross and unscaled; extraction is a declared constant at NAMEPLATE
+         (A25.3 P2), count x base MW over every declared extractor, water
+         extractors included
+    M3   WATER IS A NODE. A district that may build coal generators declares
+         its Water Extractors as NodeCount(Desc_Water_C, "none", k,
+         extractor_class="Build_WaterPump_C"); the cap is 120k at the
+         declared clock, and the extractors count toward nameplate MW.
+         Undeclared, water is capped at 0 like any other raw (A28.1 T1)
+    M4   A GENERATOR COSTS ONE BUILDING in the goal's tie-break and carries
+         no power term; its fuel is priced through the raw draw it causes
+    M5   `PowerBalance` IS OPTIONAL on the request. None leaves power outside
+         the solve exactly as before; `solve` never passes one, pinned by
+         test_the_demand_solve_is_untouched_by_the_power_columns
+    M6   THE ROW'S DUAL is reported as `DistrictPower.shadow_price`, weighted
+         output per MW of supply, with `binding` when the margin is 0
+
+### A29.2 What the fixture shows (report only)
+
+The 1.25x / 5x district is power-bound at 100 % extraction and cap-bound at
+25 %. With power priced, Motor falls to its floor: at 5x the Motor chain
+buys the least weighted output per MW, so the contested coal goes to steel
+for frameworks and beams. That is the trade A25.3 P1 was recorded to make
+visible ("one cap is contested between power and production").
+
+### A29.3 Open
+
+    O29  realization's machine-sized power beside the LP's machine-time
+         figure, and whether the balance should be re-checked after
+         rounding (P2 says the LP figure is floor-safe; the rounded one
+         is what the player builds)
+    O30  standing generators (A25.3 P3): a declared count of built
+         generators, base or reserve, fed or not. The fixture's 4 coal
+         generators from phase 1 are not yet declared; `GRID_MW` stands in
+    O31  extraction power at the declared clock (base x clock^1.321929)
+         as a report beside the nameplate constant

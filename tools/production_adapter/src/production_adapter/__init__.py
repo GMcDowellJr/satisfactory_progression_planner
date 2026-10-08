@@ -9,9 +9,10 @@
 Progression code imports from here and nowhere deeper.
 """
 from .contracts import (
-    AllowedRecipes, BindingCap, DistrictRequest, DistrictResponse, DistrictTarget,
-    ItemFlow, MachineCount, OutputTarget, PowerReport, RawInput, RecipeMode, RecipeUse,
-    ResourceCap, SolveRequest, SolveResponse, TargetRate, Weights,
+    AllowedRecipes, BindingCap, DistrictPower, DistrictRequest, DistrictResponse,
+    DistrictTarget, GeneratorFuel, GeneratorUse, ItemFlow, MachineCount, OutputTarget,
+    PowerBalance, PowerReport, RawInput, RecipeMode, RecipeUse, ResourceCap, SolveRequest,
+    SolveResponse, TargetRate, Weights,
 )
 from .backend import Backend, BackendNotSelected, get as get_backend, register, registered
 from .gamedata import (
@@ -23,9 +24,10 @@ from .scenario import (
 
 __all__ = [
     "AllowedRecipes", "Backend", "BackendNotSelected", "BindingCap", "CHALLENGE_1_25X_2X",
-    "DistrictRequest", "DistrictResponse", "DistrictTarget", "FLUID_UNIT",
-    "ITEM_UNIT", "Item", "ItemFlow", "MARGINAL_PEAK_DEBOTTLENECK",
-    "MachineCount", "OutputTarget", "PowerRange", "PowerReport", "Producer",
+    "DistrictPower", "DistrictRequest", "DistrictResponse", "DistrictTarget", "FLUID_UNIT",
+    "GeneratorFuel", "GeneratorUse", "ITEM_UNIT", "Item", "ItemFlow",
+    "MARGINAL_PEAK_DEBOTTLENECK", "MachineCount", "OutputTarget", "PowerBalance",
+    "PowerRange", "PowerReport", "Producer",
     "RawInput", "Recipe", "RecipeMode", "RecipeUse", "ReferenceData", "ReferenceDataError",
     "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "TargetRate", "Weights",
     "get_backend", "load", "register", "registered",

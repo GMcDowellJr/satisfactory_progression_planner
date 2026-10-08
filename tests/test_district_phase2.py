@@ -7,7 +7,9 @@ between them, which is the linearity the LP owes and the test states rather
 than assumes.
 
 Measured in the agent container 2026-10-08, scenario 1.25x recipe / 5x
-machine power, LpBackend MEAN, goal "balanced" as the tie-break:
+machine power, LpBackend MEAN, goal "balanced" as the tie-break.
+
+Caps only (power outside the solve, --no-power):
 
     shipped (100 %)   VF 2.6572  Motor 2.6316  EIB 3.7500   weighted 9.0387
                       every declared cap binds; LP power 1337.88 MW
@@ -20,6 +22,21 @@ machine power, LpBackend MEAN, goal "balanced" as the tie-break:
 The shadow prices are the same in both cases: the LP is homogeneous in the
 caps, so the marginal value of a unit of each resource does not depend on
 the clock.
+
+Power in the solve (A29; 900 MW grid, 30 MW spare, 7 miners + 2 water
+extractors at nameplate = 75 MW, coal generators may be built):
+
+    shipped (100 %)   VF 3.3997  Motor 0.5000 (AT FLOOR)  EIB 3.7500
+                      weighted 7.6497; lanes 945.05 MW; 2.0007 coal
+                      generators burning 30.01 coal + 90.03 water; the row
+                      binds at 0.00287 weighted output per MW; coal and
+                      limestone bind, iron and caterium no longer do
+    readme  (25 %)    identical to caps-only: the grid covers 334.47 MW
+                      of lanes with 460.53 MW to spare, no generator built
+
+Motors fall to their floor once power is priced: at 5x the Motor chain
+buys the least weighted output per MW, so the solve spends the contested
+coal on steel for frameworks and beams instead.
 """
 from __future__ import annotations
 
@@ -55,11 +72,22 @@ ALTERNATES = {
 
 @pytest.fixture(scope="module")
 def shipped():
-    return district_run.run(DECL, case="shipped", baseline=True)
+    """Caps only: power outside the solve, with the baseline row."""
+    return district_run.run(DECL, case="shipped", baseline=True, power=False)
 
 
 @pytest.fixture(scope="module")
 def readme():
+    return district_run.run(DECL, case="readme", power=False)
+
+
+@pytest.fixture(scope="module")
+def shipped_power():
+    return district_run.run(DECL, case="shipped")
+
+
+@pytest.fixture(scope="module")
+def readme_power():
     return district_run.run(DECL, case="readme")
 
 
@@ -74,18 +102,20 @@ def _raw(response):
 # --- the declaration composes -------------------------------------------
 
 def test_caps_compose_from_extraction_rates_both_cases(shipped, readme):
-    declared = {c.item_id: c.rate_per_min for c in shipped.caps[:4]}
-    assert declared == {I["ORE"]: 360.0, I["COAL"]: 240.0, I["STONE"]: 120.0, I["GOLD"]: 60.0}
-    assert [c.item_id for c in shipped.caps[:4]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"]]
-    declared = {c.item_id: c.rate_per_min for c in readme.caps[:4]}
-    assert declared == {I["ORE"]: 90.0, I["COAL"]: 60.0, I["STONE"]: 30.0, I["GOLD"]: 15.0}
+    declared = {c.item_id: c.rate_per_min for c in shipped.caps[:5]}
+    assert declared == {I["ORE"]: 360.0, I["COAL"]: 240.0, I["STONE"]: 120.0, I["GOLD"]: 60.0,
+                        I["WATER"]: 240.0}
+    assert [c.item_id for c in shipped.caps[:5]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"], I["WATER"]]
+    declared = {c.item_id: c.rate_per_min for c in readme.caps[:5]}
+    assert declared == {I["ORE"]: 90.0, I["COAL"]: 60.0, I["STONE"]: 30.0, I["GOLD"]: 15.0,
+                        I["WATER"]: 60.0}
 
 
 def test_the_district_is_closed(shipped):
-    """Every raw resource not declared is capped at 0: 13 resources, 4 declared."""
+    """Every raw resource not declared is capped at 0: 13 resources, 5 declared."""
     assert len(shipped.caps) == 13
-    assert all(c.rate_per_min == 0.0 for c in shipped.caps[4:])
-    assert "Desc_OreCopper_C" in {c.item_id for c in shipped.caps[4:]}
+    assert all(c.rate_per_min == 0.0 for c in shipped.caps[5:])
+    assert "Desc_OreCopper_C" in {c.item_id for c in shipped.caps[5:]}
 
 
 def test_the_declared_recipe_names_resolve_to_the_built_factory(shipped):
@@ -165,6 +195,7 @@ def test_the_readme_case_is_the_shipped_plan_scaled_by_a_quarter(shipped, readme
     s, r = _rates(shipped), _rates(readme)
     assert r == pytest.approx({k: v / 4.0 for k, v in s.items()}, abs=1e-4)
     assert readme.response.weighted_output == pytest.approx(9.038741 / 4.0, abs=1e-4)
+    assert readme.response.power is None
     assert not any(t.at_floor for t in readme.response.targets)
     assert {b.item_id: b.shadow_price for b in readme.response.binding} == pytest.approx(
         {b.item_id: b.shadow_price for b in shipped.response.binding}, abs=1e-6,
@@ -176,7 +207,7 @@ def test_floors_too_high_for_the_readme_case_are_refused_with_the_scale():
     only to 0.7555 of their values, coal and caterium binding."""
     from production_adapter import DistrictRequest, DistrictTarget
     from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic
-    base = district_run.run(DECL, case="readme")
+    base = district_run.run(DECL, case="readme", power=False)
     request = DistrictRequest(
         targets=(DistrictTarget(I["VF"], minimum_rate=1.0), DistrictTarget(I["MOTOR"], minimum_rate=1.0),
                  DistrictTarget(I["EIB"], minimum_rate=0.5)),
@@ -186,6 +217,52 @@ def test_floors_too_high_for_the_readme_case_are_refused_with_the_scale():
         LpBackend(PowerStatistic.MEAN).solve_district(request, load(REPO, DECL.SCENARIO))
     assert "0.7555" in str(e.value)
     assert "Desc_Coal_C" in str(e.value) and "Desc_OreGold_C" in str(e.value)
+
+
+# --- power in the solve (A29) ----------------------------------------------
+
+def test_power_is_composed_from_the_declaration(shipped_power):
+    pb = shipped_power.request.power
+    assert pb.grid_mw == 900.0 and pb.spare_mw == 30.0
+    assert pb.extraction_mw == 75.0            # 7 x Mk.1 at 5 MW + 2 water at 20 MW
+    assert [(g.generator_class, g.fuel_item_id) for g in pb.generators] == [
+        ("Build_GeneratorCoal_C", I["COAL"]),
+        ("Build_GeneratorCoal_C", "Desc_CompactedCoal_C"),
+        ("Build_GeneratorCoal_C", "Desc_PetroleumCoke_C"),
+    ]
+
+
+def test_shipped_with_power_builds_two_coal_generators_and_motors_fall_to_their_floor(shipped_power):
+    r = shipped_power.response
+    assert _rates(shipped_power) == pytest.approx(
+        {I["VF"]: 3.399709, I["MOTOR"]: 0.5, I["EIB"]: 3.75}, abs=1e-4,
+    )
+    assert [t.at_floor for t in r.targets] == [False, True, False]
+    assert r.weighted_output == pytest.approx(7.649709, abs=1e-4)
+    pw = r.power
+    assert pw.lane_mw == pytest.approx(945.0546, abs=1e-3)
+    assert pw.generated_mw == pytest.approx(150.0546, abs=1e-3)
+    assert pw.margin_mw == pytest.approx(0.0, abs=1e-6) and pw.binding
+    assert pw.shadow_price == pytest.approx(0.002871, abs=1e-5)
+    [g] = pw.generators
+    assert g.fuel_item_id == I["COAL"]
+    assert g.count == pytest.approx(2.000728, abs=1e-4)
+    assert g.fuel_per_min == pytest.approx(30.010914, abs=1e-4)
+    assert dict(g.supplemental_per_min) == pytest.approx({I["WATER"]: 90.032743}, abs=1e-4)
+    # the plan's raw draw carries the generators' coal and water
+    assert _raw(r.plan) == pytest.approx({
+        I["COAL"]: 240.0, I["STONE"]: 120.0, I["ORE"]: 291.714407, I["GOLD"]: 11.4,
+        I["WATER"]: 90.032743,
+    }, abs=1e-4)
+    assert {b.item_id for b in r.binding} == {I["COAL"], I["STONE"], "Desc_OreCopper_C"}
+
+
+def test_readme_with_power_is_the_caps_only_plan_on_the_grid(readme, readme_power):
+    assert _rates(readme_power) == pytest.approx(_rates(readme), abs=1e-6)
+    pw = readme_power.response.power
+    assert pw.generators == () and not pw.binding
+    assert pw.lane_mw == pytest.approx(334.4708, abs=1e-3)
+    assert pw.margin_mw == pytest.approx(460.529158, abs=1e-3)
 
 
 # --- Stage 0 baseline row ---------------------------------------------------
@@ -216,6 +293,16 @@ def test_baseline_makes_steel_once(shipped):
 
 # --- export (A27.3) ----------------------------------------------------------
 
+def test_export_carries_the_power_balance(shipped_power, tmp_path):
+    data = load(REPO, DECL.SCENARIO)
+    path = tmp_path / "district_power.json"
+    district_run.export(shipped_power, data, path)
+    doc = json.loads(path.read_bytes())
+    assert doc["power"]["binding"] is True
+    assert doc["power"]["generators"][0]["generator_class"] == "Build_GeneratorCoal_C"
+    assert doc["power"]["grid_mw"] == 900.0
+
+
 def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped, tmp_path):
     data = load(REPO, DECL.SCENARIO)
     path = tmp_path / "district.json"
@@ -225,9 +312,10 @@ def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped, tm
     doc = json.loads(raw)
     assert doc["schema"] == district_run.EXPORT_SCHEMA
     assert doc["case"] == "shipped"
+    assert doc["power"] is None   # this fixture ran caps-only
     assert doc["scenario"]["recipe_input_multiplier"] == 1.25
     assert doc["scenario"]["machine_power_multiplier"] == 5.0
-    assert [n["item_id"] for n in doc["district"]["nodes"]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"]]
+    assert [n["item_id"] for n in doc["district"]["nodes"]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"], I["WATER"]]
     assert len(doc["district"]["caps"]) == 13
     assert doc["goal"] == {"name": "balanced", "resources": 1.0, "power": 1.0, "buildings": 1.0, "complexity": 0.0}
     assert [t["item_id"] for t in doc["targets"]] == [I["VF"], I["MOTOR"], I["EIB"]]

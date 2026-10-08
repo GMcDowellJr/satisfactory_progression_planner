@@ -46,8 +46,9 @@ import numpy as np
 from scipy.optimize import linprog
 
 from .contracts import (
-    BindingCap, DistrictRequest, DistrictResponse, ItemFlow, MachineCount, PowerReport,
-    RawInput, RecipeMode, RecipeUse, ResourceCap, SolveRequest, SolveResponse, TargetRate,
+    BindingCap, DistrictPower, DistrictRequest, DistrictResponse, GeneratorUse, ItemFlow,
+    MachineCount, PowerBalance, PowerReport, RawInput, RecipeMode, RecipeUse, ResourceCap,
+    SolveRequest, SolveResponse, TargetRate,
 )
 from .gamedata import ReferenceData, Recipe
 
@@ -151,6 +152,13 @@ class _Problem:
     bounds: list[tuple[float, float | None]]
     primary: np.ndarray
     secondary: np.ndarray
+    #: generator columns, appended AFTER x, s and l so the first three blocks
+    #: keep their positions whether or not power is in the solve (A29)
+    n_g: int = 0
+    generators: tuple = ()
+    #: the power balance row (A_ub, b_ub), or None: power outside the solve
+    a_ub: np.ndarray | None = None
+    b_ub: np.ndarray | None = None
 
 
 class LpBackend:
@@ -193,7 +201,7 @@ class LpBackend:
     def _build_core(
         self, recipe_ids: tuple[str, ...], targets: dict[str, float],
         caps: dict[str, float | None], w, data: ReferenceData,
-        floors: dict[str, float] | None = None,
+        floors: dict[str, float] | None = None, power: PowerBalance | None = None,
     ) -> _Problem:
         """The section 7 matrices. `solve` and `solve_district` share them.
 
@@ -204,11 +212,16 @@ class LpBackend:
         """
         floors = floors or {}
         recipes = [data.recipes[rid] for rid in recipe_ids]
+        generators = tuple(power.generators) if power is not None else ()
 
         items: set[str] = set()
         for r in recipes:
             items.update(i for i, _ in r.inputs)
             items.update(i for i, _ in r.outputs)
+        for g in generators:
+            items.add(g.fuel_item_id)
+            items.update(i for i, _ in g.supplemental)
+            items.update(i for i, _ in g.byproduct)
         items.update(targets)
         item_ids = tuple(sorted(items))
         item_index = {i: n for n, i in enumerate(item_ids)}
@@ -227,7 +240,8 @@ class LpBackend:
 
         n_x, n_s = len(recipe_ids), len(raw_ids)
         n_l = len(item_ids) if self.unconsumed is UnconsumedMode.FREE else 0
-        n = n_x + n_s + n_l
+        n_g = len(generators)
+        n = n_x + n_s + n_l + n_g
 
         a_eq = np.zeros((len(item_ids), n), dtype=float)
         b_eq = np.zeros(len(item_ids), dtype=float)
@@ -241,6 +255,13 @@ class LpBackend:
         if n_l:
             for item, row in item_index.items():
                 a_eq[row, n_x + n_s + row] = -1.0
+        for col, g in enumerate(generators):
+            gcol = n_x + n_s + n_l + col
+            a_eq[item_index[g.fuel_item_id], gcol] -= g.burn_rate_per_min
+            for item, rate in g.supplemental:
+                a_eq[item_index[item], gcol] -= rate
+            for item, rate in g.byproduct:
+                a_eq[item_index[item], gcol] += rate
         for item, rate in targets.items():
             b_eq[item_index[item]] = rate
 
@@ -252,11 +273,26 @@ class LpBackend:
             bounds.append((0.0, FLOW_UPPER_BOUND if cap is None else float(cap)))
         if n_l:
             bounds.extend((floors.get(item, 0.0), FLOW_UPPER_BOUND) for item in item_ids)
+        bounds.extend((0.0, self.activity_upper_bound) for _ in generators)
 
         primary = np.zeros(n, dtype=float)
         for col, r in enumerate(recipes):
             primary[col] = w.power * _statistic(r, self.power_statistic) + w.buildings
         primary[n_x:n_x + n_s] = w.resources
+        # A generator is a building; its fuel is priced through the raw draw
+        # it causes, and it carries no power term because it supplies power.
+        primary[n_x + n_s + n_l:] = w.buildings
+
+        a_ub = b_ub = None
+        if power is not None:
+            # generated + grid >= lanes + extraction + spare, as a <= row:
+            #   sum_i mw_i x_i - sum_j MW_j g_j <= grid - spare - extraction
+            a_ub = np.zeros((1, n), dtype=float)
+            for col, r in enumerate(recipes):
+                a_ub[0, col] = _statistic(r, self.power_statistic)
+            for col, g in enumerate(generators):
+                a_ub[0, n_x + n_s + n_l + col] = -g.power_mw
+            b_ub = np.array([power.grid_mw - power.spare_mw - power.extraction_mw], dtype=float)
         # Leftover slack carries zero cost. Section 2.4 rejects an objective
         # penalty on leftovers: lambda has no physical referent. The secondary
         # objective below keeps leftovers minimal among optima instead, which
@@ -269,11 +305,17 @@ class LpBackend:
             n_x=n_x, n_s=n_s, n_l=n_l,
             a_eq=a_eq, b_eq=b_eq, bounds=bounds,
             primary=primary, secondary=secondary,
+            n_g=n_g, generators=generators, a_ub=a_ub, b_ub=b_ub,
         )
 
     # -- solve ------------------------------------------------------------
 
     def _run(self, c, p: _Problem, extra_ub=None, extra_b=None, on_unbounded: str | None = None):
+        # The power row, when present, is ALWAYS row 0 of A_ub, so its dual
+        # is at a known index; stage constraints stack beneath it.
+        if p.a_ub is not None:
+            extra_ub = p.a_ub if extra_ub is None else np.vstack([p.a_ub, extra_ub])
+            extra_b = p.b_ub if extra_b is None else np.concatenate([p.b_ub, extra_b])
         result = linprog(
             c, A_ub=extra_ub, b_ub=extra_b, A_eq=p.a_eq, b_eq=p.b_eq,
             bounds=p.bounds, method="highs",
@@ -352,11 +394,11 @@ class LpBackend:
         targets = {t.item_id: 0.0 for t in active}
         floors = {t.item_id: t.minimum_rate for t in active if t.minimum_rate is not None}
         caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
-        p = self._build_core(recipe_ids, targets, caps, request.weights, data, floors)
+        p = self._build_core(recipe_ids, targets, caps, request.weights, data, floors, request.power)
         index = {i: n for n, i in enumerate(p.item_ids)}
         out_col = {t.item_id: p.n_x + p.n_s + index[t.item_id] for t in active}
 
-        n = p.n_x + p.n_s + p.n_l
+        n = p.n_x + p.n_s + p.n_l + p.n_g
         c1 = np.zeros(n, dtype=float)
         for t in active:
             c1[out_col[t.item_id]] = -t.weight
@@ -439,9 +481,35 @@ class LpBackend:
             for col, i in enumerate(p.raw_ids)
             if caps.get(i) is not None and s_first[col] >= float(caps[i]) - tol
         )
+        power_report = None
+        if request.power is not None:
+            x = v[:p.n_x]
+            g = v[p.n_x + p.n_s + p.n_l:]
+            lane_mw = float(sum(
+                _statistic(data.recipes[rid], self.power_statistic) * val
+                for rid, val in zip(p.recipe_ids, x)
+            ))
+            uses = tuple(
+                GeneratorUse(
+                    generator_class=gen.generator_class, fuel_item_id=gen.fuel_item_id,
+                    count=float(val), mw=float(val) * gen.power_mw,
+                    fuel_per_min=float(val) * gen.burn_rate_per_min,
+                    supplemental_per_min=tuple((i, float(val) * r) for i, r in gen.supplemental),
+                )
+                for gen, val in zip(p.generators, g) if val > tol
+            )
+            generated = float(sum(u.mw for u in uses))
+            pb = request.power
+            margin = generated + pb.grid_mw - lane_mw - pb.extraction_mw - pb.spare_mw
+            row_dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
+            power_report = DistrictPower(
+                lane_mw=lane_mw, extraction_mw=pb.extraction_mw, grid_mw=pb.grid_mw,
+                spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
+                generators=uses, binding=margin <= tol, shadow_price=-row_dual,
+            )
         return DistrictResponse(
             plan=plan, targets=target_rates, weighted_output=z1,
-            goal=request.weights, binding=binding,
+            goal=request.weights, binding=binding, power=power_report,
         )
 
     def _floor_diagnosis(
@@ -453,9 +521,11 @@ class LpBackend:
             return Infeasible("no feasible district plan, and no floor is declared")
         alone: list[str] = []
         for item, floor in floors.items():
-            p1 = self._build_core(recipe_ids, {item: 0.0}, caps, request.weights, data, {item: floor})
+            p1 = self._build_core(
+                recipe_ids, {item: 0.0}, caps, request.weights, data, {item: floor}, request.power,
+            )
             try:
-                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l), p1)
+                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l + p1.n_g), p1)
             except Infeasible:
                 alone.append(f"{item} {floor:g}/min")
         if alone:
@@ -485,10 +555,10 @@ class LpBackend:
         def feasible(lam: float):
             p = self._build_core(
                 recipe_ids, targets, caps, request.weights, data,
-                {i: f * lam for i, f in floors.items()},
+                {i: f * lam for i, f in floors.items()}, request.power,
             )
             try:
-                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l), p)
+                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l + p.n_g), p)
             except Infeasible:
                 return p, None
 

@@ -153,3 +153,36 @@ def test_the_composer_cannot_choose():
     decision nobody made (AGENTS.md, "Layers report; they don't choose")."""
     tree = ast.parse(inspect.getsource(district))
     assert {"min", "max", "sorted", "sort", "round"}.isdisjoint(_called_names(tree))
+
+
+# --- nodes of another extractor class; extraction at nameplate (A29) --------
+
+WATER_RATES = RATES + (ExtractionRate(
+    extractor_class="Build_WaterPump_C", purity="none", purity_multiplier=1.0,
+    nominal_rate_min=120.0, max_250_rate_min=300.0, unit="m3/min",
+),)
+
+
+def test_a_node_may_name_its_own_extractor_class():
+    d = DistrictDefinition(
+        nodes=(NodeCount(IRON, "pure", 1), NodeCount(WATER, "none", 2, extractor_class="Build_WaterPump_C")),
+        extractor_class=MK1, extraction_clock=0.5,
+    )
+    caps = resource_caps(d, WATER_RATES, RESOURCES)
+    assert caps[:2] == (ResourceCap(IRON, 60.0), ResourceCap(WATER, 120.0))
+
+
+def test_extraction_nameplate_mw_counts_every_declared_extractor():
+    from progression import extraction_nameplate_mw
+    d = DistrictDefinition(
+        nodes=(NodeCount(IRON, "pure", 3), NodeCount(WATER, "none", 2, extractor_class="Build_WaterPump_C")),
+        extractor_class=MK1, extraction_clock=0.25,   # the clock does not enter: nameplate (P2)
+    )
+    assert extraction_nameplate_mw(d, {MK1: 5.0, "Build_WaterPump_C": 20.0}) == 55.0
+
+
+def test_extraction_nameplate_mw_refuses_an_unknown_class_by_name():
+    from progression import extraction_nameplate_mw
+    d = DistrictDefinition(nodes=(NodeCount(IRON, "pure", 1),), extractor_class=MK1, extraction_clock=1.0)
+    with pytest.raises(DistrictError, match="Build_MinerMk1_C: no base power"):
+        extraction_nameplate_mw(d, {})

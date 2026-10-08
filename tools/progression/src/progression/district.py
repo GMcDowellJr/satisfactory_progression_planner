@@ -62,6 +62,9 @@ class NodeCount:
     item_id: ItemId
     purity: str      # impure | normal | pure | none, as extraction_rates.csv spells them
     count: int
+    #: None: the definition's extractor. Set for a node of another kind (a
+    #: Water Extractor beside the miners); the (class, purity) row must exist
+    extractor_class: ProducerClass | None = None
 
     def __post_init__(self) -> None:
         if self.count < 1:
@@ -126,7 +129,7 @@ def resource_caps(
     for node in definition.nodes:
         if node.item_id not in resource_items:
             raise DistrictError(f"{node.item_id} is not a raw resource; a node cannot declare it")
-        rate = _rate_for(rates, definition.extractor_class, node.purity)
+        rate = _rate_for(rates, node.extractor_class or definition.extractor_class, node.purity)
         cap = (
             node.count * rate.nominal_rate_min * definition.extraction_clock
             * (1.0 - definition.reserve_fraction)
@@ -138,6 +141,22 @@ def resource_caps(
         for i in resource_items if i not in per_item
     )
     return declared + closed
+
+
+def extraction_nameplate_mw(
+    definition: DistrictDefinition, base_mw: dict[ProducerClass, float],
+) -> float:
+    """Every declared extractor at NAMEPLATE: count * base MW, summed (A25.3
+    P2: underclocking only lowers draw, so the balance stays floor-safe).
+    `base_mw` is `progression.power.load_power_tables(repo).extractors`, read
+    there; a class absent from it is refused by name."""
+    total = 0.0
+    for node in definition.nodes:
+        cls = node.extractor_class or definition.extractor_class
+        if cls not in base_mw:
+            raise DistrictError(f"{cls}: no base power in extraction_buildings.csv")
+        total += node.count * base_mw[cls]
+    return total
 
 
 def _normalise(name: str) -> str:
