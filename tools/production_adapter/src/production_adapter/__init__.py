@@ -9,8 +9,9 @@
 Progression code imports from here and nowhere deeper.
 """
 from .contracts import (
-    AllowedRecipes, ItemFlow, MachineCount, OutputTarget, PowerReport, RawInput,
-    RecipeMode, RecipeUse, ResourceCap, SolveRequest, SolveResponse, Weights,
+    AllowedRecipes, BindingCap, DistrictRequest, DistrictResponse, DistrictTarget,
+    ItemFlow, MachineCount, OutputTarget, PowerReport, RawInput, RecipeMode, RecipeUse,
+    ResourceCap, SolveRequest, SolveResponse, TargetRate, Weights,
 )
 from .backend import Backend, BackendNotSelected, get as get_backend, register, registered
 from .gamedata import (
@@ -21,11 +22,12 @@ from .scenario import (
 )
 
 __all__ = [
-    "AllowedRecipes", "Backend", "BackendNotSelected", "CHALLENGE_1_25X_2X", "FLUID_UNIT",
+    "AllowedRecipes", "Backend", "BackendNotSelected", "BindingCap", "CHALLENGE_1_25X_2X",
+    "DistrictRequest", "DistrictResponse", "DistrictTarget", "FLUID_UNIT",
     "ITEM_UNIT", "Item", "ItemFlow", "MARGINAL_PEAK_DEBOTTLENECK",
     "MachineCount", "OutputTarget", "PowerRange", "PowerReport", "Producer",
     "RawInput", "Recipe", "RecipeMode", "RecipeUse", "ReferenceData", "ReferenceDataError",
-    "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "Weights",
+    "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "TargetRate", "Weights",
     "get_backend", "load", "register", "registered",
 ]
 __version__ = "0.1.0"

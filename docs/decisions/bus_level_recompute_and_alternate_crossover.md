@@ -2776,3 +2776,78 @@ step.
     O24  Pyodide: whether the PWA eventually hosts the solver itself, which
          is still "the repo solves" under A26.1 C1 (same code, no second
          solver), or stays on file import
+
+## Amendment 28 — 2026-10-08. The district solve landed; choices taken in code, pending Greg
+
+Appended forward-only. Amendments 13-27 stand as written. Source: this
+session, 2026-10-08, implementing A26.2 and A27.2 under Greg's "keep going,
+make decisions as needed; we can revise later".
+
+    code      progression/district.py (DistrictDefinition -> caps),
+              production_adapter contracts DistrictTarget / DistrictRequest /
+              DistrictResponse / TargetRate / BindingCap, LpBackend.
+              solve_district, tools/phases/district_phase2.py (declaration),
+              tools/district_run.py (joint + export), four test files
+    measured  container 2026-10-08, scenario 1.25x / 5x, LpBackend MEAN:
+              shipped case (100 %) VF 2.6572, Motor 2.6316, EIB 3.7500 /min,
+              weighted 9.0387, every declared cap binding, LP power
+              1337.88 MW; readme case (25 %) exactly a quarter of each.
+              Baseline row: v5.4.4's shipped portfolio as demands draws coal
+              262.75 (cap 240), limestone 150.4 (cap 120), copper 20.58
+              (cap 0) with ONE Solid Steel Ingot flow of 4.379 foundries.
+              Container: 1042 passed, 1 skipped
+    unchanged `LpBackend.solve`: its matrices moved into `_build_core`, which
+              it calls with no floors; every pre-existing case passes
+
+### A28.1 Taken in code by the agent, 2026-10-08 (revisable by Greg)
+
+    T1   A DISTRICT IS CLOSED. Every raw resource the definition does not
+         declare is capped at 0.0. Without it the first run drew Copper Ore
+         without limit (measured: 2.026 copper smelters on a district with
+         no copper), which is the free supply v5.4.1 removed from the PWA.
+         A declared import is the future shape of "supply from elsewhere"
+         (A24.1 S3) and is not carried yet
+    T2   THE SOLVE IS THREE LEXICOGRAPHIC LPs: max weighted output, then
+         min goal cost among those optima, then min total activity (D3a).
+         The goal is `Weights`, the same object `solve` prices, so a named
+         goal means one thing in both solves and is printed (LP 21 R2)
+    T3   A FLOOR THAT CANNOT BE MET IS REFUSED, NEVER DROPPED (v5.5 rule 1).
+         The message names floors unreachable alone, else the scale at which
+         all floors fit together (bisection to 1e-4) and the caps binding
+         there. Measured: readme case, floors 1 / 1 / 0.5 fit to 0.7555,
+         coal and caterium binding; EIB 1/min alone needs 32 limestone/min
+         against 30
+    T4   FIXTURE FLOORS 0.5 / 0.5 / 0.25 per minute (VF, Motor, EIB), so
+         both clock cases solve. Declaration values, nothing more
+    T5   SHADOW PRICES FROM THE DUALS of the first LP, per binding cap,
+         including a closed resource: copper at cap 0 is worth 0.0189
+         weighted output per unit/min here. The price is the same in both
+         clock cases because the LP is homogeneous in the caps
+    T6   UNBOUNDED IS DETECTED ON THE GUARDS. HiGHS rarely returns status 3
+         through the section 5 bounds; a stage-1 answer on the activity or
+         flow guard is the ray and is refused as `Unbounded`, naming the
+         uncapped raws
+    T7   EXPORT DEFAULT TAKEN (A27.3): `district_run.py --export PATH`
+         writes one LF JSON, schema "district-plan/1", carrying the
+         declaration, case, scenario, nodes, all 13 caps, recipe ids, goal
+         with weights, targets, weighted output, binding caps, the plan, the
+         baseline row when asked, and `unverified` (belts, pipes, pumps,
+         routing, node reachability). Where it is written is the caller's
+         path; the state-dir default of A27.3 is not wired
+    T8   CLOSING CAPS IN items.csv ORDER (`resources_in_reference_order`):
+         a frozenset's order changes between processes, and a plan whose cap
+         list reorders itself is not the same plan twice
+    T9   `tools/production_adapter/tests/conftest.py` added: that directory
+         collected only after tests/conftest.py had run (pre-existing)
+
+### A28.2 Open
+
+    O25  power in the solve (A25.3 P1, A25.5 O16): generators as recipes and
+         the balance row. The LP power figure is machine-time at mean power
+         with extraction excluded (D5); it is not the 5x-run's draw
+    O26  realization over the district plan (plan note step 8): a declared
+         partition for the fixture, machine-sized power, the trickle lane's
+         own minimum clock
+    O27  the bill-side bridge (A27.4 O23) and the planned-vs-installed
+         report (plan note step 9)
+    O28  the PWA import control (plan note step 10)

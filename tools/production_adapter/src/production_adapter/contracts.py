@@ -163,3 +163,115 @@ class SolveResponse:
     machines: tuple[MachineCount, ...]
     backend: str = ""
     warnings: tuple[str, ...] = field(default_factory=tuple)
+
+
+# --------------------------------------------------------------------------
+# the district solve (crossover A27.1 K2, A27.2)
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DistrictTarget:
+    """One selected output of a supply-side solve: a weight and an optional floor.
+
+    The district question is "what can this site make", with no bill (A27.1
+    K2). Rates are therefore VARIABLES, not inputs: the solve maximises the
+    weighted sum of the selected outputs within the caps, after every declared
+    floor is met. Both numbers are printed with the result (LP record 21 R2).
+
+        weight         0 excludes the item from the objective; the PWA's
+                       Trickle / Normal / Prioritize are three values of it
+        minimum_rate   a declared floor, in items per minute. A trickle is a
+                       small floor, never a clock (v5.5 rule 2). None: no floor
+    """
+
+    item_id: ItemId
+    weight: float = 1.0
+    minimum_rate: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.weight < 0:
+            raise ValueError(f"{self.item_id}: weight must be non-negative")
+        if self.minimum_rate is not None and self.minimum_rate <= 0:
+            raise ValueError(f"{self.item_id}: minimum_rate must be positive when given")
+
+    @property
+    def is_active(self) -> bool:
+        """In the solve at all: weighted, or held above a floor."""
+        return self.weight > 0 or self.minimum_rate is not None
+
+
+@dataclass(frozen=True)
+class DistrictRequest:
+    """A supply-side solve: selected outputs, a recipe set, caps, and the goal
+    that breaks ties among plans of equal weighted output.
+
+    `weights` is the SECONDARY objective: among the plans that reach the
+    maximum weighted output, the one cheapest under these weights is chosen.
+    It is the same `Weights` the demand-driven solve uses, so a named goal
+    (balanced, resources, power, buildings) means the same thing in both.
+    """
+
+    targets: tuple[DistrictTarget, ...]
+    allowed_recipes: AllowedRecipes = AllowedRecipes()
+    resource_caps: tuple[ResourceCap, ...] = ()
+    weights: Weights = Weights()
+
+    def __post_init__(self) -> None:
+        if not self.targets:
+            raise ValueError("a district solve needs at least one target")
+        seen = [t.item_id for t in self.targets]
+        dupes = {i for i in seen if seen.count(i) > 1}
+        if dupes:
+            raise ValueError(f"duplicate district targets: {sorted(dupes)}")
+        if not any(t.is_active for t in self.targets):
+            raise ValueError(
+                "every target has weight 0 and no floor: nothing to maximise and "
+                "nothing to hold. Exclusion is a per-target setting, not a request"
+            )
+        capped = {c.item_id for c in self.resource_caps}
+        both = capped & set(seen)
+        if both:
+            raise ValueError(f"item is both a target and a capped input: {sorted(both)}")
+
+
+@dataclass(frozen=True)
+class TargetRate:
+    """What one target got. `at_floor` says the floor is all it got."""
+
+    item_id: ItemId
+    rate_per_min: float
+    weight: float
+    minimum_rate: float | None
+    at_floor: bool
+    excluded: bool
+
+
+@dataclass(frozen=True)
+class BindingCap:
+    """A resource cap the solve pressed against, with its shadow price.
+
+    `shadow_price` is d(weighted output) / d(cap), read from the LP's dual on
+    the cap's bound. It can be 0.0 at a degenerate optimum; the cap is still
+    reported as binding because the draw sits on it.
+    """
+
+    item_id: ItemId
+    cap_per_min: float
+    shadow_price: float
+
+
+@dataclass(frozen=True)
+class DistrictResponse:
+    """The district plan: a `SolveResponse` plus what each target got and why.
+
+    `plan.items` carries each target's output as that item's net flow, which is
+    the material ledger v5.5 Stage 1 asks for. `targets` keeps request order;
+    nothing here is ranked.
+    """
+
+    plan: SolveResponse
+    targets: tuple[TargetRate, ...]
+    weighted_output: float
+    goal: Weights
+    binding: tuple[BindingCap, ...]

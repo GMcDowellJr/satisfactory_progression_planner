@@ -46,8 +46,8 @@ import numpy as np
 from scipy.optimize import linprog
 
 from .contracts import (
-    ItemFlow, MachineCount, PowerReport, RawInput, RecipeMode, RecipeUse,
-    SolveRequest, SolveResponse,
+    BindingCap, DistrictRequest, DistrictResponse, ItemFlow, MachineCount, PowerReport,
+    RawInput, RecipeMode, RecipeUse, ResourceCap, SolveRequest, SolveResponse, TargetRate,
 )
 from .gamedata import ReferenceData, Recipe
 
@@ -98,6 +98,15 @@ class SolverFailure(RuntimeError):
     """HiGHS returned neither an optimum nor an infeasibility."""
 
 
+class Unbounded(RuntimeError):
+    """A district solve with a weighted output that no cap bounds (A27.2).
+
+    Routine, not a defect: a target whose whole chain runs on uncapped raw
+    resources can be made at any rate, and "any rate" is not a plan. The
+    message names the uncapped raws; cap them or drop the weight.
+    """
+
+
 def _statistic(recipe: Recipe, statistic: PowerStatistic) -> float:
     if statistic is PowerStatistic.MIN:
         return recipe.power.min_mw
@@ -106,7 +115,9 @@ def _statistic(recipe: Recipe, statistic: PowerStatistic) -> float:
     return recipe.power.mean_mw
 
 
-def enabled_recipe_ids(request: SolveRequest, data: ReferenceData) -> tuple[str, ...]:
+def enabled_recipe_ids(
+    request: SolveRequest | DistrictRequest, data: ReferenceData,
+) -> tuple[str, ...]:
     """Sorted, per D3a mitigation 1. The sort is the determinism guard.
 
     Public because `analysis.py` needs it to decide whether two solve
@@ -175,13 +186,29 @@ class LpBackend:
             )
 
         recipe_ids = enabled_recipe_ids(request, data)
+        targets = {o.item_id: o.rate_per_min for o in request.outputs}
+        caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
+        return self._build_core(recipe_ids, targets, caps, request.weights, data)
+
+    def _build_core(
+        self, recipe_ids: tuple[str, ...], targets: dict[str, float],
+        caps: dict[str, float | None], w, data: ReferenceData,
+        floors: dict[str, float] | None = None,
+    ) -> _Problem:
+        """The section 7 matrices. `solve` and `solve_district` share them.
+
+        `targets` are the b_eq demands (0.0 for a district target, whose output
+        is then the item's leftover flow). `floors` are lower bounds on those
+        leftovers and exist only for the district solve; the demand-driven
+        solve never passes them, so its problem is unchanged by construction.
+        """
+        floors = floors or {}
         recipes = [data.recipes[rid] for rid in recipe_ids]
 
         items: set[str] = set()
         for r in recipes:
             items.update(i for i, _ in r.inputs)
             items.update(i for i, _ in r.outputs)
-        targets = {o.item_id: o.rate_per_min for o in request.outputs}
         items.update(targets)
         item_ids = tuple(sorted(items))
         item_index = {i: n for n, i in enumerate(item_ids)}
@@ -217,16 +244,15 @@ class LpBackend:
         for item, rate in targets.items():
             b_eq[item_index[item]] = rate
 
-        caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
         bounds: list[tuple[float, float | None]] = [
             (0.0, self.activity_upper_bound) for _ in recipe_ids
         ]
         for item in raw_ids:
             cap = caps.get(item)
             bounds.append((0.0, FLOW_UPPER_BOUND if cap is None else float(cap)))
-        bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(n_l))
+        if n_l:
+            bounds.extend((floors.get(item, 0.0), FLOW_UPPER_BOUND) for item in item_ids)
 
-        w = request.weights
         primary = np.zeros(n, dtype=float)
         for col, r in enumerate(recipes):
             primary[col] = w.power * _statistic(r, self.power_statistic) + w.buildings
@@ -247,11 +273,13 @@ class LpBackend:
 
     # -- solve ------------------------------------------------------------
 
-    def _run(self, c, p: _Problem, extra_ub=None, extra_b=None):
+    def _run(self, c, p: _Problem, extra_ub=None, extra_b=None, on_unbounded: str | None = None):
         result = linprog(
             c, A_ub=extra_ub, b_ub=extra_b, A_eq=p.a_eq, b_eq=p.b_eq,
             bounds=p.bounds, method="highs",
         )
+        if result.status == 3 and on_unbounded:
+            raise Unbounded(on_unbounded)
         if result.status == 2:
             raise Infeasible(
                 "no feasible production plan"
@@ -292,13 +320,202 @@ class LpBackend:
             > self.tolerance
         )
 
-        return self._response(request, data, p, v, z, tie_broken)
+        targets = {o.item_id: o.rate_per_min for o in request.outputs}
+        return self._response(targets, request.resource_caps, data, p, v, z, tie_broken)
+
+    # -- the district solve (A27.1 K2, A27.2) ------------------------------
+
+    def solve_district(self, request: DistrictRequest, data: ReferenceData) -> DistrictResponse:
+        """Supply-side: maximise the weighted selected outputs within the caps.
+
+        Three LPs, lexicographic, each a refinement of the last within a 1e-9
+        relative slack (the D3a pattern, extended by one stage):
+
+            1  max  sum_i w_i * out_i         out_i = the target's leftover flow,
+                                              bounded below by its floor
+            2  min  goal cost                 request.weights, as `solve` prices it
+            3  min  total activity            D3a tie-break
+
+        A target with weight 0 and no floor is not in the problem at all and is
+        reported as excluded at 0.0. A floor that cannot be met raises
+        `Infeasible` naming the floor(s): alone-infeasible ones first, then the
+        joint case. A weighted output that no cap bounds raises `Unbounded`.
+        Needs `unconsumed=FREE`: the outputs ARE leftover flows.
+        """
+        if self.unconsumed is not UnconsumedMode.FREE:
+            raise NotImplementedError(
+                "a district target's output is its leftover flow (A27.2); under "
+                "unconsumed=forbid every leftover is zero and there is nothing to maximise"
+            )
+        recipe_ids = enabled_recipe_ids(request, data)
+        active = tuple(t for t in request.targets if t.is_active)
+        targets = {t.item_id: 0.0 for t in active}
+        floors = {t.item_id: t.minimum_rate for t in active if t.minimum_rate is not None}
+        caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
+        p = self._build_core(recipe_ids, targets, caps, request.weights, data, floors)
+        index = {i: n for n, i in enumerate(p.item_ids)}
+        out_col = {t.item_id: p.n_x + p.n_s + index[t.item_id] for t in active}
+
+        n = p.n_x + p.n_s + p.n_l
+        c1 = np.zeros(n, dtype=float)
+        for t in active:
+            c1[out_col[t.item_id]] = -t.weight
+        uncapped = [i for i in p.raw_ids if caps.get(i) is None]
+        weighted = [t.item_id for t in active if t.weight > 0]
+        try:
+            first = self._run(
+                c1, p,
+                on_unbounded=(
+                    f"weighted output of {weighted} is unbounded: raw inputs without a "
+                    f"cap {uncapped} can feed it at any rate. Cap them or drop the weight"
+                ),
+            )
+        except Infeasible:
+            raise self._floor_diagnosis(recipe_ids, caps, request, data, floors) from None
+        # HiGHS rarely reports status 3 here: the section 5 guards (activity and
+        # flow upper bounds) turn a true ray into a huge finite answer. A plan
+        # sitting on either guard is that ray, so it is refused by the same name.
+        x1 = np.asarray(first.x, dtype=float)
+        on_guard = (
+            bool(np.any(x1[:p.n_x] >= self.activity_upper_bound - self.tolerance))
+            or bool(np.any(x1[p.n_x:p.n_x + p.n_s] >= FLOW_UPPER_BOUND - 1.0))
+        )
+        if on_guard:
+            raise Unbounded(
+                f"weighted output of {weighted} is unbounded: raw inputs without a cap "
+                f"{uncapped} can feed it at any rate (the answer sits on the section 5 "
+                "guard). Cap them or drop the weight"
+            )
+        z1 = -float(first.fun)
+        slack1 = max(abs(z1), 1.0) * 1.0e-9
+
+        second = self._run(
+            p.primary, p, extra_ub=c1.reshape(1, -1), extra_b=np.array([-z1 + slack1]),
+        )
+        z2 = float(second.fun)
+        slack2 = max(abs(z2), 1.0) * 1.0e-9
+        third = self._run(
+            p.secondary, p,
+            extra_ub=np.vstack([c1, p.primary]),
+            extra_b=np.array([-z1 + slack1, z2 + slack2]),
+        )
+        v = np.asarray(third.x, dtype=float)
+        tie_broken = bool(
+            np.max(np.abs(v[:p.n_x] - np.asarray(second.x, dtype=float)[:p.n_x]))
+            > self.tolerance
+        )
+
+        rates = {t.item_id: float(v[out_col[t.item_id]]) for t in active}
+        plan = self._response(rates, request.resource_caps, data, p, v, z2, tie_broken)
+
+        tol = self.tolerance
+        target_rates = tuple(
+            TargetRate(
+                item_id=t.item_id,
+                rate_per_min=rates.get(t.item_id, 0.0),
+                weight=t.weight,
+                minimum_rate=t.minimum_rate,
+                at_floor=(
+                    t.minimum_rate is not None
+                    and rates.get(t.item_id, 0.0) <= t.minimum_rate + tol
+                ),
+                excluded=not t.is_active,
+            )
+            for t in request.targets
+        )
+        # Shadow prices come from stage 1, the only stage whose objective is
+        # the weighted output. HiGHS reports a dual on every variable bound;
+        # for an upper bound in a minimisation it is <= 0, and loosening the
+        # bound by one unit changes the objective (-weighted output) by that
+        # much, so the price of one more unit of cap is its negation.
+        marginals = np.asarray(first.upper.marginals, dtype=float)
+        s_first = np.asarray(first.x, dtype=float)[p.n_x:p.n_x + p.n_s]
+        binding = tuple(
+            BindingCap(
+                item_id=i,
+                cap_per_min=float(caps[i]),
+                shadow_price=-float(marginals[p.n_x + col]),
+            )
+            for col, i in enumerate(p.raw_ids)
+            if caps.get(i) is not None and s_first[col] >= float(caps[i]) - tol
+        )
+        return DistrictResponse(
+            plan=plan, targets=target_rates, weighted_output=z1,
+            goal=request.weights, binding=binding,
+        )
+
+    def _floor_diagnosis(
+        self, recipe_ids, caps, request: DistrictRequest, data: ReferenceData,
+        floors: dict[str, float],
+    ) -> Infeasible:
+        """Name the floors, one at a time, then jointly. Never drops one."""
+        if not floors:
+            return Infeasible("no feasible district plan, and no floor is declared")
+        alone: list[str] = []
+        for item, floor in floors.items():
+            p1 = self._build_core(recipe_ids, {item: 0.0}, caps, request.weights, data, {item: floor})
+            try:
+                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l), p1)
+            except Infeasible:
+                alone.append(f"{item} {floor:g}/min")
+        if alone:
+            return Infeasible(
+                "declared floors unreachable under the caps even alone: "
+                + ", ".join(alone)
+                + ". The remaining floors were not tested jointly"
+            )
+        scale, binding = self._floor_scale(recipe_ids, caps, request, data, floors)
+        return Infeasible(
+            "declared floors are each reachable alone but not together: "
+            + ", ".join(f"{i} {f:g}/min" for i, f in floors.items())
+            + f". Scaled together they fit up to {scale:.4f} of the declared values"
+            + (f"; the caps that bind there: {binding}" if binding else "")
+            + " (v5.5 rule 1: a conflict with the compromise named, nothing dropped)"
+        )
+
+    def _floor_scale(
+        self, recipe_ids, caps, request: DistrictRequest, data: ReferenceData,
+        floors: dict[str, float],
+    ) -> tuple[float, list[str]]:
+        """The largest lambda in (0, 1) for which every floor * lambda fits,
+        by bisection to 1e-4, and the caps the draw sits on at that lambda.
+        A diagnostic only: it is not a plan and nothing reads it as one."""
+        targets = {i: 0.0 for i in floors}
+
+        def feasible(lam: float):
+            p = self._build_core(
+                recipe_ids, targets, caps, request.weights, data,
+                {i: f * lam for i, f in floors.items()},
+            )
+            try:
+                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l), p)
+            except Infeasible:
+                return p, None
+
+        lo, hi = 0.0, 1.0
+        best = feasible(lo)
+        for _ in range(16):
+            mid = (lo + hi) / 2.0
+            p, res = feasible(mid)
+            if res is None:
+                hi = mid
+            else:
+                lo, best = mid, (p, res)
+        p, res = best
+        if res is None:
+            return 0.0, []
+        s = np.asarray(res.x, dtype=float)[p.n_x:p.n_x + p.n_s]
+        binding = [
+            i for i, val in zip(p.raw_ids, s)
+            if caps.get(i) is not None and caps[i] > 0.0 and val >= caps[i] - self.tolerance
+        ]
+        return lo, binding
 
     # -- response ---------------------------------------------------------
 
     def _response(
-        self, request: SolveRequest, data: ReferenceData, p: _Problem,
-        v: np.ndarray, z: float, tie_broken: bool,
+        self, targets: dict[str, float], caps: tuple[ResourceCap, ...],
+        data: ReferenceData, p: _Problem, v: np.ndarray, z: float, tie_broken: bool,
     ) -> SolveResponse:
         tol = self.tolerance
         x = v[:p.n_x]
@@ -337,7 +554,6 @@ class LpBackend:
         # Leftovers are derived from the reported flows, not read off the slack
         # variable, so the warning and the ItemFlow tuple cannot disagree. The
         # slack carries the solver's noise; the filtered flows do not.
-        targets = {o.item_id: o.rate_per_min for o in request.outputs}
         net = {i: produced[i] - consumed[i] - targets.get(i, 0.0) for i in p.item_ids}
 
         raw_inputs = tuple(
@@ -373,11 +589,11 @@ class LpBackend:
         return SolveResponse(
             recipes=recipes, items=items, raw_inputs=raw_inputs,
             power=power, machines=machines, backend=self.name,
-            warnings=self._warnings(request, data, p, x, s, net, z, tie_broken),
+            warnings=self._warnings(caps, data, p, x, s, net, z, tie_broken),
         )
 
     def _warnings(
-        self, request: SolveRequest, data: ReferenceData, p: _Problem,
+        self, caps: tuple[ResourceCap, ...], data: ReferenceData, p: _Problem,
         x: np.ndarray, s: np.ndarray, net: dict[str, float], z: float, tie_broken: bool,
     ) -> tuple[str, ...]:
         tol = self.tolerance
@@ -409,7 +625,7 @@ class LpBackend:
         capped = sorted(
             i for i, val in zip(p.raw_ids, s)
             if any(c.item_id == i and c.rate_per_min is not None
-                   and val >= c.rate_per_min - tol for c in request.resource_caps)
+                   and val >= c.rate_per_min - tol for c in caps)
         )
         if capped:
             out.append(f"resource cap binds on {capped}")
