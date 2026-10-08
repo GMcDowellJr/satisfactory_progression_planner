@@ -67,8 +67,8 @@ from production_adapter.gamedata import load_generators, load_logistics  # noqa:
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from production_adapter import DistrictTarget  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, at_tier, bill_units, extraction_nameplate_mw, recipe_ids_by_name,
-    resource_caps, resources_in_reference_order, unlocks,
+    DistrictDefinition, at_tier, bill_units, discover, extraction_nameplate_mw,
+    recipe_ids_by_name, resource_caps, resources_in_reference_order, unlocks,
 )
 from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
@@ -118,6 +118,8 @@ class DistrictRun:
     recipe_ids: tuple[str, ...]
     #: the whole bill, every item, as composed (A31); targets took theirs from it
     bill: dict[str, float]
+    #: discovery (O34): which bill items this site can make at all, bill order
+    reach: tuple
     request: DistrictRequest
     response: DistrictResponse
     #: the Stage 0 row, when asked for; None when the demands are infeasible
@@ -159,6 +161,15 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         for sid in unlocks.schematics_in_tiers(repo, decl.BILL_TIERS) if sid in costs
     ]
     bill = bill_units(tuple(sources))
+    reach = discover(data, tier.recipe_ids, caps, tuple(bill))
+    unreachable = [i for i, _ in decl.BILL_TARGETS if not any(r.makeable for r in reach if r.item_id == i)]
+    if unreachable:
+        raise DistrictRunError(
+            f"{decl.LABEL}: bill products {unreachable} cannot be made here at all "
+            "(discovery): " + "; ".join(
+                f"{r.item_id} needs {list(r.missing_raws)}" for r in reach if r.item_id in unreachable
+            )
+        )
     missing = [i for i, _ in decl.BILL_TARGETS if i not in bill]
     if missing:
         raise DistrictRunError(
@@ -212,7 +223,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         )
     return DistrictRun(
         decl=decl, case=case, goal=goal, definition=definition, caps=caps,
-        recipe_ids=tier.recipe_ids, bill=bill, request=request, response=response,
+        recipe_ids=tier.recipe_ids, bill=bill, reach=reach, request=request, response=response,
         baseline=base, baseline_error=base_err, realization=report,
     )
 
@@ -243,7 +254,17 @@ def report(dr: DistrictRun, data) -> str:
             out.append(f"  {_name(data.items, c.item_id):18s} {draw.get(c.item_id, 0.0):9.3f} / {c.rate_per_min:g}")
     out.append(f"  every other raw resource capped at 0 ({sum(1 for c in dr.caps if c.rate_per_min == 0.0)}: the district is closed)")
     out += ["", f"bill: {len(dr.bill)} items from phases {list(dr.decl.BILL_PHASES)} and tiers "
-            f"{list(dr.decl.BILL_TIERS)}; {sum(1 for t in r.targets if t.bill_units)} made here"]
+            f"{list(dr.decl.BILL_TIERS)}; {sum(1 for t in r.targets if t.bill_units)} made here; "
+            f"discovery: {sum(1 for x in dr.reach if x.makeable)} makeable here at all"]
+    chosen = {t.item_id for t in r.targets}
+    for x in dr.reach:
+        if x.makeable:
+            tag = "TARGET" if x.item_id in chosen else "makeable, not selected"
+        elif x.no_recipe:
+            tag = "no enabled recipe"
+        else:
+            tag = "needs " + ", ".join(_name(data.items, i) for i in x.missing_raws)
+        out.append(f"  {_name(data.items, x.item_id):26s} {dr.bill[x.item_id]:8g}  {tag}")
     if r.scale is not None:
         out.append(f"  scale {r.scale:.6f} of the bill per minute"
                    + (f"; horizon {r.horizon_min:.1f} min to cover it at this rate" if r.horizon_min else
@@ -349,6 +370,7 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         "bill": {"phases": list(dr.decl.BILL_PHASES), "tiers": list(dr.decl.BILL_TIERS),
                  "units": dict(dr.bill), "scale": dr.response.scale,
                  "horizon_min": dr.response.horizon_min},
+        "discovery": [dataclasses.asdict(x) for x in dr.reach],
         "targets": [dataclasses.asdict(t) for t in dr.response.targets],
         "weighted_output": dr.response.weighted_output,
         "binding": [dataclasses.asdict(b) for b in dr.response.binding],

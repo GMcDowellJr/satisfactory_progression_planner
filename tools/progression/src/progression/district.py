@@ -180,6 +180,92 @@ def bill_units(
     return out
 
 
+@dataclass(frozen=True)
+class Reach:
+    """Whether one item can be made here at all, and if not, why (A31 O34).
+
+        makeable        some enabled recipe chain reaches it from a resource
+                        with a positive cap
+        missing_raws    raw resources every reaching chain would need that the
+                        district caps at 0 (or does not cap but has no row
+                        for): the ones a node would have to be declared for.
+                        Empty when makeable, or when no enabled recipe makes
+                        the item at all
+        no_recipe       no enabled recipe outputs the item
+    """
+
+    item_id: ItemId
+    makeable: bool
+    missing_raws: tuple[ItemId, ...] = ()
+    no_recipe: bool = False
+
+
+def discover(
+    data: ReferenceData,
+    recipe_ids: tuple[RecipeId, ...],
+    caps: tuple[ResourceCap, ...],
+    items: tuple[ItemId, ...],
+) -> tuple[Reach, ...]:
+    """Which of `items` the district can make at all: a FORWARD CLOSURE over
+    the enabled recipes from the raws with a positive cap, independent of
+    rates (v5.5 Stage 2: discovery is not allocation). No LP, no choice: a
+    recipe runs when every input is reachable, and its outputs become
+    reachable; repeated until nothing changes. Byproducts count as outputs.
+
+    An uncapped raw is treated as absent: `resource_caps` lists every raw a
+    district has (A28.1 T1 closes the rest at 0), so a raw with no cap row is
+    one the caller never declared.
+
+    For an unreachable item the reason is the raws its enabled recipes need,
+    transitively, that are not reachable: the nodes that would have to be
+    declared. Reported in `items` order.
+    """
+    recipes = [data.recipes[r] for r in recipe_ids]
+    available = {c.item_id for c in caps if c.rate_per_min is not None and c.rate_per_min > 0.0}
+    reachable: set[ItemId] = set(available)
+    changed = True
+    while changed:
+        changed = False
+        for r in recipes:
+            if all(i in reachable for i, _ in r.inputs):
+                for i, _ in r.outputs:
+                    if i not in reachable:
+                        reachable.add(i)
+                        changed = True
+
+    producers: dict[ItemId, list] = {}
+    for r in recipes:
+        for i, _ in r.outputs:
+            producers.setdefault(i, []).append(r)
+
+    def missing(item: ItemId, trail: frozenset[ItemId]) -> tuple[ItemId, ...]:
+        """Raws needed by every enabled chain to `item` that are not reachable,
+        first-seen order; a cycle in the recipe graph is cut, not followed."""
+        out: list[ItemId] = []
+        for r in producers.get(item, ()):
+            for i, _ in r.inputs:
+                if i in reachable or i in trail:
+                    continue
+                if i in data.resource_items:
+                    if i not in out:
+                        out.append(i)
+                else:
+                    for raw in missing(i, trail | {item}):
+                        if raw not in out:
+                            out.append(raw)
+        return tuple(out)
+
+    return tuple(
+        Reach(
+            item_id=item,
+            makeable=item in reachable,
+            missing_raws=() if item in reachable or item not in producers else missing(item, frozenset()),
+            no_recipe=item not in producers and item not in available,
+        )
+        for item in items
+    )
+
+
 def _normalise(name: str) -> str:
     return " ".join(name.split()).casefold()
 

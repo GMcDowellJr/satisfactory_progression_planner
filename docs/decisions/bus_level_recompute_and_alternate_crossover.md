@@ -3116,3 +3116,42 @@ case still passes (they run at 1x, where the factor is 1).
          balance (an iteration) or stay a report. Report for now
     O38  realized raw draw is not computed by realization (nodes are
          checked, not drawn); the plan's raw draw stands
+
+## Amendment 33 — 2026-10-08. Discovery: what a district can make at all (A31 O34, A26.3 O22; v5.5 Stage 2)
+
+Appended forward-only. Amendments 13-32 stand as written. Source: this
+session, 2026-10-08, under Greg's "continue".
+
+    code      progression.district.discover and Reach; district_run lists
+              every bill item as TARGET / makeable, not selected / needs
+              <raws> / no enabled recipe, refuses a BILL_TARGET the site
+              cannot make, exports "discovery"
+    measured  container 2026-10-08, the fixture at tier 4 on iron, coal,
+              limestone, caterium and water: 15 of the bill's 18 items
+              makeable; Copper Sheet needs Copper Ore; Plastic and Rubber
+              have no enabled recipe (refinery, tier 5). Smart Plating and
+              Automated Wiring ARE makeable here (Iron Wire), and are not
+              selected
+
+### A33.1 Taken in code by the agent (revisable by Greg)
+
+    D1   DISCOVERY IS A FORWARD CLOSURE, NOT A SOLVE: from the raws with a
+         positive cap, a recipe runs when every input is reachable and its
+         outputs join the set, until nothing changes. Rates never enter
+         (v5.5: "discovery must be independent of the rates ultimately
+         allocated"). No min, max, sort or ranking
+    D2   AN UNCAPPED RAW IS ABSENT (A28.1 T1): a district's cap list names
+         every raw it has
+    D3   THE REASON IS THE MISSING NODES: for an unreachable item, the raws
+         its enabled recipes need, transitively, that the district does not
+         have; or "no enabled recipe" when nothing makes it at this tier
+    D4   WHICH MAKEABLE ITEMS BECOME TARGETS STAYS DECLARED (BILL_TARGETS).
+         Discovery lists; it does not select. A declared target the site
+         cannot make is refused with its missing raws, before the solve
+
+### A33.2 Open
+
+    O39  whether every makeable bill item should be a target by default
+         (the whole bill in proportion, 15 items here) with EXCLUDE as the
+         declaration, rather than three chosen. The solve supports either;
+         the measured horizon would change

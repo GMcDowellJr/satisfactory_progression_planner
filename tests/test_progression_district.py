@@ -205,3 +205,61 @@ def test_bill_units_refuses_an_item_at_nothing(units):
     from progression import bill_units
     with pytest.raises(DistrictError, match="bill source 'x': Desc_Motor_C"):
         bill_units((("x", (("Desc_Motor_C", units),)),))
+
+
+# --- discovery: what the site can make at all (A31 O34, v5.5 Stage 2) --------
+
+IRON_SET = ("Recipe_IngotIron_C", "Recipe_IronPlate_C", "Recipe_IronRod_C", "Recipe_Screw_C",
+            "Recipe_IngotCopper_C", "Recipe_Wire_C", "Recipe_Cable_C",
+            "Recipe_IronPlateReinforced_C", "Recipe_Alternate_ReinforcedIronPlate_2_C",
+            "Recipe_Alternate_Wire_1_C")
+PLATE, RIP, CABLE, WIRE, COPPER_INGOT = (
+    "Desc_IronPlate_C", "Desc_IronPlateReinforced_C", "Desc_Cable_C", "Desc_Wire_C", "Desc_CopperIngot_C",
+)
+
+
+def _caps(**per):
+    return tuple(ResourceCap(i, r) for i, r in per.items())
+
+
+def test_discovery_is_a_forward_closure_from_the_capped_raws(data):
+    from progression import discover
+    reach = {x.item_id: x for x in discover(
+        data, IRON_SET, _caps(Desc_OreIron_C=30.0, Desc_OreCopper_C=0.0), (PLATE, RIP, CABLE, WIRE),
+    )}
+    assert reach[PLATE].makeable and reach[RIP].makeable
+    # Wire is reachable through Iron Wire even with copper closed, so Cable is too
+    assert reach[WIRE].makeable and reach[CABLE].makeable
+
+
+def test_an_unreachable_item_names_the_raws_a_node_would_have_to_declare(data):
+    from progression import discover
+    no_iron_wire = tuple(r for r in IRON_SET if r != "Recipe_Alternate_Wire_1_C")
+    [cable] = discover(data, no_iron_wire, _caps(Desc_OreIron_C=30.0, Desc_OreCopper_C=0.0), (CABLE,))
+    assert not cable.makeable and cable.missing_raws == ("Desc_OreCopper_C",) and not cable.no_recipe
+
+
+def test_an_uncapped_raw_counts_as_absent(data):
+    """A28.1 T1: a raw with no cap row was never declared; discovery does not
+    assume it exists."""
+    from progression import discover
+    [ingot] = discover(data, IRON_SET, _caps(Desc_OreIron_C=30.0), (COPPER_INGOT,))
+    assert not ingot.makeable and ingot.missing_raws == ("Desc_OreCopper_C",)
+
+
+def test_an_item_no_enabled_recipe_makes_is_said_so(data):
+    from progression import discover
+    [plastic] = discover(data, IRON_SET, _caps(Desc_OreIron_C=30.0), ("Desc_Plastic_C",))
+    assert not plastic.makeable and plastic.no_recipe and plastic.missing_raws == ()
+
+
+def test_a_raw_with_a_cap_is_makeable_by_itself(data):
+    from progression import discover
+    [ore] = discover(data, IRON_SET, _caps(Desc_OreIron_C=30.0), ("Desc_OreIron_C",))
+    assert ore.makeable and not ore.no_recipe
+
+
+def test_discovery_keeps_the_order_asked(data):
+    from progression import discover
+    out = discover(data, IRON_SET, _caps(Desc_OreIron_C=30.0), (CABLE, PLATE))
+    assert [x.item_id for x in out] == [CABLE, PLATE]

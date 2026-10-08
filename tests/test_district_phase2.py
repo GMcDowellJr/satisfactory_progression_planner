@@ -146,6 +146,29 @@ def test_the_bill_is_composed_from_phase_2_and_tiers_3_to_5(shipped):
     ]
 
 
+# --- discovery (A31 O34; v5.5 Stage 2) ---------------------------------------
+
+def test_discovery_lists_what_the_site_can_make_of_the_bill(shipped):
+    """15 of 18 at tier 4 on iron, coal, limestone, caterium and water: Copper
+    Sheet needs a copper node; Plastic and Rubber have no enabled recipe
+    (refinery, tier 5). Independent of rates: discovery is not allocation."""
+    reach = {x.item_id: x for x in shipped.reach}
+    assert len(reach) == 18 and sum(1 for x in reach.values() if x.makeable) == 15
+    assert reach["Desc_CopperSheet_C"].missing_raws == ("Desc_OreCopper_C",)
+    assert reach["Desc_Plastic_C"].no_recipe and reach["Desc_Rubber_C"].no_recipe
+    assert all(reach[i].makeable for i in (I["VF"], I["MOTOR"], I["EIB"], "Desc_SpaceElevatorPart_1_C"))
+    assert [x.item_id for x in shipped.reach] == list(shipped.bill)   # bill order
+
+
+def test_a_bill_target_the_site_cannot_make_is_refused_by_discovery():
+    import types
+    decl = types.SimpleNamespace(**{k: getattr(DECL, k) for k in dir(DECL) if not k.startswith("__")})
+    decl.BILL_TARGETS = DECL.BILL_TARGETS + (("Desc_CopperSheet_C", 1.0),)
+    with pytest.raises(district_run.DistrictRunError, match="cannot be made here at all") as e:
+        district_run.run(decl, case="shipped", power=False, realization=False)
+    assert "Desc_OreCopper_C" in str(e.value)
+
+
 # --- the plan, shipped case ------------------------------------------------
 
 def test_every_bill_product_gets_its_proportion(shipped):
@@ -426,6 +449,7 @@ def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped, tm
     assert len(doc["plan"]["recipes"]) == 18
     assert doc["baseline"] is not None and len(doc["baseline"]["recipes"]) == 16
     assert len(doc["realization"]["buses"]) == 18 and doc["realization"]["design_tier"] == 4
+    assert sum(1 for x in doc["discovery"] if x["makeable"]) == 15
     assert doc["unverified"] == list(district_run.UNVERIFIED)
 
 
