@@ -104,3 +104,16 @@ def test_district_request_refuses_all_excluded():
 def test_district_request_target_cannot_also_be_capped():
     with pytest.raises(ValueError, match="both a target and a capped input"):
         DistrictRequest(targets=(DistrictTarget(ORE),), resource_caps=(ResourceCap(ORE, 1.0),))
+
+
+def test_a_bill_product_has_positive_units_and_is_active_at_weight_zero():
+    t = DistrictTarget(VF, weight=0.0, bill_units=1000.0)
+    assert t.is_bill and t.is_active
+    with pytest.raises(ValueError, match="bill_units must be positive"):
+        DistrictTarget(VF, bill_units=0.0)
+
+
+def test_bill_total_sums_bill_products_only():
+    r = DistrictRequest(targets=(DistrictTarget(VF, bill_units=1000.0), DistrictTarget(SP, bill_units=200.0),
+                                 DistrictTarget(ORE if False else "Desc_Motor_C")))
+    assert r.bill_total == 1200.0

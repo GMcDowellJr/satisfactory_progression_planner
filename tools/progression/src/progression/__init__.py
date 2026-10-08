@@ -13,8 +13,8 @@ Nothing in `production_adapter` imports anything here. That direction is the who
 point of the boundary — see section 11.1 of docs/decisions/production_lp_formulation.md.
 """
 from .district import (
-    DistrictDefinition, DistrictError, NodeCount, extraction_nameplate_mw, recipe_ids_by_name,
-    resource_caps, resources_in_reference_order,
+    DistrictDefinition, DistrictError, NodeCount, bill_units, extraction_nameplate_mw,
+    recipe_ids_by_name, resource_caps, resources_in_reference_order,
 )
 from .pool import PoolAvailability, PoolDataError, available_at, resolve_slugs
 from .unlocks import PROGRESSION_TYPES, TierUnlocks, UnlockDataError, at_tier
@@ -23,7 +23,7 @@ __all__ = [
     "DistrictDefinition", "DistrictError", "NodeCount", "PROGRESSION_TYPES",
     "extraction_nameplate_mw",
     "PoolAvailability", "PoolDataError", "TierUnlocks", "UnlockDataError", "at_tier",
-    "available_at", "recipe_ids_by_name", "resolve_slugs", "resource_caps",
+    "available_at", "bill_units", "recipe_ids_by_name", "resolve_slugs", "resource_caps",
     "resources_in_reference_order",
 ]
 __version__ = "0.1.0"

@@ -20,13 +20,17 @@ v5.5 plan requires the fixture to preserve, resolved by display name through
     recipes      at_tier(4) standard recipes + DECLARED: the two MAM caterium
                  base recipes (the tier filter withholds research) and the
                  five alternates of the built factory
-    targets      the three terminal products the v5.5 plan names, weight 1
-                 each; floors 0.5/min VF, 0.5/min Motor, 0.25/min EIB
-                 (declared trickles, A27.2). Decided 2026-10-08, revisable.
-                 Measured on the way there, "readme" case: EIB 1/min alone is
-                 unreachable (its concrete needs 32 limestone/min against 30);
-                 floors 1 / 1 / 0.5 fit together only up to 0.7555 of their
-                 values, coal and caterium binding
+    bill         A31 (Greg, 2026-10-08: value is what is needed later). The
+                 three terminal products the v5.5 plan names are BILL
+                 products: their proportions come from Project Assembly
+                 phase 2 plus the milestone costs of tiers 3, 4 and 5 (the
+                 current tiers and the next, A25.2 O11). Measured 2026-10-08:
+                 VF 1000, EIB 600, Motor 200 (Motor appears in no tier 3-4
+                 milestone; tier 5 is why it is in the bill at all). Weight
+                 1.0 each: spare capacity is worth what the bill says. No
+                 floors: a bill product gets its proportion or the solve
+                 says which cap stops it. EXTRAS is empty; it is where a
+                 declared trickle outside the bill would go
     baseline     the v5.4.4 shipped-fixture portfolio, for the Stage 0 row
                  (measured 2026-10-08, node v22.22.0)
 
@@ -82,11 +86,14 @@ DECLARED_RECIPE_NAMES = (
     "Alternate: Steel Rotor",
 )
 
-TARGETS = (
-    DistrictTarget(I["VF"], weight=1.0, minimum_rate=0.5),
-    DistrictTarget(I["MOTOR"], weight=1.0, minimum_rate=0.5),
-    DistrictTarget(I["EIB"], weight=1.0, minimum_rate=0.25),
-)
+#: A31: the bill's sources, declared. Project Assembly phases and the
+#: schematic tiers whose milestone costs are still owed
+BILL_PHASES = (2,)
+BILL_TIERS = (3, 4, 5)
+#: bill products: (item, weight). Units come from the bill at run time
+BILL_TARGETS = ((I["VF"], 1.0), (I["MOTOR"], 1.0), (I["EIB"], 1.0))
+#: extras outside the bill (A27.2 shape): none declared
+EXTRAS: tuple[DistrictTarget, ...] = ()
 
 #: v5.4.4 on its shipped fixture (100 % extraction), items per minute. Stator
 #: and Motor received 0 there. The Stage 0 baseline row re-solves THESE rates as

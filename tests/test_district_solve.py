@@ -297,3 +297,86 @@ def test_the_demand_solve_is_untouched_by_the_power_columns(backend, data):
     p = backend._build(SolveRequest(outputs=(OutputTarget(IRON_PLATE, 20.0),),
                                     allowed_recipes=IRON_SET), data)
     assert p.n_g == 0 and p.a_ub is None and p.b_ub is None
+
+
+# --- the bill as proportions (crossover A31) ----------------------------------
+#
+# Plate: 30 ore -> 30 ingot -> 20 plate (1.5 ore per plate). Rod: 1 ore per rod.
+
+def test_bill_products_scale_together_in_the_bills_proportions(backend, data):
+    """Bill plate 2 : rod 1 on 30 ore. Scale s: 2s plate costs 3s ore, s rod
+    costs s ore, 4s = 30, s = 7.5 -> plate 15, rod 7.5. Horizon 1/s."""
+    r = backend.solve_district(DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE, bill_units=2.0), DistrictTarget(IRON_ROD, bill_units=1.0)),
+        allowed_recipes=IRON_SET, resource_caps=(ResourceCap(IRON_ORE, 30.0),),
+    ), data)
+    assert r.scale == pytest.approx(7.5, abs=1e-6)
+    assert r.horizon_min == pytest.approx(1.0 / 7.5, abs=1e-9)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 15.0, IRON_ROD: 7.5}, abs=1e-6)
+    assert [t.share for t in r.targets] == pytest.approx([7.5, 7.5], abs=1e-6)
+    assert [b.item_id for b in r.binding] == [IRON_ORE]
+    # the ore cap's price is in scale units: 7.5 scale per 30 ore
+    assert r.binding[0].shadow_price == pytest.approx(0.25, abs=1e-6)
+
+
+def test_spare_capacity_after_the_scale_goes_by_weight(backend, data):
+    """Plate bill 2 on 30 ore, wire bill 1 on 15 copper. Plate caps the scale
+    at 10 (20 plate); wire could reach 30. With weight 1 the spare copper
+    lifts wire to 30 and its share above the scale; with weight 0 it stays
+    at the proportion."""
+    for weight, wire in ((1.0, 30.0), (0.0, 10.0)):
+        r = backend.solve_district(DistrictRequest(
+            targets=(DistrictTarget(IRON_PLATE, bill_units=2.0),
+                     DistrictTarget(WIRE, bill_units=1.0, weight=weight)),
+            allowed_recipes=IRON_COPPER_SET,
+            resource_caps=(ResourceCap(IRON_ORE, 30.0), ResourceCap(COPPER_ORE, 15.0)),
+        ), data)
+        assert r.scale == pytest.approx(10.0, abs=1e-6)
+        assert _rates(r) == pytest.approx({IRON_PLATE: 20.0, WIRE: wire}, abs=1e-6)
+        assert r.targets[1].share == pytest.approx(wire, abs=1e-6)
+
+
+def test_an_extra_rides_beside_the_bill(backend, data):
+    """Bill plate 2 on 30 ore; wire is an EXTRA on its own copper: the scale
+    is the plate's, the extra takes all its copper by weight."""
+    r = backend.solve_district(DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE, bill_units=2.0), DistrictTarget(WIRE)),
+        allowed_recipes=IRON_COPPER_SET,
+        resource_caps=(ResourceCap(IRON_ORE, 30.0), ResourceCap(COPPER_ORE, 15.0)),
+    ), data)
+    assert r.scale == pytest.approx(10.0, abs=1e-6)
+    assert _rates(r) == pytest.approx({IRON_PLATE: 20.0, WIRE: 30.0}, abs=1e-6)
+    assert r.targets[1].bill_units is None and r.targets[1].share is None
+
+
+def test_a_bill_product_that_cannot_be_made_pins_the_scale_at_zero(backend, data):
+    """Copper capped at 0 and wire in the bill: nothing scales, nothing is
+    dropped, and the report says so with scale 0 and no horizon."""
+    r = backend.solve_district(DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE, bill_units=2.0), DistrictTarget(WIRE, bill_units=1.0)),
+        allowed_recipes=IRON_COPPER_SET,
+        resource_caps=(ResourceCap(IRON_ORE, 30.0), ResourceCap(COPPER_ORE, 0.0)),
+    ), data)
+    assert r.scale == pytest.approx(0.0, abs=1e-9) and r.horizon_min is None
+    assert _rates(r) == pytest.approx({IRON_PLATE: 20.0, WIRE: 0.0}, abs=1e-6)
+    assert COPPER_ORE in {b.item_id for b in r.binding}
+
+
+def test_no_bill_means_no_scale(backend, data):
+    r = backend.solve_district(DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE),), allowed_recipes=IRON_SET,
+        resource_caps=(ResourceCap(IRON_ORE, 30.0),),
+    ), data)
+    assert r.scale is None and r.horizon_min is None
+
+
+def test_the_bill_and_power_share_one_coal_cap(backend, data, coal_gen):
+    """Plate bill 1 and a 0 MW grid on 3 coal: the generator's coal is the
+    only coal, 0.2 generators = 15 MW > 8 MW, so the plate chain runs whole."""
+    r = backend.solve_district(DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE, bill_units=1.0),), allowed_recipes=IRON_SET,
+        resource_caps=(ResourceCap(IRON_ORE, 30.0), ResourceCap(COAL, 3.0), ResourceCap(WATER, 45.0)),
+        power=PowerBalance(generators=(coal_gen,)),
+    ), data)
+    assert r.scale == pytest.approx(20.0, abs=1e-6)
+    assert r.power.generators[0].fuel_per_min == pytest.approx(1.6, abs=1e-6)

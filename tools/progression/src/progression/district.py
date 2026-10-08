@@ -159,6 +159,27 @@ def extraction_nameplate_mw(
     return total
 
 
+def bill_units(
+    sources: tuple[tuple[str, tuple[tuple[ItemId, float], ...]], ...],
+) -> dict[ItemId, float]:
+    """Sum declared bill sources into units per item, first-seen order (A31).
+
+    A source is (label, ((item, units), ...)): a Project Assembly phase's
+    rows, a schematic's cost rows, a declared extra. The CALLER chooses the
+    sources (which phases, which tiers, what the player still owes); this
+    sums them and nothing else. Zero and negative units are refused: a bill
+    that lists an item at nothing is a different statement from one that
+    omits it, and this function cannot tell which was meant.
+    """
+    out: dict[ItemId, float] = {}
+    for label, rows in sources:
+        for item, units in rows:
+            if units <= 0:
+                raise DistrictError(f"bill source {label!r}: {item} at {units!r} units")
+            out[item] = out.get(item, 0.0) + units
+    return out
+
+
 def _normalise(name: str) -> str:
     return " ".join(name.split()).casefold()
 

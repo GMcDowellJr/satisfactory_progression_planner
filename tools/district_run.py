@@ -7,6 +7,10 @@ layer returns, and adds no arithmetic of its own:
 
     caps      progression.district.resource_caps(definition, extraction_rates)
     recipes   progression.at_tier(RECIPE_TIER, declared=<names resolved>)
+    bill      progression.district.bill_units over the declaration's
+              BILL_PHASES (Project Assembly rows, scenario-scaled) and
+              BILL_TIERS (schematic costs); BILL_TARGETS take their units
+              from it and are refused when the bill has none (A31)
     solve     LpBackend.solve_district (A27.2: weighted outputs with floors,
               goal as the tie-break), with power in the solve (A29) unless
               --no-power: generators from the declaration's GENERATORS, grid
@@ -55,10 +59,12 @@ from production_adapter import (  # noqa: E402
 )
 from production_adapter.gamedata import load_generators, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
+from production_adapter import DistrictTarget  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, at_tier, extraction_nameplate_mw, recipe_ids_by_name, resource_caps,
-    resources_in_reference_order,
+    DistrictDefinition, at_tier, bill_units, extraction_nameplate_mw, recipe_ids_by_name,
+    resource_caps, resources_in_reference_order, unlocks,
 )
+from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 
 EXPORT_SCHEMA = "district-plan/1"
@@ -103,6 +109,8 @@ class DistrictRun:
     definition: DistrictDefinition
     caps: tuple
     recipe_ids: tuple[str, ...]
+    #: the whole bill, every item, as composed (A31); targets took theirs from it
+    bill: dict[str, float]
     request: DistrictRequest
     response: DistrictResponse
     #: the Stage 0 row, when asked for; None when the demands are infeasible
@@ -128,7 +136,29 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
     )
     caps = resource_caps(definition, rates, resources_in_reference_order(data))
     declared = recipe_ids_by_name(data, decl.DECLARED_RECIPE_NAMES)
-    unlocks = at_tier(repo, decl.RECIPE_TIER, declared=declared)
+    tier = at_tier(repo, decl.RECIPE_TIER, declared=declared)
+    pa = stock.load_project_assembly(repo, data)
+    costs = unlocks.schematic_costs(repo)
+    sources = [
+        (f"project assembly phase {ph}", tuple(
+            (r.item_id, data.scenario.apply_project_assembly_quantity(r.quantity_1x))
+            for r in pa if r.phase == ph
+        ))
+        for ph in decl.BILL_PHASES
+    ] + [
+        (sid, costs[sid])
+        for sid in unlocks.schematics_in_tiers(repo, decl.BILL_TIERS) if sid in costs
+    ]
+    bill = bill_units(tuple(sources))
+    missing = [i for i, _ in decl.BILL_TARGETS if i not in bill]
+    if missing:
+        raise DistrictRunError(
+            f"{decl.LABEL}: bill products {missing} have no units in the bill from phases "
+            f"{decl.BILL_PHASES} and tiers {decl.BILL_TIERS}; declare them as EXTRAS or widen the bill"
+        )
+    targets = tuple(
+        DistrictTarget(i, weight=w, bill_units=bill[i]) for i, w in decl.BILL_TARGETS
+    ) + tuple(decl.EXTRAS)
     balance = None
     if power:
         tables = load_power_tables(repo)
@@ -140,7 +170,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
             extraction_mw=extraction_nameplate_mw(definition, tables.extractors),
         )
     request = DistrictRequest(
-        targets=decl.TARGETS, allowed_recipes=unlocks.allowed_recipes,
+        targets=targets, allowed_recipes=tier.allowed_recipes,
         resource_caps=caps, weights=GOALS[goal], power=balance,
     )
     backend = LpBackend(power_statistic=PowerStatistic.MEAN)
@@ -150,7 +180,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
     if baseline:
         demand = SolveRequest(
             outputs=tuple(OutputTarget(i, r) for i, r in decl.V544_SHIPPED_RATES),
-            allowed_recipes=unlocks.allowed_recipes, weights=GOALS[goal],
+            allowed_recipes=tier.allowed_recipes, weights=GOALS[goal],
         )
         try:
             base = backend.solve(demand, data)
@@ -158,7 +188,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
             base_err = str(e)
     return DistrictRun(
         decl=decl, case=case, goal=goal, definition=definition, caps=caps,
-        recipe_ids=unlocks.recipe_ids, request=request, response=response,
+        recipe_ids=tier.recipe_ids, bill=bill, request=request, response=response,
         baseline=base, baseline_error=base_err,
     )
 
@@ -188,16 +218,24 @@ def report(dr: DistrictRun, data) -> str:
         if c.rate_per_min > 0.0:
             out.append(f"  {_name(data.items, c.item_id):18s} {draw.get(c.item_id, 0.0):9.3f} / {c.rate_per_min:g}")
     out.append(f"  every other raw resource capped at 0 ({sum(1 for c in dr.caps if c.rate_per_min == 0.0)}: the district is closed)")
+    out += ["", f"bill: {len(dr.bill)} items from phases {list(dr.decl.BILL_PHASES)} and tiers "
+            f"{list(dr.decl.BILL_TIERS)}; {sum(1 for t in r.targets if t.bill_units)} made here"]
+    if r.scale is not None:
+        out.append(f"  scale {r.scale:.6f} of the bill per minute"
+                   + (f"; horizon {r.horizon_min:.1f} min to cover it at this rate" if r.horizon_min else
+                      "; a bill product cannot be made: see binding caps"))
     out += ["", f"targets (request order); weighted output {r.weighted_output:.4f}"]
     for t in r.targets:
         flag = "excluded" if t.excluded else ("AT FLOOR" if t.at_floor else "")
         floor = "" if t.minimum_rate is None else f" floor {t.minimum_rate:g}"
-        out.append(f"  {_name(data.items, t.item_id):26s} {t.rate_per_min:9.4f}/min  w={t.weight:g}{floor}  {flag}")
-    out += ["", "binding caps (shadow price = weighted output per extra unit/min)"]
+        bill = "" if t.bill_units is None else f"  bill {t.bill_units:g} share {t.share:.6f}"
+        out.append(f"  {_name(data.items, t.item_id):26s} {t.rate_per_min:9.4f}/min  w={t.weight:g}{floor}{bill}  {flag}")
+    unit = "bill scale" if r.scale is not None else "weighted output"
+    out += ["", f"binding caps (shadow price = {unit} per extra unit/min, from the first stage)"]
     if not r.binding:
         out.append("  none")
     for b in r.binding:
-        out.append(f"  {_name(data.items, b.item_id):18s} cap {b.cap_per_min:g}  shadow {b.shadow_price:.4f}")
+        out.append(f"  {_name(data.items, b.item_id):18s} cap {b.cap_per_min:g}  shadow {b.shadow_price + 0.0:.4g}")
     out += ["", "power"]
     if r.power is None:
         out.append("  outside the solve (--no-power): the LP figure below excludes extraction, D5")
@@ -207,7 +245,7 @@ def report(dr: DistrictRun, data) -> str:
                    f"{pw.spare_mw:.2f}  <=  grid {pw.grid_mw:.2f} + generated {pw.generated_mw:.2f}; "
                    f"margin {pw.margin_mw:.2f} MW" + ("  BINDING" if pw.binding else ""))
         if pw.binding:
-            out.append(f"  shadow price {pw.shadow_price:.5f} weighted output per MW of supply")
+            out.append(f"  shadow price {pw.shadow_price + 0.0:.4g} {unit} per MW of supply")
         for u in pw.generators:
             supp = "".join(f", {_name(data.items, i)} {v:.2f}/min" for i, v in u.supplemental_per_min)
             out.append(f"  {u.generator_class:24s} {u.count:8.3f} x {u.mw:8.2f} MW; "
@@ -259,6 +297,9 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         },
         "recipe_ids": list(dr.recipe_ids),
         "goal": {"name": dr.goal, **dataclasses.asdict(dr.response.goal)},
+        "bill": {"phases": list(dr.decl.BILL_PHASES), "tiers": list(dr.decl.BILL_TIERS),
+                 "units": dict(dr.bill), "scale": dr.response.scale,
+                 "horizon_min": dr.response.horizon_min},
         "targets": [dataclasses.asdict(t) for t in dr.response.targets],
         "weighted_output": dr.response.weighted_output,
         "binding": [dataclasses.asdict(b) for b in dr.response.binding],

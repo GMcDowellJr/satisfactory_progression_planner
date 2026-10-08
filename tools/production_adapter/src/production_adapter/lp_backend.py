@@ -159,6 +159,10 @@ class _Problem:
     #: the power balance row (A_ub, b_ub), or None: power outside the solve
     a_ub: np.ndarray | None = None
     b_ub: np.ndarray | None = None
+    #: A31: one scale column after everything else, and one row per bill
+    #: product  bill_i * scale - l_i <= 0. n_lam is 0 or 1
+    n_lam: int = 0
+    bill_rows: tuple[str, ...] = ()
 
 
 class LpBackend:
@@ -202,6 +206,7 @@ class LpBackend:
         self, recipe_ids: tuple[str, ...], targets: dict[str, float],
         caps: dict[str, float | None], w, data: ReferenceData,
         floors: dict[str, float] | None = None, power: PowerBalance | None = None,
+        bill: dict[str, float] | None = None,
     ) -> _Problem:
         """The section 7 matrices. `solve` and `solve_district` share them.
 
@@ -211,6 +216,7 @@ class LpBackend:
         solve never passes them, so its problem is unchanged by construction.
         """
         floors = floors or {}
+        bill = bill or {}
         recipes = [data.recipes[rid] for rid in recipe_ids]
         generators = tuple(power.generators) if power is not None else ()
 
@@ -241,7 +247,8 @@ class LpBackend:
         n_x, n_s = len(recipe_ids), len(raw_ids)
         n_l = len(item_ids) if self.unconsumed is UnconsumedMode.FREE else 0
         n_g = len(generators)
-        n = n_x + n_s + n_l + n_g
+        n_lam = 1 if bill else 0
+        n = n_x + n_s + n_l + n_g + n_lam
 
         a_eq = np.zeros((len(item_ids), n), dtype=float)
         b_eq = np.zeros(len(item_ids), dtype=float)
@@ -274,6 +281,8 @@ class LpBackend:
         if n_l:
             bounds.extend((floors.get(item, 0.0), FLOW_UPPER_BOUND) for item in item_ids)
         bounds.extend((0.0, self.activity_upper_bound) for _ in generators)
+        if n_lam:
+            bounds.append((0.0, FLOW_UPPER_BOUND))
 
         primary = np.zeros(n, dtype=float)
         for col, r in enumerate(recipes):
@@ -281,7 +290,8 @@ class LpBackend:
         primary[n_x:n_x + n_s] = w.resources
         # A generator is a building; its fuel is priced through the raw draw
         # it causes, and it carries no power term because it supplies power.
-        primary[n_x + n_s + n_l:] = w.buildings
+        primary[n_x + n_s + n_l:n_x + n_s + n_l + n_g] = w.buildings
+        # the scale column costs nothing in any goal: it is a proportion
 
         a_ub = b_ub = None
         if power is not None:
@@ -293,12 +303,26 @@ class LpBackend:
             for col, g in enumerate(generators):
                 a_ub[0, n_x + n_s + n_l + col] = -g.power_mw
             b_ub = np.array([power.grid_mw - power.spare_mw - power.extraction_mw], dtype=float)
+        bill_rows: tuple[str, ...] = ()
+        if n_lam:
+            if not n_l:
+                raise NotImplementedError("a bill product's output is its leftover flow; needs unconsumed=FREE")
+            bill_rows = tuple(bill)
+            rows = np.zeros((len(bill_rows), n), dtype=float)
+            for k, item in enumerate(bill_rows):
+                rows[k, n - 1] = float(bill[item])
+                rows[k, n_x + n_s + item_index[item]] = -1.0
+            a_ub = rows if a_ub is None else np.vstack([a_ub, rows])
+            zeros = np.zeros(len(bill_rows), dtype=float)
+            b_ub = zeros if b_ub is None else np.concatenate([b_ub, zeros])
         # Leftover slack carries zero cost. Section 2.4 rejects an objective
         # penalty on leftovers: lambda has no physical referent. The secondary
         # objective below keeps leftovers minimal among optima instead, which
         # costs nothing and invents nothing.
 
         secondary = np.ones(n, dtype=float)
+        if n_lam:
+            secondary[n - 1] = 0.0
 
         return _Problem(
             recipe_ids=recipe_ids, item_ids=item_ids, raw_ids=raw_ids,
@@ -306,6 +330,7 @@ class LpBackend:
             a_eq=a_eq, b_eq=b_eq, bounds=bounds,
             primary=primary, secondary=secondary,
             n_g=n_g, generators=generators, a_ub=a_ub, b_ub=b_ub,
+            n_lam=n_lam, bill_rows=bill_rows,
         )
 
     # -- solve ------------------------------------------------------------
@@ -370,13 +395,17 @@ class LpBackend:
     def solve_district(self, request: DistrictRequest, data: ReferenceData) -> DistrictResponse:
         """Supply-side: maximise the weighted selected outputs within the caps.
 
-        Three LPs, lexicographic, each a refinement of the last within a 1e-9
-        relative slack (the D3a pattern, extended by one stage):
+        Four LPs, lexicographic, each a refinement of the last within a 1e-9
+        relative slack (the D3a pattern, extended; A31):
 
-            1  max  sum_i w_i * out_i         out_i = the target's leftover flow,
-                                              bounded below by its floor
-            2  min  goal cost                 request.weights, as `solve` prices it
-            3  min  total activity            D3a tie-break
+            1  max  scale                     out_i >= scale * bill_i for every
+                                              bill product. Skipped with no bill
+            2  max  sum_i w'_i * out_i        out_i = the target's leftover flow,
+                                              bounded below by its floor; w' is
+                                              the weight, times the bill share
+                                              for a bill product
+            3  min  goal cost                 request.weights, as `solve` prices it
+            4  min  total activity            D3a tie-break
 
         A target with weight 0 and no floor is not in the problem at all and is
         reported as excluded at 0.0. A floor that cannot be met raises
@@ -394,56 +423,79 @@ class LpBackend:
         targets = {t.item_id: 0.0 for t in active}
         floors = {t.item_id: t.minimum_rate for t in active if t.minimum_rate is not None}
         caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
-        p = self._build_core(recipe_ids, targets, caps, request.weights, data, floors, request.power)
+        bill = {t.item_id: t.bill_units for t in active if t.is_bill}
+        total_bill = request.bill_total
+        p = self._build_core(
+            recipe_ids, targets, caps, request.weights, data, floors, request.power, bill,
+        )
         index = {i: n for n, i in enumerate(p.item_ids)}
         out_col = {t.item_id: p.n_x + p.n_s + index[t.item_id] for t in active}
 
-        n = p.n_x + p.n_s + p.n_l + p.n_g
-        c1 = np.zeros(n, dtype=float)
+        n = p.n_x + p.n_s + p.n_l + p.n_g + p.n_lam
+        # Stage weights (A31): an extra's weight as given; a bill product's
+        # weight times its bill share, so 1.0 reads "worth what the bill says".
+        c_w = np.zeros(n, dtype=float)
         for t in active:
-            c1[out_col[t.item_id]] = -t.weight
+            share = (t.bill_units / total_bill) if t.is_bill else 1.0
+            c_w[out_col[t.item_id]] = -t.weight * share
         uncapped = [i for i in p.raw_ids if caps.get(i) is None]
-        weighted = [t.item_id for t in active if t.weight > 0]
-        try:
-            first = self._run(
-                c1, p,
-                on_unbounded=(
-                    f"weighted output of {weighted} is unbounded: raw inputs without a "
-                    f"cap {uncapped} can feed it at any rate. Cap them or drop the weight"
-                ),
+        weighted = [t.item_id for t in active if t.weight > 0 or t.is_bill]
+        unbounded_msg = (
+            f"output of {weighted} is unbounded: raw inputs without a cap {uncapped} can "
+            "feed it at any rate (the answer sits on the section 5 guard). Cap them or drop "
+            "the weight"
+        )
+        stage_ub: list[np.ndarray] = []
+        stage_b: list[float] = []
+
+        def run_stage(c):
+            return self._run(
+                c, p,
+                extra_ub=np.vstack(stage_ub) if stage_ub else None,
+                extra_b=np.array(stage_b) if stage_b else None,
+                on_unbounded=unbounded_msg,
             )
+
+        def pin(c, value):
+            slack = max(abs(value), 1.0) * 1.0e-9
+            stage_ub.append(c.reshape(1, -1))
+            stage_b.append(value + slack)
+
+        # 1  max scale (bill products in proportion), when there is a bill
+        scale_value = None
+        first = None
+        try:
+            if p.n_lam:
+                c_lam = np.zeros(n, dtype=float)
+                c_lam[n - 1] = -1.0
+                first = run_stage(c_lam)
+                scale_value = -float(first.fun)
+                pin(c_lam, float(first.fun))
+            # 2  max weighted output (extras, and bill products beyond the scale)
+            second = run_stage(c_w)
         except Infeasible:
             raise self._floor_diagnosis(recipe_ids, caps, request, data, floors) from None
-        # HiGHS rarely reports status 3 here: the section 5 guards (activity and
-        # flow upper bounds) turn a true ray into a huge finite answer. A plan
-        # sitting on either guard is that ray, so it is refused by the same name.
+        if first is None:
+            first = second
         x1 = np.asarray(first.x, dtype=float)
         on_guard = (
             bool(np.any(x1[:p.n_x] >= self.activity_upper_bound - self.tolerance))
             or bool(np.any(x1[p.n_x:p.n_x + p.n_s] >= FLOW_UPPER_BOUND - 1.0))
+            or (p.n_lam and x1[n - 1] >= FLOW_UPPER_BOUND - 1.0)
         )
         if on_guard:
-            raise Unbounded(
-                f"weighted output of {weighted} is unbounded: raw inputs without a cap "
-                f"{uncapped} can feed it at any rate (the answer sits on the section 5 "
-                "guard). Cap them or drop the weight"
-            )
-        z1 = -float(first.fun)
-        slack1 = max(abs(z1), 1.0) * 1.0e-9
-
-        second = self._run(
-            p.primary, p, extra_ub=c1.reshape(1, -1), extra_b=np.array([-z1 + slack1]),
-        )
-        z2 = float(second.fun)
-        slack2 = max(abs(z2), 1.0) * 1.0e-9
-        third = self._run(
-            p.secondary, p,
-            extra_ub=np.vstack([c1, p.primary]),
-            extra_b=np.array([-z1 + slack1, z2 + slack2]),
-        )
-        v = np.asarray(third.x, dtype=float)
+            raise Unbounded(unbounded_msg)
+        z1 = -float(second.fun)
+        pin(c_w, float(second.fun))
+        # 3  min goal cost among those optima
+        third = run_stage(p.primary)
+        z2 = float(third.fun)
+        pin(p.primary, z2)
+        # 4  min total activity (D3a)
+        fourth = run_stage(p.secondary)
+        v = np.asarray(fourth.x, dtype=float)
         tie_broken = bool(
-            np.max(np.abs(v[:p.n_x] - np.asarray(second.x, dtype=float)[:p.n_x]))
+            np.max(np.abs(v[:p.n_x] - np.asarray(third.x, dtype=float)[:p.n_x]))
             > self.tolerance
         )
 
@@ -462,21 +514,24 @@ class LpBackend:
                     and rates.get(t.item_id, 0.0) <= t.minimum_rate + tol
                 ),
                 excluded=not t.is_active,
+                bill_units=t.bill_units,
+                share=(rates.get(t.item_id, 0.0) / t.bill_units) if t.is_bill else None,
             )
             for t in request.targets
         )
-        # Shadow prices come from stage 1, the only stage whose objective is
-        # the weighted output. HiGHS reports a dual on every variable bound;
-        # for an upper bound in a minimisation it is <= 0, and loosening the
-        # bound by one unit changes the objective (-weighted output) by that
-        # much, so the price of one more unit of cap is its negation.
+        # Shadow prices come from the first stage: the scale when there is a
+        # bill (price in scale per unit/min), else the weighted output. HiGHS
+        # reports a dual on every variable bound; for an upper bound in a
+        # minimisation it is <= 0, and loosening the bound by one unit changes
+        # the objective by that much, so the price of one more unit of cap is
+        # its negation.
         marginals = np.asarray(first.upper.marginals, dtype=float)
         s_first = np.asarray(first.x, dtype=float)[p.n_x:p.n_x + p.n_s]
         binding = tuple(
             BindingCap(
                 item_id=i,
                 cap_per_min=float(caps[i]),
-                shadow_price=-float(marginals[p.n_x + col]),
+                shadow_price=-float(marginals[p.n_x + col]) + 0.0,
             )
             for col, i in enumerate(p.raw_ids)
             if caps.get(i) is not None and s_first[col] >= float(caps[i]) - tol
@@ -501,15 +556,22 @@ class LpBackend:
             generated = float(sum(u.mw for u in uses))
             pb = request.power
             margin = generated + pb.grid_mw - lane_mw - pb.extraction_mw - pb.spare_mw
+            # row 0 of A_ub is the power row (bill rows follow it). The dual is
+            # in the first stage's units: scale per MW with a bill, else
+            # weighted output per MW
             row_dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
             power_report = DistrictPower(
                 lane_mw=lane_mw, extraction_mw=pb.extraction_mw, grid_mw=pb.grid_mw,
                 spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
-                generators=uses, binding=margin <= tol, shadow_price=-row_dual,
+                generators=uses, binding=margin <= tol, shadow_price=-row_dual + 0.0,
             )
+        horizon = None
+        if scale_value is not None and scale_value > tol:
+            horizon = 1.0 / scale_value
         return DistrictResponse(
             plan=plan, targets=target_rates, weighted_output=z1,
             goal=request.weights, binding=binding, power=power_report,
+            scale=scale_value, horizon_min=horizon,
         )
 
     def _floor_diagnosis(
@@ -523,9 +585,9 @@ class LpBackend:
         for item, floor in floors.items():
             p1 = self._build_core(
                 recipe_ids, {item: 0.0}, caps, request.weights, data, {item: floor}, request.power,
-            )
+            )  # alone: no bill rows, the floor is the question
             try:
-                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l + p1.n_g), p1)
+                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l + p1.n_g + p1.n_lam), p1)
             except Infeasible:
                 alone.append(f"{item} {floor:g}/min")
         if alone:
@@ -558,7 +620,7 @@ class LpBackend:
                 {i: f * lam for i, f in floors.items()}, request.power,
             )
             try:
-                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l + p.n_g), p)
+                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l + p.n_g + p.n_lam), p)
             except Infeasible:
                 return p, None
 

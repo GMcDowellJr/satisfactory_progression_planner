@@ -7,36 +7,36 @@ between them, which is the linearity the LP owes and the test states rather
 than assumes.
 
 Measured in the agent container 2026-10-08, scenario 1.25x recipe / 5x
-machine power, LpBackend MEAN, goal "balanced" as the tie-break.
+machine power, LpBackend MEAN, goal "balanced" as the tie-break. The bill
+(A31): Project Assembly phase 2 + schematic costs of tiers 3, 4, 5 -> VF
+1000, Motor 200, EIB 600 among the three products made here (18 items in
+all). The solve holds that 1000 : 200 : 600 proportion in every case and
+reports the scale (bill per minute) and the horizon (minutes to cover it).
 
 Caps only (power outside the solve, --no-power):
 
-    shipped (100 %)   VF 2.6572  Motor 2.6316  EIB 3.7500   weighted 9.0387
-                      every declared cap binds; LP power 1337.88 MW
-    readme  (25 %)    VF 0.6643  Motor 0.6579  EIB 0.9375   weighted 2.2597
+    shipped (100 %)   scale 0.004571  horizon 218.75 min
+                      VF 4.5714  Motor 0.9143  EIB 2.7429; coal binds;
+                      LP power 1181.72 MW
+    readme  (25 %)    scale 0.001143  horizon 875.0 min: exactly a quarter
     baseline          v5.4.4's shipped portfolio as demands, uncapped: coal
                       262.75 (cap 240), limestone 150.4 (cap 120), copper
                       20.58 (cap 0: the district has none); ONE Solid Steel
                       Ingot flow of 4.379 foundries where the PWA built five
 
-The shadow prices are the same in both cases: the LP is homogeneous in the
-caps, so the marginal value of a unit of each resource does not depend on
-the clock.
-
 Power in the solve (A29; 900 MW grid, 30 MW spare, 7 miners + 2 water
 extractors at nameplate = 75 MW, coal generators may be built):
 
-    shipped (100 %)   VF 3.3997  Motor 0.5000 (AT FLOOR)  EIB 3.7500
-                      weighted 7.6497; lanes 945.05 MW; 2.0007 coal
-                      generators burning 30.01 coal + 90.03 water; the row
-                      binds at 0.00287 weighted output per MW; coal and
-                      limestone bind, iron and caterium no longer do
-    readme  (25 %)    identical to caps-only: the grid covers 334.47 MW
-                      of lanes with 460.53 MW to spare, no generator built
+    shipped (100 %)   scale 0.003829  horizon 261.15 min
+                      VF 3.8292  Motor 0.7658  EIB 2.2975; lanes 989.84 MW;
+                      2.598 coal generators burning 38.97 coal + 116.91
+                      water; the row binds; coal binds
+    readme  (25 %)    identical to caps-only: the grid covers 295.43 MW of
+                      lanes with 499.57 MW to spare, no generator built
 
-Motors fall to their floor once power is priced: at 5x the Motor chain
-buys the least weighted output per MW, so the solve spends the contested
-coal on steel for frameworks and beams instead.
+Under the bill the Rotor is made ONE way in every case (the A30 mix was a
+product of equal weights); A30's ruling is still needed for the general
+case, but the fixture no longer exercises it.
 """
 from __future__ import annotations
 
@@ -133,24 +133,43 @@ def test_an_unknown_case_is_refused_by_name():
         district_run.run(DECL, case="mk2")
 
 
+# --- the bill (A31) ----------------------------------------------------------
+
+def test_the_bill_is_composed_from_phase_2_and_tiers_3_to_5(shipped):
+    assert len(shipped.bill) == 18
+    assert shipped.bill[I["VF"]] == 1000.0
+    assert shipped.bill[I["MOTOR"]] == 200.0
+    assert shipped.bill[I["EIB"]] == 600.0
+    assert shipped.bill["Desc_SpaceElevatorPart_1_C"] == 1000.0   # in the bill, not made here
+    assert [(t.item_id, t.bill_units) for t in shipped.request.targets] == [
+        (I["VF"], 1000.0), (I["MOTOR"], 200.0), (I["EIB"], 600.0),
+    ]
+
+
 # --- the plan, shipped case ------------------------------------------------
 
-def test_every_target_gets_a_positive_rate_above_its_floor(shipped):
-    """v5.5 acceptance "positive rates": nothing is zero because a competitor
-    had the higher marginal value (the v5.4.4 defect, Stator 0 / Motor 0)."""
-    rates = _rates(shipped)
-    assert rates == pytest.approx(
-        {I["VF"]: 2.657162, I["MOTOR"]: 2.631579, I["EIB"]: 3.75}, abs=1e-4,
+def test_every_bill_product_gets_its_proportion(shipped):
+    """v5.5 acceptance "positive rates", now by need: 1000 : 200 : 600, each
+    at the same scale, nothing at zero because a competitor was "worth more"
+    (the v5.4.4 defect, Stator 0 / Motor 0)."""
+    r = shipped.response
+    assert r.scale == pytest.approx(0.004571, abs=1e-6)
+    assert r.horizon_min == pytest.approx(218.75, abs=1e-2)
+    assert _rates(shipped) == pytest.approx(
+        {I["VF"]: 4.571428, I["MOTOR"]: 0.914286, I["EIB"]: 2.742859}, abs=1e-4,
     )
-    assert not any(t.at_floor for t in shipped.response.targets)
-    assert shipped.response.weighted_output == pytest.approx(9.038741, abs=1e-4)
+    assert [t.share for t in r.targets] == pytest.approx([r.scale] * 3, abs=1e-6)
+    assert r.weighted_output == pytest.approx(3.555556, abs=1e-4)
 
 
 def test_the_built_factorys_alternates_are_the_ones_in_use(shipped):
+    """Four of the five: under the bill the Rotor is made one way, with the
+    base recipe, so Steel Rotor is enabled but idle."""
     used = {u.recipe_id for u in shipped.response.plan.recipes}
-    assert ALTERNATES <= used
+    assert ALTERNATES - {"Recipe_Alternate_Rotor_C"} <= used
+    assert "Recipe_Alternate_Rotor_C" not in used
     assert "Recipe_IngotSteel_C" not in used   # Solid Steel replaced the base recipe
-    assert len(used) == 19
+    assert len(used) == 18
 
 
 def test_shared_intermediates_are_one_flow_each(shipped):
@@ -163,14 +182,16 @@ def test_shared_intermediates_are_one_flow_each(shipped):
     assert len(uses) == len(shipped.response.plan.recipes)
 
 
-def test_every_declared_cap_binds_and_copper_is_priced(shipped):
+def test_coal_binds_and_is_priced_in_scale(shipped):
+    """Coal is the one cap that stops the scale: 1.905e-5 scale per coal/min,
+    i.e. 240 coal buys 0.004571. Iron sits at its cap with no price (the
+    spare-capacity stage used it), copper at 0 with no price."""
     binding = {b.item_id: b for b in shipped.response.binding}
-    assert set(binding) == {I["ORE"], I["COAL"], I["STONE"], I["GOLD"], "Desc_OreCopper_C"}
-    assert binding[I["STONE"]].shadow_price == pytest.approx(0.018827, abs=1e-5)
-    assert binding["Desc_OreCopper_C"].cap_per_min == 0.0
-    assert binding["Desc_OreCopper_C"].shadow_price == pytest.approx(0.018892, abs=1e-5)
+    assert I["COAL"] in binding
+    assert binding[I["COAL"]].shadow_price == pytest.approx(1.905e-5, rel=1e-2)
+    assert binding[I["COAL"]].shadow_price * 240.0 == pytest.approx(shipped.response.scale, rel=1e-3)
     assert _raw(shipped.response.plan) == pytest.approx(
-        {I["ORE"]: 360.0, I["COAL"]: 240.0, I["STONE"]: 120.0, I["GOLD"]: 60.0}, abs=1e-4,
+        {I["ORE"]: 359.872991, I["COAL"]: 240.0, I["STONE"]: 87.77149, I["GOLD"]: 20.84571}, abs=1e-3,
     )
 
 
@@ -184,7 +205,7 @@ def test_conservation_holds_on_every_item(shipped):
 
 def test_lp_power_is_machine_time_at_mean_power_not_a_realization(shipped):
     power = shipped.response.plan.power
-    assert power.scenario_mw == pytest.approx(1337.8834, abs=1e-3)
+    assert power.scenario_mw == pytest.approx(1181.7167, abs=1e-3)
     assert power.canonical_mw == pytest.approx(power.scenario_mw / 5.0, abs=1e-6)
     assert any("power excludes extraction" in w for w in shipped.response.plan.warnings)
 
@@ -194,17 +215,17 @@ def test_lp_power_is_machine_time_at_mean_power_not_a_realization(shipped):
 def test_the_readme_case_is_the_shipped_plan_scaled_by_a_quarter(shipped, readme):
     s, r = _rates(shipped), _rates(readme)
     assert r == pytest.approx({k: v / 4.0 for k, v in s.items()}, abs=1e-4)
-    assert readme.response.weighted_output == pytest.approx(9.038741 / 4.0, abs=1e-4)
+    assert readme.response.scale == pytest.approx(shipped.response.scale / 4.0, abs=1e-7)
+    assert readme.response.horizon_min == pytest.approx(875.0, abs=1e-2)
     assert readme.response.power is None
-    assert not any(t.at_floor for t in readme.response.targets)
-    assert {b.item_id: b.shadow_price for b in readme.response.binding} == pytest.approx(
-        {b.item_id: b.shadow_price for b in shipped.response.binding}, abs=1e-6,
-    )
+    coal = {b.item_id: b.shadow_price for b in readme.response.binding}[I["COAL"]]
+    assert coal == pytest.approx(1.905e-5, rel=1e-2)   # the price per unit does not depend on the clock
 
 
 def test_floors_too_high_for_the_readme_case_are_refused_with_the_scale():
-    """Measured on the way to the declared floors: 1 / 1 / 0.5 fit together
-    only to 0.7555 of their values, coal and caterium binding."""
+    """Extras with floors (the A27.2 shape, no bill): 1 / 1 / 0.5 fit
+    together only to 0.7555 of their values, coal and caterium binding.
+    Measured 2026-10-08 before A31; kept as the extras path's diagnosis."""
     from production_adapter import DistrictRequest, DistrictTarget
     from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic
     base = district_run.run(DECL, case="readme", power=False)
@@ -232,37 +253,40 @@ def test_power_is_composed_from_the_declaration(shipped_power):
     ]
 
 
-def test_shipped_with_power_builds_two_coal_generators_and_motors_fall_to_their_floor(shipped_power):
+def test_shipped_with_power_keeps_the_proportion_and_builds_coal_generators(shipped_power):
+    """Power priced, the proportion holds (A31) and the scale drops from
+    0.004571 to 0.003829: 2.598 coal generators take coal from steel."""
     r = shipped_power.response
+    assert r.scale == pytest.approx(0.003829, abs=1e-6)
+    assert r.horizon_min == pytest.approx(261.15, abs=1e-2)
     assert _rates(shipped_power) == pytest.approx(
-        {I["VF"]: 3.399709, I["MOTOR"]: 0.5, I["EIB"]: 3.75}, abs=1e-4,
+        {I["VF"]: 3.82917, I["MOTOR"]: 0.765834, I["EIB"]: 2.297505}, abs=1e-4,
     )
-    assert [t.at_floor for t in r.targets] == [False, True, False]
-    assert r.weighted_output == pytest.approx(7.649709, abs=1e-4)
+    assert [t.share for t in r.targets] == pytest.approx([r.scale] * 3, abs=1e-6)
     pw = r.power
-    assert pw.lane_mw == pytest.approx(945.0546, abs=1e-3)
-    assert pw.generated_mw == pytest.approx(150.0546, abs=1e-3)
+    assert pw.lane_mw == pytest.approx(989.8427, abs=1e-3)
+    assert pw.generated_mw == pytest.approx(194.8427, abs=1e-3)
     assert pw.margin_mw == pytest.approx(0.0, abs=1e-6) and pw.binding
-    assert pw.shadow_price == pytest.approx(0.002871, abs=1e-5)
+    assert pw.shadow_price == pytest.approx(1.919e-6, rel=1e-2)   # scale per MW
     [g] = pw.generators
     assert g.fuel_item_id == I["COAL"]
-    assert g.count == pytest.approx(2.000728, abs=1e-4)
-    assert g.fuel_per_min == pytest.approx(30.010914, abs=1e-4)
-    assert dict(g.supplemental_per_min) == pytest.approx({I["WATER"]: 90.032743}, abs=1e-4)
+    assert g.count == pytest.approx(2.597902, abs=1e-4)
+    assert g.fuel_per_min == pytest.approx(38.968534, abs=1e-4)
+    assert dict(g.supplemental_per_min) == pytest.approx({I["WATER"]: 116.905603}, abs=1e-4)
     # the plan's raw draw carries the generators' coal and water
     assert _raw(r.plan) == pytest.approx({
-        I["COAL"]: 240.0, I["STONE"]: 120.0, I["ORE"]: 291.714407, I["GOLD"]: 11.4,
-        I["WATER"]: 90.032743,
-    }, abs=1e-4)
-    assert {b.item_id for b in r.binding} == {I["COAL"], I["STONE"], "Desc_OreCopper_C"}
+        I["COAL"]: 240.0, I["STONE"]: 73.520155, I["ORE"]: 301.4408, I["GOLD"]: 17.461013,
+        I["WATER"]: 116.905603,
+    }, abs=1e-3)
+    assert I["COAL"] in {b.item_id for b in r.binding}
 
 
 def test_readme_with_power_is_the_caps_only_plan_on_the_grid(readme, readme_power):
     assert _rates(readme_power) == pytest.approx(_rates(readme), abs=1e-6)
     pw = readme_power.response.power
     assert pw.generators == () and not pw.binding
-    assert pw.lane_mw == pytest.approx(334.4708, abs=1e-3)
-    assert pw.margin_mw == pytest.approx(460.529158, abs=1e-3)
+    assert pw.lane_mw == pytest.approx(295.4291, abs=1e-3)
+    assert pw.margin_mw == pytest.approx(499.5709, abs=1e-3)
 
 
 # --- Stage 0 baseline row ---------------------------------------------------
@@ -318,10 +342,13 @@ def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped, tm
     assert [n["item_id"] for n in doc["district"]["nodes"]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"], I["WATER"]]
     assert len(doc["district"]["caps"]) == 13
     assert doc["goal"] == {"name": "balanced", "resources": 1.0, "power": 1.0, "buildings": 1.0, "complexity": 0.0}
+    assert doc["bill"]["phases"] == [2] and doc["bill"]["tiers"] == [3, 4, 5]
+    assert doc["bill"]["units"][I["MOTOR"]] == 200.0
+    assert doc["bill"]["scale"] == pytest.approx(0.004571, abs=1e-6)
     assert [t["item_id"] for t in doc["targets"]] == [I["VF"], I["MOTOR"], I["EIB"]]
-    assert doc["weighted_output"] == pytest.approx(9.038741, abs=1e-4)
+    assert doc["weighted_output"] == pytest.approx(3.555556, abs=1e-4)
     assert {b["item_id"] for b in doc["binding"]} >= {I["COAL"], I["ORE"]}
-    assert len(doc["plan"]["recipes"]) == 19
+    assert len(doc["plan"]["recipes"]) == 18
     assert doc["baseline"] is not None and len(doc["baseline"]["recipes"]) == 16
     assert doc["unverified"] == list(district_run.UNVERIFIED)
 
@@ -346,3 +373,4 @@ def test_the_declaration_is_data():
     tree = ast.parse(pathlib.Path(DECL.__file__).read_text(encoding="utf-8"))
     assert not [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
     assert _called_names(tree) <= {"dict", "NodeCount", "DistrictTarget", "Scenario"}
+    assert not [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]

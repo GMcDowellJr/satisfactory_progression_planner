@@ -172,14 +172,23 @@ class SolveResponse:
 
 @dataclass(frozen=True)
 class DistrictTarget:
-    """One selected output of a supply-side solve: a weight and an optional floor.
+    """One selected output of a supply-side solve. Two kinds (crossover A31):
 
-    The district question is "what can this site make", with no bill (A27.1
-    K2). Rates are therefore VARIABLES, not inputs: the solve maximises the
-    weighted sum of the selected outputs within the caps, after every declared
-    floor is met. Both numbers are printed with the result (LP record 21 R2).
+        bill product   `bill_units` set: how much of it the declared bill needs.
+                       The solve first makes every bill product in the bill's
+                       PROPORTIONS, as much as the caps allow (max scale s.t.
+                       out_i >= scale * bill_units_i). Value comes from need,
+                       never from a weight someone typed (Greg, 2026-10-08)
+        extra          `bill_units` None: wanted outside the bill, by `weight`
+                       and an optional floor, the A27.2 shape
 
-        weight         0 excludes the item from the objective; the PWA's
+    Rates are VARIABLES, not inputs. After the scale is maximised, spare
+    capacity goes by weight: an extra's weight as given, a bill product's
+    weight times its bill share, so 1.0 means "worth what the bill says",
+    0 means "the proportion and no more". Everything is printed with the
+    result (LP record 21 R2).
+
+        weight         0 excludes an extra from the objective; the PWA's
                        Trickle / Normal / Prioritize are three values of it
         minimum_rate   a declared floor, in items per minute. A trickle is a
                        small floor, never a clock (v5.5 rule 2). None: no floor
@@ -188,17 +197,27 @@ class DistrictTarget:
     item_id: ItemId
     weight: float = 1.0
     minimum_rate: float | None = None
+    bill_units: float | None = None
 
     def __post_init__(self) -> None:
         if self.weight < 0:
             raise ValueError(f"{self.item_id}: weight must be non-negative")
         if self.minimum_rate is not None and self.minimum_rate <= 0:
             raise ValueError(f"{self.item_id}: minimum_rate must be positive when given")
+        if self.bill_units is not None and self.bill_units <= 0:
+            raise ValueError(
+                f"{self.item_id}: bill_units must be positive when given; an item the "
+                "bill does not need is an extra, not a bill product of zero"
+            )
+
+    @property
+    def is_bill(self) -> bool:
+        return self.bill_units is not None
 
     @property
     def is_active(self) -> bool:
-        """In the solve at all: weighted, or held above a floor."""
-        return self.weight > 0 or self.minimum_rate is not None
+        """In the solve at all: a bill product, weighted, or held above a floor."""
+        return self.is_bill or self.weight > 0 or self.minimum_rate is not None
 
 
 @dataclass(frozen=True)
@@ -281,15 +300,22 @@ class DistrictRequest:
                 "every target has weight 0 and no floor: nothing to maximise and "
                 "nothing to hold. Exclusion is a per-target setting, not a request"
             )
+
         capped = {c.item_id for c in self.resource_caps}
         both = capped & set(seen)
         if both:
             raise ValueError(f"item is both a target and a capped input: {sorted(both)}")
 
+    @property
+    def bill_total(self) -> float:
+        return sum(t.bill_units for t in self.targets if t.is_bill)
+
 
 @dataclass(frozen=True)
 class TargetRate:
-    """What one target got. `at_floor` says the floor is all it got."""
+    """What one target got. `at_floor` says the floor is all it got; for a
+    bill product `share` is rate / bill_units, the scale it reached (equal to
+    the response's `scale` unless spare capacity lifted it)."""
 
     item_id: ItemId
     rate_per_min: float
@@ -297,6 +323,8 @@ class TargetRate:
     minimum_rate: float | None
     at_floor: bool
     excluded: bool
+    bill_units: float | None = None
+    share: float | None = None
 
 
 @dataclass(frozen=True)
@@ -357,3 +385,10 @@ class DistrictResponse:
     binding: tuple[BindingCap, ...]
     #: None when the request carried no PowerBalance
     power: DistrictPower | None = None
+    #: A31: the bill scale, per minute. out_i >= scale * bill_units_i for every
+    #: bill product. None when the request has no bill product; 0.0 when some
+    #: bill product cannot be made at all (the binding caps say which)
+    scale: float | None = None
+    #: 1 / scale, minutes to cover the declared bill at this rate. None when
+    #: scale is None or 0.0. A report, not play time (A24.2)
+    horizon_min: float | None = None

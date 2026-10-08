@@ -186,3 +186,22 @@ def test_extraction_nameplate_mw_refuses_an_unknown_class_by_name():
     d = DistrictDefinition(nodes=(NodeCount(IRON, "pure", 1),), extractor_class=MK1, extraction_clock=1.0)
     with pytest.raises(DistrictError, match="Build_MinerMk1_C: no base power"):
         extraction_nameplate_mw(d, {})
+
+
+# --- the bill, summed from declared sources (A31) ----------------------------
+
+def test_bill_units_sums_sources_in_first_seen_order():
+    from progression import bill_units
+    out = bill_units((
+        ("project assembly phase 2", (("Desc_SpaceElevatorPart_2_C", 1000.0),)),
+        ("Schematic_5-1_C", (("Desc_Motor_C", 100.0), ("Desc_SpaceElevatorPart_2_C", 5.0))),
+        ("Schematic_5-2_C", (("Desc_Motor_C", 100.0),)),
+    ))
+    assert list(out.items()) == [("Desc_SpaceElevatorPart_2_C", 1005.0), ("Desc_Motor_C", 200.0)]
+
+
+@pytest.mark.parametrize("units", [0.0, -1.0])
+def test_bill_units_refuses_an_item_at_nothing(units):
+    from progression import bill_units
+    with pytest.raises(DistrictError, match="bill source 'x': Desc_Motor_C"):
+        bill_units((("x", (("Desc_Motor_C", units),)),))

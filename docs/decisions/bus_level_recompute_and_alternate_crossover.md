@@ -2984,3 +2984,70 @@ is what the player pays), and the trickle lane's own minimum clock.
     O32  R1, R2 or R3 (Greg)
     O33  under R1: how the oracle states a split bus (busmodel.BusSpec
          carries one recipe_id today)
+
+## Amendment 31 — 2026-10-08. Value is what is needed later: the district solve takes the bill as its proportions
+
+Appended forward-only. Amendments 13-30 stand as written. Source: Greg,
+chat 2026-10-08, on the rotor example of A30: "How valuable a product is
+should be based on how useful or necessary it is later ... which is how I'm
+thinking of resolution", and "That sounds like the correct approach" to the
+proposal below. Reshapes A27.1 K2 and retires A28.1 T4.
+
+    code      this session (see A31.2)
+    measured  container 2026-10-08, the fixture, bill = Project Assembly
+              phase 2 + schematic costs of tiers 3, 4, 5: VF 1000, EIB 600,
+              Motor 200 (Motor is in no tier 3-4 milestone). Shipped with
+              power: scale 0.003829 /min, horizon 261.2 min; VF 3.8292,
+              Motor 0.7658, EIB 2.2975 (the 1000:200:600 proportion held);
+              2.598 coal generators; coal binding. Readme: scale 0.001143,
+              horizon 875.0 min, grid covers it. Caps-only shipped: scale
+              0.004571, horizon 218.7 min
+
+### A31.1 Decided by Greg, 2026-10-08
+
+    V1   EQUAL WEIGHTS ARE A CLAIM OF EQUAL VALUE, AND A WRONG ONE. A28.1
+         T4's weight-1 targets with hand-set floors are retired
+    V2   VALUE COMES FROM THE BILL. The district solve makes its selected
+         bill products in the proportions the declared bill needs, as much
+         as the caps and the power balance allow:
+             max scale  s.t.  out_i >= scale * bill_i
+         K2 stands as the QUESTION (what can this site make; "is it enough"
+         is the bill-side comparison), but the bill supplies the
+         proportions. 1 / scale is the minutes to cover the bill at this
+         rate, a report (A24.2: not play time)
+    V3   THE BILL IS DECLARED BY ITS SOURCES: Project Assembly phases and
+         the schematic tiers still owed (A25.2 O11: the current tiers and
+         the next). What the player has already bought is caller state
+    V4   FLOORS ARE NOT A SETTING FOR BILL PRODUCTS. A bill product gets
+         its proportion, or scale is 0 and the binding caps say why.
+         Extras outside the bill keep the A27.2 shape (weight, optional
+         floor): a declared trickle lives there
+    V5   SPARE CAPACITY AFTER THE SCALE GOES BY WEIGHT, where a bill
+         product's weight is multiplied by its bill share: 1.0 reads "worth
+         what the bill says", 0 "the proportion and no more". Printed
+
+### A31.2 Taken in code by the agent (revisable by Greg)
+
+    B1   `DistrictTarget.bill_units`: set, a bill product; None, an extra
+    B2   one scale column after every other block, one row per bill
+         product; four lexicographic LPs: max scale, max weighted output
+         (V5 weights), min goal cost, min activity (D3a). The scale column
+         is outside the activity tie-break
+    B3   shadow prices are in the first stage's units: scale per unit/min
+         with a bill, weighted output per unit/min without; the report says
+         which
+    B4   `progression.district.bill_units` sums declared sources (label,
+         rows) and refuses an item at zero; the joint composes the sources
+         from BILL_PHASES (scenario-scaled Project Assembly rows) and
+         BILL_TIERS (schematic costs), and refuses a BILL_TARGET the bill
+         does not contain
+    B5   fixture: BILL_PHASES (2,), BILL_TIERS (3, 4, 5), BILL_TARGETS VF,
+         Motor, EIB at weight 1.0, EXTRAS empty
+
+### A31.3 Open
+
+    O34  which bill items the district should be asked to make: the fixture
+         names three of the bill's 18; a discovery pass (O22) over caps +
+         unlocks would list which of the 18 this site can make at all
+    O35  "already bought" and "already stored" as declared state netting
+         the bill (D3), and standing production elsewhere (O11)
