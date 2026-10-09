@@ -12,7 +12,7 @@ import csv
 import pathlib
 from dataclasses import dataclass, field
 
-from .contracts import ItemId, ProducerClass, RecipeId
+from .contracts import GeneratorFuel, ItemId, ProducerClass, RecipeId
 from .scenario import ITEM_UNIT, Scenario
 
 REFERENCE_SUBPATH = pathlib.Path("planning_data") / "game" / "reference"
@@ -33,6 +33,23 @@ class Producer:
     @property
     def is_variable_power(self) -> bool:
         return self.power_model == "variable"
+
+    def scaled(self, factor: float) -> "Producer":
+        """Base power under the scenario's machine-power multiplier (A32).
+
+        `Recipe.power` has been scaled by `with_scenario` since the scenario
+        layer was written; the producer's own `base_power_mw`, which
+        `realization.residual.power_at_clock` reads, was not. A realized
+        figure under the 5x run was therefore reported at 1x. Found
+        2026-10-08 while realizing the district plan.
+        """
+        if factor == 1.0:
+            return self
+        return Producer(
+            producer_class=self.producer_class, display_name=self.display_name,
+            power_model=self.power_model, base_power_mw=self.base_power_mw * factor,
+            power_exponent=self.power_exponent,
+        )
 
 
 @dataclass(frozen=True)
@@ -218,7 +235,9 @@ class ReferenceData:
         return ReferenceData(
             game_build_id=self.game_build_id,
             recipes={k: v.scaled(scenario) for k, v in self.recipes.items()},
-            producers=self.producers,
+            producers={
+                k: v.scaled(scenario.machine_power_multiplier) for k, v in self.producers.items()
+            },
             items=self.items,
             resource_items=self.resource_items,
             scenario=scenario,
@@ -396,6 +415,35 @@ def load_logistics(
         tuple(sorted(caps, key=lambda c: (c.capability_type, c.unlock_tier, c.mark))),
         tuple(sorted(rates, key=lambda e: (e.extractor_class, e.purity))),
     )
+
+
+def load_generators(repo_root: str | pathlib.Path) -> tuple[GeneratorFuel, ...]:
+    """Read generator_fuels.csv: one `GeneratorFuel` per (generator, fuel) row.
+
+    Deliberately NOT part of `ReferenceData` and not scenario-scaled: a
+    generator's gross MW does not move with the machine-power multiplier.
+    Supplemental (water) and byproduct columns are optional per row and are
+    carried only when present. Returned in file order; callers that need a
+    subset filter by generator class.
+    """
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    out: list[GeneratorFuel] = []
+    for r in _rows(ref / "generator_fuels.csv"):
+        supplemental = ()
+        if r.get("supplemental_item_id"):
+            supplemental = ((r["supplemental_item_id"], float(r["supplemental_rate_per_min"])),)
+        byproduct = ()
+        if r.get("byproduct_item_id"):
+            byproduct = ((r["byproduct_item_id"], float(r["byproduct_rate_per_min"])),)
+        out.append(GeneratorFuel(
+            generator_class=r["generator_class"],
+            fuel_item_id=r["fuel_item_id"],
+            burn_rate_per_min=float(r["burn_rate_per_min"]),
+            power_mw=float(r["power_production_mw"]),
+            supplemental=supplemental,
+            byproduct=byproduct,
+        ))
+    return tuple(out)
 
 
 #: `Recipe_PipelinePumpMK2_C` carries an EMPTY `building_class` in
