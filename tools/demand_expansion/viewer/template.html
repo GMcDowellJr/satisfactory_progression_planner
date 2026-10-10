@@ -356,6 +356,8 @@ const growth = c => c.growth.kind === 'ratio' ? fmt(c.growth.ratio) + '×' : c.g
 const leafTag = id => RES.has(id) ? '<span class="leaf">resource</span>' : graph().leaves.has(id) ? '<span class="leaf co">coproduct-supplied</span>' : altTag(id);
 const altTag = id => { const rid = (graph().producers.get(id) || [])[0]; return rid && P.recipes[rid].alt ? `<span class="leaf alt" title="${esc(P.recipes[rid].n)}">alt</span>` : ''; };
 const lb = ok => ok ? '' : '<span class="lb" title="lower bound">+</span>';
+// remaining-to-end: how many more of this phase's worth is still to come. Undefined when this phase needs none.
+const toEnd = c => c.q > 0 ? fmt(c.rem / c.q) + '×' + lb(c.remOk) : '<span class="muted">·</span>';
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 const refusalText = err => err.refusal === 'AmbiguousRoute' ? `${name(err.item)} has ${err.candidates.length} possible recipes and no declared choice` : err.refusal === 'UnproducibleItem' ? `no enabled recipe makes ${name(err.item)}` : err.refusal === 'CycleDetected' ? `recipe cycle at ${name(err.item)}` : String(err.message);
 
@@ -381,7 +383,7 @@ function treeNode(item, units, key, depth) {
   return html + '</li>';
 }
 function openOnce(key) { if (!state.seen.has(key)) { state.seen.add(key); state.open.add(key); } }
-const colsToggle = () => `<label class="cols-toggle"><input type="checkbox" id="morecols" ${state.more ? 'checked' : ''}> Show cumulative and remaining</label>`;
+const colsToggle = () => `<label class="cols-toggle"><input type="checkbox" id="morecols" ${state.more ? 'checked' : ''}> Show cumulative, remaining and to end</label>`;
 
 // ---- phases screen
 function renderPhases() {
@@ -397,8 +399,8 @@ function renderPhases() {
   for (const r of rows) { if (r.refusal) continue; const key = `${altKey()}|${state.rm}|${state.pm}|${ph}:${r.item}`; parentUnits[key] = r.q; openOnce(key); html += treeNode(r.item, r.q, key, 0); }
   html += `</ul></section>`;
   const items = [...a.cells.values()].map(cs => cs.find(c => c.ph === ph)).filter(c => c && c.q > 0).sort((x, y) => name(x.item).localeCompare(name(y.item)));
-  html += `<section><h2>Everything phase ${ph} requires</h2><p class="sub">${items.length} parts and resources, in units. Growth is against the previous phase; cumulative includes earlier phases; remaining is later phases only.</p>${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Part</th><th>This phase</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th></tr></thead><tbody>` +
-    items.map(cl => `<tr><td><button class="link" data-part="${esc(cl.item)}">${esc(name(cl.item))}</button> ${leafTag(cl.item)}</td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') +
+  html += `<section><h2>Everything phase ${ph} requires</h2><p class="sub">${items.length} parts and resources, in units. Growth is against the previous phase; cumulative includes earlier phases; remaining is later phases only; to end is remaining divided by this phase, how many more of this phase's worth is still to come.</p>${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Part</th><th>This phase</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th><th class="col-more">To end</th></tr></thead><tbody>` +
+    items.map(cl => `<tr><td><button class="link" data-part="${esc(cl.item)}">${esc(name(cl.item))}</button> ${leafTag(cl.item)}</td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td><td class="col-more">${toEnd(cl)}</td></tr>`).join('') +
     `</tbody></table></div></section>`;
   document.getElementById('phases').innerHTML = html;
 }
@@ -412,8 +414,8 @@ function renderParts() {
     const lastCell = series[series.length - 1], first = series.find(s => s.q > 0), last = [...series].reverse().find(s => s.q > 0);
     html += `<div class="stats"><div class="card stat"><div class="label">Lifetime units</div><div class="v">${fmt(lastCell.cum)}${lb(lastCell.cumOk)}</div></div><div class="card stat"><div class="label">First required</div><div class="v">${first ? 'Phase ' + first.ph : '–'}</div></div><div class="card stat"><div class="label">Last required</div><div class="v">${last ? 'Phase ' + last.ph : '–'}</div></div></div>`;
     html += chart(series);
-    html += `${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Phase</th><th>Units</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th></tr></thead><tbody>` +
-      series.map(cl => `<tr><td>Phase ${cl.ph} <span class="muted">${esc(phaseName(cl.ph))}</span></td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') + `</tbody></table></div>`;
+    html += `${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Phase</th><th>Units</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th><th class="col-more">To end</th></tr></thead><tbody>` +
+      series.map(cl => `<tr><td>Phase ${cl.ph} <span class="muted">${esc(phaseName(cl.ph))}</span></td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td><td class="col-more">${toEnd(cl)}</td></tr>`).join('') + `</tbody></table></div>`;
   } else html += `<p class="sub">No Project Assembly delivery requires ${esc(name(part))} under this configuration.</p>`;
   const dest = (c.bySource.get(part) || []).sort((x, y) => name(x.t).localeCompare(name(y.t)));
   html += `<section><h2>Where ${esc(name(part))} ends up</h2><p class="sub">Units of ${esc(name(part))} inside one unit of each part below, by every recipe path, at ${esc(state.rm)}× recipe cost. Direct means the part's own recipe takes it.</p>` +

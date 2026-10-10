@@ -209,7 +209,10 @@ Python engine remains the oracle; a difference is a defect in the port.
 
 Screens: a phase, its deliveries, a drill-down tree of the parts inside
 them scaled to the phase's quantity, and the phase table; a part, its phase
-series, where it ends up, what it takes; the alternates list with the
+series, where it ends up, what it takes. The tables add one page-side view
+to the engine's cells, "to end" = remaining ÷ this phase (how many more of
+this phase's worth is still to come; undefined when the phase needs none,
+a lower bound when a later phase is incomplete); the alternates list with the
 reason any cannot be declared on this table; the rules, the configuration
 in view, the self-check result and provenance.
 
