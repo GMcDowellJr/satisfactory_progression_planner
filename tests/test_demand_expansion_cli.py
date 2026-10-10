@@ -109,7 +109,9 @@ def test_viewer_is_one_self_contained_page(tmp_path):
     out = tmp_path / "page.html"
     assert cli.main(["viewer", "--out", str(out)]) == 0
     html = out.read_text(encoding="utf-8")
-    assert html.startswith("<title>Project Assembly Demand</title>")
+    assert html.startswith("<!doctype html>")
+    assert '<meta name="viewport" content="width=device-width' in html   # a complete document: phones need it
+    assert "<title>Project Assembly Demand</title>" in html
     assert "__PAYLOAD__" not in html and "__GENERATED__" not in html
     assert "<script src=" not in html and 'rel="stylesheet"' not in html   # nothing external
     assert b"\r" not in out.read_bytes()

@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>Project Assembly Demand</title>
 <style>
 /* Layout: one filter row (recipe cost, elevator parts, view) above a single column; phase screen = deliveries, drill-down tree, phase table. */
@@ -17,20 +23,24 @@
   --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
   --accent: #3987e5; --accent-soft: #184f95; --warning: #fab219; --warning-ink: #fab219; --leaf: #383835; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--font); margin: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); margin: 0; }
 .wrap { max-width: 1080px; margin: 0 auto; padding-block: 20px 48px; padding-inline: 16px; }
+select { font: inherit; padding: 8px 10px; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); min-height: 40px; }
+.narrow-only { display: none; }
+.cols-toggle { display: none; }
 h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
 h2 { font-size: 15px; margin: 0; }
 .sub { color: var(--ink-2); margin: 4px 0 0; }
 .filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--grid); }
 .filters .group { display: inline-flex; align-items: center; gap: 8px; }
 .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; }
-.seg button { background: transparent; color: var(--ink-2); border: 0; padding: 7px 11px; font: inherit; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button { background: transparent; color: var(--ink-2); border: 0; padding: 9px 12px; min-height: 40px; font: inherit; cursor: pointer; font-variant-numeric: tabular-nums; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .seg button:focus-visible, .chip:focus-visible, .tree button:focus-visible, .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
-.chip { border: 1px solid var(--axis); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
+.chip { border: 1px solid var(--axis); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 14px; min-height: 40px; font: inherit; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
 .chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .chip small { color: var(--muted); }
 .incomplete { color: var(--warning-ink); font-weight: 600; }
@@ -44,7 +54,7 @@ section { margin-top: 26px; }
 .tree { list-style: none; margin: 8px 0 0; padding: 0; }
 .tree ul { list-style: none; margin: 0; padding-left: 22px; border-left: 1px solid var(--grid); }
 .tree li { margin: 2px 0; }
-.node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 4px 6px; border-radius: 6px; min-width: 0; }
+.node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 6px 6px; border-radius: 6px; min-width: 0; min-height: 36px; }
 .node:hover { background: var(--surface); }
 .tree button { background: transparent; border: 0; color: var(--ink); font: inherit; cursor: pointer; padding: 0; display: inline-flex; gap: 6px; align-items: baseline; text-align: left; }
 .tree .tw { display: inline-block; width: 12px; color: var(--muted); }
@@ -54,11 +64,11 @@ section { margin-top: 26px; }
 .leaf.co { background: color-mix(in srgb, var(--warning) 22%, var(--surface)); color: var(--warning-ink); }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 .tablewrap { overflow-x: auto; margin-top: 10px; }
-th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th, td { text-align: right; padding: 8px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 th { color: var(--muted); font-weight: 500; font-size: 12px; }
 th:first-child, td:first-child { text-align: left; }
 td:first-child { white-space: normal; min-width: 160px; }
-.link { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; padding: 0; text-align: left; }
+.link { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; padding: 4px 0; text-align: left; }
 .muted { color: var(--muted); }
 .search { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
 input[type=text] { font: inherit; padding: 7px 10px; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 260px; }
@@ -73,15 +83,40 @@ svg { width: 100%; height: auto; display: block; max-width: 100%; }
 .about code, .mono { font-family: var(--mono); font-size: 12px; }
 footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--grid); padding-top: 12px; }
 @media (prefers-reduced-motion: no-preference) { .node { transition: background .12s; } }
+@media (max-width: 640px) {
+  .wrap { padding-block: 14px 84px; }
+  h1 { font-size: 20px; }
+  .filters { gap: 10px 14px; margin: 14px 0 16px; }
+  .filters .group { gap: 6px; }
+  .seg.multi { display: none; }
+  .narrow-only { display: inline-flex; }
+  .filters .group.view { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; margin: 0; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--grid); }
+  .filters .group.view .label { display: none; }
+  .filters .group.view .seg { display: flex; width: 100%; }
+  .filters .group.view .seg button { flex: 1; min-height: 44px; }
+  input[type=text] { font-size: 16px; min-width: 0; width: 100%; }
+  .search { align-items: stretch; }
+  .card .big { font-size: 24px; }
+  th, td { padding: 9px 6px; }
+  td:first-child { min-width: 120px; }
+  .col-more { display: none; }
+  .show-more .col-more { display: table-cell; }
+  .cols-toggle { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 0; color: var(--ink-2); min-height: 40px; }
+  .tree ul { padding-left: 14px; }
+  .per { flex-basis: 100%; margin-left: 18px; }
+  figure svg text { font-size: 19px; }   /* user units: the 640-wide viewBox is drawn at about half size */
+}
 </style>
+</head>
+<body>
 <div class="wrap">
   <h1>Project Assembly Demand</h1>
   <p class="sub">What each Space Elevator phase makes you produce, in units, down to the parts inside the parts. Satisfactory 1.2.4.0 build 502094, default routes.</p>
 
   <div class="filters">
-    <div class="group"><span class="label">Recipe cost</span><div class="seg" id="rm" role="group" aria-label="Recipe cost multiplier"></div></div>
-    <div class="group"><span class="label">Elevator parts</span><div class="seg" id="pm" role="group" aria-label="Space Elevator deliverable multiplier"></div></div>
-    <div class="group"><span class="label">View</span>
+    <div class="group"><label class="label" for="rmsel">Recipe cost</label><div class="seg multi" id="rm" role="group" aria-label="Recipe cost multiplier"></div><select class="narrow-only" id="rmsel" aria-label="Recipe cost multiplier"></select></div>
+    <div class="group"><label class="label" for="pmsel">Elevator parts</label><div class="seg multi" id="pm" role="group" aria-label="Space Elevator deliverable multiplier"></div><select class="narrow-only" id="pmsel" aria-label="Space Elevator deliverable multiplier"></select></div>
+    <div class="group view"><span class="label">View</span>
       <div class="seg" id="screens" role="group" aria-label="View">
         <button data-screen="phases" aria-pressed="true">Phases</button>
         <button data-screen="parts" aria-pressed="false">Parts</button>
@@ -101,15 +136,16 @@ const payloadEl = document.getElementById('payload');
 const P = JSON.parse(payloadEl.textContent);
 const RES = new Set(P.resources), COP = new Set(P.coproduct_leaves);
 const name = id => P.names[id] || id;
-const state = { rm: '1', pm: '1', screen: 'phases', phase: 3, part: 'Desc_Motor_C', open: new Set(), seen: new Set() };
+const state = { rm: '1', pm: '1', screen: 'phases', phase: 3, part: 'Desc_Motor_C', open: new Set(), seen: new Set(), more: false };
 try { const s = JSON.parse(localStorage.getItem('pad-state') || '{}');
   if (P.recipe_multipliers.includes(s.rm)) state.rm = s.rm;
   if (P.pa_multipliers.includes(s.pm)) state.pm = s.pm;
   if (['phases', 'parts', 'about'].includes(s.screen)) state.screen = s.screen;
   if (P.phase_names[String(s.phase)]) state.phase = s.phase;
   if (P.names[s.part]) state.part = s.part;
+  state.more = !!s.more;
 } catch (e) {}
-function remember() { try { localStorage.setItem('pad-state', JSON.stringify({rm: state.rm, pm: state.pm, screen: state.screen, phase: state.phase, part: state.part})); } catch (e) {} }
+function remember() { try { localStorage.setItem('pad-state', JSON.stringify({rm: state.rm, pm: state.pm, screen: state.screen, phase: state.phase, part: state.part, more: state.more})); } catch (e) {} }
 
 // ---- indexes, built on demand per multiplier and per combination
 const RIDX = new Map(), CIDX = new Map();
@@ -171,6 +207,8 @@ function treeNode(item, units, key, depth) {
 }
 function openOnce(key) { if (!state.seen.has(key)) { state.seen.add(key); state.open.add(key); } }
 
+const colsToggle = () => `<label class="cols-toggle"><input type="checkbox" id="morecols" ${state.more ? 'checked' : ''}> Show cumulative and remaining</label>`;
+
 // ---- phases screen
 function renderPhases() {
   const i = cidx(), ph = state.phase, rows = i.deliveries[ph] || [];
@@ -186,8 +224,8 @@ function renderPhases() {
   for (const r of rows) { if (r.refusal) continue; const key = `${state.rm}|${state.pm}|${ph}:${r.item}`; parentUnits[key] = r.q; openOnce(key); html += treeNode(r.item, r.q, key, 0); }
   html += `</ul></section>`;
   const items = [...i.byItem.keys()].map(it => i.byPhaseItem.get(it + '|' + ph)).filter(cl => cl && cl.q > 0).sort((a, b) => name(a.item).localeCompare(name(b.item)));
-  html += `<section><h2>Everything phase ${ph} requires</h2><p class="sub">${items.length} parts and resources, in units. Growth is against the previous phase; cumulative includes earlier phases; remaining is later phases only.</p><div class="tablewrap"><table><thead><tr><th>Part</th><th>This phase</th><th>Growth</th><th>Cumulative</th><th>Remaining</th></tr></thead><tbody>` +
-    items.map(cl => `<tr><td><button class="link" data-part="${esc(cl.item)}">${esc(name(cl.item))}</button> ${leafTag(cl.item)}</td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td>${fmt(cl.cum)}${lb(cl.cumOk)}</td><td>${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') +
+  html += `<section><h2>Everything phase ${ph} requires</h2><p class="sub">${items.length} parts and resources, in units. Growth is against the previous phase; cumulative includes earlier phases; remaining is later phases only.</p>${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Part</th><th>This phase</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th></tr></thead><tbody>` +
+    items.map(cl => `<tr><td><button class="link" data-part="${esc(cl.item)}">${esc(name(cl.item))}</button> ${leafTag(cl.item)}</td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') +
     `</tbody></table></div></section>`;
   document.getElementById('phases').innerHTML = html;
 }
@@ -201,8 +239,8 @@ function renderParts() {
     const lastCell = series[series.length - 1], first = series.find(s => s.q > 0), last = [...series].reverse().find(s => s.q > 0);
     html += `<div class="stats"><div class="card stat"><div class="label">Lifetime units</div><div class="v">${fmt(lastCell.cum)}${lb(lastCell.cumOk)}</div></div><div class="card stat"><div class="label">First required</div><div class="v">${first ? 'Phase ' + first.ph : '–'}</div></div><div class="card stat"><div class="label">Last required</div><div class="v">${last ? 'Phase ' + last.ph : '–'}</div></div></div>`;
     html += chart(series);
-    html += `<div class="tablewrap"><table><thead><tr><th>Phase</th><th>Units</th><th>Growth</th><th>Cumulative</th><th>Remaining</th></tr></thead><tbody>` +
-      series.map(cl => `<tr><td>Phase ${cl.ph} <span class="muted">${esc(P.phase_names[cl.ph])}</span></td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td>${fmt(cl.cum)}${lb(cl.cumOk)}</td><td>${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') + `</tbody></table></div>`;
+    html += `${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Phase</th><th>Units</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th></tr></thead><tbody>` +
+      series.map(cl => `<tr><td>Phase ${cl.ph} <span class="muted">${esc(P.phase_names[cl.ph])}</span></td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') + `</tbody></table></div>`;
   } else html += `<p class="sub">No Project Assembly delivery requires ${esc(name(part))} under this configuration.</p>`;
   const dest = (r.bySource.get(part) || []).sort((a, b) => name(a.t).localeCompare(name(b.t)));
   html += `<section><h2>Where ${esc(name(part))} ends up</h2><p class="sub">Units of ${esc(name(part))} inside one unit of each part below, by every recipe path, at ${esc(state.rm)}× recipe cost. Direct means the part's own recipe takes it.</p>` +
@@ -256,6 +294,8 @@ function renderAbout() {
 function render() {
   document.getElementById('rm').innerHTML = P.recipe_multipliers.map(m => `<button data-rm="${m}" aria-pressed="${m === state.rm}">${m}×</button>`).join('');
   document.getElementById('pm').innerHTML = P.pa_multipliers.map(m => `<button data-pm="${m}" aria-pressed="${m === state.pm}">${m}×</button>`).join('');
+  document.getElementById('rmsel').innerHTML = P.recipe_multipliers.map(m => `<option value="${m}" ${m === state.rm ? 'selected' : ''}>${m}×</option>`).join('');
+  document.getElementById('pmsel').innerHTML = P.pa_multipliers.map(m => `<option value="${m}" ${m === state.pm ? 'selected' : ''}>${m}×</option>`).join('');
   for (const b of document.querySelectorAll('#screens button')) b.setAttribute('aria-pressed', String(b.dataset.screen === state.screen));
   for (const s of ['phases', 'parts', 'about']) document.getElementById(s).hidden = s !== state.screen;
   if (state.screen === 'phases') renderPhases(); else if (state.screen === 'parts') renderParts(); else renderAbout();
@@ -272,6 +312,9 @@ document.addEventListener('click', e => {
   else if (t.dataset.part) { state.part = t.dataset.part; state.screen = 'parts'; render(); window.scrollTo({top: 0}); }
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'rmsel') { state.rm = e.target.value; render(); return; }
+  if (e.target.id === 'pmsel') { state.pm = e.target.value; render(); return; }
+  if (e.target.id === 'morecols') { state.more = e.target.checked; render(); return; }
   if (e.target.id !== 'partq') return;
   const v = e.target.value.trim(); const hit = Object.entries(P.names).find(([id, n]) => n.toLowerCase() === v.toLowerCase());
   if (hit) { state.part = hit[0]; render(); }
@@ -285,3 +328,5 @@ document.addEventListener('mousemove', e => {
 });
 render();
 </script>
+</body>
+</html>

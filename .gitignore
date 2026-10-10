@@ -58,3 +58,6 @@ data/
 
 # D6 player state: saved phase plans (have-after), the player's, not canon.
 player_state/
+
+# Netlify build output (netlify.toml)
+dist/
