@@ -102,6 +102,14 @@ Iron Rod 14.25, Screw 9.25, Iron Plate 3, Reinforced Iron Plate 1, Rotor 1,
 Smart Plating 1. These equal the oracle's machine equivalents at 1/min
 times each recipe's cycles per minute, and the oracle's 23.25 raw ore.
 
+## Reference outputs
+
+`python tools/demand_expansion_cli.py generate` at 1x on this build: 119
+targets in scope, 804 coefficient rows, 72 items × 5 phases in dataset B,
+phase 5 incomplete, 44 unresolved rows;
+unresolved lists the two refused deliveries and every in-scope target that
+reaches an unpinned item. Two runs produce byte-identical CSVs and report.
+
 ## Structure
 
 - Plastic per unit: direct 1.5 Crude Oil; coproduct 0.5 Heavy Oil Residue,

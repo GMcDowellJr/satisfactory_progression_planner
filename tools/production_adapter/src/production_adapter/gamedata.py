@@ -408,6 +408,36 @@ def load_project_assembly(
     return tuple(out)
 
 
+@dataclass(frozen=True)
+class GameBuild:
+    """The one row of game_builds.csv: the build the reference layer was
+    extracted from, and the sha256 that pins its data. The sha256 pins the
+    DATA; behaviour set in compiled code is pinned only by game_version
+    (game_builds.csv notes, record 3.2.3)."""
+
+    game_build_id: str
+    game_version: str
+    build_number: str
+    docs_sha256: str
+    verified_on: str
+
+
+def load_game_build(repo_root: str | pathlib.Path) -> GameBuild:
+    """Read game_builds.csv. Refuses anything but exactly one row: a reference
+    layer spanning builds has no single provenance to stamp."""
+    rows = _rows(pathlib.Path(repo_root) / REFERENCE_SUBPATH / "game_builds.csv")
+    if len(rows) != 1:
+        raise ReferenceDataError(f"game_builds.csv has {len(rows)} rows; expected exactly one")
+    r = rows[0]
+    return GameBuild(
+        game_build_id=r["game_build_id"],
+        game_version=r["game_version"],
+        build_number=r["build_number"],
+        docs_sha256=r["sha256"],
+        verified_on=r["verified_on"],
+    )
+
+
 _TIER_PREFIX = "Tier "
 
 

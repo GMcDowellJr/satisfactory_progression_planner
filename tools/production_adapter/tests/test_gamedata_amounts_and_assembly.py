@@ -62,3 +62,12 @@ def test_project_assembly_refuses_an_unresolvable_name(data, tmp_path):
     )
     with pytest.raises(ReferenceDataError, match="matches 0 items"):
         load_project_assembly(tmp_path, data)
+
+
+def test_game_build_is_one_row():
+    from production_adapter import load_game_build
+
+    b = load_game_build(REPO)
+    assert b.game_build_id == "docs_a81d250e96aa"
+    assert (b.game_version, b.build_number) == ("1.2.4.0", "502094")
+    assert b.docs_sha256.startswith("a81d250e96aa") and len(b.docs_sha256) == 64

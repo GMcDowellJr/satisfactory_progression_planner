@@ -51,6 +51,7 @@ def test_the_scan_sees_every_module():
     assert {p.name for p in _module_files(PACKAGE)} == {
         "__init__.py", "contracts.py", "declarations.py", "graph.py", "expand.py",
         "aggregate.py",   # PR 4, 2026-10-10
+        "report.py",      # PR 5, 2026-10-10
     }
 
 

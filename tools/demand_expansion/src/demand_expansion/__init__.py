@@ -21,12 +21,18 @@ from .contracts import (
 from .declarations import DEFAULT_ROUTES
 from .expand import UNDECLARED, expand
 from .graph import Census, RecipeGraph, build, census, find_cycles, primary_output, route_for
+from .report import (
+    COEFFICIENT_COLUMNS, PHASE_COLUMNS, UNRESOLVED_COLUMNS, Dataset, build_dataset,
+    config_id, in_scope_targets, markdown_report, route_table_sha256,
+)
 
 __all__ = [
-    "AmbiguousRoute", "Census", "CycleDetected", "DEFAULT_ROUTES", "DeclarationError",
-    "Delivery", "DemandExpansionError", "Exclusion", "Expansion",
-    "FluidRoundingUndeclared", "Growth", "NotExpandable", "PhaseCell", "PhaseDemand",
-    "RecipeGraph", "RoutePin", "RouteTable", "UNDECLARED", "UnproducibleItem",
-    "aggregate", "build", "census", "expand", "find_cycles", "primary_output",
-    "route_for",
+    "AmbiguousRoute", "COEFFICIENT_COLUMNS", "Census", "CycleDetected", "DEFAULT_ROUTES",
+    "Dataset", "DeclarationError", "Delivery", "DemandExpansionError", "Exclusion",
+    "Expansion", "FluidRoundingUndeclared", "Growth", "NotExpandable", "PHASE_COLUMNS",
+    "PhaseCell", "PhaseDemand", "RecipeGraph", "RoutePin", "RouteTable",
+    "UNDECLARED", "UNRESOLVED_COLUMNS", "UnproducibleItem", "aggregate", "build",
+    "build_dataset", "census", "config_id", "expand", "find_cycles",
+    "in_scope_targets", "markdown_report", "primary_output", "route_for",
+    "route_table_sha256",
 ]

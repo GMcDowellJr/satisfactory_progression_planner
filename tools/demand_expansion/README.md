@@ -13,6 +13,8 @@ declared scenario, and keeps the coefficient at every intermediate part, so
     aggregate      deliveries x expansions -> per item per phase: incremental,
                    cumulative, remaining, growth; refused deliveries listed,
                    their phase marked incomplete
+    report         datasets A and B as rows, provenance, a Markdown report;
+                   writes nothing. tools/demand_expansion_cli.py writes.
 
 What it does not do, by construction: choose a recipe (an item with several
 enabled producers is refused by name), decide rates (quantities only; no

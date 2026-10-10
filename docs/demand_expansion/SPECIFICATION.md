@@ -115,12 +115,25 @@ grow because its earlier phases are counted again.
 | `NotExpandable` | the target is a resource |
 | `DeclarationError` | a stale or malformed route table |
 
-## 6. Provenance of a result
+## 6. Reference outputs and provenance
 
-An `Expansion` carries the target, the route table's name, the recipe
-multiplier and the fluid variant. The game build is the `ReferenceData`'s
-`game_build_id`. A reference-output writer (PR 5) adds the route table's
-content hash and the build's sha256 from `game_builds.csv`.
+`report.build_dataset` produces datasets A and B as rows (plan §7), the
+unresolved list, and a provenance stamp; `tools/demand_expansion_cli.py
+generate` writes them under `planning_data/analysis/derived/demand_expansion/
+<config>/` (gitignored, outside the manifests): `dependency_coefficients.csv`,
+`phase_demand.csv`, `unresolved.csv`, `provenance.json`, `dataset.json`,
+`report.md`. `item NAME` and `target NAME` inspect one part from the terminal.
+
+A configuration is identified by `config_id`: route table name, recipe
+multiplier, Project Assembly multiplier, fluid variant (power is not
+material). Provenance carries the game build id, version, build number and
+docs sha256 from `game_builds.csv`, the route table's content hash
+(exclusions, pins and their reasons), the scenario, row counts, which phases
+are complete, and, when the CLI stamps them, the repo HEAD and a UTC clock.
+The clock and HEAD are the only non-deterministic fields: two runs over the
+same inputs produce byte-identical CSVs and report, and a test says so.
+Quantities carry an exact rational beside every float. Rows are in id
+order, never by size (record §5.5).
 
 ## 7. Coverage: what "automatable item" means here
 
@@ -140,7 +153,6 @@ asserts this from both sides. `progression` may import this package.
 
 ## 9. Not in v1
 
-Reference outputs and a CLI
-(PR 5), alternate sensitivity (PR 3: a `RouteTable` with an alternate pinned
+Alternate sensitivity (PR 3: a `RouteTable` with an alternate pinned
 is the mechanism, once rule 3 admits a declared alternate), closed-loop
 material balance, any optimisation.
