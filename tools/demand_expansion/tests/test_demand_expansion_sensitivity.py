@@ -119,14 +119,23 @@ def test_sweep_shape(canonical, repo_root):
         "Alternate: Charcoal", "Alternate: Biocoal",   # make Coal, a resource
         "Alternate: Recycled Plastic", "Alternate: Recycled Rubber",   # conflict with base pins
     }
-    assert sum(len(r.rows) for r in results) == 6187
-    # Heavy Oil Residue has no primary producer under the default table, so
-    # its alternate resolves targets and anything routed through Petroleum
-    # Coke newly refuses them. Reported, not folded.
+    assert sum(len(r.rows) for r in results) == 6780
     by_name = {r.alternate_name: r for r in results}
-    assert len(by_name["Alternate: Heavy Oil Residue"].targets_newly_resolved) == 4
-    assert len(by_name["Alternate: Tempered Caterium Ingot"].targets_newly_refused) == 9
-    assert by_name["Alternate: Compacted Coal"].unlock == "T3 Compacted Coal; T4 Alternate: Compacted Coal"
+    # Heavy Oil Residue is a coproduct leaf under the default table
+    # (Amendment 4). Its alternate makes HOR an expandable item: the one
+    # target newly resolved is HOR itself, and coke users gain a Crude Oil
+    # row rather than a refusal. Tempered Caterium Ingot, routed through
+    # Petroleum Coke, changes 9 targets and refuses none.
+    hor = by_name["Alternate: Heavy Oil Residue"]
+    assert hor.targets_newly_resolved == ("Desc_HeavyOilResidue_C",)
+    assert {(r["source_name"], r["target_name"], r["change_kind"]) for r in hor.rows} >= {
+        ("Crude Oil", "Petroleum Coke", "new"),
+    }
+    tc = by_name["Alternate: Tempered Caterium Ingot"]
+    assert len(tc.targets_changed) == 9 and tc.targets_newly_refused == ()
+    cc = by_name["Alternate: Compacted Coal"]
+    assert cc.targets_newly_resolved == ("Desc_CompactedCoal_C",)
+    assert cc.unlock == "T3 Compacted Coal; T4 Alternate: Compacted Coal"
 
 
 # --- synthetic: newly resolved and newly refused ------------------------------

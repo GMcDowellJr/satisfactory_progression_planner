@@ -175,6 +175,11 @@ class Expansion:
     coproducts      non-primary outputs of the recipes used, per unit of target.
                     Reported, never netted against demand (Amendment 1, G): a
                     byproduct is not a producer.
+    coproduct_leaves  the items in `embedded` that no enabled recipe makes
+                    first and were therefore not expanded (Amendment 4):
+                    Heavy Oil Residue under the default table. Their
+                    requirement stands beside whatever `coproducts` reports
+                    of the same item; the reader nets them by looking.
     fluid_rounding_unit   the variant in force when the multiplier is not 1x
                     ("mL" unless overridden, Amendment 2); meaningless, and
                     recorded as given, at 1x.
@@ -192,3 +197,4 @@ class Expansion:
     depth: dict[ItemId, int]
     recipe_cycles: dict[RecipeId, Fraction]
     coproducts: dict[ItemId, Fraction]
+    coproduct_leaves: tuple[ItemId, ...] = ()

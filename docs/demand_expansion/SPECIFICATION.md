@@ -21,7 +21,7 @@ Quantities are exact rationals (`fractions.Fraction`). There is no time in the
 module: no rates, no horizon, no machine count. `recipe_cycles` reports cycles
 per unit of target so a consumer with a horizon can derive machines.
 
-## 2. The three structural rules
+## 2. The four structural rules
 
 These follow from what the data is and live in `graph.build`. They are not
 declarations and carry no reason field, because they are not choices.
@@ -41,6 +41,17 @@ declarations and carry no reason field, because they are not choices.
    module except through an `AlternatePin` (§3), which names one alternate
    for one item and makes it that item's only producer. A run that holds
    one declares it, which is a recorded choice (Amendment 3).
+4. **Coproduct leaf.** An item no enabled recipe makes first, but some
+   enabled recipe makes as a coproduct, is a leaf: its requirement is
+   reported in `embedded` (and named in `Expansion.coproduct_leaves`) and the
+   walk stops there. Which coproduct line covers it, and what becomes of the
+   surplus, is a planning choice the engine does not make; the `coproducts`
+   column of the same expansion stands beside the requirement and the
+   reader nets them by looking. Under the default table: Heavy Oil Residue,
+   Compacted Coal, Polymer Resin. A declared alternate that makes the item
+   first turns it back into an expanded item (Amendment 4, decided by Greg:
+   the byproduct "can be used by any recipe that needs it; the HOR alt just
+   makes more").
 
 ## 3. Declarations: the route table
 
@@ -159,6 +170,11 @@ alternate (resource or unlisted primary output, a conflict with a base pin)
 is returned with `applicable=False` and the reason, never skipped. `sweep`
 runs this for every alternate in recipe-id order; `compare` takes any two
 graphs over one `ReferenceData`, which is the explicit-configuration mode.
+
+An alternate that makes a coproduct leaf first (Heavy Oil Residue, Compacted
+Coal, Polymer Resin) reports that item as newly resolved, since the base
+graph does not expand it, and its consumers gain rows reaching the
+alternate's inputs.
 
 The unlock column is the schematic table's tech tier and name as stated;
 hard-drive alternates carry tier 0 there, and that is reported as given.

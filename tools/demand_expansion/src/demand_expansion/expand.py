@@ -72,6 +72,11 @@ def expand(
     """
     if graph.is_resource(target):
         raise NotExpandable(f"{target} is a resource; resources are leaves")
+    if target in graph.coproduct_leaves:
+        raise NotExpandable(
+            f"{target} is made only as a coproduct under {graph.routes.name}; it is a "
+            "leaf (Amendment 4). Declare an alternate that makes it first to expand it."
+        )
     data, fluid_unit = _scaled_data(graph, scenario, fluid_rounding)
 
     # per-item memo of (embedded, depth, cycles, coproducts) for ONE unit of it
@@ -95,7 +100,7 @@ def expand(
             per = _frac(in_amt) / out_amt
             embedded[in_item] = embedded.get(in_item, Fraction(0)) + per
             depth[in_item] = min(depth.get(in_item, 1), 1)
-            if graph.is_resource(in_item):
+            if graph.is_leaf(in_item):
                 continue
             c_emb, c_dep, c_cyc, c_co = one_unit(in_item, path + (item,))
             for k, v in c_emb.items():
@@ -126,4 +131,5 @@ def expand(
         depth=dict(sorted(depth.items())),
         recipe_cycles=dict(sorted(cycles.items())),
         coproducts=dict(sorted(coproducts.items())),
+        coproduct_leaves=tuple(sorted(i for i in embedded if i in graph.coproduct_leaves)),
     )

@@ -1,7 +1,8 @@
 """The recipe graph under a route table, and the census that pins its shape.
 
-Three structural rules live here because they follow from what the data is,
-not from a choice (demand-expansion record Amendment 1, items B and G):
+Four structural rules live here because they follow from what the data is,
+not from a choice (demand-expansion record Amendment 1, items B and G, and
+Amendment 4):
 
     primary output   a recipe produces, for expansion purposes, only the output
                      the game lists first. Everything else it yields is a
@@ -15,6 +16,17 @@ not from a choice (demand-expansion record Amendment 1, items B and G):
                      module except through an `AlternatePin`, which names
                      one alternate for one item and makes it the item's only
                      producer (Amendment 3). A run that holds one pins it.
+    coproduct leaf   an item no enabled recipe makes FIRST but some enabled
+                     recipe makes as a coproduct (Heavy Oil Residue from
+                     Plastic and Rubber, Compacted Coal from Rocket Fuel,
+                     Polymer Resin from Fuel) is a leaf: its requirement is
+                     reported and not expanded. Which coproduct line covers
+                     it, and what becomes of the surplus, is a planning
+                     choice the engine does not make. Greg, 2026-10-10: the
+                     byproduct "can be used by any recipe that needs it; the
+                     HOR alt just makes more" (Amendment 4). A declared
+                     alternate that makes the item first turns the leaf back
+                     into an expanded item, which is exactly "makes more".
 
 Everything that IS a choice arrives in the `RouteTable`.
 """
@@ -48,9 +60,15 @@ class RecipeGraph:
     producers: Mapping[ItemId, tuple[RecipeId, ...]]
     #: enabled recipe -> its primary output
     primary: Mapping[RecipeId, ItemId]
+    #: items with no producer that some enabled recipe makes as a coproduct
+    coproduct_leaves: frozenset[ItemId] = frozenset()
 
     def is_resource(self, item_id: ItemId) -> bool:
         return item_id in self.data.resource_items
+
+    def is_leaf(self, item_id: ItemId) -> bool:
+        """A resource or a coproduct leaf: reported, never expanded."""
+        return item_id in self.data.resource_items or item_id in self.coproduct_leaves
 
 
 def build(data: ReferenceData, routes: RouteTable) -> RecipeGraph:
@@ -134,12 +152,20 @@ def build(data: ReferenceData, routes: RouteTable) -> RecipeGraph:
                 "enable an excluded or alternate recipe."
             )
         resolved[pin.item_id] = (pin.recipe_id,)
+    coproducts: set[ItemId] = set()
+    for rid in enabled:
+        for item, _, _ in recipes[rid].output_amounts[1:]:
+            coproducts.add(item)
+    leaves = frozenset(
+        i for i in coproducts if i not in resolved and i not in data.resource_items
+    )
     return RecipeGraph(
         data=data,
         routes=routes,
         enabled=frozenset(enabled),
         producers=resolved,
         primary=primary,
+        coproduct_leaves=leaves,
     )
 
 
@@ -160,7 +186,7 @@ def find_cycles(graph: RecipeGraph) -> tuple[tuple[ItemId, ...], ...]:
     means no pin set can create a cycle from these producers."""
     edges: dict[ItemId, set[ItemId]] = {}
     for item, rids in graph.producers.items():
-        if item in graph.data.resource_items:
+        if graph.is_leaf(item):
             continue
         for rid in rids:
             for i, _, _ in graph.data.recipes[rid].input_amounts:
@@ -219,6 +245,8 @@ class Census:
     enabled_recipes: int
     #: items with >1 enabled producer after pins, sorted
     ambiguous_items: tuple[ItemId, ...]
+    #: byproduct-only items, reported and never expanded (Amendment 4)
+    coproduct_leaves: tuple[ItemId, ...]
     cycles: tuple[tuple[ItemId, ...], ...]
     #: item ids used by any recipe that items.csv does not list, sorted
     io_items_absent_from_items: tuple[ItemId, ...]
@@ -258,6 +286,7 @@ def census(graph: RecipeGraph) -> Census:
         ),
         enabled_recipes=len(graph.enabled),
         ambiguous_items=tuple(sorted(i for i, rs in graph.producers.items() if len(rs) > 1)),
+        coproduct_leaves=tuple(sorted(graph.coproduct_leaves)),
         cycles=find_cycles(graph),
         io_items_absent_from_items=tuple(sorted(io_items - set(data.items))),
         items_without_base_recipe=tuple(sorted(

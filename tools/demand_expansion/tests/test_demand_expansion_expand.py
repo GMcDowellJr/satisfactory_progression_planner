@@ -14,8 +14,8 @@ from production_adapter import Scenario
 from production_adapter.gamedata import Item, PowerRange, Recipe, ReferenceData
 
 from demand_expansion import (
-    AmbiguousRoute, CycleDetected, FluidRoundingUndeclared, NotExpandable, RouteTable,
-    UnproducibleItem, build, expand,
+    AlternatePin, AmbiguousRoute, CycleDetected, FluidRoundingUndeclared, NotExpandable,
+    RouteTable, UnproducibleItem, build, expand,
 )
 
 MOTOR = "Desc_Motor_C"
@@ -202,6 +202,31 @@ def test_coproducts_are_reported_not_netted(default_graph):
     assert e.direct == {"Desc_LiquidOil_C": F(3, 2)}
     assert e.coproducts == {"Desc_HeavyOilResidue_C": F(1, 2)}
     assert "Desc_HeavyOilResidue_C" not in e.embedded
+
+
+def test_a_coproduct_leaf_is_reported_not_expanded(default_graph):
+    """Petroleum Coke: 4 Heavy Oil Residue -> 12. HOR has no primary producer
+    under the default table and is a coproduct of Plastic and Rubber, so the
+    requirement is stated per unit and the walk stops there (Amendment 4)."""
+    e = expand(default_graph, "Desc_PetroleumCoke_C")
+    assert e.embedded == {"Desc_HeavyOilResidue_C": F(1, 3)}
+    assert e.coproduct_leaves == ("Desc_HeavyOilResidue_C",)
+    assert e.depth["Desc_HeavyOilResidue_C"] == 1
+    with pytest.raises(NotExpandable, match="made only as a coproduct"):
+        expand(default_graph, "Desc_HeavyOilResidue_C")
+
+
+def test_a_declared_alternate_turns_a_leaf_back_into_an_item(canonical):
+    """"The HOR alt just makes more": with it declared, HOR has a producer,
+    is expanded into Crude Oil, and the coke target reaches the resource."""
+    table = RouteTable(
+        "x", alternates=(AlternatePin("Desc_HeavyOilResidue_C", "Recipe_Alternate_HeavyOilResidue_C", "r"),),
+    )
+    g = build(canonical, table)
+    assert "Desc_HeavyOilResidue_C" not in g.coproduct_leaves
+    e = expand(g, "Desc_PetroleumCoke_C")
+    assert e.embedded["Desc_LiquidOil_C"] == F(1, 4)
+    assert e.coproduct_leaves == ()
 
 
 def test_smart_plating_matches_the_phase_0_reconciliation(default_graph):

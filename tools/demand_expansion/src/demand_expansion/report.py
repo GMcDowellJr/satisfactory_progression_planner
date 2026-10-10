@@ -38,7 +38,7 @@ from .graph import RecipeGraph
 COEFFICIENT_COLUMNS = (
     "config_id", "source_item_id", "source_name", "target_item_id", "target_name",
     "per_target", "per_target_exact", "direct_per_target", "direct_per_target_exact",
-    "depth",
+    "depth", "supplied_by",
 )
 PHASE_COLUMNS = (
     "config_id", "item_id", "item_name", "phase", "phase_name",
@@ -150,6 +150,11 @@ def build_dataset(
                 "per_target": _num(per), "per_target_exact": str(per),
                 "direct_per_target": _num(direct), "direct_per_target_exact": str(direct),
                 "depth": e.depth[source],
+                "supplied_by": (
+                    "resource" if graph.is_resource(source)
+                    else "coproduct" if source in graph.coproduct_leaves
+                    else "recipe"
+                ),
             })
     coefficients.sort(key=lambda r: (r["source_item_id"], r["target_item_id"]))
 
@@ -198,6 +203,7 @@ def build_dataset(
             "project_assembly_requirement_multiplier": scenario.project_assembly_requirement_multiplier,
             "fluid_rounding_unit": fluid_unit,
         },
+        "coproduct_leaves": sorted(graph.coproduct_leaves),
         "counts": {
             "targets": len(in_scope_targets(graph)),
             "coefficient_rows": len(coefficients),

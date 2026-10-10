@@ -105,9 +105,10 @@ times each recipe's cycles per minute, and the oracle's 23.25 raw ore.
 ## Reference outputs
 
 `python tools/demand_expansion_cli.py generate` at 1x on this build: 119
-targets in scope, 804 coefficient rows, 74 items × 5 phases in dataset B
-(the two refused deliveries count as themselves), phase 5 incomplete, 44
-unresolved rows;
+targets in scope, 813 coefficient rows, 74 items × 5 phases in dataset B
+(the two refused deliveries count as themselves), phase 5 incomplete, 41
+unresolved rows; three coproduct leaves (Heavy Oil Residue, Compacted Coal,
+Polymer Resin) reported as requirements and not expanded;
 unresolved lists the two refused deliveries and every in-scope target that
 reaches an unpinned item. Two runs produce byte-identical CSVs and report.
 
@@ -130,12 +131,16 @@ Iron Wire (`Recipe_Alternate_Wire_1_C`, T1): 5 Iron Ingot → 9 Wire against
 1 Copper Ingot → 2. Cable takes 2 Wire: Copper Ore 1 → 0 (removed), Iron Ore
 0 → 10/9 (new).
 
-Sweep on this build at 1x: 110 alternates, 6,187 changed pairs, 5
+Sweep on this build at 1x: 110 alternates, 6,780 changed pairs, 5
 inapplicable by name (Automated Miner: unlisted output; Charcoal, Biocoal:
 make Coal; Recycled Plastic, Recycled Rubber: conflict with the base pins).
-Heavy Oil Residue has no primary producer under the default table, so
-"Alternate: Heavy Oil Residue" newly resolves 4 targets and "Alternate:
-Tempered Caterium Ingot" (through Petroleum Coke) newly refuses 9.
+"Alternate: Heavy Oil Residue" makes a coproduct leaf expandable: it newly
+resolves Heavy Oil Residue itself and gives Petroleum Coke a Crude Oil row
+(1/4 per coke). "Alternate: Tempered Caterium Ingot", routed through coke,
+changes 9 targets and refuses none.
+
+Petroleum Coke under the default table: 1/3 Heavy Oil Residue per coke,
+reported as a coproduct-supplied requirement; nothing below it.
 
 ## Structure
 

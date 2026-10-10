@@ -1196,3 +1196,40 @@ alternate.
 Hand-derived fixtures: Steeled Frame takes Iron Ore per Modular Frame from
 24 to 13 and adds 5 Coal; Iron Wire takes Cable from 1 Copper Ore to 10/9
 Iron Ore (VALIDATION.md table 5).
+
+---
+
+## Amendment 4 — 2026-10-10. A byproduct-only item is a leaf, not a refusal
+
+Appended forward-only. Nothing above is edited. Supersedes A3's "found by
+the sweep" paragraph: the finding stood, the conclusion drawn from it did
+not.
+
+**Decided by Greg, 2026-10-10:** "HOR is produced as a byproduct of plastic
+and rubber and can be used by any recipe that needs it. The HOR alt just
+makes more."
+
+So A1.2's byproduct rule was overreaching when it made Heavy Oil Residue
+unproducible. The rule stands where it mattered (a coproduct is not a
+PRODUCER to expand through: that is the ten-step Plastic-contains-Motor
+nonsense), and gains a fourth structural rule beside it:
+
+    coproduct leaf   an item no enabled recipe makes first, but some enabled
+                     recipe makes as a coproduct, is a LEAF. Its requirement
+                     is reported in `embedded` and named in
+                     `Expansion.coproduct_leaves`; the walk stops there.
+                     Which coproduct line covers it and what becomes of the
+                     surplus is a planning choice the engine does not make;
+                     the expansion's own `coproducts` column stands beside
+                     the requirement, and nothing is netted.
+
+A declared alternate that makes the item first (Alternate: Heavy Oil
+Residue) turns the leaf back into an expanded item, which is exactly "makes
+more": the requirement is then routed to the alternate's inputs.
+
+On this build the leaves are Heavy Oil Residue (Plastic, Rubber), Compacted
+Coal (Rocket Fuel, Ionized Fuel) and Polymer Resin (Fuel). §3.1.2's
+Compacted Coal residue is thereby resolved by reporting rather than by a
+pin. Measured: unresolved targets fall from 44 to 41 rows under the default
+table; the sweep's "Tempered Caterium Ingot refuses 9" becomes "changes 9";
+dataset A gains a `supplied_by` column (recipe / resource / coproduct).

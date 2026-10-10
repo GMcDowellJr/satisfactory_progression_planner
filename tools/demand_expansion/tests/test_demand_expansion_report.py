@@ -35,6 +35,9 @@ def test_coefficient_rows_answer_the_motor_question(dataset):
     rows = {(r["source_item_id"], r["target_item_id"]): r for r in dataset.coefficients}
     r = rows[(MOTOR, TPR)]
     assert r["per_target"] == 9.0 and r["per_target_exact"] == "9" and r["depth"] == 2
+    assert r["supplied_by"] == "recipe"
+    assert rows[("Desc_OreIron_C", TPR)]["supplied_by"] == "resource"
+    assert rows[("Desc_HeavyOilResidue_C", "Desc_PetroleumCoke_C")]["supplied_by"] == "coproduct"
     assert r["direct_per_target"] == 0.0
     me = rows[(MOTOR, "Desc_SpaceElevatorPart_4_C")]
     assert me["direct_per_target_exact"] == "2" and me["depth"] == 1
@@ -82,6 +85,7 @@ def test_provenance_pins_the_build_and_the_table(dataset, repo_root):
     assert p["docs_sha256"].startswith("a81d250e96aa")
     assert p["build_number"] == "502094"
     assert p["route_table"]["sha256"] == route_table_sha256(DEFAULT_ROUTES)
+    assert p["coproduct_leaves"] == ["Desc_CompactedCoal_C", "Desc_HeavyOilResidue_C", "Desc_PolymerResin_C"]
     assert p["scenario"]["fluid_rounding_unit"] == "mL"
     assert p["generated_at"] is None and p["repo_head"] is None
 

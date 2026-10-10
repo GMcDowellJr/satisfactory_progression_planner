@@ -24,12 +24,16 @@ from production_adapter.gamedata import RecipeUnlock, ReferenceData
 from production_adapter.scenario import Scenario
 
 from .contracts import (
-    AmbiguousRoute, CycleDetected, DeclarationError, DemandExpansionError, RouteTable,
-    UnproducibleItem,
+    AmbiguousRoute, CycleDetected, DeclarationError, DemandExpansionError, NotExpandable,
+    RouteTable, UnproducibleItem,
 )
 from .expand import UNDECLARED, expand
 
-_ROUTE_REFUSALS = (AmbiguousRoute, UnproducibleItem, CycleDetected)
+#: Per-target refusals. NotExpandable belongs here and not in report.py: a
+#: coproduct leaf in the base graph (Compacted Coal) is a target in the
+#: alternate graph once "Alternate: Compacted Coal" makes it first, and the
+#: comparison must read that as refused-in-base, resolved-under-alternate.
+_ROUTE_REFUSALS = (AmbiguousRoute, UnproducibleItem, CycleDetected, NotExpandable)
 from .graph import RecipeGraph, build, primary_output
 from .report import config_id, in_scope_targets
 

@@ -48,6 +48,18 @@ def test_what_remains_ambiguous_after_the_pins(default_graph):
     )
 
 
+def test_byproduct_only_items_are_leaves(default_graph):
+    """Amendment 4 (Greg, 2026-10-10): a byproduct "can be used by any recipe
+    that needs it; the HOR alt just makes more." No enabled recipe makes
+    these first; some enabled recipe makes them as a coproduct. Reported,
+    never expanded, never refused."""
+    assert census(default_graph).coproduct_leaves == (
+        "Desc_CompactedCoal_C",      # Rocket Fuel, Ionized Fuel
+        "Desc_HeavyOilResidue_C",    # Plastic, Rubber
+        "Desc_PolymerResin_C",       # Fuel
+    )
+
+
 def test_the_default_graph_has_no_cycle(default_graph):
     """With byproducts not producers and Unpackage excluded, the base graph is
     a DAG. The plan's closed-loop solve is not needed for any pin set over
