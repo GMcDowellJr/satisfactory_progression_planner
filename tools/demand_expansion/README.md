@@ -18,6 +18,9 @@ declared scenario, and keeps the coefficient at every intermediate part, so
     sensitivity    dataset C: one alternate against the base table, every
                    source x target that changes; the sweep over all 110.
                    Never a score or an order (record §5.5).
+    viewer         the self-contained page's data: every recipe x elevator
+                   multiplier combination, engine-computed. The page itself
+                   is viewer/template.html; the CLI's `viewer` writes it.
 
 What it does not do, by construction: choose a recipe (an item with several
 enabled producers is refused by name), decide rates (quantities only; no

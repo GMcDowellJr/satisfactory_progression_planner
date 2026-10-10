@@ -1,0 +1,287 @@
+<title>Project Assembly Demand</title>
+<style>
+/* Layout: one filter row (recipe cost, elevator parts, view) above a single column; phase screen = deliveries, drill-down tree, phase table. */
+:root {
+  --bg: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --accent: #2a78d6; --accent-soft: #cde2fb; --warning: #fab219; --warning-ink: #7a5200;
+  --leaf: #f0efec; --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5; --accent-soft: #184f95; --warning: #fab219; --warning-ink: #fab219; --leaf: #383835; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5; --accent-soft: #184f95; --warning: #fab219; --warning-ink: #fab219; --leaf: #383835; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--font); margin: 0; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 20px 48px; padding-inline: 16px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 15px; margin: 0; }
+.sub { color: var(--ink-2); margin: 4px 0 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--grid); }
+.filters .group { display: inline-flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; }
+.seg button { background: transparent; color: var(--ink-2); border: 0; padding: 7px 11px; font: inherit; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.seg button:focus-visible, .chip:focus-visible, .tree button:focus-visible, .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.chip { border: 1px solid var(--axis); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chip small { color: var(--muted); }
+.incomplete { color: var(--warning-ink); font-weight: 600; }
+.incomplete::before { content: "▲ "; color: var(--warning); }
+.lb { color: var(--warning-ink); font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 18px; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.card .big { font-size: 26px; font-weight: 600; margin-top: 2px; }
+.card .refused { color: var(--ink-2); font-size: 12px; margin-top: 6px; }
+section { margin-top: 26px; }
+.tree { list-style: none; margin: 8px 0 0; padding: 0; }
+.tree ul { list-style: none; margin: 0; padding-left: 22px; border-left: 1px solid var(--grid); }
+.tree li { margin: 2px 0; }
+.node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 4px 6px; border-radius: 6px; min-width: 0; }
+.node:hover { background: var(--surface); }
+.tree button { background: transparent; border: 0; color: var(--ink); font: inherit; cursor: pointer; padding: 0; display: inline-flex; gap: 6px; align-items: baseline; text-align: left; }
+.tree .tw { display: inline-block; width: 12px; color: var(--muted); }
+.qty { font-variant-numeric: tabular-nums; font-weight: 600; }
+.per { color: var(--muted); font-size: 12px; }
+.leaf { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--leaf); color: var(--ink-2); }
+.leaf.co { background: color-mix(in srgb, var(--warning) 22%, var(--surface)); color: var(--warning-ink); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; margin-top: 10px; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th:first-child, td:first-child { text-align: left; }
+td:first-child { white-space: normal; min-width: 160px; }
+.link { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; padding: 0; text-align: left; }
+.muted { color: var(--muted); }
+.search { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+input[type=text] { font: inherit; padding: 7px 10px; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 260px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.stat .label { margin-bottom: 2px; }
+.stat .v { font-size: 22px; font-weight: 600; }
+figure { margin: 14px 0 0; background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 12px 14px 8px; }
+figcaption { font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+svg { width: 100%; height: auto; display: block; max-width: 100%; }
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 9px; border-radius: 6px; font-size: 12px; display: none; z-index: 5; }
+.about p { max-width: 68ch; }
+.about code, .mono { font-family: var(--mono); font-size: 12px; }
+footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--grid); padding-top: 12px; }
+@media (prefers-reduced-motion: no-preference) { .node { transition: background .12s; } }
+</style>
+<div class="wrap">
+  <h1>Project Assembly Demand</h1>
+  <p class="sub">What each Space Elevator phase makes you produce, in units, down to the parts inside the parts. Satisfactory 1.2.4.0 build 502094, default routes.</p>
+
+  <div class="filters">
+    <div class="group"><span class="label">Recipe cost</span><div class="seg" id="rm" role="group" aria-label="Recipe cost multiplier"></div></div>
+    <div class="group"><span class="label">Elevator parts</span><div class="seg" id="pm" role="group" aria-label="Space Elevator deliverable multiplier"></div></div>
+    <div class="group"><span class="label">View</span>
+      <div class="seg" id="screens" role="group" aria-label="View">
+        <button data-screen="phases" aria-pressed="true">Phases</button>
+        <button data-screen="parts" aria-pressed="false">Parts</button>
+        <button data-screen="about" aria-pressed="false">About</button>
+      </div></div>
+  </div>
+
+  <div id="phases"></div>
+  <div id="parts" hidden></div>
+  <div id="about" hidden class="about"></div>
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip"></div>
+<script type="application/json" id="payload" data-generated="__GENERATED__" data-repo-head="__REPO_HEAD__">__PAYLOAD__</script>
+<script>
+const payloadEl = document.getElementById('payload');
+const P = JSON.parse(payloadEl.textContent);
+const RES = new Set(P.resources), COP = new Set(P.coproduct_leaves);
+const name = id => P.names[id] || id;
+const state = { rm: '1', pm: '1', screen: 'phases', phase: 3, part: 'Desc_Motor_C', open: new Set(), seen: new Set() };
+try { const s = JSON.parse(localStorage.getItem('pad-state') || '{}');
+  if (P.recipe_multipliers.includes(s.rm)) state.rm = s.rm;
+  if (P.pa_multipliers.includes(s.pm)) state.pm = s.pm;
+  if (['phases', 'parts', 'about'].includes(s.screen)) state.screen = s.screen;
+  if (P.phase_names[String(s.phase)]) state.phase = s.phase;
+  if (P.names[s.part]) state.part = s.part;
+} catch (e) {}
+function remember() { try { localStorage.setItem('pad-state', JSON.stringify({rm: state.rm, pm: state.pm, screen: state.screen, phase: state.phase, part: state.part})); } catch (e) {} }
+
+// ---- indexes, built on demand per multiplier and per combination
+const RIDX = new Map(), CIDX = new Map();
+function ridx() {
+  if (!RIDX.has(state.rm)) {
+    const byTarget = new Map(), bySource = new Map();
+    for (const [s, t, per, direct, depth, kind] of P.by_recipe[state.rm].coefficients) {
+      if (!byTarget.has(t)) byTarget.set(t, []); byTarget.get(t).push({s, per, direct, depth, kind});
+      if (!bySource.has(s)) bySource.set(s, []); bySource.get(s).push({t, per, direct, depth, kind});
+    }
+    RIDX.set(state.rm, {byTarget, bySource});
+  }
+  return RIDX.get(state.rm);
+}
+function cidx() {
+  const k = state.rm + '|' + state.pm;
+  if (!CIDX.has(k)) {
+    const c = P.by_combo[k], byItem = new Map(), byPhaseItem = new Map(), deliveries = {};
+    for (const [item, ph, q, prev, gk, gr, cum, rem, ok, cumOk, remOk] of c.phases) {
+      const cell = {item, ph, q, prev, gk, gr, cum, rem, ok, cumOk, remOk};
+      if (!byItem.has(item)) byItem.set(item, []); byItem.get(item).push(cell);
+      byPhaseItem.set(item + '|' + ph, cell);
+    }
+    for (const [ph, item, q1x, q, refusal] of c.deliveries) (deliveries[ph] ||= []).push({ph, item, q1x, q, refusal});
+    CIDX.set(k, {byItem, byPhaseItem, deliveries, complete: c.complete, config_id: c.config_id});
+  }
+  return CIDX.get(k);
+}
+const phases = () => Object.keys(P.phase_names).map(Number).sort((a, b) => a - b);
+
+// ---- formatting
+const fmt = n => { if (n == null || n === '') return ''; const a = Math.abs(n); const d = a >= 1000 ? 0 : a >= 100 ? 1 : a >= 10 ? 2 : 3; return Number(n).toLocaleString(undefined, {maximumFractionDigits: d}); };
+const growth = c => c.gk === 'ratio' ? fmt(c.gr) + '×' : c.gk === 'new' ? 'new' : '·';
+const leafTag = id => RES.has(id) ? '<span class="leaf">resource</span>' : COP.has(id) ? '<span class="leaf co">coproduct-supplied</span>' : '';
+const lb = ok => ok ? '' : '<span class="lb" title="lower bound">+</span>';
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const refusalText = r => esc(String(r).split(' on the path')[0]);
+
+// ---- drill-down tree: a node is (item, units); children = direct inputs per unit × units
+const parentUnits = {};
+function directInputs(item) { return (ridx().byTarget.get(item) || []).filter(r => r.direct > 0).sort((a, b) => b.direct - a.direct || name(a.s).localeCompare(name(b.s))); }
+function treeNode(item, units, key, depth) {
+  const kids = (RES.has(item) || COP.has(item)) ? [] : directInputs(item);
+  const isOpen = state.open.has(key);
+  const tw = kids.length ? (isOpen ? '▾' : '▸') : '';
+  let html = `<li><div class="node">` +
+    (kids.length
+      ? `<button data-toggle="${esc(key)}" aria-expanded="${isOpen}"><span class="tw">${tw}</span><span>${esc(name(item))}</span></button>`
+      : `<span><span class="tw"></span>${esc(name(item))}</span>`) +
+    `<span class="qty">${fmt(units)}</span>` +
+    (depth ? `<span class="per">${fmt(units / parentUnits[key])} per parent</span>` : '') +
+    leafTag(item) + `</div>`;
+  if (kids.length && isOpen) {
+    html += '<ul>';
+    for (const k of kids) { const ck = key + '/' + k.s; parentUnits[ck] = units; html += treeNode(k.s, units * k.direct, ck, depth + 1); }
+    html += '</ul>';
+  }
+  return html + '</li>';
+}
+function openOnce(key) { if (!state.seen.has(key)) { state.seen.add(key); state.open.add(key); } }
+
+// ---- phases screen
+function renderPhases() {
+  const i = cidx(), ph = state.phase, rows = i.deliveries[ph] || [];
+  const complete = i.complete[String(ph)];
+  let html = `<div class="chips" role="group" aria-label="Phase">` + phases().map(p =>
+    `<button class="chip" data-phase="${p}" aria-pressed="${p === ph}">Phase ${p} <small>${esc(P.phase_names[p])}</small>${i.complete[String(p)] ? '' : ' <span class="incomplete" title="a delivery was refused">incomplete</span>'}</button>`).join('') + `</div>`;
+  html += `<h2>Phase ${ph}, ${esc(P.phase_names[ph])} <span class="muted">· delivery unlocks ${esc(P.delivery_unlocks[ph])}</span></h2>`;
+  html += `<div class="grid">` + rows.map(r => `<div class="card"><div class="label">Delivered</div><div>${esc(name(r.item))}</div><div class="big">${fmt(r.q)}</div>` +
+    (r.q !== r.q1x ? `<div class="muted">${fmt(r.q1x)} at 1×</div>` : '') +
+    (r.refusal ? `<div class="refused"><span class="incomplete">not expanded</span> ${refusalText(r.refusal)}</div>` : '') + `</div>`).join('') + `</div>`;
+  if (!complete) html += `<p class="incomplete">Phase ${ph} is incomplete: a delivery above could not be expanded, so every total that includes this phase is a lower bound.</p>`;
+  html += `<section><h2>Inside the deliveries</h2><p class="sub">Each delivered part, then the parts its recipe takes, scaled to this phase's quantity. Open a part to see what it is made of. Expansion stops at a resource, or at a part supplied as a byproduct of another line.</p><ul class="tree">`;
+  for (const r of rows) { if (r.refusal) continue; const key = `${state.rm}|${state.pm}|${ph}:${r.item}`; parentUnits[key] = r.q; openOnce(key); html += treeNode(r.item, r.q, key, 0); }
+  html += `</ul></section>`;
+  const items = [...i.byItem.keys()].map(it => i.byPhaseItem.get(it + '|' + ph)).filter(cl => cl && cl.q > 0).sort((a, b) => name(a.item).localeCompare(name(b.item)));
+  html += `<section><h2>Everything phase ${ph} requires</h2><p class="sub">${items.length} parts and resources, in units. Growth is against the previous phase; cumulative includes earlier phases; remaining is later phases only.</p><div class="tablewrap"><table><thead><tr><th>Part</th><th>This phase</th><th>Growth</th><th>Cumulative</th><th>Remaining</th></tr></thead><tbody>` +
+    items.map(cl => `<tr><td><button class="link" data-part="${esc(cl.item)}">${esc(name(cl.item))}</button> ${leafTag(cl.item)}</td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td>${fmt(cl.cum)}${lb(cl.cumOk)}</td><td>${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') +
+    `</tbody></table></div></section>`;
+  document.getElementById('phases').innerHTML = html;
+}
+
+// ---- parts screen
+function renderParts() {
+  const r = ridx(), i = cidx(), part = state.part, series = i.byItem.get(part) || [];
+  const all = [...new Set([...i.byItem.keys(), ...r.bySource.keys(), ...r.byTarget.keys()])].sort((a, b) => name(a).localeCompare(name(b)));
+  let html = `<div class="search"><label for="partq" class="label">Part</label><input type="text" id="partq" list="partlist" value="${esc(name(part))}" autocomplete="off"><datalist id="partlist">${all.map(a => `<option value="${esc(name(a))}">`).join('')}</datalist>${leafTag(part)}</div>`;
+  if (series.length) {
+    const lastCell = series[series.length - 1], first = series.find(s => s.q > 0), last = [...series].reverse().find(s => s.q > 0);
+    html += `<div class="stats"><div class="card stat"><div class="label">Lifetime units</div><div class="v">${fmt(lastCell.cum)}${lb(lastCell.cumOk)}</div></div><div class="card stat"><div class="label">First required</div><div class="v">${first ? 'Phase ' + first.ph : '–'}</div></div><div class="card stat"><div class="label">Last required</div><div class="v">${last ? 'Phase ' + last.ph : '–'}</div></div></div>`;
+    html += chart(series);
+    html += `<div class="tablewrap"><table><thead><tr><th>Phase</th><th>Units</th><th>Growth</th><th>Cumulative</th><th>Remaining</th></tr></thead><tbody>` +
+      series.map(cl => `<tr><td>Phase ${cl.ph} <span class="muted">${esc(P.phase_names[cl.ph])}</span></td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td>${fmt(cl.cum)}${lb(cl.cumOk)}</td><td>${fmt(cl.rem)}${lb(cl.remOk)}</td></tr>`).join('') + `</tbody></table></div>`;
+  } else html += `<p class="sub">No Project Assembly delivery requires ${esc(name(part))} under this configuration.</p>`;
+  const dest = (r.bySource.get(part) || []).sort((a, b) => name(a.t).localeCompare(name(b.t)));
+  html += `<section><h2>Where ${esc(name(part))} ends up</h2><p class="sub">Units of ${esc(name(part))} inside one unit of each part below, by every recipe path, at ${esc(state.rm)}× recipe cost. Direct means the part's own recipe takes it.</p>` +
+    (dest.length ? `<div class="tablewrap"><table><thead><tr><th>Target</th><th>Per unit</th><th>Direct</th><th>Depth</th></tr></thead><tbody>` +
+      dest.map(d => `<tr><td><button class="link" data-part="${esc(d.t)}">${esc(name(d.t))}</button></td><td>${fmt(d.per)}</td><td>${d.direct ? fmt(d.direct) : '<span class="muted">·</span>'}</td><td>${d.depth}</td></tr>`).join('') + `</tbody></table></div>` : `<p class="sub">Nothing consumes it.</p>`) + `</section>`;
+  const made = directInputs(part);
+  if (made.length) html += `<section><h2>What one ${esc(name(part))} takes</h2><ul class="tree">` + (() => { const key = `${state.rm}|p:` + part; parentUnits[key] = 1; openOnce(key); return treeNode(part, 1, key, 0); })() + `</ul></section>`;
+  document.getElementById('parts').innerHTML = html;
+}
+
+function chart(series) {
+  const W = 640, H = 220, L = 60, R = 12, T = 18, B = 34, n = series.length;
+  const max = Math.max(1, ...series.map(s => s.q)), step = niceStep(max), top = Math.ceil(max / step) * step;
+  const y = v => T + (H - T - B) * (1 - v / top), slot = (W - L - R) / n, bw = Math.min(24, slot * 0.6);
+  let g = '';
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${compact(v)}</text>`;
+  let bars = '', maxI = series.reduce((m, s, k) => s.q > series[m].q ? k : m, 0);
+  series.forEach((s, k) => {
+    const x = L + slot * k + (slot - bw) / 2, yv = y(s.q), h = Math.max(0, y(0) - yv), rr = Math.min(4, h);
+    const path = h > 0 ? `M${x},${y(0)} v${-(h - rr)} a${rr},${rr} 0 0 1 ${rr},${-rr} h${bw - 2 * rr} a${rr},${rr} 0 0 1 ${rr},${rr} v${h - rr} z` : '';
+    bars += `<g class="bar" data-k="${k}"><rect x="${L + slot * k}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>` +
+      (path ? `<path d="${path}" fill="var(--accent)"/>` : '') +
+      (!s.ok && h > 0 ? `<path d="${path}" fill="url(#hatch)"/>` : '') +
+      `<text x="${L + slot * k + slot / 2}" y="${H - B + 16}" text-anchor="middle" font-size="11" fill="var(--ink-2)">Phase ${s.ph}</text>` +
+      ((k === maxI || k === n - 1) && s.q > 0 ? `<text x="${L + slot * k + slot / 2}" y="${yv - 6}" text-anchor="middle" font-size="11" fill="var(--ink)">${fmt(s.q)}${s.ok ? '' : '+'}</text>` : '') + `</g>`;
+  });
+  return `<figure><figcaption>Units required per phase (incremental). A hatched bar is a lower bound: that phase has a delivery the engine could not expand.</figcaption><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Units required per phase"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--surface)" opacity="0.55"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" stroke-width="2"/></pattern></defs>${g}<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>${bars}</svg></figure>`;
+}
+function niceStep(max) { const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p; return 10 * p; }
+function compact(v) { return v >= 1e6 ? +(v / 1e6).toFixed(2) + 'M' : v >= 1000 ? +(v / 1000).toFixed(2) + 'K' : String(+v.toFixed(2)); }
+
+// ---- about
+function renderAbout() {
+  const p = P.provenance, i = cidx(), unresolved = P.by_recipe[state.rm].unresolved_targets;
+  document.getElementById('about').innerHTML = `
+  <h2>What this page shows</h2>
+  <p>Quantities, in units, that each Space Elevator phase requires: the delivered parts themselves, plus everything inside them by every recipe path. There is no time here, no machine counts and no rates. Every figure was produced by the repository's demand-expansion engine, whose fixtures were derived by hand before it existed; the page carries the engine's result for every combination of the two multipliers and switches between them. It re-implements no rule.</p>
+  <h2>The two multipliers</h2>
+  <p>Recipe cost scales every recipe's inputs per cycle, rounded to the nearest whole part as the game does, so it compounds unevenly through a chain. The settings below 1× need a floor rule the record leaves open and are not offered. Elevator parts scales the delivery quantities, rounded the same way (50 becomes 13 at 0.25×). Fluids round in ${esc(p.fluid_rounding_unit)}, as observed in game on 2026-10-10.</p>
+  <h2>Rules the numbers rest on</h2>
+  <p>A recipe produces only the output the game lists first; everything else is a coproduct and is never expanded through. Resources are leaves. Alternates are off unless declared; this page declares ${p.alternates.length ? esc(p.alternates.join(', ')) : 'none'}. A part that no recipe makes first but some recipe makes as a byproduct (Heavy Oil Residue, Compacted Coal, Polymer Resin) is a leaf: the requirement is shown as <span class="leaf co">coproduct-supplied</span> and which line covers it is left to the planner. A delivered part counts as itself in its own phase. A delivery whose recipe path reaches a part with several possible recipes and no declared choice (Ficsite Ingot) is not expanded; its own quantity still counts and its phase is marked incomplete.</p>
+  <h2>Configuration in view</h2>
+  <p><span class="mono">${esc(i.config_id)}</span></p>
+  <h2>Provenance</h2>
+  <p>Game ${esc(p.game_version)} build ${esc(p.build_number)}, reference data <span class="mono">${esc(p.game_build_id)}</span>, docs sha256 <span class="mono">${esc(p.docs_sha256.slice(0, 16))}…</span>. Route table <span class="mono">${esc(p.route_table)}</span>, hash <span class="mono">${esc(p.route_table_sha256.slice(0, 16))}…</span>.${payloadEl.dataset.repoHead ? ' Repository <span class="mono">' + esc(payloadEl.dataset.repoHead.slice(0, 12)) + '</span>.' : ''}${payloadEl.dataset.generated ? ' Generated ' + esc(payloadEl.dataset.generated) + '.' : ''}</p>
+  <h2>Parts not expanded at ${esc(state.rm)}× recipe cost</h2>
+  <div class="tablewrap"><table><thead><tr><th>Part</th><th style="text-align:left">Why</th></tr></thead><tbody>${unresolved.map(u => `<tr><td>${esc(name(u[0]))}</td><td style="text-align:left;white-space:normal">${refusalText(u[1])}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+// ---- wiring
+function render() {
+  document.getElementById('rm').innerHTML = P.recipe_multipliers.map(m => `<button data-rm="${m}" aria-pressed="${m === state.rm}">${m}×</button>`).join('');
+  document.getElementById('pm').innerHTML = P.pa_multipliers.map(m => `<button data-pm="${m}" aria-pressed="${m === state.pm}">${m}×</button>`).join('');
+  for (const b of document.querySelectorAll('#screens button')) b.setAttribute('aria-pressed', String(b.dataset.screen === state.screen));
+  for (const s of ['phases', 'parts', 'about']) document.getElementById(s).hidden = s !== state.screen;
+  if (state.screen === 'phases') renderPhases(); else if (state.screen === 'parts') renderParts(); else renderAbout();
+  document.getElementById('foot').textContent = `Generated from the demand-expansion engine, ${cidx().config_id}. Every figure is exact in the source; this page rounds for display.`;
+  remember();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.rm) { state.rm = t.dataset.rm; render(); }
+  else if (t.dataset.pm) { state.pm = t.dataset.pm; render(); }
+  else if (t.dataset.screen) { state.screen = t.dataset.screen; render(); }
+  else if (t.dataset.phase) { state.phase = +t.dataset.phase; render(); }
+  else if (t.dataset.toggle) { const k = t.dataset.toggle; state.open.has(k) ? state.open.delete(k) : state.open.add(k); render(); }
+  else if (t.dataset.part) { state.part = t.dataset.part; state.screen = 'parts'; render(); window.scrollTo({top: 0}); }
+});
+document.addEventListener('change', e => {
+  if (e.target.id !== 'partq') return;
+  const v = e.target.value.trim(); const hit = Object.entries(P.names).find(([id, n]) => n.toLowerCase() === v.toLowerCase());
+  if (hit) { state.part = hit[0]; render(); }
+});
+const tip = document.getElementById('tip');
+document.addEventListener('mousemove', e => {
+  const g = e.target.closest && e.target.closest('g.bar'); if (!g) { tip.style.display = 'none'; return; }
+  const s = (cidx().byItem.get(state.part) || [])[+g.dataset.k]; if (!s) return;
+  tip.textContent = `Phase ${s.ph}: ${fmt(s.q)} units${s.ok ? '' : ' (lower bound)'} · cumulative ${fmt(s.cum)} · remaining ${fmt(s.rem)}`;
+  tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY + 12) + 'px';
+});
+render();
+</script>

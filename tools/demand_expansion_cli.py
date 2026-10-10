@@ -18,10 +18,13 @@ CLI loads the reference layer, runs one configuration, and writes:
     python tools/demand_expansion_cli.py target "Modular Frame" --alternate "Alternate: Steeled Frame"
     python tools/demand_expansion_cli.py alternates "Alternate: Steeled Frame"
     python tools/demand_expansion_cli.py alternates --sweep
+    python tools/demand_expansion_cli.py viewer
 
 `--alternate` (repeatable) runs any command under an explicit configuration:
 the default table plus those alternates, each pinned for the item it makes.
 `alternates` writes dataset C (alternate_sensitivity.csv, alternate_summary.csv).
+`viewer` writes project-assembly-demand.html, a self-contained page carrying
+the engine's result for every recipe x elevator multiplier combination.
 
 Outputs go under planning_data/analysis/derived/demand_expansion/<config>/,
 which is gitignored and outside the manifests: a recomputable product of a
@@ -143,6 +146,31 @@ def _load_all(args):
     deliveries = load_project_assembly(args.repo, data)
     build = load_game_build(args.repo)
     return data, graph, deliveries, build
+
+
+TEMPLATE = REPO / "tools" / "demand_expansion" / "viewer" / "template.html"
+
+
+def cmd_viewer(args) -> int:
+    """One self-contained HTML page: template + the payload for every
+    multiplier combination. Opens from disk; no server, no library."""
+    data, graph, deliveries, build = _load_all(args)
+    payload = de.viewer_payload(graph, deliveries, build)
+    page = TEMPLATE.read_text(encoding="utf-8")
+    for marker in ("__PAYLOAD__", "__GENERATED__", "__REPO_HEAD__"):
+        if page.count(marker) != 1:
+            raise SystemExit(f"template lacks the {marker} marker")
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).replace("</", "<\\/")
+    generated = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat()
+    page = (page.replace("__PAYLOAD__", body)
+                .replace("__GENERATED__", generated)
+                .replace("__REPO_HEAD__", _repo_head(args.repo) or ""))
+    out = args.out or (DERIVED / "project-assembly-demand.html")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(page, encoding="utf-8", newline="\n")
+    print(f"{len(payload['by_recipe'])} recipe multipliers x {len(payload['pa_multipliers'])} "
+          f"elevator multipliers, {out.stat().st_size:,} bytes -> {out}")
+    return 0
 
 
 def cmd_alternates(args) -> int:
@@ -293,6 +321,12 @@ def main(argv=None) -> int:
     a.add_argument("--out", type=pathlib.Path, default=None, help="output directory")
     _scenario_args(a)
     a.set_defaults(fn=cmd_alternates)
+    v = sub.add_parser("viewer", help="write the self-contained viewer page")
+    v.add_argument("--out", type=pathlib.Path, default=None, help="output file")
+    v.add_argument("--alternate", action="append", default=[], metavar="RECIPE",
+                   help="enable this alternate (id or exact name) for the item it makes; repeatable")
+    v.add_argument("--repo", type=pathlib.Path, default=REPO, help=argparse.SUPPRESS)
+    v.set_defaults(fn=cmd_viewer)
     args = p.parse_args(argv)
     return args.fn(args)
 

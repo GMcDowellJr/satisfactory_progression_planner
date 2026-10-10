@@ -53,6 +53,7 @@ def test_the_scan_sees_every_module():
         "aggregate.py",   # PR 4, 2026-10-10
         "report.py",      # PR 5, 2026-10-10
         "sensitivity.py", # PR 3, 2026-10-10
+        "viewer.py",      # PR 6, 2026-10-10
     }
 
 

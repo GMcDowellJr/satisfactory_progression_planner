@@ -103,3 +103,22 @@ def test_alternate_flag_runs_a_command_under_an_explicit_configuration(capsys):
 def test_alternates_needs_a_name_or_sweep():
     with pytest.raises(SystemExit, match="name at least one alternate"):
         cli.main(["alternates"])
+
+
+def test_viewer_is_one_self_contained_page(tmp_path):
+    out = tmp_path / "page.html"
+    assert cli.main(["viewer", "--out", str(out)]) == 0
+    html = out.read_text(encoding="utf-8")
+    assert html.startswith("<title>Project Assembly Demand</title>")
+    assert "__PAYLOAD__" not in html and "__GENERATED__" not in html
+    assert "<script src=" not in html and 'rel="stylesheet"' not in html   # nothing external
+    assert b"\r" not in out.read_bytes()
+    assert out.stat().st_size < 4_000_000
+    start = html.index('id="payload"'); body = html[html.index(">", start) + 1: html.index("</script>", start)]
+    payload = json.loads(body.replace("<\\/", "</"))
+    from demand_expansion import viewer_payload
+    from production_adapter import load, load_game_build, load_project_assembly
+    import demand_expansion as de
+    data = load(REPO)
+    expected = viewer_payload(de.build(data, de.DEFAULT_ROUTES), load_project_assembly(REPO, data), load_game_build(REPO))
+    assert payload == json.loads(json.dumps(expected))   # same data, through JSON

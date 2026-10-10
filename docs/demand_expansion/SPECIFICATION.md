@@ -184,6 +184,20 @@ command writes `alternate_sensitivity.csv` and `alternate_summary.csv`
 beside the other outputs; `--alternate RECIPE` on any command runs it under
 the explicit configuration.
 
+## 6b. The viewer (plan package 06)
+
+`tools/demand_expansion_cli.py viewer` writes `project-assembly-demand.html`,
+one self-contained page: the template at `tools/demand_expansion/viewer/
+template.html` with `viewer.viewer_payload` inlined. The page carries the
+engine's result for every combination of the game's option sets (record
+3.2.1): recipe cost 1 to 2 (the sub-1x settings need a floor the record
+leaves open) and Space Elevator deliverable 0.25 to 100. A switch on the
+page is a lookup; no rule is re-implemented in JavaScript. First screen:
+a phase, its deliveries, a drill-down tree of the parts inside them scaled
+to the phase's quantity, and the phase table. Second: a part, its phase
+series, where it ends up, what it takes. Third: the rules and provenance.
+Opens from disk; loads nothing external.
+
 ## 7. Coverage: what "automatable item" means here
 
 An item is in scope when it is listed in `items.csv`, is not a resource, and
@@ -202,5 +216,6 @@ asserts this from both sides. `progression` may import this package.
 
 ## 9. Not in v1
 
-A viewer (plan PR 6), closed-loop material balance, any optimisation, any
+Alternates in the viewer (declare them on the `viewer` command line to bake a
+configuration in), closed-loop material balance, any optimisation, any
 ordering of alternates.

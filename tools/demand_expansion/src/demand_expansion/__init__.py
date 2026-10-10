@@ -25,6 +25,7 @@ from .graph import Census, RecipeGraph, build, census, find_cycles, primary_outp
 from .sensitivity import (
     SENSITIVITY_COLUMNS, SUMMARY_COLUMNS, Sensitivity, compare, sensitivity, sweep,
 )
+from .viewer import PROJECT_ASSEMBLY_MULTIPLIERS, RECIPE_MULTIPLIERS, viewer_payload
 from .report import (
     COEFFICIENT_COLUMNS, PHASE_COLUMNS, UNRESOLVED_COLUMNS, Dataset, build_dataset,
     config_id, in_scope_targets, markdown_report, route_table_sha256,
@@ -39,5 +40,6 @@ __all__ = [
     "UNDECLARED", "UNRESOLVED_COLUMNS", "UnproducibleItem", "aggregate", "build",
     "build_dataset", "census", "config_id", "expand", "find_cycles",
     "in_scope_targets", "markdown_report", "primary_output", "route_for",
-    "route_table_sha256",
+    "route_table_sha256", "PROJECT_ASSEMBLY_MULTIPLIERS", "RECIPE_MULTIPLIERS",
+    "viewer_payload",
 ]
