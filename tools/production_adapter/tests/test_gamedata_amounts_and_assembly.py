@@ -71,3 +71,15 @@ def test_game_build_is_one_row():
     assert b.game_build_id == "docs_a81d250e96aa"
     assert (b.game_version, b.build_number) == ("1.2.4.0", "502094")
     assert b.docs_sha256.startswith("a81d250e96aa") and len(b.docs_sha256) == 64
+
+
+def test_recipe_unlocks_join_schematics():
+    from production_adapter import load_recipe_unlocks
+
+    u = load_recipe_unlocks(REPO)
+    assert len(u) == 978                      # production AND building recipes
+    assert set(load(REPO).recipes) <= set(u)  # every production recipe has a row
+    assert [(x.schematic_id, x.tech_tier) for x in u["Recipe_Alternate_ModularFrame_C"]] == [
+        ("Schematic_Alternate_ModularFrame_C", 4),
+    ]
+    assert u["Recipe_IngotIron_C"][0].schematic_id == "Schematic_StartingRecipes_C"

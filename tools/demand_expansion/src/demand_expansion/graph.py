@@ -12,7 +12,9 @@ not from a choice (demand-expansion record Amendment 1, items B and G):
                      output is a resource is enabled. This is record 3.1.1's
                      Converter exclusion as a rule rather than a list.
     alternates off   `is_alternate=true` recipes are never enabled by this
-                     module. A run that holds one pins it, as a decision.
+                     module except through an `AlternatePin`, which names
+                     one alternate for one item and makes it the item's only
+                     producer (Amendment 3). A run that holds one pins it.
 
 Everything that IS a choice arrives in the `RouteTable`.
 """
@@ -92,6 +94,31 @@ def build(data: ReferenceData, routes: RouteTable) -> RecipeGraph:
     resolved: dict[ItemId, tuple[RecipeId, ...]] = {
         item: tuple(sorted(rs)) for item, rs in producers.items()
     }
+    for alt in routes.alternates:
+        r = recipes.get(alt.recipe_id)
+        if r is None:
+            raise DeclarationError(
+                f"{routes.name} enables {alt.recipe_id}, which is not in the reference layer."
+            )
+        if not r.is_alternate:
+            raise DeclarationError(
+                f"{routes.name} enables {alt.recipe_id} as an alternate, but the data flags "
+                "it base. Use a RoutePin to select among base recipes."
+            )
+        p = primary_output(r)
+        if p != alt.item_id:
+            raise DeclarationError(
+                f"{routes.name} enables {alt.recipe_id} for {alt.item_id}, but its primary "
+                f"output is {p}. An alternate pin names the item the recipe makes first."
+            )
+        if p in data.resource_items:
+            raise DeclarationError(
+                f"{routes.name} enables {alt.recipe_id}, whose primary output {p} is a "
+                "resource. Resources are leaves; a recipe making one is never enabled."
+            )
+        enabled.add(alt.recipe_id)
+        primary[alt.recipe_id] = p
+        resolved[p] = (alt.recipe_id,)
     for pin in routes.pins:
         candidates = resolved.get(pin.item_id, ())
         if len(candidates) < 2:

@@ -15,6 +15,9 @@ declared scenario, and keeps the coefficient at every intermediate part, so
                    their phase marked incomplete
     report         datasets A and B as rows, provenance, a Markdown report;
                    writes nothing. tools/demand_expansion_cli.py writes.
+    sensitivity    dataset C: one alternate against the base table, every
+                   source x target that changes; the sweep over all 110.
+                   Never a score or an order (record §5.5).
 
 What it does not do, by construction: choose a recipe (an item with several
 enabled producers is refused by name), decide rates (quantities only; no

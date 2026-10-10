@@ -1163,3 +1163,36 @@ Effect on figures: Crude Oil per Thermal Propulsion Rocket at 1.25x is
 825.47, not the 880.5 that A1.3 quoted under m3 (6.7% lower). No Modular
 Frame figure moves (§3.2.3). VALIDATION.md table 3 is re-labelled with the
 observed rule as the default.
+
+---
+
+## Amendment 3 — 2026-10-10. Alternates enter by declaration; dataset C
+
+Appended forward-only. Nothing above is edited. Greg asked for the plan's
+PR 3 the same day; the shape below is what was built, recorded so it can be
+overturned.
+
+A1.2's third rule, alternates off, gains its one relaxation: an
+`AlternatePin(item, recipe, reason)` enables one alternate and makes it the
+item's only producer. Refused when the recipe is missing, is flagged base,
+makes a different item first, or makes a resource; an item may not carry a
+`RoutePin` and an `AlternatePin` both, because which wins would be a choice.
+
+Dataset C (`sensitivity`, `sweep`, `compare`) reports every source x target
+whose coefficient changes under one alternate, with both values, the
+difference and a ratio or new / removed; targets that one graph refuses and
+the other resolves are listed, not folded. Inapplicable alternates are named
+with the reason. No score, sort or best (§5.5): the sweep is in recipe-id
+order.
+
+Found by the sweep, recorded: Heavy Oil Residue has no primary producer
+under the default table (it is a coproduct of Plastic and Rubber and the
+Unpackage reversal is excluded), so Petroleum Coke and everything routed
+through it is unproducible until "Alternate: Heavy Oil Residue" is pinned.
+Not a defect of the rule; the rule making a byproduct not a producer is
+A1.2's, and this is its visible cost. A run that burns coke declares the
+alternate.
+
+Hand-derived fixtures: Steeled Frame takes Iron Ore per Modular Frame from
+24 to 13 and adds 5 Coal; Iron Wire takes Cable from 1 Copper Ore to 10/9
+Iron Ore (VALIDATION.md table 5).

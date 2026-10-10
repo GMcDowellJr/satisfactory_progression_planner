@@ -94,6 +94,20 @@ class RoutePin:
 
 
 @dataclass(frozen=True)
+class AlternatePin:
+    """Enable ONE alternate recipe for ONE item and make it that item's only
+    producer. The single relaxation of the alternates-off rule (demand-
+    expansion record Amendment 3): an alternate enters the graph only here,
+    named, with a reason, and replaces every base candidate for its item.
+    A `RoutePin` selects among base recipes; this one admits an alternate.
+    An item may carry one or the other, never both."""
+
+    item_id: ItemId
+    recipe_id: RecipeId
+    reason: str
+
+
+@dataclass(frozen=True)
 class RouteTable:
     """A declared recipe configuration: curated exclusions plus pins.
 
@@ -106,6 +120,7 @@ class RouteTable:
     name: str
     exclusions: tuple[Exclusion, ...] = ()
     pins: tuple[RoutePin, ...] = ()
+    alternates: tuple[AlternatePin, ...] = ()
 
     def __post_init__(self) -> None:
         excluded = [e.recipe_id for e in self.exclusions]
@@ -114,12 +129,34 @@ class RouteTable:
         pinned = [p.item_id for p in self.pins]
         if len(set(pinned)) != len(pinned):
             raise DeclarationError(f"{self.name}: an item is pinned twice")
+        alt_items = [a.item_id for a in self.alternates]
+        if len(set(alt_items)) != len(alt_items):
+            raise DeclarationError(f"{self.name}: an item carries two alternate pins")
+        both = sorted(set(pinned) & set(alt_items))
+        if both:
+            raise DeclarationError(
+                f"{self.name}: {both} carry both a RoutePin and an AlternatePin; which "
+                "wins would be a choice, so it is refused"
+            )
         for e in self.exclusions:
             if not e.reason.strip():
                 raise DeclarationError(f"{self.name}: exclusion of {e.recipe_id} has no reason")
         for p in self.pins:
             if not p.reason.strip():
                 raise DeclarationError(f"{self.name}: pin of {p.item_id} has no reason")
+        for a in self.alternates:
+            if not a.reason.strip():
+                raise DeclarationError(f"{self.name}: alternate pin of {a.item_id} has no reason")
+
+    def with_alternate(self, item_id: ItemId, recipe_id: RecipeId, reason: str, name: str | None = None) -> "RouteTable":
+        """This table plus one alternate pin. The name gains a suffix so the
+        configuration is distinguishable by name as well as by hash."""
+        return RouteTable(
+            name=name or f"{self.name}+{recipe_id}",
+            exclusions=self.exclusions,
+            pins=self.pins,
+            alternates=self.alternates + (AlternatePin(item_id, recipe_id, reason),),
+        )
 
 
 @dataclass(frozen=True)

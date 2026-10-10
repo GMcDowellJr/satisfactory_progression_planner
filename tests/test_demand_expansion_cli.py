@@ -71,3 +71,29 @@ def test_target_expands_or_refuses_by_name(capsys):
 def test_an_unknown_or_ambiguous_name_is_refused():
     with pytest.raises(SystemExit, match="matches 0 items"):
         cli.main(["item", "Smart Plates"])
+
+
+def test_alternates_writes_dataset_c(tmp_path, capsys):
+    out = tmp_path / "alt"
+    assert cli.main(["alternates", "Alternate: Steeled Frame", "--out", str(out)]) == 0
+    text = capsys.readouterr().out
+    assert "Iron Ingot                   -> Modular Frame                          24 ->          8  0.333x" in text
+    rows = (out / "alternate_sensitivity.csv").read_text(encoding="utf-8").splitlines()
+    assert rows[0].startswith("config_id,alternate_recipe_id,")
+    assert any(",Desc_OreIron_C,Iron Ore,Desc_ModularFrame_C,Modular Frame,24.0,24,13.0,13," in r for r in rows)
+    summary = (out / "alternate_summary.csv").read_text(encoding="utf-8").splitlines()
+    assert len(summary) == 2 and ",True,," in summary[1]
+
+
+def test_alternate_flag_runs_a_command_under_an_explicit_configuration(capsys):
+    assert cli.main(["target", "Modular Frame", "--alternate", "Alternate: Steeled Frame"]) == 0
+    out = capsys.readouterr().out
+    assert "          13  d3  Iron Ore resource" in out
+    assert "           5  d3  Coal resource" in out
+    with pytest.raises(SystemExit, match="refused: "):
+        cli.main(["target", "Plastic", "--alternate", "Alternate: Recycled Plastic"])
+
+
+def test_alternates_needs_a_name_or_sweep():
+    with pytest.raises(SystemExit, match="name at least one alternate"):
+        cli.main(["alternates"])

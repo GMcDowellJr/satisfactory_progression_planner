@@ -38,7 +38,9 @@ declarations and carry no reason field, because they are not choices.
    this build, 17 ore conversions and the 3 Unpackage reversals of Water,
    Oil and Nitrogen.
 3. **Alternates off.** `is_alternate=true` recipes are never enabled by this
-   module. A run that holds one pins it, which is a recorded choice.
+   module except through an `AlternatePin` (§3), which names one alternate
+   for one item and makes it that item's only producer. A run that holds
+   one declares it, which is a recorded choice (Amendment 3).
 
 ## 3. Declarations: the route table
 
@@ -50,6 +52,13 @@ reason. `declarations.DEFAULT_ROUTES` (`default-2026-10-10`) carries:
 - the 2 remaining `is_alternate` defects (record 3.1.1; the third is an
   Unpackage recipe and is carried once);
 - pins: Plastic → `Recipe_Plastic_C`, Rubber → `Recipe_Rubber_C` (LP §14.5).
+
+An `AlternatePin(item, recipe, reason)` enables one alternate and replaces
+every base candidate for its item. It is refused when the recipe is
+missing, is flagged base (use a `RoutePin`), makes a different item first,
+or makes a resource; and an item may not carry both kinds of pin, since
+which wins would be a choice. `RouteTable.with_alternate` adds one and
+suffixes the table's name.
 
 A stale declaration is refused by `graph.build`: an exclusion naming a
 missing or alternate-flagged recipe, a pin that resolves nothing (Silica,
@@ -135,6 +144,27 @@ same inputs produce byte-identical CSVs and report, and a test says so.
 Quantities carry an exact rational beside every float. Rows are in id
 order, never by size (record §5.5).
 
+## 6a. Alternate sensitivity (dataset C)
+
+`sensitivity(data, routes, recipe_id)` builds the graph twice, `routes` and
+`routes.with_alternate(...)`, expands every in-scope target under both, and
+reports every source × target whose coefficient changed: default, alternate,
+difference, and a ratio or `new` / `removed`. Targets that one graph refuses
+and the other resolves are listed (`targets_newly_resolved`,
+`targets_newly_refused`), never folded into a number. An inapplicable
+alternate (resource or unlisted primary output, a conflict with a base pin)
+is returned with `applicable=False` and the reason, never skipped. `sweep`
+runs this for every alternate in recipe-id order; `compare` takes any two
+graphs over one `ReferenceData`, which is the explicit-configuration mode.
+
+The unlock column is the schematic table's tech tier and name as stated;
+hard-drive alternates carry tier 0 there, and that is reported as given.
+
+Never a score, a sort or a "best" (record §5.5). The CLI's `alternates`
+command writes `alternate_sensitivity.csv` and `alternate_summary.csv`
+beside the other outputs; `--alternate RECIPE` on any command runs it under
+the explicit configuration.
+
 ## 7. Coverage: what "automatable item" means here
 
 An item is in scope when it is listed in `items.csv`, is not a resource, and
@@ -153,6 +183,5 @@ asserts this from both sides. `progression` may import this package.
 
 ## 9. Not in v1
 
-Alternate sensitivity (PR 3: a `RouteTable` with an alternate pinned
-is the mechanism, once rule 3 admits a declared alternate), closed-loop
-material balance, any optimisation.
+A viewer (plan PR 6), closed-loop material balance, any optimisation, any
+ordering of alternates.

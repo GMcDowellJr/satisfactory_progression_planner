@@ -15,6 +15,13 @@ CLI loads the reference layer, runs one configuration, and writes:
     python tools/demand_expansion_cli.py generate --recipe-multiplier 1.25 --project-assembly-multiplier 2
     python tools/demand_expansion_cli.py item Motor
     python tools/demand_expansion_cli.py target "Thermal Propulsion Rocket" --recipe-multiplier 1.25
+    python tools/demand_expansion_cli.py target "Modular Frame" --alternate "Alternate: Steeled Frame"
+    python tools/demand_expansion_cli.py alternates "Alternate: Steeled Frame"
+    python tools/demand_expansion_cli.py alternates --sweep
+
+`--alternate` (repeatable) runs any command under an explicit configuration:
+the default table plus those alternates, each pinned for the item it makes.
+`alternates` writes dataset C (alternate_sensitivity.csv, alternate_summary.csv).
 
 Outputs go under planning_data/analysis/derived/demand_expansion/<config>/,
 which is gitignored and outside the manifests: a recomputable product of a
@@ -37,7 +44,9 @@ for _src in ("production_adapter", "demand_expansion"):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-from production_adapter import Scenario, load, load_game_build, load_project_assembly  # noqa: E402
+from production_adapter import (  # noqa: E402
+    Scenario, load, load_game_build, load_project_assembly, load_recipe_unlocks,
+)
 from production_adapter.scenario import FLUID_ROUNDING_VARIANTS  # noqa: E402
 import demand_expansion as de  # noqa: E402
 
@@ -53,6 +62,8 @@ def _scenario_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--fluid-rounding", choices=sorted(_FLUID_CHOICES), default="mL",
                    help='fluid rounding variant; "mL" is the observed rule (A2), '
                         '"m3" reproduces pre-2026-10-10 figures')
+    p.add_argument("--alternate", action="append", default=[], metavar="RECIPE",
+                   help="enable this alternate (id or exact name) for the item it makes; repeatable")
     p.add_argument("--repo", type=pathlib.Path, default=REPO, help=argparse.SUPPRESS)
 
 
@@ -80,6 +91,30 @@ def _resolve(data, text: str) -> str:
     )
 
 
+def _resolve_recipe(data, text: str) -> str:
+    if text in data.recipes:
+        return text
+    hits = [r for r, rec in data.recipes.items() if rec.display_name == text]
+    if len(hits) == 1:
+        return hits[0]
+    raise SystemExit(
+        f"{text!r} matches {len(hits)} recipes; give a recipe id (Recipe_*_C) or an "
+        "exact, unique display name."
+    )
+
+
+def _routes(data, args):
+    """The default table, plus any --alternate, each pinned for its primary
+    output. A stale or conflicting pin is refused by `build`, by name."""
+    routes = de.DEFAULT_ROUTES
+    for text in args.alternate:
+        rid = _resolve_recipe(data, text)
+        routes = routes.with_alternate(
+            de.primary_output(data.recipes[rid]), rid, "declared on the command line"
+        )
+    return routes
+
+
 def _repo_head(repo: pathlib.Path) -> str | None:
     try:
         out = subprocess.run(
@@ -101,10 +136,57 @@ def _write_csv(path: pathlib.Path, rows, columns) -> None:
 
 def _load_all(args):
     data = load(args.repo)
-    graph = de.build(data, de.DEFAULT_ROUTES)
+    try:
+        graph = de.build(data, _routes(data, args))
+    except de.DeclarationError as err:
+        raise SystemExit(f"refused: {err}")
     deliveries = load_project_assembly(args.repo, data)
     build = load_game_build(args.repo)
     return data, graph, deliveries, build
+
+
+def cmd_alternates(args) -> int:
+    """Dataset C: one alternate, several, or the sweep, against the base
+    table (which may itself carry --alternate pins)."""
+    data, graph, deliveries, build = _load_all(args)
+    scenario, unit = _scenario(args)
+    unlocks = load_recipe_unlocks(args.repo)
+    if args.sweep:
+        results = de.sweep(data, graph.routes, scenario, unit, unlocks)
+    elif args.recipes:
+        results = tuple(
+            de.sensitivity(data, graph.routes, _resolve_recipe(data, t), scenario, unit, unlocks, base=graph)
+            for t in args.recipes
+        )
+    else:
+        raise SystemExit("name at least one alternate, or pass --sweep")
+    cid = de.config_id(graph.routes, scenario, unit)
+    out = args.out or (DERIVED / cid.replace("/", "_"))
+    out.mkdir(parents=True, exist_ok=True)
+    rows = [r for s in results for r in s.rows]
+    _write_csv(out / "alternate_sensitivity.csv", rows, de.SENSITIVITY_COLUMNS)
+    _write_csv(out / "alternate_summary.csv", [s.summary_row() for s in results], de.SUMMARY_COLUMNS)
+    print(f"{cid}: {len(results)} alternates, {len(rows)} changed pairs -> {out}\n")
+    for s in results:
+        if not s.applicable:
+            print(f"  {s.alternate_name:40s} inapplicable: {s.reason}")
+            continue
+        extra = ""
+        if s.targets_newly_resolved:
+            extra += f", resolves {len(s.targets_newly_resolved)}"
+        if s.targets_newly_refused:
+            extra += f", refuses {len(s.targets_newly_refused)}"
+        print(f"  {s.alternate_name:40s} {s.unlock:28s} {len(s.rows):4d} pairs in "
+              f"{len(s.targets_changed):3d} targets{extra}")
+    if not args.sweep:
+        for s in results:
+            if s.applicable and s.rows:
+                print(f"\n{s.alternate_name} ({s.alternate_recipe_id}), per unit of target:")
+                for r in s.rows:
+                    change = f"{r['ratio']:.3g}x" if r["change_kind"] == "ratio" else r["change_kind"]
+                    print(f"  {r['source_name']:28s} -> {r['target_name']:30s} "
+                          f"{r['default_exact']:>10} -> {r['alternate_exact']:>10}  {change}")
+    return 0
 
 
 def cmd_generate(args) -> int:
@@ -205,6 +287,12 @@ def main(argv=None) -> int:
     t.add_argument("target")
     _scenario_args(t)
     t.set_defaults(fn=cmd_target)
+    a = sub.add_parser("alternates", help="dataset C: alternate sensitivity against the base table")
+    a.add_argument("recipes", nargs="*", help="alternate recipe ids or exact names")
+    a.add_argument("--sweep", action="store_true", help="every alternate in the data")
+    a.add_argument("--out", type=pathlib.Path, default=None, help="output directory")
+    _scenario_args(a)
+    a.set_defaults(fn=cmd_alternates)
     args = p.parse_args(argv)
     return args.fn(args)
 

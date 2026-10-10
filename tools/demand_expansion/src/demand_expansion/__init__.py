@@ -6,6 +6,7 @@ adapter. See README.md and docs/demand_expansion/SPECIFICATION.md.
 """
 from .aggregate import Delivery, Growth, PhaseCell, PhaseDemand, aggregate
 from .contracts import (
+    AlternatePin,
     AmbiguousRoute,
     CycleDetected,
     DeclarationError,
@@ -21,13 +22,17 @@ from .contracts import (
 from .declarations import DEFAULT_ROUTES
 from .expand import UNDECLARED, expand
 from .graph import Census, RecipeGraph, build, census, find_cycles, primary_output, route_for
+from .sensitivity import (
+    SENSITIVITY_COLUMNS, SUMMARY_COLUMNS, Sensitivity, compare, sensitivity, sweep,
+)
 from .report import (
     COEFFICIENT_COLUMNS, PHASE_COLUMNS, UNRESOLVED_COLUMNS, Dataset, build_dataset,
     config_id, in_scope_targets, markdown_report, route_table_sha256,
 )
 
 __all__ = [
-    "AmbiguousRoute", "COEFFICIENT_COLUMNS", "Census", "CycleDetected", "DEFAULT_ROUTES",
+    "AlternatePin", "AmbiguousRoute", "COEFFICIENT_COLUMNS", "SENSITIVITY_COLUMNS",
+    "SUMMARY_COLUMNS", "Sensitivity", "compare", "sensitivity", "sweep", "Census", "CycleDetected", "DEFAULT_ROUTES",
     "Dataset", "DeclarationError", "Delivery", "DemandExpansionError", "Exclusion",
     "Expansion", "FluidRoundingUndeclared", "Growth", "NotExpandable", "PHASE_COLUMNS",
     "PhaseCell", "PhaseDemand", "RecipeGraph", "RoutePin", "RouteTable",

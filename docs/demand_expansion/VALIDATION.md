@@ -110,6 +110,32 @@ phase 5 incomplete, 44 unresolved rows;
 unresolved lists the two refused deliveries and every in-scope target that
 reaches an unpinned item. Two runs produce byte-identical CSVs and report.
 
+## Table 5 — alternate sensitivity, hand-derived
+
+Steeled Frame (`Recipe_Alternate_ModularFrame_C`, T4): 2 Reinforced Iron
+Plate + 10 Steel Pipe → 3 Modular Frame, against the default 3 RIP + 12 Iron
+Rod → 2. A RIP is 12 Iron Ingot (6 plates at 1.5, 12 screws at 0.25); a
+Steel Pipe is 1.5 Steel Ingot, each 1 Iron Ore + 1 Coal.
+
+| Source → Modular Frame | Default | Steeled Frame | Change |
+|---|---|---|---|
+| Iron Ore | 24 | 13 | 0.542x |
+| Iron Ingot | 24 | 8 | 0.333x |
+| Coal | 0 | 5 | new |
+| Iron Rod | 21/2 | 2 | 0.190x (the RIPs still take screws) |
+| Steel Pipe | 0 | 10/3 | new |
+
+Iron Wire (`Recipe_Alternate_Wire_1_C`, T1): 5 Iron Ingot → 9 Wire against
+1 Copper Ingot → 2. Cable takes 2 Wire: Copper Ore 1 → 0 (removed), Iron Ore
+0 → 10/9 (new).
+
+Sweep on this build at 1x: 110 alternates, 6,187 changed pairs, 5
+inapplicable by name (Automated Miner: unlisted output; Charcoal, Biocoal:
+make Coal; Recycled Plastic, Recycled Rubber: conflict with the base pins).
+Heavy Oil Residue has no primary producer under the default table, so
+"Alternate: Heavy Oil Residue" newly resolves 4 targets and "Alternate:
+Tempered Caterium Ingot" (through Petroleum Coke) newly refuses 9.
+
 ## Structure
 
 - Plastic per unit: direct 1.5 Crude Oil; coproduct 0.5 Heavy Oil Residue,

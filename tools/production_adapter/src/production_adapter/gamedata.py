@@ -438,6 +438,37 @@ def load_game_build(repo_root: str | pathlib.Path) -> GameBuild:
     )
 
 
+@dataclass(frozen=True)
+class RecipeUnlock:
+    """One schematic that unlocks a recipe: id, display name, tech tier."""
+
+    schematic_id: str
+    display_name: str
+    tech_tier: int
+
+
+def load_recipe_unlocks(repo_root: str | pathlib.Path) -> dict[RecipeId, tuple[RecipeUnlock, ...]]:
+    """schematic_recipe_unlocks.csv joined to schematics.csv, per recipe, in
+    schematic-id order. The table covers building recipes as well as the
+    291 production recipes (978 ids on this build); every production recipe
+    has at least one row. A recipe absent here is absent from the result,
+    not defaulted. Refuses an unlock row whose schematic is not in
+    schematics.csv."""
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    schematics = {r["schematic_id"]: r for r in _rows(ref / "schematics.csv")}
+    out: dict[RecipeId, list[RecipeUnlock]] = {}
+    for r in _rows(ref / "schematic_recipe_unlocks.csv"):
+        s = schematics.get(r["schematic_id"])
+        if s is None:
+            raise ReferenceDataError(
+                f"{r['recipe_id']} is unlocked by {r['schematic_id']}, absent from schematics.csv"
+            )
+        out.setdefault(r["recipe_id"], []).append(
+            RecipeUnlock(s["schematic_id"], s["display_name"], int(s["tech_tier"]))
+        )
+    return {k: tuple(sorted(v, key=lambda u: u.schematic_id)) for k, v in out.items()}
+
+
 _TIER_PREFIX = "Tier "
 
 

@@ -47,12 +47,19 @@ def config_id(routes: RouteTable, scenario: Scenario, fluid_rounding_unit: str |
     """A stable identifier for one configuration: route table, the two
     material multipliers, the fluid variant. Power is not material (record
     3.3) and is not part of it."""
-    return (
+    base = (
         f"{routes.name}"
         f"/recipe{scenario.recipe_input_multiplier:g}"
         f"/pa{scenario.project_assembly_requirement_multiplier:g}"
         f"/fluid-{fluid_rounding_unit or 'none'}"
     )
+    if routes.alternates:
+        # `with_alternate` already suffixes the name; a hand-built table may
+        # not, so the enabled alternates are named here regardless.
+        named = "+".join(sorted(a.recipe_id for a in routes.alternates))
+        if named not in routes.name:
+            base += f"/alt-{named}"
+    return base
 
 
 def route_table_sha256(routes: RouteTable) -> str:
@@ -62,6 +69,7 @@ def route_table_sha256(routes: RouteTable) -> str:
         "name": routes.name,
         "exclusions": [[e.recipe_id, e.reason] for e in routes.exclusions],
         "pins": [[p.item_id, p.recipe_id, p.reason] for p in routes.pins],
+        "alternates": [[a.item_id, a.recipe_id, a.reason] for a in routes.alternates],
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -176,6 +184,9 @@ def build_dataset(
             "sha256": route_table_sha256(graph.routes),
             "exclusions": [e.recipe_id for e in graph.routes.exclusions],
             "pins": [{"item_id": p.item_id, "recipe_id": p.recipe_id} for p in graph.routes.pins],
+            "alternates": [
+                {"item_id": a.item_id, "recipe_id": a.recipe_id} for a in graph.routes.alternates
+            ],
         },
         "scenario": {
             "recipe_input_multiplier": scenario.recipe_input_multiplier,
