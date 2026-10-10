@@ -188,15 +188,30 @@ the explicit configuration.
 
 `tools/demand_expansion_cli.py viewer` writes `project-assembly-demand.html`,
 one self-contained page: the template at `tools/demand_expansion/viewer/
-template.html` with `viewer.viewer_payload` inlined. The page carries the
-engine's result for every combination of the game's option sets (record
-3.2.1): recipe cost 1 to 2 (the sub-1x settings need a floor the record
-leaves open) and Space Elevator deliverable 0.25 to 100. A switch on the
-page is a lookup; no rule is re-implemented in JavaScript. First screen:
-a phase, its deliveries, a drill-down tree of the parts inside them scaled
-to the phase's quantity, and the phase table. Second: a part, its phase
-series, where it ends up, what it takes. Third: the rules and provenance.
-Opens from disk; loads nothing external.
+template.html` with `viewer.viewer_payload` inlined. Opens from disk; loads
+nothing external.
+
+The page carries a JavaScript port of the four structural rules, `expand`
+and `aggregate` (the `<script id="engine">` block, DOM-free), and runs it
+live for the chosen recipe multiplier (1 to 2; the sub-1x settings need a
+floor the record leaves open), Space Elevator multiplier (0.25 to 100) and
+any combination of alternates, one per part. Alternates in combination
+cannot be precomputed, because their effects do not compose when two touch
+one chain, which is why the engine is in the page rather than its results.
+
+The port is checked, not trusted. The payload embeds the Python engine's
+coefficients for every recipe multiplier and two phase tables; at every
+load the page recomputes the default configuration and compares (relative
+tolerance 1e-9), and shows a banner on any difference. The same comparison,
+plus an alternate declared on both sides, runs under Node in
+`tests/test_demand_expansion_viewer_engine.py` where Node is present. The
+Python engine remains the oracle; a difference is a defect in the port.
+
+Screens: a phase, its deliveries, a drill-down tree of the parts inside
+them scaled to the phase's quantity, and the phase table; a part, its phase
+series, where it ends up, what it takes; the alternates list with the
+reason any cannot be declared on this table; the rules, the configuration
+in view, the self-check result and provenance.
 
 ## 7. Coverage: what "automatable item" means here
 
@@ -216,6 +231,4 @@ asserts this from both sides. `progression` may import this package.
 
 ## 9. Not in v1
 
-Alternates in the viewer (declare them on the `viewer` command line to bake a
-configuration in), closed-loop material balance, any optimisation, any
-ordering of alternates.
+Closed-loop material balance, any optimisation, any ordering of alternates.

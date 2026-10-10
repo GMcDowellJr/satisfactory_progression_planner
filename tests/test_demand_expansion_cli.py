@@ -119,8 +119,8 @@ def test_viewer_is_one_self_contained_page(tmp_path):
     start = html.index('id="payload"'); body = html[html.index(">", start) + 1: html.index("</script>", start)]
     payload = json.loads(body.replace("<\\/", "</"))
     from demand_expansion import viewer_payload
-    from production_adapter import load, load_game_build, load_project_assembly
+    from production_adapter import load, load_game_build, load_project_assembly, load_recipe_unlocks
     import demand_expansion as de
     data = load(REPO)
-    expected = viewer_payload(de.build(data, de.DEFAULT_ROUTES), load_project_assembly(REPO, data), load_game_build(REPO))
+    expected = viewer_payload(de.build(data, de.DEFAULT_ROUTES), load_project_assembly(REPO, data), load_game_build(REPO), load_recipe_unlocks(REPO))
     assert payload == json.loads(json.dumps(expected))   # same data, through JSON

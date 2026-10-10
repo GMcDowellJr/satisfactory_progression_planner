@@ -155,7 +155,7 @@ def cmd_viewer(args) -> int:
     """One self-contained HTML page: template + the payload for every
     multiplier combination. Opens from disk; no server, no library."""
     data, graph, deliveries, build = _load_all(args)
-    payload = de.viewer_payload(graph, deliveries, build)
+    payload = de.viewer_payload(graph, deliveries, build, load_recipe_unlocks(args.repo))
     page = TEMPLATE.read_text(encoding="utf-8")
     for marker in ("__PAYLOAD__", "__GENERATED__", "__REPO_HEAD__"):
         if page.count(marker) != 1:
@@ -168,8 +168,9 @@ def cmd_viewer(args) -> int:
     out = args.out or (DERIVED / "project-assembly-demand.html")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8", newline="\n")
-    print(f"{len(payload['by_recipe'])} recipe multipliers x {len(payload['pa_multipliers'])} "
-          f"elevator multipliers, {out.stat().st_size:,} bytes -> {out}")
+    print(f"{len(payload['recipes'])} recipes, {len(payload['alternates'])} alternates, "
+          f"{len(payload['recipe_multipliers'])} x {len(payload['pa_multipliers'])} multiplier "
+          f"combinations live, {out.stat().st_size:,} bytes -> {out}")
     return 0
 
 
