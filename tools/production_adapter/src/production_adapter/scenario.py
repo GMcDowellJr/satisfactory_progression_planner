@@ -24,16 +24,22 @@ from decimal import Decimal, ROUND_HALF_UP
 ITEM_UNIT = "items"
 FLUID_UNIT = "m3"
 
-#: Which unit a fluid amount is rounded in. **UNOBSERVED** — record 3.2.5 adopts
-#: the same nearest-integer rule for fluids as for solids but does not say in
-#: which unit, and the two disagree materially: 3 m3 x 1.25 rounds to 4 m3 in m3
-#: and to 3.75 m3 in mL. The reference layer states both (`amount_per_cycle` in
-#: m3, `amount_per_cycle_raw` in mL). "m3" rounds in the displayed unit; "mL"
-#: rounds in the game's internal one; None leaves fluids unrounded, which is what
-#: the 3.2.2 computation behind the 66,423 figure actually did. Immaterial for
-#: Modular Frame (3.2.3, variants A-D identical); material for a fluid-heavy
-#: target. Named here rather than compiled into the arithmetic.
-FLUID_ROUNDING_UNIT: str | None = FLUID_UNIT
+#: Which unit a fluid amount is rounded in. **OBSERVED 2026-10-10** (demand-
+#: expansion record Amendment 2): on a 1.25x save, game 1.2.4.0 CL#502094, the
+#: Plastic recipe shows 3.75 Crude Oil per cycle (3 at 1x), with its outputs
+#: unchanged at 20 Plastic and 10 Heavy Oil Residue per minute. So fluids are
+#: NOT rounded to whole m3; "m3" is ruled out. "mL" rounds in the game's
+#: internal unit and None leaves fluids unrounded, and on this build the two
+#: cannot differ: every per-cycle fluid count is a multiple of 0.5 m3 and every
+#: selectable multiplier a multiple of 0.25, so a scaled fluid is always a whole
+#: number of millilitres. "mL" is carried as the rule because it is the one
+#: consistent with 3.2.3's finding that the code does scale fluids. Until
+#: 2026-10-10 this constant was "m3", which overstated Crude Oil per Thermal
+#: Propulsion Rocket at 1.25x by 6.7% (880.5 against 825.47).
+FLUID_ROUNDING_UNIT: str | None = "mL"
+
+#: The three admissible values of `Scenario.fluid_rounding_unit`.
+FLUID_ROUNDING_VARIANTS: tuple[str | None, ...] = (FLUID_UNIT, "mL", None)
 
 _ML_PER_M3 = 1000
 
@@ -42,9 +48,10 @@ def _round_half_away_from_zero(value: Decimal) -> Decimal:
     """Nearest integer, halves away from zero (record 3.2.5).
 
     Not `round()`: Python rounds halves to even, which would send 2.5 to 2. The
-    tie case is unobserved in game — record 10.3 of the 2026-09-21 storage review
-    proposes a two-building read that settles it — so this is the adopted rule
-    standing on 3.2.5, not a measurement.
+    tie case was adopted on 3.2.5 before any tie had been observed; it has since
+    been read in game (crossover record Amendment 1, 2026-09-21: Cable 2.5 -> 3,
+    Reinforced Iron Plate 7.5 -> 8, on 1.2.4.0 CL#502094), so this is now a
+    measured rule, not an assumption.
     """
     return value.quantize(Decimal(1), rounding=ROUND_HALF_UP)
 
@@ -66,6 +73,11 @@ class Scenario:
         Scales Project Assembly delivery quantities. Consumed by the Phase 2
         scheduler, not by the production solver, so it is carried here but not
         applied by `apply_input_amount` below.
+    fluid_rounding_unit
+        Which unit a fluid input is rounded in: "mL" (observed, the default),
+        None (identical on this build), or "m3" (ruled out by the 2026-10-10
+        read; selectable only to reproduce figures computed under it before
+        then). Demand-expansion record Amendments 1 and 2.
     input_amount_floor
         The minimum a positive input may round down to. **Unresolved** (record
         3.2.3): patch 1.2.3.0 fixed the 1.75x setting zeroing liquid costs, which
@@ -79,8 +91,14 @@ class Scenario:
     machine_power_multiplier: float = 1.0
     project_assembly_requirement_multiplier: float = 1.0
     input_amount_floor: float | None = None
+    fluid_rounding_unit: str | None = FLUID_ROUNDING_UNIT
 
     def __post_init__(self) -> None:
+        if self.fluid_rounding_unit not in FLUID_ROUNDING_VARIANTS:
+            raise ValueError(
+                f"fluid_rounding_unit must be one of {FLUID_ROUNDING_VARIANTS}, "
+                f"got {self.fluid_rounding_unit!r}"
+            )
         for name in (
             "recipe_input_multiplier",
             "machine_power_multiplier",
@@ -130,9 +148,9 @@ class Scenario:
         amount = Decimal(repr(amount_per_cycle))
         factor = Decimal(repr(multiplier))
         if unit == FLUID_UNIT:
-            if FLUID_ROUNDING_UNIT is None:
+            if self.fluid_rounding_unit is None:
                 scaled = amount * factor
-            elif FLUID_ROUNDING_UNIT == "mL":
+            elif self.fluid_rounding_unit == "mL":
                 scaled = _round_half_away_from_zero(
                     amount * _ML_PER_M3 * factor
                 ) / _ML_PER_M3
@@ -184,7 +202,7 @@ class Scenario:
 
     def canonical(self) -> "Scenario":
         """The unmodified scenario, for computing `PowerReport.canonical_mw`."""
-        return Scenario()
+        return Scenario(fluid_rounding_unit=self.fluid_rounding_unit)
 
 
 CHALLENGE_1_25X_2X = Scenario(

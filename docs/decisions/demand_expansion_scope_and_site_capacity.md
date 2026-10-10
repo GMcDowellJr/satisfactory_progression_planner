@@ -1036,3 +1036,200 @@ at sub-1x settings, and for fluid-heavy targets, are not yet.
 
 `buildings.csv` and `game_builds.csv` were applied to the repo on 2026-09-19, so
 8.2's footprint rule can run on all eleven producers.
+
+---
+
+## Amendment 1 — 2026-10-10. Demand expansion module: placed, route table, fluid variant
+
+Appended forward-only. Nothing above is edited. Decided by Greg, 2026-10-10,
+adopting the recommendations of the plan review
+(`Claude outputs/material-demand-plan-review-2026-10-10-1940.md`) on the
+"Forward Dependency & Demand Analysis" plan of the same date. Closes LP record
+§11.5's two open items.
+
+### A1.1 Name and placement (closes LP §11.5, first item)
+
+`tools/demand_expansion/`, package `demand_expansion`. It is the §11 shared
+module; the plan's "material demand" is the name of its reports, not of the
+package. Imports `production_adapter.contracts`, `.gamedata`, `.scenario`
+only; `progression` may import it; the adapter never does. Asserted by an AST
+boundary test from both sides. It opens no file.
+
+### A1.2 The route table is a declaration; three rules are not
+
+`graph.build` applies three structural rules with no reason field, because
+they are not choices: a recipe produces only its first-listed output
+(coproducts are reported, never netted, never producers); a resource is a
+leaf and no recipe whose primary output is a resource is enabled; alternates
+are off unless pinned. Everything else is a `RouteTable` with a reason per
+entry, and a stale entry is refused.
+
+`default-2026-10-10` carries §3.1.1's curated set as named exclusions (the 12
+Unpackage recipes and the two remaining `is_alternate` defects) and pins
+Plastic → `Recipe_Plastic_C`, Rubber → `Recipe_Rubber_C` (LP §14.5).
+
+Measured on this build: §3.1.1's "9 Converter recipes" are 17 ore
+conversions, plus 3 Unpackage reversals whose first output is a resource, 20
+in all under the rule. §3.1.1's "159 of 181" is 150 enabled under this table.
+The rule is what was locked; the counts move with the data and the census
+test records them. Silica needs no pin under the primary-output rule (Alumina
+Solution yields it second), so the review's proposed Silica pin was dropped;
+a redundant pin is refused as stale. Ficsite Ingot, Compacted Coal, Power
+Shard, Fuel, Biomass and Alien Protein stay unpinned (§3.1.2, LP §14.5);
+Biochemical Sculptor and AI Expansion Server therefore refuse by name.
+
+### A1.3 Fluid rounding is a declared input
+
+`Scenario` gains `fluid_rounding_unit` ("m3", "mL", None), defaulting to the
+adapter's module constant so no existing caller changes. The engine refuses a
+non-1x multiplier without an explicit declaration. Measured: Crude Oil per
+Thermal Propulsion Rocket at 1.25x is 880.5 under m3 and 825.47 under mL,
+6.7% apart; §3.2.3's "immaterial" was Modular Frame's, which has no fluid on
+its path. The in-game read that settles it: Plastic's Crude Oil on a 1.25x
+save, 4 under m3, 3.75 under mL.
+
+`scenario.py`'s docstring said the rounding tie was unobserved; crossover A1
+observed it on 2026-09-21. Corrected.
+
+### A1.4 Loader placement
+
+`gamedata.py` gains `load_project_assembly` (name-resolved, refusing) and
+`Recipe.output_amounts` (per-cycle counts; the float rate 3.3333333333333335
+is not a count). `progression.stock` keeps its own identical loader until next
+touched; the duplication is recorded in the new loader's docstring.
+
+### A1.5 The Project Assembly multiplier (closes LP §11.5, second item)
+
+Applied in phase aggregation, which scales an expansion output, and reported
+as its own column, separate from the recipe multiplier (§3.3). Not applied by
+the per-unit engine. Phase aggregation itself is PR 4 and is not built.
+
+### A1.6 Coverage rule
+
+An item is in scope when listed in `items.csv`, not a resource, and made by
+an enabled recipe. 17 unlisted consumable ids and 25 listed items without a
+base recipe are named by the census, not dropped.
+
+### A1.7 Coproducts
+
+v1: no closed-loop solve. The default base graph has no cycle once byproducts
+are not producers and Unpackage is excluded; a caller's pin set that creates
+one is refused by name.
+
+### A1.8 Fixtures
+
+`docs/demand_expansion/VALIDATION.md`: Motors per Modular Engine / Thermal
+Propulsion Rocket / Ballistic Warp Drive are 2 / 9 / 9 at 1x and 3 / 16.5 /
+16.5 at 1.25x; phases 3, 4, 5 embed 1,000 / 2,250 / 1,800 Motors at 1x.
+Derived by hand and scratch before the engine; the engine reproduces them and
+agrees with `tests/_demand_oracle.py` on every chain the oracle resolves.
+
+---
+
+## Amendment 2 — 2026-10-10. Fluid rounding observed: not in whole m3
+
+Appended forward-only. Nothing above is edited. Closes the fluid question
+A1.3 left open, the same day.
+
+    source     Greg, in session 2026-10-10, save at recipe 1.25x,
+               game 1.2.4.0 CL#502094. Plastic recipe read.
+
+    recipe     input                 1x        1.25x      outputs
+    Plastic    Crude Oil (m3/cycle)  3         3.75       20 Plastic/min,
+                                                          10 Heavy Oil Residue/min,
+                                                          unchanged
+
+Greg wrote the input as "3.75/min"; the per-cycle reading is the only one
+consistent with the unchanged 20/min output (the 1x recipe is 3 per 6 s
+cycle, 30/min), so 3.75 is the per-cycle count and 37.5/min the rate.
+
+    RULED OUT  rounding fluids to whole m3 (§3.2.5's "m3" variant), which
+               predicted 4. The adapter's constant and the engine's default
+               had carried it; both now carry "mL".
+    CONFIRMED  outputs do not scale (the 20/min and 10/min control cells).
+    CLOSED     A1.3's open input. The engine no longer refuses a non-1x
+               multiplier without a fluid declaration; it inherits the rule.
+
+**"mL" and "none" cannot be told apart on this build**, and so the one read
+suffices: every per-cycle fluid count in `recipe_io.csv` is a multiple of
+0.5 m3 (one 2.5, the rest whole) and every selectable multiplier a multiple
+of 0.25, so a scaled fluid is always a whole number of millilitres. A1.2's
+shape again: the distinction cannot arise in this domain. "mL" is carried as
+the rule because it is the one consistent with §3.2.3's finding that the
+code scales fluids; a test pins the multiple-of-0.5 property so a future
+fractional count is noticed rather than absorbed.
+
+Effect on figures: Crude Oil per Thermal Propulsion Rocket at 1.25x is
+825.47, not the 880.5 that A1.3 quoted under m3 (6.7% lower). No Modular
+Frame figure moves (§3.2.3). VALIDATION.md table 3 is re-labelled with the
+observed rule as the default.
+
+---
+
+## Amendment 3 — 2026-10-10. Alternates enter by declaration; dataset C
+
+Appended forward-only. Nothing above is edited. Greg asked for the plan's
+PR 3 the same day; the shape below is what was built, recorded so it can be
+overturned.
+
+A1.2's third rule, alternates off, gains its one relaxation: an
+`AlternatePin(item, recipe, reason)` enables one alternate and makes it the
+item's only producer. Refused when the recipe is missing, is flagged base,
+makes a different item first, or makes a resource; an item may not carry a
+`RoutePin` and an `AlternatePin` both, because which wins would be a choice.
+
+Dataset C (`sensitivity`, `sweep`, `compare`) reports every source x target
+whose coefficient changes under one alternate, with both values, the
+difference and a ratio or new / removed; targets that one graph refuses and
+the other resolves are listed, not folded. Inapplicable alternates are named
+with the reason. No score, sort or best (§5.5): the sweep is in recipe-id
+order.
+
+Found by the sweep, recorded: Heavy Oil Residue has no primary producer
+under the default table (it is a coproduct of Plastic and Rubber and the
+Unpackage reversal is excluded), so Petroleum Coke and everything routed
+through it is unproducible until "Alternate: Heavy Oil Residue" is pinned.
+Not a defect of the rule; the rule making a byproduct not a producer is
+A1.2's, and this is its visible cost. A run that burns coke declares the
+alternate.
+
+Hand-derived fixtures: Steeled Frame takes Iron Ore per Modular Frame from
+24 to 13 and adds 5 Coal; Iron Wire takes Cable from 1 Copper Ore to 10/9
+Iron Ore (VALIDATION.md table 5).
+
+---
+
+## Amendment 4 — 2026-10-10. A byproduct-only item is a leaf, not a refusal
+
+Appended forward-only. Nothing above is edited. Supersedes A3's "found by
+the sweep" paragraph: the finding stood, the conclusion drawn from it did
+not.
+
+**Decided by Greg, 2026-10-10:** "HOR is produced as a byproduct of plastic
+and rubber and can be used by any recipe that needs it. The HOR alt just
+makes more."
+
+So A1.2's byproduct rule was overreaching when it made Heavy Oil Residue
+unproducible. The rule stands where it mattered (a coproduct is not a
+PRODUCER to expand through: that is the ten-step Plastic-contains-Motor
+nonsense), and gains a fourth structural rule beside it:
+
+    coproduct leaf   an item no enabled recipe makes first, but some enabled
+                     recipe makes as a coproduct, is a LEAF. Its requirement
+                     is reported in `embedded` and named in
+                     `Expansion.coproduct_leaves`; the walk stops there.
+                     Which coproduct line covers it and what becomes of the
+                     surplus is a planning choice the engine does not make;
+                     the expansion's own `coproducts` column stands beside
+                     the requirement, and nothing is netted.
+
+A declared alternate that makes the item first (Alternate: Heavy Oil
+Residue) turns the leaf back into an expanded item, which is exactly "makes
+more": the requirement is then routed to the alternate's inputs.
+
+On this build the leaves are Heavy Oil Residue (Plastic, Rubber), Compacted
+Coal (Rocket Fuel, Ionized Fuel) and Polymer Resin (Fuel). §3.1.2's
+Compacted Coal residue is thereby resolved by reporting rather than by a
+pin. Measured: unresolved targets fall from 44 to 41 rows under the default
+table; the sweep's "Tempered Caterium Ingot refuses 9" becomes "changes 9";
+dataset A gains a `supplied_by` column (recipe / resource / coproduct).

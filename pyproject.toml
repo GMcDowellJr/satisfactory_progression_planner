@@ -49,4 +49,7 @@ testpaths = [
     "tools/production_adapter/tests",
     "tools/realization/tests",
     "tools/busmodel/tests",
+    # demand_expansion followed on 2026-10-10 (demand-expansion record A1), the
+    # same way. Its test basenames carry the package prefix.
+    "tools/demand_expansion/tests",
 ]

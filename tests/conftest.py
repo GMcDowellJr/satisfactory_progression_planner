@@ -19,3 +19,4 @@ sys.path.insert(0, str(REPO / "tools" / "realization" / "src"))
 #: this directory is above both packages: neither import boundary is weakened,
 #: since each boundary test scans its own `src/` and nothing else.
 sys.path.insert(0, str(REPO / "tools" / "busmodel" / "src"))
+sys.path.insert(0, str(REPO / "tools" / "demand_expansion" / "src"))

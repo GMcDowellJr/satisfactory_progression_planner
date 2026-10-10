@@ -119,3 +119,31 @@ def test_multipliers_must_be_numeric():
 
 def test_canonical_returns_an_unmodified_scenario():
     assert CHALLENGE_1_25X_2X.canonical().is_canonical
+
+
+# --- fluid rounding is a declared field (demand-expansion Amendment 1, C) ----
+
+def test_fluid_rounding_defaults_to_the_adapter_constant():
+    from production_adapter.scenario import FLUID_ROUNDING_UNIT
+
+    assert Scenario().fluid_rounding_unit == FLUID_ROUNDING_UNIT
+
+
+@pytest.mark.parametrize("unit, expected", [("m3", 4.0), ("mL", 3.75), (None, 3.75)])
+def test_fluid_rounding_variants(unit, expected):
+    """3 m3 x 1.25: 4 in the displayed unit, 3.75 in the game's internal one.
+    Unobserved in game; the Plastic recipe on a 1.25x save shows which."""
+    s = Scenario(recipe_input_multiplier=1.25, fluid_rounding_unit=unit)
+    assert s.apply_input_amount(3.0, FLUID_UNIT) == pytest.approx(expected)
+    assert s.apply_input_amount(3.0, ITEM_UNIT) == pytest.approx(4.0)   # solids unaffected
+
+
+def test_fluid_rounding_refuses_an_unknown_unit():
+    with pytest.raises(ValueError, match="fluid_rounding_unit"):
+        Scenario(fluid_rounding_unit="litres")
+
+
+def test_canonical_keeps_the_declared_unit():
+    s = Scenario(recipe_input_multiplier=1.25, fluid_rounding_unit="mL")
+    assert s.canonical().is_canonical
+    assert s.canonical().fluid_rounding_unit == "mL"
