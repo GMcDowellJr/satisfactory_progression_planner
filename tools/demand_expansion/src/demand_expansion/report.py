@@ -42,8 +42,10 @@ COEFFICIENT_COLUMNS = (
 )
 PHASE_COLUMNS = (
     "config_id", "item_id", "item_name", "phase", "phase_name",
-    "quantity", "quantity_exact", "previous", "growth_kind", "growth_ratio",
-    "cumulative", "remaining", "complete", "cumulative_complete", "remaining_complete",
+    "quantity", "quantity_exact", "previous", "previous_exact",
+    "growth_kind", "growth_ratio", "growth_ratio_exact",
+    "cumulative", "cumulative_exact", "remaining", "remaining_exact",
+    "complete", "cumulative_complete", "remaining_complete",
 )
 UNRESOLVED_COLUMNS = ("config_id", "kind", "item_id", "item_name", "phase", "refusal")
 
@@ -58,6 +60,11 @@ def config_id(routes: RouteTable, scenario: Scenario, fluid_rounding_unit: str |
         f"/pa{scenario.project_assembly_requirement_multiplier:g}"
         f"/fluid-{fluid_rounding_unit or 'none'}"
     )
+    if scenario.input_amount_floor is not None:
+        # Declared only below 1x (scenario.py refuses sub-1x without it), and
+        # material there: 0.25x Smart Plating is 0 Iron Ore at floor 0 and
+        # 17/4 at floor 1. Part of the identity whenever declared.
+        base += f"/floor{scenario.input_amount_floor:g}"
     if routes.alternates:
         # `with_alternate` already suffixes the name; a hand-built table may
         # not, so the enabled alternates are named here regardless.
@@ -167,10 +174,12 @@ def build_dataset(
                 "config_id": cid, "item_id": item_id, "item_name": _name(graph, item_id),
                 "phase": cell.phase, "phase_name": phase_names[cell.phase],
                 "quantity": _num(cell.quantity), "quantity_exact": str(cell.quantity),
-                "previous": _num(cell.previous),
+                "previous": _num(cell.previous), "previous_exact": str(cell.previous),
                 "growth_kind": cell.growth.kind,
                 "growth_ratio": "" if cell.growth.ratio is None else _num(cell.growth.ratio),
-                "cumulative": _num(cell.cumulative), "remaining": _num(cell.remaining),
+                "growth_ratio_exact": "" if cell.growth.ratio is None else str(cell.growth.ratio),
+                "cumulative": _num(cell.cumulative), "cumulative_exact": str(cell.cumulative),
+                "remaining": _num(cell.remaining), "remaining_exact": str(cell.remaining),
                 "complete": cell.complete,
                 "cumulative_complete": cell.cumulative_complete,
                 "remaining_complete": cell.remaining_complete,
@@ -202,6 +211,7 @@ def build_dataset(
             "recipe_input_multiplier": scenario.recipe_input_multiplier,
             "project_assembly_requirement_multiplier": scenario.project_assembly_requirement_multiplier,
             "fluid_rounding_unit": fluid_unit,
+            "input_amount_floor": scenario.input_amount_floor,
         },
         "coproduct_leaves": sorted(graph.coproduct_leaves),
         "counts": {

@@ -148,8 +148,8 @@ generate` writes them under `planning_data/analysis/derived/demand_expansion/
 `report.md`. `item NAME` and `target NAME` inspect one part from the terminal.
 
 A configuration is identified by `config_id`: route table name, recipe
-multiplier, Project Assembly multiplier, fluid variant (power is not
-material). Provenance carries the game build id, version, build number and
+multiplier, Project Assembly multiplier, fluid variant, and the input floor
+when one is declared (sub-1x only; power is not material). Provenance carries the game build id, version, build number and
 docs sha256 from `game_builds.csv`, the route table's content hash
 (exclusions, pins and their reasons), the scenario, row counts, which phases
 are complete, and, when the CLI stamps them, the repo HEAD and a UTC clock.

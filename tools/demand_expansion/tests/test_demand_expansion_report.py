@@ -64,6 +64,10 @@ def test_unresolved_names_targets_and_deliveries(dataset):
 def test_phase_rows_match_aggregate(dataset):
     motor = [r for r in dataset.phases if r["item_id"] == MOTOR]
     assert [r["quantity"] for r in motor] == [0, 0, 1000, 2250, 1800]
+    assert [r["cumulative_exact"] for r in motor] == ["0", "0", "1000", "3250", "5050"]
+    assert motor[3]["growth_ratio_exact"] == "9/4" and motor[2]["growth_ratio_exact"] == ""
+    copper = [r for r in dataset.phases if r["item_id"] == "Desc_CopperIngot_C" and r["phase"] == 4][0]
+    assert "/" in copper["cumulative_exact"]       # thirds: the float alone cannot round-trip
     assert [r["growth_kind"] for r in motor] == ["none", "none", "new", "ratio", "ratio"]
     assert motor[3]["growth_ratio"] == 2.25
     assert motor[4]["complete"] is False and motor[4]["remaining_complete"] is True
@@ -104,6 +108,8 @@ def test_config_id_and_table_hash():
     assert config_id(DEFAULT_ROUTES, Scenario(), "mL") == "default-2026-10-10/recipe1/pa1/fluid-mL"
     s = Scenario(recipe_input_multiplier=1.25, project_assembly_requirement_multiplier=2.0)
     assert config_id(DEFAULT_ROUTES, s, None) == "default-2026-10-10/recipe1.25/pa2/fluid-none"
+    low = Scenario(recipe_input_multiplier=0.25, input_amount_floor=1)
+    assert config_id(DEFAULT_ROUTES, low, "mL") == "default-2026-10-10/recipe0.25/pa1/fluid-mL/floor1"
     other = RouteTable(
         DEFAULT_ROUTES.name, DEFAULT_ROUTES.exclusions,
         DEFAULT_ROUTES.pins + (RoutePin("Desc_FicsiteIngot_C", "Recipe_FicsiteIngot_Iron_C", "iron"),),
