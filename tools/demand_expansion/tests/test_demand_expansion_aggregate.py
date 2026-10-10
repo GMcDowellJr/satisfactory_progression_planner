@@ -35,7 +35,26 @@ def test_phases_and_completeness(table):
     assert {(u.phase, u.item_id) for u in table.unresolved} == {(5, BS), (5, AES)}
     assert all(u.refusal.startswith("AmbiguousRoute: Desc_FicsiteIngot_C") for u in table.unresolved)
     assert len(table.deliveries) == 15
-    assert len(table.cells) == 72
+    assert len(table.cells) == 74
+
+
+def test_a_refused_delivery_still_counts_as_itself(table):
+    """The delivery row states 1,000 Biochemical Sculptors and 256 AI
+    Expansion Servers; only their dependencies are unknown. Counted, with the
+    phase marked incomplete. (Dropped with the dependencies until PR #3
+    review, 2026-10-10.)"""
+    bs, aes = table.item(BS), table.item(AES)
+    assert [c.quantity for c in bs] == [0, 0, 0, 0, 1000]
+    assert [c.quantity for c in aes] == [0, 0, 0, 0, 256]
+    assert bs[4].complete is False and bs[4].growth.kind == "new"
+
+
+def test_a_configuration_error_propagates(default_graph, deliveries):
+    """An unknown fluid variant is not fifteen refused deliveries."""
+    from demand_expansion import FluidRoundingUndeclared
+
+    with pytest.raises(FluidRoundingUndeclared):
+        aggregate(default_graph, deliveries, fluid_rounding="litres")
 
 
 def test_motors_per_phase_table_2(table):

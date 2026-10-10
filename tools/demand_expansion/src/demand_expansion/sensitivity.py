@@ -23,8 +23,13 @@ from production_adapter.contracts import ItemId, RecipeId
 from production_adapter.gamedata import RecipeUnlock, ReferenceData
 from production_adapter.scenario import Scenario
 
-from .contracts import DeclarationError, DemandExpansionError, RouteTable
+from .contracts import (
+    AmbiguousRoute, CycleDetected, DeclarationError, DemandExpansionError, RouteTable,
+    UnproducibleItem,
+)
 from .expand import UNDECLARED, expand
+
+_ROUTE_REFUSALS = (AmbiguousRoute, UnproducibleItem, CycleDetected)
 from .graph import RecipeGraph, build, primary_output
 from .report import config_id, in_scope_targets
 
@@ -85,7 +90,7 @@ def _coefficients(graph: RecipeGraph, targets, scenario, fluid_rounding):
     for t in targets:
         try:
             e = expand(graph, t, scenario, fluid_rounding)
-        except DemandExpansionError:
+        except _ROUTE_REFUSALS:
             refused.add(t)
             continue
         for s, q in e.embedded.items():

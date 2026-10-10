@@ -26,8 +26,13 @@ from production_adapter.gamedata import GameBuild, ProjectAssemblyRequirement
 from production_adapter.scenario import Scenario
 
 from .aggregate import PhaseDemand, aggregate
-from .contracts import DemandExpansionError, RouteTable
+from .contracts import AmbiguousRoute, CycleDetected, RouteTable, UnproducibleItem
 from .expand import UNDECLARED, expand
+
+#: Per-target refusals. A configuration error (unknown fluid variant,
+#: pre-scaled data) propagates instead of becoming one unresolved row per
+#: target under a mislabelled configuration (PR #3 review, 2026-10-10).
+_ROUTE_REFUSALS = (AmbiguousRoute, UnproducibleItem, CycleDetected)
 from .graph import RecipeGraph
 
 COEFFICIENT_COLUMNS = (
@@ -129,7 +134,7 @@ def build_dataset(
     for target in in_scope_targets(graph):
         try:
             e = expand(graph, target, scenario, fluid_rounding)
-        except DemandExpansionError as err:
+        except _ROUTE_REFUSALS as err:
             unresolved.append({
                 "config_id": cid, "kind": "target", "item_id": target,
                 "item_name": _name(graph, target), "phase": "",

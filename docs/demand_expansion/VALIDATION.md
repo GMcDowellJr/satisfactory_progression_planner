@@ -105,8 +105,9 @@ times each recipe's cycles per minute, and the oracle's 23.25 raw ore.
 ## Reference outputs
 
 `python tools/demand_expansion_cli.py generate` at 1x on this build: 119
-targets in scope, 804 coefficient rows, 72 items × 5 phases in dataset B,
-phase 5 incomplete, 44 unresolved rows;
+targets in scope, 804 coefficient rows, 74 items × 5 phases in dataset B
+(the two refused deliveries count as themselves), phase 5 incomplete, 44
+unresolved rows;
 unresolved lists the two refused deliveries and every in-scope target that
 reaches an unpinned item. Two runs produce byte-identical CSVs and report.
 

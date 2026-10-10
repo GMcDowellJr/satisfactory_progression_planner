@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -24,10 +25,15 @@ def test_generate_writes_the_six_files_and_repeats_byte_for_byte(tmp_path, capsy
     a, b = tmp_path / "a", tmp_path / "b"
     assert cli.main(["generate", "--out", str(a)]) == 0
     assert cli.main(["generate", "--out", str(b)]) == 0
+    clock = re.compile(rb"Generated \S+\.")
     for name in FILES:
         assert (a / name).is_file(), name
-        if name != "provenance.json" and name != "dataset.json":
+        if name.endswith(".csv"):
             assert (a / name).read_bytes() == (b / name).read_bytes(), name
+        elif name == "report.md":
+            # the clock is the one moving field; the two runs may straddle a second
+            assert clock.sub(b"", (a / name).read_bytes()) == clock.sub(b"", (b / name).read_bytes())
+            assert clock.search((a / name).read_bytes())
         assert b"\r" not in (a / name).read_bytes(), name
     prov = json.loads((a / "provenance.json").read_text(encoding="utf-8"))
     assert prov["docs_sha256"].startswith("a81d250e96aa")

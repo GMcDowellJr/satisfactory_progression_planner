@@ -46,7 +46,7 @@ def test_rows_are_in_id_order_and_counts_are_stamped(dataset):
     c = dataset.provenance["counts"]
     assert c["targets"] == 119
     assert c["coefficient_rows"] == len(dataset.coefficients)
-    assert c["phase_rows"] == len(dataset.phases) == 72 * 5
+    assert c["phase_rows"] == len(dataset.phases) == 74 * 5
     assert dataset.provenance["phases_complete"] == {"1": True, "2": True, "3": True, "4": True, "5": False}
 
 
@@ -84,6 +84,16 @@ def test_provenance_pins_the_build_and_the_table(dataset, repo_root):
     assert p["route_table"]["sha256"] == route_table_sha256(DEFAULT_ROUTES)
     assert p["scenario"]["fluid_rounding_unit"] == "mL"
     assert p["generated_at"] is None and p["repo_head"] is None
+
+
+def test_a_configuration_error_is_not_unresolved_rows(default_graph, repo_root, canonical):
+    from demand_expansion import FluidRoundingUndeclared
+
+    with pytest.raises(FluidRoundingUndeclared):
+        build_dataset(
+            default_graph, load_project_assembly(repo_root, canonical), load_game_build(repo_root),
+            fluid_rounding="litres",
+        )
 
 
 def test_config_id_and_table_hash():

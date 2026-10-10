@@ -105,10 +105,13 @@ Two definitional rules, stated so they can be disagreed with:
   the phase that delivers it. Phase 3 requires 500 Modular Engines; phase 4
   requires 625 more through its rockets.
 - **Incomplete, not guessed.** A delivery the engine refuses is listed in
-  `unresolved` with the refusal, and its phase is marked incomplete. Every
-  sum that includes an incomplete phase is a lower bound, and the cell's
-  `complete`, `cumulative_complete` and `remaining_complete` flags say which.
-  Under the default table phase 5 is incomplete (Ficsite Ingot).
+  `unresolved` with the refusal, and its phase is marked incomplete. Its own
+  quantity still counts (the row states it); only its dependencies are
+  unknown. Every sum that includes an incomplete phase is a lower bound, and
+  the cell's `complete`, `cumulative_complete` and `remaining_complete` flags
+  say which. Under the default table phase 5 is incomplete (Ficsite Ingot).
+  A configuration error (an unknown fluid variant, pre-scaled data) is not a
+  refusal and propagates.
 
 Incremental and cumulative views are separate so a part never appears to
 grow because its earlier phases are counted again.

@@ -15,9 +15,12 @@ disagreed with:
     incomplete     a delivery the engine refuses (an unpinned ambiguity on its
                    path, under the default table: Biochemical Sculptor and AI
                    Expansion Server on Ficsite Ingot) is listed in
-                   `unresolved` and its phase is marked incomplete. Every
-                   quantity that sums an incomplete phase is a lower bound,
-                   and the cell says so. Nothing is guessed for it.
+                   `unresolved` and its phase is marked incomplete. Its OWN
+                   quantity is still counted, because the delivery row states
+                   it; only its dependencies are unknown. Every quantity that
+                   sums an incomplete phase is a lower bound, and the cell
+                   says so. Nothing is guessed for it. (The self-count was
+                   skipped with the rest until PR #3 review, 2026-10-10.)
 
 Incremental and cumulative views are kept apart (plan section 7B): a part is
 not growing because its earlier phases are being counted again.
@@ -31,8 +34,12 @@ from production_adapter.contracts import ItemId
 from production_adapter.gamedata import ProjectAssemblyRequirement
 from production_adapter.scenario import Scenario
 
-from .contracts import DemandExpansionError
+from .contracts import AmbiguousRoute, CycleDetected, DemandExpansionError, UnproducibleItem
 from .expand import UNDECLARED, expand
+
+#: What a single delivery may fail on. Anything else (an unknown fluid
+#: variant, pre-scaled data) is a configuration error and propagates.
+_ROUTE_REFUSALS = (AmbiguousRoute, UnproducibleItem, CycleDetected)
 from .graph import RecipeGraph
 
 
@@ -150,11 +157,13 @@ def aggregate(
     expansions = {}
     for d in deliveries:
         quantity = Fraction(repr(scenario.apply_project_assembly_quantity(d.quantity_1x)))
+        bucket = per_phase[d.phase]
+        bucket[d.item_id] = bucket.get(d.item_id, Fraction(0)) + quantity      # self-count
         try:
             if d.item_id not in expansions:
                 expansions[d.item_id] = expand(graph, d.item_id, scenario, fluid_rounding)
             e = expansions[d.item_id]
-        except DemandExpansionError as err:
+        except _ROUTE_REFUSALS as err:
             row = Delivery(d.phase, d.phase_name, d.item_id, d.quantity_1x, quantity,
                            refusal=f"{type(err).__name__}: {err}")
             rows.append(row)
@@ -162,8 +171,6 @@ def aggregate(
             complete[d.phase] = False
             continue
         rows.append(Delivery(d.phase, d.phase_name, d.item_id, d.quantity_1x, quantity))
-        bucket = per_phase[d.phase]
-        bucket[d.item_id] = bucket.get(d.item_id, Fraction(0)) + quantity      # self-count
         for item, per_unit in e.embedded.items():
             bucket[item] = bucket.get(item, Fraction(0)) + per_unit * quantity
 
@@ -196,10 +203,14 @@ def aggregate(
         cells[item] = by_phase
 
     first = next(iter(expansions.values()), None)
+    if first is None:
+        raise DemandExpansionError(
+            "no delivery expanded; the configuration cannot be stamped from a refusal"
+        )
     return PhaseDemand(
         route_table=graph.routes.name,
         recipe_input_multiplier=scenario.recipe_input_multiplier,
-        fluid_rounding_unit=first.fluid_rounding_unit if first else scenario.fluid_rounding_unit,
+        fluid_rounding_unit=first.fluid_rounding_unit,
         project_assembly_multiplier=scenario.project_assembly_requirement_multiplier,
         phases=phases,
         deliveries=tuple(rows),
