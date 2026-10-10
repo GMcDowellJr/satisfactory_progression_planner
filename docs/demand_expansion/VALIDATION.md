@@ -62,13 +62,21 @@ with a scratch script that double-counted resources (every figure there was
 | Variant | Nitrogen Gas | Water | Crude Oil | Iron Ore |
 |---|---|---|---|---|
 | 1x | 200 | 324.5 | 209.25 | 669.75 |
-| 1.25x, m3 | 403 | 2,129.42 | 880.5 | 2,462.69 |
-| 1.25x, mL | 406.25 | 2,087.5 | 825.47 | 2,462.69 |
-| 1.25x, none | 406.25 | 2,087.5 | 825.47 | 2,462.69 |
+| 1.25x, mL (observed rule, default) | 406.25 | 2,087.5 | 825.47 | 2,462.69 |
+| 1.25x, none (identical on this build) | 406.25 | 2,087.5 | 825.47 | 2,462.69 |
+| 1.25x, m3 (ruled out 2026-10-10) | 403 | 2,129.42 | 880.5 | 2,462.69 |
 
 Solids agree across variants; Crude Oil differs by 6.7%. mL and none
-coincide because no fluid count on this chain has a fractional millilitre
-after scaling.
+coincide because every fluid count is a multiple of 0.5 m3 and every
+multiplier of 0.25, so no scaled fluid has a fractional millilitre.
+
+## Table 3a — the read that settled it
+
+Greg, 2026-10-10, 1.25x save, game 1.2.4.0 CL#502094, Plastic recipe:
+3.75 Crude Oil per cycle (3 at 1x), 20 Plastic and 10 Heavy Oil Residue per
+minute, unchanged. 3.75 is what mL and none predict; m3 predicted 4. The
+outputs confirm the yield does not scale. Per unit of Plastic: 1.875 Crude
+Oil, 0.5 HOR coproduct, half a cycle.
 
 ## Table 4 — Smart Plating, the Phase 0 reconciliation
 

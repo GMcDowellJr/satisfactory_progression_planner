@@ -110,14 +110,38 @@ def test_rocket_at_1x(default_graph):
     assert e.embedded["Desc_OreIron_C"] == F(2679, 4)
 
 
-def test_a_non_1x_multiplier_requires_the_fluid_variant(default_graph):
-    with pytest.raises(FluidRoundingUndeclared):
-        expand(default_graph, TPR, scenario=Scenario(recipe_input_multiplier=1.25))
+def test_the_default_fluid_variant_is_the_observed_one(default_graph):
+    """Amendment 2: Plastic at 1.25x shows 3.75 Crude Oil per cycle. Until that
+    read this test asserted a refusal; a declared "mL" and no declaration now
+    agree, and "m3" is the pre-read figure."""
+    undeclared = expand(default_graph, TPR, scenario=Scenario(recipe_input_multiplier=1.25))
+    assert undeclared.fluid_rounding_unit == "mL"
+    assert undeclared.embedded["Desc_LiquidOil_C"] == F(26415, 32)
+    assert undeclared.embedded == expand(default_graph, TPR, **at(1.25, "mL")).embedded
     with pytest.raises(FluidRoundingUndeclared):
         expand(default_graph, TPR, scenario=Scenario(recipe_input_multiplier=1.25),
                fluid_rounding="litres")
-    # at 1x nothing rounds, so nothing need be declared
-    assert expand(default_graph, TPR).recipe_input_multiplier == 1.0
+
+
+def test_plastic_at_1_25x_is_the_in_game_read(default_graph):
+    """Greg, 2026-10-10, 1.25x save, 1.2.4.0 CL#502094: 3.75 Crude Oil per
+    cycle, 20 Plastic and 10 Heavy Oil Residue per minute. Per unit of Plastic
+    that is 1.875 Crude Oil and 0.5 HOR; the 1x recipe is 3 per 2."""
+    e = expand(default_graph, "Desc_Plastic_C", scenario=Scenario(recipe_input_multiplier=1.25))
+    assert e.direct == {"Desc_LiquidOil_C": F(15, 8)}
+    assert e.coproducts == {"Desc_HeavyOilResidue_C": F(1, 2)}
+    assert e.recipe_cycles == {"Recipe_Plastic_C": F(1, 2)}
+
+
+def test_ml_and_none_cannot_differ_on_this_build(canonical):
+    """Every per-cycle fluid count is a multiple of 0.5 m3 and every selectable
+    multiplier a multiple of 0.25, so a scaled fluid is a whole number of
+    millilitres. If a fractional count ever arrives, the two variants separate
+    and the rule needs a second read."""
+    for r in canonical.recipes.values():
+        for _, amount, unit in r.input_amounts:
+            if unit == "m3":
+                assert (F(repr(amount)) * 2).denominator == 1, (r.recipe_id, amount)
 
 
 # --- refusals ----------------------------------------------------------------

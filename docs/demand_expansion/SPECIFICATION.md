@@ -67,12 +67,14 @@ to per-cycle input counts, nearest integer, half away from zero, per input
 scale. Rounding happens before the division by the output count, so the
 multiplier compounds unevenly through a chain.
 
-**Fluid rounding is a declared input.** At any multiplier other than 1x the
-caller passes `fluid_rounding` as `"m3"`, `"mL"` or `None`; the engine refuses
-to inherit the adapter's module default (`FluidRoundingUndeclared`). The
-variants differ by 6.7% on Crude Oil per Thermal Propulsion Rocket and none
-has been observed in game. The Plastic recipe on a 1.25x save settles it:
-4 under m3, 3.75 under mL.
+**Fluid rounding: observed, 2026-10-10 (Amendment 2).** The Plastic recipe on
+a 1.25x save shows 3.75 Crude Oil per cycle, so fluids are not rounded to
+whole m3. The default is `"mL"`; `None` cannot differ from it on this build
+(every fluid count is a multiple of 0.5 m3, every multiplier of 0.25); `"m3"`
+is selectable only to reproduce figures computed before the read, and
+overstated Crude Oil per Thermal Propulsion Rocket at 1.25x by 6.7%. Until
+the read the engine refused a non-1x multiplier without a declaration
+(Amendment 1); `FluidRoundingUndeclared` now fires only on an unknown value.
 
 The Project Assembly multiplier is not applied here. It scales delivery
 quantities and belongs to phase aggregation (PR 4), reported as its own
@@ -85,7 +87,7 @@ column; power multipliers are not material (record 3.3).
 | `AmbiguousRoute` | an item on the path has several enabled producers and no pin |
 | `UnproducibleItem` | a non-resource item on the path has no enabled producer |
 | `CycleDetected` | the chosen routes loop (impossible under the default table; a pin set could do it) |
-| `FluidRoundingUndeclared` | non-1x multiplier, no fluid variant declared |
+| `FluidRoundingUndeclared` | `fluid_rounding` is not `"mL"`, `None` or `"m3"` |
 | `NotExpandable` | the target is a resource |
 | `DeclarationError` | a stale or malformed route table |
 

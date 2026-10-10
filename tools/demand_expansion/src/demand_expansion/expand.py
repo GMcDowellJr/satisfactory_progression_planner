@@ -41,15 +41,12 @@ def _frac(x: float) -> Fraction:
 
 
 def _scaled_data(graph: RecipeGraph, scenario: Scenario, fluid_rounding) -> tuple[ReferenceData, str | None]:
-    if scenario.recipe_input_multiplier == 1.0:
-        unit = scenario.fluid_rounding_unit if fluid_rounding is UNDECLARED else fluid_rounding
-        return graph.data, unit
     if fluid_rounding is UNDECLARED:
-        raise FluidRoundingUndeclared(
-            f"recipe_input_multiplier is {scenario.recipe_input_multiplier}; declare "
-            f"fluid_rounding as one of {FLUID_ROUNDING_VARIANTS}. The adapter's default "
-            "is not inherited here."
-        )
+        # The observed rule (Amendment 2, 2026-10-10). Until that read the engine
+        # refused here, because the adapter's default was an assumption.
+        fluid_rounding = scenario.fluid_rounding_unit
+    if scenario.recipe_input_multiplier == 1.0:
+        return graph.data, fluid_rounding
     if fluid_rounding not in FLUID_ROUNDING_VARIANTS:
         raise FluidRoundingUndeclared(
             f"fluid_rounding must be one of {FLUID_ROUNDING_VARIANTS}, got {fluid_rounding!r}"
@@ -66,8 +63,10 @@ def expand(
 ) -> Expansion:
     """Quantities per one unit of `target`. See `contracts.Expansion`.
 
-    `fluid_rounding` is required whenever the recipe multiplier is not 1x:
-    "m3", "mL" or None. At 1x nothing rounds and it is recorded as given.
+    `fluid_rounding` defaults to the scenario's `fluid_rounding_unit`, whose
+    default is the observed rule ("mL", Amendment 2). "m3" is selectable only
+    to reproduce figures computed before the 2026-10-10 read. At 1x nothing
+    rounds and the value is recorded as given.
     """
     if graph.is_resource(target):
         raise NotExpandable(f"{target} is a resource; resources are leaves")

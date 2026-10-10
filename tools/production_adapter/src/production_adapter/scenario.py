@@ -24,19 +24,19 @@ from decimal import Decimal, ROUND_HALF_UP
 ITEM_UNIT = "items"
 FLUID_UNIT = "m3"
 
-#: Which unit a fluid amount is rounded in. **UNOBSERVED** — record 3.2.5 adopts
-#: the same nearest-integer rule for fluids as for solids but does not say in
-#: which unit, and the two disagree materially: 3 m3 x 1.25 rounds to 4 m3 in m3
-#: and to 3.75 m3 in mL. The reference layer states both (`amount_per_cycle` in
-#: m3, `amount_per_cycle_raw` in mL). "m3" rounds in the displayed unit; "mL"
-#: rounds in the game's internal one; None leaves fluids unrounded, which is what
-#: the 3.2.2 computation behind the 66,423 figure actually did. Immaterial for
-#: Modular Frame (3.2.3, variants A-D identical); material for a fluid-heavy
-#: target: Crude Oil per Thermal Propulsion Rocket at 1.25x moves 6.7% between
-#: "m3" and "mL" (demand-expansion record Amendment 1, 2026-10-10). This constant
-#: is the ADAPTER's default, kept so existing callers are unchanged; a caller
-#: that must not inherit it declares `Scenario.fluid_rounding_unit` itself.
-FLUID_ROUNDING_UNIT: str | None = FLUID_UNIT
+#: Which unit a fluid amount is rounded in. **OBSERVED 2026-10-10** (demand-
+#: expansion record Amendment 2): on a 1.25x save, game 1.2.4.0 CL#502094, the
+#: Plastic recipe shows 3.75 Crude Oil per cycle (3 at 1x), with its outputs
+#: unchanged at 20 Plastic and 10 Heavy Oil Residue per minute. So fluids are
+#: NOT rounded to whole m3; "m3" is ruled out. "mL" rounds in the game's
+#: internal unit and None leaves fluids unrounded, and on this build the two
+#: cannot differ: every per-cycle fluid count is a multiple of 0.5 m3 and every
+#: selectable multiplier a multiple of 0.25, so a scaled fluid is always a whole
+#: number of millilitres. "mL" is carried as the rule because it is the one
+#: consistent with 3.2.3's finding that the code does scale fluids. Until
+#: 2026-10-10 this constant was "m3", which overstated Crude Oil per Thermal
+#: Propulsion Rocket at 1.25x by 6.7% (880.5 against 825.47).
+FLUID_ROUNDING_UNIT: str | None = "mL"
 
 #: The three admissible values of `Scenario.fluid_rounding_unit`.
 FLUID_ROUNDING_VARIANTS: tuple[str | None, ...] = (FLUID_UNIT, "mL", None)
@@ -74,11 +74,10 @@ class Scenario:
         scheduler, not by the production solver, so it is carried here but not
         applied by `apply_input_amount` below.
     fluid_rounding_unit
-        Which unit a fluid input is rounded in: "m3", "mL" or None (unrounded).
-        Defaults to the module's `FLUID_ROUNDING_UNIT` so the adapter's behaviour
-        is unchanged; the demand-expansion engine refuses to inherit that default
-        at a non-1x multiplier and requires it declared (demand-expansion record
-        Amendment 1). Unobserved in game either way.
+        Which unit a fluid input is rounded in: "mL" (observed, the default),
+        None (identical on this build), or "m3" (ruled out by the 2026-10-10
+        read; selectable only to reproduce figures computed under it before
+        then). Demand-expansion record Amendments 1 and 2.
     input_amount_floor
         The minimum a positive input may round down to. **Unresolved** (record
         3.2.3): patch 1.2.3.0 fixed the 1.75x setting zeroing liquid costs, which

@@ -65,10 +65,11 @@ class CycleDetected(DemandExpansionError):
 
 
 class FluidRoundingUndeclared(DemandExpansionError):
-    """A non-1x recipe multiplier was requested without saying how fluids round.
-    The adapter carries a default; this engine refuses to inherit it, because
-    the variants differ by 6.7% on Crude Oil per Thermal Propulsion Rocket and
-    none has been observed in game (demand-expansion record Amendment 1)."""
+    """`fluid_rounding` is not one of the three variants. Until 2026-10-10 this
+    also fired when a non-1x multiplier arrived with no declaration, because
+    the adapter's default was an assumption and the variants differ by 6.7% on
+    Crude Oil per Thermal Propulsion Rocket (Amendment 1). The rule has since
+    been observed (Amendment 2), so the default is inherited again."""
 
 
 class NotExpandable(DemandExpansionError):
@@ -137,8 +138,9 @@ class Expansion:
     coproducts      non-primary outputs of the recipes used, per unit of target.
                     Reported, never netted against demand (Amendment 1, G): a
                     byproduct is not a producer.
-    fluid_rounding_unit   the declared variant when the multiplier is not 1x;
-                    meaningless, and recorded as given, at 1x.
+    fluid_rounding_unit   the variant in force when the multiplier is not 1x
+                    ("mL" unless overridden, Amendment 2); meaningless, and
+                    recorded as given, at 1x.
 
     Exact rationals throughout; the stated per-cycle counts are integers (one
     2.5 m3 fluid aside) and the game's own rounding is applied before division.

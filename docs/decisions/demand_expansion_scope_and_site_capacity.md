@@ -1123,3 +1123,43 @@ Propulsion Rocket / Ballistic Warp Drive are 2 / 9 / 9 at 1x and 3 / 16.5 /
 16.5 at 1.25x; phases 3, 4, 5 embed 1,000 / 2,250 / 1,800 Motors at 1x.
 Derived by hand and scratch before the engine; the engine reproduces them and
 agrees with `tests/_demand_oracle.py` on every chain the oracle resolves.
+
+---
+
+## Amendment 2 — 2026-10-10. Fluid rounding observed: not in whole m3
+
+Appended forward-only. Nothing above is edited. Closes the fluid question
+A1.3 left open, the same day.
+
+    source     Greg, in session 2026-10-10, save at recipe 1.25x,
+               game 1.2.4.0 CL#502094. Plastic recipe read.
+
+    recipe     input                 1x        1.25x      outputs
+    Plastic    Crude Oil (m3/cycle)  3         3.75       20 Plastic/min,
+                                                          10 Heavy Oil Residue/min,
+                                                          unchanged
+
+Greg wrote the input as "3.75/min"; the per-cycle reading is the only one
+consistent with the unchanged 20/min output (the 1x recipe is 3 per 6 s
+cycle, 30/min), so 3.75 is the per-cycle count and 37.5/min the rate.
+
+    RULED OUT  rounding fluids to whole m3 (§3.2.5's "m3" variant), which
+               predicted 4. The adapter's constant and the engine's default
+               had carried it; both now carry "mL".
+    CONFIRMED  outputs do not scale (the 20/min and 10/min control cells).
+    CLOSED     A1.3's open input. The engine no longer refuses a non-1x
+               multiplier without a fluid declaration; it inherits the rule.
+
+**"mL" and "none" cannot be told apart on this build**, and so the one read
+suffices: every per-cycle fluid count in `recipe_io.csv` is a multiple of
+0.5 m3 (one 2.5, the rest whole) and every selectable multiplier a multiple
+of 0.25, so a scaled fluid is always a whole number of millilitres. A1.2's
+shape again: the distinction cannot arise in this domain. "mL" is carried as
+the rule because it is the one consistent with §3.2.3's finding that the
+code scales fluids; a test pins the multiple-of-0.5 property so a future
+fractional count is noticed rather than absorbed.
+
+Effect on figures: Crude Oil per Thermal Propulsion Rocket at 1.25x is
+825.47, not the 880.5 that A1.3 quoted under m3 (6.7% lower). No Modular
+Frame figure moves (§3.2.3). VALIDATION.md table 3 is re-labelled with the
+observed rule as the default.
