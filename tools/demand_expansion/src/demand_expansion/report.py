@@ -70,11 +70,14 @@ def route_table_sha256(routes: RouteTable) -> str:
 
 def in_scope_targets(graph: RecipeGraph) -> tuple[ItemId, ...]:
     """SPECIFICATION §7: listed in items.csv, not a resource, has an enabled
-    producer. An ambiguous producer is in scope and lands in `unresolved`."""
-    return tuple(sorted(
-        i for i in graph.producers
-        if i in graph.data.items and not graph.is_resource(i)
-    ))
+    producer. An ambiguous producer is in scope and lands in `unresolved`.
+
+    "Not a resource" needs no test here: `graph.build` never enables a recipe
+    whose primary output is a resource, so no resource is a key of
+    `producers`. A guard for it was removed on 2026-10-10 after a mutation
+    check showed it could not fire; the scope test still asserts the property,
+    now as a fact about `build`."""
+    return tuple(sorted(i for i in graph.producers if i in graph.data.items))
 
 
 def _name(graph: RecipeGraph, item_id: ItemId) -> str:
