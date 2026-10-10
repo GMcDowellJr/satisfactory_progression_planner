@@ -24,7 +24,9 @@ from typing import Mapping
 from production_adapter.contracts import ItemId, RecipeId
 from production_adapter.gamedata import Recipe, ReferenceData
 
-from .contracts import AmbiguousRoute, DeclarationError, RouteTable, UnproducibleItem
+from .contracts import (
+    AmbiguousRoute, DeclarationError, DemandExpansionError, RouteTable, UnproducibleItem,
+)
 
 
 def primary_output(recipe: Recipe) -> ItemId:
@@ -50,7 +52,17 @@ class RecipeGraph:
 
 
 def build(data: ReferenceData, routes: RouteTable) -> RecipeGraph:
-    """Apply a route table to canonical data. Refuses a stale declaration."""
+    """Apply a route table to CANONICAL data. Refuses a stale declaration, and
+    refuses data that already carries a scenario: `expand` applies the
+    scenario itself, so pre-scaled inputs would be scaled twice (a 1.25x
+    Modular Engine's 3 Motors becoming 4) or reported as 1x. Found by review
+    on PR #3, 2026-10-10."""
+    if not data.scenario.is_canonical:
+        raise DemandExpansionError(
+            "demand expansion takes canonical reference data and applies the scenario "
+            f"itself; this data already carries {data.scenario!r}. Load with "
+            "gamedata.load(repo_root) and pass the Scenario to expand()/aggregate()."
+        )
     recipes = data.recipes
     for e in routes.exclusions:
         r = recipes.get(e.recipe_id)

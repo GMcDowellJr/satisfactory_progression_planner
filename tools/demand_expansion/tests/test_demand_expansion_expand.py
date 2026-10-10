@@ -121,6 +121,8 @@ def test_the_default_fluid_variant_is_the_observed_one(default_graph):
     with pytest.raises(FluidRoundingUndeclared):
         expand(default_graph, TPR, scenario=Scenario(recipe_input_multiplier=1.25),
                fluid_rounding="litres")
+    with pytest.raises(FluidRoundingUndeclared):
+        expand(default_graph, TPR, fluid_rounding="litres")   # at 1x too: never stamped
 
 
 def test_plastic_at_1_25x_is_the_in_game_read(default_graph):
@@ -168,6 +170,17 @@ def test_every_other_delivery_expands(default_graph, repo_root, canonical):
         except AmbiguousRoute:
             refused.add(row.item_id)
     assert refused == {"Desc_SpaceElevatorPart_10_C", "Desc_SpaceElevatorPart_12_C"}
+
+
+def test_pre_scaled_data_is_refused(repo_root):
+    """`load(repo_root, scenario)` is a supported path and its inputs are
+    already rounded; building a graph from it would scale them again (3
+    Motors -> 4 at 1.25x) or label 1.25x figures as 1x. Refused at build."""
+    from production_adapter import load
+    from demand_expansion import DEFAULT_ROUTES, DemandExpansionError, build
+
+    with pytest.raises(DemandExpansionError, match="already carries"):
+        build(load(repo_root, Scenario(recipe_input_multiplier=1.25)), DEFAULT_ROUTES)
 
 
 def test_a_resource_is_not_a_target(default_graph):

@@ -45,12 +45,14 @@ def _scaled_data(graph: RecipeGraph, scenario: Scenario, fluid_rounding) -> tupl
         # The observed rule (Amendment 2, 2026-10-10). Until that read the engine
         # refused here, because the adapter's default was an assumption.
         fluid_rounding = scenario.fluid_rounding_unit
-    if scenario.recipe_input_multiplier == 1.0:
-        return graph.data, fluid_rounding
     if fluid_rounding not in FLUID_ROUNDING_VARIANTS:
+        # Checked before the 1x return: an unknown variant must not be stamped
+        # into a config id or provenance at any multiplier (PR #3 review).
         raise FluidRoundingUndeclared(
             f"fluid_rounding must be one of {FLUID_ROUNDING_VARIANTS}, got {fluid_rounding!r}"
         )
+    if scenario.recipe_input_multiplier == 1.0:
+        return graph.data, fluid_rounding
     declared = replace(scenario, fluid_rounding_unit=fluid_rounding)
     return graph.data.with_scenario(declared), fluid_rounding
 
