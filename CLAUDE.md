@@ -21,3 +21,8 @@
 - Keep scratch work (one-off drivers, recompute models) in the session
   scratchpad or `scratchpad/` (gitignored), never in `tools/`, until it has a
   test and a decision behind it.
+- **PR review-bot findings** (Greg, 2026-10-10): be selective. Fix and push
+  a finding that changes a real figure or breaks a documented contract on a
+  path a caller actually uses. For an isolated edge condition (an invalid
+  input nobody passes, defensive validation, formatting) reply once that it
+  stays as is, resolve the thread, and don't push. Ask when unsure.
