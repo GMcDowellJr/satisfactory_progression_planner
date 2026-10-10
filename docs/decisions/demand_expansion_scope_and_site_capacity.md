@@ -1036,3 +1036,90 @@ at sub-1x settings, and for fluid-heavy targets, are not yet.
 
 `buildings.csv` and `game_builds.csv` were applied to the repo on 2026-09-19, so
 8.2's footprint rule can run on all eleven producers.
+
+---
+
+## Amendment 1 — 2026-10-10. Demand expansion module: placed, route table, fluid variant
+
+Appended forward-only. Nothing above is edited. Decided by Greg, 2026-10-10,
+adopting the recommendations of the plan review
+(`Claude outputs/material-demand-plan-review-2026-10-10-1940.md`) on the
+"Forward Dependency & Demand Analysis" plan of the same date. Closes LP record
+§11.5's two open items.
+
+### A1.1 Name and placement (closes LP §11.5, first item)
+
+`tools/demand_expansion/`, package `demand_expansion`. It is the §11 shared
+module; the plan's "material demand" is the name of its reports, not of the
+package. Imports `production_adapter.contracts`, `.gamedata`, `.scenario`
+only; `progression` may import it; the adapter never does. Asserted by an AST
+boundary test from both sides. It opens no file.
+
+### A1.2 The route table is a declaration; three rules are not
+
+`graph.build` applies three structural rules with no reason field, because
+they are not choices: a recipe produces only its first-listed output
+(coproducts are reported, never netted, never producers); a resource is a
+leaf and no recipe whose primary output is a resource is enabled; alternates
+are off unless pinned. Everything else is a `RouteTable` with a reason per
+entry, and a stale entry is refused.
+
+`default-2026-10-10` carries §3.1.1's curated set as named exclusions (the 12
+Unpackage recipes and the two remaining `is_alternate` defects) and pins
+Plastic → `Recipe_Plastic_C`, Rubber → `Recipe_Rubber_C` (LP §14.5).
+
+Measured on this build: §3.1.1's "9 Converter recipes" are 17 ore
+conversions, plus 3 Unpackage reversals whose first output is a resource, 20
+in all under the rule. §3.1.1's "159 of 181" is 150 enabled under this table.
+The rule is what was locked; the counts move with the data and the census
+test records them. Silica needs no pin under the primary-output rule (Alumina
+Solution yields it second), so the review's proposed Silica pin was dropped;
+a redundant pin is refused as stale. Ficsite Ingot, Compacted Coal, Power
+Shard, Fuel, Biomass and Alien Protein stay unpinned (§3.1.2, LP §14.5);
+Biochemical Sculptor and AI Expansion Server therefore refuse by name.
+
+### A1.3 Fluid rounding is a declared input
+
+`Scenario` gains `fluid_rounding_unit` ("m3", "mL", None), defaulting to the
+adapter's module constant so no existing caller changes. The engine refuses a
+non-1x multiplier without an explicit declaration. Measured: Crude Oil per
+Thermal Propulsion Rocket at 1.25x is 880.5 under m3 and 825.47 under mL,
+6.7% apart; §3.2.3's "immaterial" was Modular Frame's, which has no fluid on
+its path. The in-game read that settles it: Plastic's Crude Oil on a 1.25x
+save, 4 under m3, 3.75 under mL.
+
+`scenario.py`'s docstring said the rounding tie was unobserved; crossover A1
+observed it on 2026-09-21. Corrected.
+
+### A1.4 Loader placement
+
+`gamedata.py` gains `load_project_assembly` (name-resolved, refusing) and
+`Recipe.output_amounts` (per-cycle counts; the float rate 3.3333333333333335
+is not a count). `progression.stock` keeps its own identical loader until next
+touched; the duplication is recorded in the new loader's docstring.
+
+### A1.5 The Project Assembly multiplier (closes LP §11.5, second item)
+
+Applied in phase aggregation, which scales an expansion output, and reported
+as its own column, separate from the recipe multiplier (§3.3). Not applied by
+the per-unit engine. Phase aggregation itself is PR 4 and is not built.
+
+### A1.6 Coverage rule
+
+An item is in scope when listed in `items.csv`, not a resource, and made by
+an enabled recipe. 17 unlisted consumable ids and 25 listed items without a
+base recipe are named by the census, not dropped.
+
+### A1.7 Coproducts
+
+v1: no closed-loop solve. The default base graph has no cycle once byproducts
+are not producers and Unpackage is excluded; a caller's pin set that creates
+one is refused by name.
+
+### A1.8 Fixtures
+
+`docs/demand_expansion/VALIDATION.md`: Motors per Modular Engine / Thermal
+Propulsion Rocket / Ballistic Warp Drive are 2 / 9 / 9 at 1x and 3 / 16.5 /
+16.5 at 1.25x; phases 3, 4, 5 embed 1,000 / 2,250 / 1,800 Motors at 1x.
+Derived by hand and scratch before the engine; the engine reproduces them and
+agrees with `tests/_demand_oracle.py` on every chain the oracle resolves.

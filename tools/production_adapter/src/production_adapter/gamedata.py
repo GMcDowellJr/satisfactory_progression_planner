@@ -63,6 +63,12 @@ class Recipe:
     #: applied here and the rates are re-derived, because rounding to whole parts
     #: is not expressible on a rate (scenario.py, record 3.2.5).
     input_amounts: tuple[tuple[ItemId, float, str], ...] = ()
+    #: (item, per-cycle amount, unit) for OUTPUTS, in the order the game lists
+    #: them. Never scaled: the multiplier raises a recipe's cost, not its yield.
+    #: Carried because `outputs` is a float rate (1.6666666666666667 for five per
+    #: three minutes) and a quantity engine needs the stated count exactly
+    #: (demand-expansion record Amendment 1, 2026-10-10).
+    output_amounts: tuple[tuple[ItemId, float, str], ...] = ()
 
     @property
     def cycles_per_min(self) -> float:
@@ -93,6 +99,7 @@ class Recipe:
             outputs=tuple((i, scenario.apply_output_rate(r)) for i, r in self.outputs),
             power=self.power.scaled(scenario.machine_power_multiplier),
             input_amounts=input_amounts,
+            output_amounts=self.output_amounts,
         )
 
 
@@ -258,6 +265,7 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
     io_in: dict[RecipeId, list[tuple[ItemId, float]]] = {}
     io_out: dict[RecipeId, list[tuple[ItemId, float]]] = {}
     io_in_amounts: dict[RecipeId, list[tuple[ItemId, float, str]]] = {}
+    io_out_amounts: dict[RecipeId, list[tuple[ItemId, float, str]]] = {}
     for r in _rows(ref / "recipe_io.csv"):
         if r["direction"] == "input":
             io_in.setdefault(r["recipe_id"], []).append(
@@ -269,6 +277,9 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
         else:
             io_out.setdefault(r["recipe_id"], []).append(
                 (r["item_id"], float(r["rate_per_min"]))
+            )
+            io_out_amounts.setdefault(r["recipe_id"], []).append(
+                (r["item_id"], float(r["amount_per_cycle"]), r.get("unit") or ITEM_UNIT)
             )
 
     builds: set[str] = set()
@@ -305,6 +316,7 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
             outputs=tuple(io_out.get(rid, ())),
             power=power,
             input_amounts=tuple(io_in_amounts.get(rid, ())),
+            output_amounts=tuple(io_out_amounts.get(rid, ())),
         )
 
     items: dict[ItemId, Item] = {}
@@ -330,6 +342,70 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
         resource_items=frozenset(resources),
     )
     return data if scenario is None else data.with_scenario(scenario)
+
+
+@dataclass(frozen=True)
+class ProjectAssemblyRequirement:
+    """One Space Elevator delivery row, its item RESOLVED to an id.
+
+    `project_assembly_requirements.csv` is a wiki-sourced table keyed on
+    `item_name`, with no `item_id`. The join is therefore by display name, which
+    is the lookup the storage review warns about: it is safe here by measurement
+    (all fifteen rows resolve to exactly one item, re-measured 2026-10-10), not by
+    design, so `load_project_assembly` refuses a name matching zero or several
+    items rather than relying on that holding.
+
+    `quantity_1x` is the table's `quantity_default_1x`, unscaled. The Project
+    Assembly multiplier is applied by whichever consumer holds the scenario
+    (`Scenario.apply_project_assembly_quantity`), once.
+
+    `progression.stock` carries an identical loader from 2026-09-22, written
+    before this one existed. That duplication is recorded, not hidden: the
+    demand-expansion package may not import `progression` (LP record §11.1
+    runs the dependency the other way), so the loader moved to the layer both
+    can reach. `stock` can migrate when it is next touched.
+    """
+
+    phase: int
+    phase_name: str
+    item_id: ItemId
+    quantity_1x: float
+    delivery_unlocks: str
+
+
+def load_project_assembly(
+    repo_root: str | pathlib.Path,
+    data: ReferenceData,
+) -> tuple[ProjectAssemblyRequirement, ...]:
+    """Read project_assembly_requirements.csv, resolving names to item ids.
+
+    Rows are returned in table order (phase ascending as written). Refuses a
+    display name that matches zero or more than one item in `data.items`.
+    """
+    by_name: dict[str, list[ItemId]] = {}
+    for item_id, item in data.items.items():
+        by_name.setdefault(item.display_name, []).append(item_id)
+
+    out: list[ProjectAssemblyRequirement] = []
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    for row in _rows(ref / "project_assembly_requirements.csv"):
+        name = row["item_name"]
+        hits = by_name.get(name, [])
+        if len(hits) != 1:
+            raise ReferenceDataError(
+                f"project assembly row names {name!r}, which matches {len(hits)} "
+                "items in items.csv. The table carries no item_id, so an ambiguous "
+                "or absent display name cannot be resolved and is refused rather "
+                "than picked."
+            )
+        out.append(ProjectAssemblyRequirement(
+            phase=int(row["phase"]),
+            phase_name=row["phase_name"],
+            item_id=hits[0],
+            quantity_1x=float(row["quantity_default_1x"]),
+            delivery_unlocks=row["delivery_unlocks"],
+        ))
+    return tuple(out)
 
 
 _TIER_PREFIX = "Tier "
