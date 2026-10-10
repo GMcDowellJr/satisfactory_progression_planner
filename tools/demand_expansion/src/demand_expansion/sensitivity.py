@@ -41,7 +41,7 @@ SENSITIVITY_COLUMNS = (
     "config_id", "alternate_recipe_id", "alternate_name",
     "source_item_id", "source_name", "target_item_id", "target_name",
     "default", "default_exact", "alternate", "alternate_exact",
-    "difference", "difference_exact", "change_kind", "ratio",
+    "difference", "difference_exact", "change_kind", "ratio", "ratio_exact",
 )
 SUMMARY_COLUMNS = (
     "config_id", "alternate_recipe_id", "alternate_name", "item_id", "item_name",
@@ -131,11 +131,11 @@ def compare(
             continue
         changed.add(target)
         if x > 0 and y > 0:
-            kind, ratio = "ratio", float(y / x)
+            kind, ratio, ratio_exact = "ratio", float(y / x), str(y / x)
         elif x == 0:
-            kind, ratio = "new", ""
+            kind, ratio, ratio_exact = "new", "", ""
         else:
-            kind, ratio = "removed", ""
+            kind, ratio, ratio_exact = "removed", "", ""
         rows.append({
             "config_id": cid,
             "alternate_recipe_id": label[0], "alternate_name": label[1],
@@ -144,7 +144,7 @@ def compare(
             "default": float(x), "default_exact": str(x),
             "alternate": float(y), "alternate_exact": str(y),
             "difference": float(y - x), "difference_exact": str(y - x),
-            "change_kind": kind, "ratio": ratio,
+            "change_kind": kind, "ratio": ratio, "ratio_exact": ratio_exact,
         })
     return (
         tuple(rows),

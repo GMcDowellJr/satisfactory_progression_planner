@@ -33,6 +33,8 @@ def test_steeled_frame_on_modular_frame(canonical):
     rows = _rows(s, MF)
     assert (rows["Desc_OreIron_C"]["default_exact"], rows["Desc_OreIron_C"]["alternate_exact"]) == ("24", "13")
     assert rows["Desc_OreIron_C"]["ratio"] == pytest.approx(13 / 24)
+    assert rows["Desc_OreIron_C"]["ratio_exact"] == "13/24"
+    assert rows["Desc_Coal_C"]["ratio_exact"] == ""
     assert rows["Desc_Coal_C"]["change_kind"] == "new" and rows["Desc_Coal_C"]["alternate_exact"] == "5"
     assert rows["Desc_IronIngot_C"]["alternate_exact"] == "8"
     assert rows["Desc_SteelPipe_C"]["change_kind"] == "new"
