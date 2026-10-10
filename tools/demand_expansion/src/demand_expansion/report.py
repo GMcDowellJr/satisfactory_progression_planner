@@ -258,7 +258,7 @@ def markdown_report(ds: Dataset, graph: RecipeGraph) -> str:
         for u in ds.unresolved:
             out.append(f"| {u['kind']} | {u['item_name']} | {u['phase'] or ''} | {u['refusal']} |")
         out.append("")
-    out.append("## Phase demand (incremental units per phase; last column: remaining after the phase)\n")
+    out.append("## Phase demand (incremental units per phase; Last: the last phase that requires the item)\n")
     header = "| Item | " + " | ".join(f"Phase {ph}" for ph in pd.phases) + " | Growth | Last |"
     out.append(header)
     out.append("|---|" + "---|" * (len(pd.phases) + 2))

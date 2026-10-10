@@ -116,4 +116,5 @@ def test_markdown_report_states_its_basis(dataset, default_graph):
     assert md.startswith("# Demand expansion — default-2026-10-10/recipe1/pa1/fluid-mL")
     assert "build 502094" in md
     assert "Phase 5 incomplete" in md
+    assert "Last: the last phase that requires the item" in md   # not "remaining" (PR #3 review)
     assert "| Motor | 0 | 0 | 1,000 | 2,250 | 1,800+ | · · new 2.25x 0.8x | 5 |" in md
