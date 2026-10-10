@@ -22,11 +22,11 @@ NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed; the page self-checks at load")
 
 
-def _page(tmp_path):
+def _page(tmp_path, *extra):
     spec = importlib.util.spec_from_file_location("demand_expansion_cli", REPO / "tools" / "demand_expansion_cli.py")
     cli = importlib.util.module_from_spec(spec); spec.loader.exec_module(cli)
     out = tmp_path / "page.html"
-    assert cli.main(["viewer", "--out", str(out)]) == 0
+    assert cli.main(["viewer", "--out", str(out), *extra]) == 0
     html = out.read_text(encoding="utf-8")
     engine = html[html.index('<script id="engine">') + len('<script id="engine">'): html.index("</script>", html.index('<script id="engine">'))]
     start = html.index('id="payload"')
@@ -67,3 +67,17 @@ def test_an_alternate_agrees_on_both_sides(tmp_path):
     assert r["ore"] == 13 and r["coal"] == 5
     assert r["motor"] == [0, 0, 3000, 8250, 6600]
     assert r["complete5"] is False
+
+
+def test_a_baked_alternate_is_the_starting_selection(tmp_path):
+    """`viewer --alternate` bakes the pin into the payload and its oracle; the
+    page must start with it ticked and self-check against that oracle, or it
+    would label alternate figures while showing default ones (PR #3 review)."""
+    engine, payload = _page(tmp_path, "--alternate", "Alternate: Steeled Frame")
+    D = json.loads(payload)
+    assert D["routes"]["alternates"] == [["Desc_ModularFrame_C", "Recipe_Alternate_ModularFrame_C"]]
+    assert D["routes"]["name"] == "default-2026-10-10+Recipe_Alternate_ModularFrame_C"
+    r = _run(engine, payload, "console.log(JSON.stringify(Engine.selfCheck(D)));", tmp_path)
+    assert r["problems"] == []
+    rows = {(c[0], c[1]): c for c in D["oracle"]["coefficients"]["1"]}
+    assert rows[("Desc_OreIron_C", "Desc_ModularFrame_C")][2] == 13

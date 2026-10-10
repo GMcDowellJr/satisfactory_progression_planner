@@ -125,7 +125,7 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 <body>
 <div class="wrap">
   <h1>Project Assembly Demand</h1>
-  <p class="sub">What each Space Elevator phase makes you produce, in units, down to the parts inside the parts. Satisfactory 1.2.4.0 build 502094.</p>
+  <p class="sub" id="subtitle">What each Space Elevator phase makes you produce, in units, down to the parts inside the parts.</p>
   <div id="check"></div>
 
   <div class="filters">
@@ -324,6 +324,12 @@ try { const s = JSON.parse(localStorage.getItem('pad-state') || '{}');
   state.more = !!s.more;
   for (const rid of (s.alts || [])) if (ALT[rid] && !ALT[rid].reason) state.alts.add(rid);
 } catch (e) {}
+// A page built with `viewer --alternate ...` carries those pins in the payload and its
+// oracle was computed with them; they are the starting selection, shown ticked.
+const BAKED = P.routes.alternates.map(a => a[1]);
+if (!state.alts.size) for (const rid of BAKED) state.alts.add(rid);
+const BASE_NAME = P.routes.name.split('+')[0];
+document.getElementById('subtitle').textContent += ` Satisfactory ${P.provenance.game_version} build ${P.provenance.build_number}.`;
 function remember() { try { localStorage.setItem('pad-state', JSON.stringify({rm: state.rm, pm: state.pm, screen: state.screen, phase: state.phase, part: state.part, more: state.more, alts: [...state.alts]})); } catch (e) {} }
 
 // ---- the graph for the current alternates, the expansions for the current multipliers
@@ -347,7 +353,7 @@ function coef() {
 const phases = () => agg().phases;
 const phaseName = ph => (P.deliveries.find(d => d[0] === ph) || [])[1] || '';
 const phaseUnlock = ph => (P.deliveries.find(d => d[0] === ph) || [])[4] || '';
-const configId = () => `${P.routes.name}${[...state.alts].sort().map(r => '+' + r).join('')}/recipe${state.rm}/pa${state.pm}/fluid-${FLUID || 'none'}`;
+const configId = () => `${BASE_NAME}${[...state.alts].sort().map(r => '+' + r).join('')}/recipe${state.rm}/pa${state.pm}/fluid-${FLUID || 'none'}`;
 const isLeaf = id => graph().isLeaf(id);
 
 // ---- formatting
@@ -471,7 +477,7 @@ function renderAbout() {
   <h2>The two multipliers</h2>
   <p>Recipe cost scales every recipe's inputs per cycle, rounded to the nearest whole part as the game does, so it compounds unevenly through a chain. The settings below 1× need a floor rule the record leaves open and are not offered. Elevator parts scales the delivery quantities, rounded the same way (50 becomes 13 at 0.25×). Fluids round in ${esc(FLUID)}, as observed in game on 2026-10-10.</p>
   <h2>Rules the numbers rest on</h2>
-  <p>A recipe produces only the output the game lists first; everything else is a coproduct and is never expanded through. Resources are leaves. Alternates are off unless declared; this view declares ${selected.length ? selected.map(a => esc(a.name)).join(', ') : 'none'}. A part that no recipe makes first but some recipe makes as a byproduct is a leaf: the requirement is shown as <span class="leaf co">coproduct-supplied</span> and which line covers it is left to the planner. A delivered part counts as itself in its own phase. A delivery whose recipe path reaches a part with several possible recipes and no declared choice is not expanded; its own quantity still counts and its phase is marked incomplete.</p>
+  <p>A recipe produces only the output the game lists first; everything else is a coproduct and is never expanded through. Resources are leaves. Alternates are off unless declared; this view declares ${selected.length ? selected.map(a => esc(a.name)).join(', ') : 'none'}. A part that no recipe makes first but some recipe makes as a byproduct is a leaf (in this view: ${[...graph().leaves].map(name).sort().map(esc).join(', ') || 'none'}): the requirement is shown as <span class="leaf co">coproduct-supplied</span> and which line covers it is left to the planner. A delivered part counts as itself in its own phase. A delivery whose recipe path reaches a part with several possible recipes and no declared choice is not expanded; its own quantity still counts and its phase is marked incomplete.</p>
   <h2>Configuration in view</h2>
   <p><span class="mono">${esc(configId())}</span></p>
   <h2>Self-check</h2>
