@@ -10,6 +10,9 @@ declared scenario, and keeps the coefficient at every intermediate part, so
     declarations   the route table: curated exclusions and pins, each with a reason
     graph          enabled recipes, primary outputs, producers, the census
     expand         the engine: per-unit coefficients, depth, recipe cycles, coproducts
+    aggregate      deliveries x expansions -> per item per phase: incremental,
+                   cumulative, remaining, growth; refused deliveries listed,
+                   their phase marked incomplete
 
 What it does not do, by construction: choose a recipe (an item with several
 enabled producers is refused by name), decide rates (quantities only; no

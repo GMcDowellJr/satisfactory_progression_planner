@@ -4,6 +4,7 @@ Sits above `production_adapter` and imports downward only (LP record §11.1).
 `progression` may import this package; this package imports nothing above the
 adapter. See README.md and docs/demand_expansion/SPECIFICATION.md.
 """
+from .aggregate import Delivery, Growth, PhaseCell, PhaseDemand, aggregate
 from .contracts import (
     AmbiguousRoute,
     CycleDetected,
@@ -23,8 +24,9 @@ from .graph import Census, RecipeGraph, build, census, find_cycles, primary_outp
 
 __all__ = [
     "AmbiguousRoute", "Census", "CycleDetected", "DEFAULT_ROUTES", "DeclarationError",
-    "DemandExpansionError", "Exclusion", "Expansion", "FluidRoundingUndeclared",
-    "NotExpandable", "RecipeGraph", "RoutePin", "RouteTable", "UNDECLARED",
-    "UnproducibleItem", "build", "census", "expand", "find_cycles", "primary_output",
+    "Delivery", "DemandExpansionError", "Exclusion", "Expansion",
+    "FluidRoundingUndeclared", "Growth", "NotExpandable", "PhaseCell", "PhaseDemand",
+    "RecipeGraph", "RoutePin", "RouteTable", "UNDECLARED", "UnproducibleItem",
+    "aggregate", "build", "census", "expand", "find_cycles", "primary_output",
     "route_for",
 ]

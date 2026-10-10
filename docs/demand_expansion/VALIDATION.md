@@ -50,8 +50,25 @@ variants.
 | 5 | 200 Ballistic Warp Drive | 1,800 | 3,300 | 0.80x |
 
 Lifetime at 1x 5,050; remaining after phase 3, 4,050. A 2x Project Assembly
-multiplier doubles every cell. Phase aggregation is PR 4; the test pins the
-three products directly.
+multiplier doubles every cell. Pinned by `test_demand_expansion_aggregate.py`
+through `aggregate`, which also marks phase 5 incomplete: Biochemical
+Sculptor and AI Expansion Server refuse on Ficsite Ingot, so every sum that
+includes phase 5 is a lower bound.
+
+## Table 2a — the self-count rule, Modular Engine and Smart Plating
+
+| Phase | Modular Engine | Smart Plating |
+|---|---|---|
+| 1 | 0 | 50 (delivered) |
+| 2 | 0 | 1,000 (delivered) |
+| 3 | 500 (delivered) | 1,000 (2 per Modular Engine) |
+| 4 | 625 (2.5 per rocket) | 1,250 (5 per rocket) |
+| 5 | 500 (2.5 per warp drive) | 1,000 (5 per warp drive) |
+
+At a 0.25x Project Assembly multiplier phase 1's 50 Smart Plating is 13
+(12.5 → 13, observed 2026-09-22) and the series is 13 / 250 / 250 / 315 /
+250. Under the scenario of record's shape (1.25x recipes, 2x deliveries)
+Motors are 0 / 0 / 3,000 / 8,250 / 6,600.
 
 ## Table 3 — Thermal Propulsion Rocket resources, per rocket
 

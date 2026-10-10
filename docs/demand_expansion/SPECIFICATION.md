@@ -14,8 +14,8 @@ module; §11.3's drift line binds it:
 |---|---|---|
 | Direct coefficient | units of A consumed by B's own recipe, per unit of B, after scenario rounding | `Expansion.direct` |
 | Embedded coefficient | units of A on every path below one unit of B, summed; kept for **every** intermediate part and every resource | `Expansion.embedded` |
-| Phase requirement | embedded coefficient × a Project Assembly delivery quantity, summed per phase | PR 4 (not built) |
-| Growth factor | a later phase requirement ÷ an earlier one; "new demand" when the earlier is zero; n/a when both are | PR 4 (not built) |
+| Phase requirement | embedded coefficient × a delivery quantity, summed over the phase's deliveries, plus the delivered item itself | `PhaseCell.quantity` |
+| Growth factor | this phase ÷ the previous phase in the table; `"new"` when the previous is zero; `"none"` when both are. Never infinity | `PhaseCell.growth` |
 
 Quantities are exact rationals (`fractions.Fraction`). There is no time in the
 module: no rates, no horizon, no machine count. `recipe_cycles` reports cycles
@@ -76,9 +76,33 @@ overstated Crude Oil per Thermal Propulsion Rocket at 1.25x by 6.7%. Until
 the read the engine refused a non-1x multiplier without a declaration
 (Amendment 1); `FluidRoundingUndeclared` now fires only on an unknown value.
 
-The Project Assembly multiplier is not applied here. It scales delivery
-quantities and belongs to phase aggregation (PR 4), reported as its own
-column; power multipliers are not material (record 3.3).
+The Project Assembly multiplier is not applied by the per-unit engine. It
+scales delivery quantities in `aggregate` (`Scenario.apply_project_assembly_quantity`,
+nearest integer, 12.5 → 13 observed), reported as its own column; power
+multipliers are not material (record 3.3).
+
+## 4a. Phase aggregation
+
+`aggregate(graph, deliveries, scenario)` takes the delivery rows from the
+caller (record §6: the module never selects the scope) and returns, per item
+and per phase: incremental quantity, the previous phase's quantity, growth,
+cumulative (this phase and earlier), remaining (later phases only). Phases
+are the distinct phase numbers in the rows, ascending; "previous" is the
+previous phase in that sequence.
+
+Two definitional rules, stated so they can be disagreed with:
+
+- **Self-count.** A delivered item counts as itself, at coefficient 1, in
+  the phase that delivers it. Phase 3 requires 500 Modular Engines; phase 4
+  requires 625 more through its rockets.
+- **Incomplete, not guessed.** A delivery the engine refuses is listed in
+  `unresolved` with the refusal, and its phase is marked incomplete. Every
+  sum that includes an incomplete phase is a lower bound, and the cell's
+  `complete`, `cumulative_complete` and `remaining_complete` flags say which.
+  Under the default table phase 5 is incomplete (Ficsite Ingot).
+
+Incremental and cumulative views are separate so a part never appears to
+grow because its earlier phases are counted again.
 
 ## 5. Refusals
 
@@ -116,7 +140,7 @@ asserts this from both sides. `progression` may import this package.
 
 ## 9. Not in v1
 
-Phase aggregation and growth factors (PR 4), reference outputs and a CLI
+Reference outputs and a CLI
 (PR 5), alternate sensitivity (PR 3: a `RouteTable` with an alternate pinned
 is the mechanism, once rule 3 admits a declared alternate), closed-loop
 material balance, any optimisation.
