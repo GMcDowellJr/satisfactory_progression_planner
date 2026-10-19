@@ -21,8 +21,16 @@ district_run.py. No new solver, no new arithmetic on recipes:
               products the site can make at all, and for the rest the raws
               every enabled chain would need
     ceiling   one LpBackend.solve_district per makeable product, that product
-              the only target: its MATERIAL CEILING alone, the caps it binds
-              and their shadow prices, and the draw on every cap
+              the only target: its MATERIAL CEILING alone (power from
+              outside, unlimited), the caps it binds and their shadow prices,
+              and the draw on every cap
+    powered   beside it, the SELF-POWERED ceiling (Greg, 2026-10-19: "both,
+              side by side"): a one-site LpBackend.solve_portfolio with that
+              product as a one-unit bill, so the portfolio's power applies
+              unchanged. Generators open at the tier (A3), extractors by the
+              draw (A4), Water only with --water (pumped, charged), a
+              declared --grid-mw (default 0) and --spare-mw. The gap between
+              the two columns is what powering itself costs the site
     hints     for each product NOT makeable with the held recipes (tier base
               + declared), every single alternate not held that alone makes
               it makeable, tagged pool / later band / after MAM research from
@@ -40,9 +48,13 @@ cannot both be had; summing them double-counts the supply. The card says so
 in its report and record. Competing products sharing the supply at once is a
 portfolio solve (spec F3), which this slice does not make.
 
-**Status `material_bound` (spec F7).** Power, belts, pipes, routing, node
-reachability and buildable area are not assessed. Power stays outside the
-solve (D5); that is the spec's "later conditional screen", not a default.
+**Status `material_bound` (spec F7).** Power lines, belts, pipes, routing,
+node reachability and buildable area are not assessed. Generation is, in the
+self-powered column only; the material column keeps power outside (D5).
+Water declared pumpable is not verified by world data, so power that needs it
+is labelled CONDITIONAL (spec §10 D). A declared --supply of Water is refused:
+Water is never free (A4). Shadow prices read in plain language
+(tools/shadow_text.py).
 
 **It cannot choose, and that is the guardrail.** Extractor classes, the
 extraction clock, the recipe tier and declared recipes, the scenario, the
@@ -52,7 +64,7 @@ declaration order, products in items.csv order.
 
     uv run python tools/site_card.py --at 1234 -567 --radius 500 --tier 5 \\
         --extractor resource_node=Build_MinerMk1_C \\
-        --extractor resource_node:Desc_LiquidOil_C=Build_OilPump_C
+        --extractor resource_node:Desc_LiquidOil_C=Build_OilPump_C --water
 """
 from __future__ import annotations
 
@@ -70,20 +82,29 @@ for _src in ("production_adapter", "progression", "realization"):
         sys.path.insert(0, _path)
 
 from production_adapter import (  # noqa: E402
-    DistrictRequest, DistrictTarget, ResourceCap, Scenario, Weights, load,
+    DistrictPower, DistrictRequest, DistrictTarget, ExtractionSegment, GeneratorUse,
+    PortfolioRequest, PortfolioSite, PowerBalance, ResourceCap, Scenario, Weights, load,
 )
-from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
+from production_adapter.gamedata import ReferenceData, load_generators, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic, Unbounded  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, NodeCount, at_tier, available_at, discover, recipe_ids_by_name,
-    resource_caps, resources_in_reference_order,
+    DistrictDefinition, DistrictError, NodeCount, at_tier, available_at, discover,
+    extraction_segments, pumped_water, recipe_ids_by_name, resource_caps,
+    resources_in_reference_order, unlocks,
 )
+from progression.district import WATER  # noqa: E402
+from progression.power import load_power_tables  # noqa: E402
+
+if str(REPO / "tools") not in sys.path:
+    sys.path.insert(0, str(REPO / "tools"))
+import shadow_text  # noqa: E402
 
 WORLD = pathlib.Path("planning_data") / "world"
 SOCKETS_CSV = WORLD / "canonical" / "world_resource_sockets.csv"
 CARD_STATUS = "material_bound"
-#: spec F7: named, never implied
-NOT_ASSESSED = ("power", "belts", "pipes", "routing", "node reachability", "buildable area")
+#: spec F7: named, never implied. Generation is assessed in the self-powered
+#: column; the lines that would carry it are not
+NOT_ASSESSED = ("power lines", "belts", "pipes", "routing", "node reachability", "buildable area")
 #: socket kinds that hold no extractor of their own, and why
 NOT_EXTRACTED = {
     "fracking_core": "a resource well core activates its satellites; it extracts nothing itself",
@@ -254,6 +275,42 @@ def with_supply(
     return tuple(ResourceCap(c.item_id, by_item[c.item_id]) for c in caps)
 
 
+def pumped_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:
+    """Water uncapped (None) at a site declared able to pump it (A4)."""
+    return tuple(ResourceCap(c.item_id, None) if c.item_id == WATER else c for c in caps)
+
+
+def reach_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:
+    """For REACH only: a pumped raw (None) is available in any amount, so
+    discover() sees it as present; nothing sizes from this."""
+    return tuple(ResourceCap(c.item_id, float("inf")) if c.rate_per_min is None else c for c in caps)
+
+
+def site_segments(
+    spec: SiteSpec, definition: DistrictDefinition, rates, base_mw, *, water: bool,
+) -> tuple[ExtractionSegment, ...]:
+    """The site's extraction as the portfolio solve charges it (A4): one
+    segment per socket by the draw, a zero-MW segment per declared supply
+    (it comes from elsewhere and carries no extractor here, and the caps
+    must equal their segments' sum), and pumped Water when declared. Shared
+    with tools/portfolio_run.py."""
+    segs = extraction_segments(definition, rates, base_mw)
+    segs += tuple(ExtractionSegment(item, rate, 0.0, 0.0, source="declared supply")
+                  for item, rate in spec.supply)
+    if water:
+        segs += (pumped_water(rates, base_mw),)
+    return segs
+
+
+def generators_at_tier(repo: pathlib.Path, tier: int):
+    """(open classes in generator_fuels.csv order, the (generator, fuel)
+    rows of those classes): A3's join, unlocks.generators_open_at_tier."""
+    rows = load_generators(repo)
+    classes = tuple(dict.fromkeys(g.generator_class for g in rows))
+    open_classes = unlocks.generators_open_at_tier(repo, tier, classes)
+    return open_classes, tuple(g for g in rows if g.generator_class in open_classes)
+
+
 def site_caps(spec: SiteSpec, data: ReferenceData, rates, sockets: tuple[Socket, ...]):
     """(sockets, nodes, not extracted, definition, caps) for one declared site.
     Shared by the card and tools/portfolio_run.py. `rates` is
@@ -277,12 +334,32 @@ def site_caps(spec: SiteSpec, data: ReferenceData, rates, sockets: tuple[Socket,
 @dataclasses.dataclass(frozen=True)
 class CapUse:
     item_id: str
-    cap_per_min: float
+    #: None: pumped (A4), no cap and no residual
+    cap_per_min: float | None
     draw_per_min: float
-    residual_per_min: float
+    residual_per_min: float | None
     binding: bool
     #: product ceiling per extra unit/min of this cap; None when not binding
     shadow_price: float | None
+    #: A4: highest of a per-socket range (lowest in shadow_price); None when
+    #: one figure holds
+    shadow_price_high: float | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class Powered:
+    """One product's SELF-POWERED ceiling alone: the site's own generators
+    and declared grid on the shared row, extractors by the draw (A3, A4)."""
+
+    ceiling_per_min: float | None
+    caps: tuple[CapUse, ...] = ()
+    generators: tuple[GeneratorUse, ...] = ()
+    #: (item, rate/min) pumped: Water needed, not counted or clocked
+    pumped: tuple[tuple[str, float], ...] = ()
+    extraction_mw: float = 0.0
+    lane_mw: float = 0.0
+    grid: DistrictPower | None = None
+    error: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -291,10 +368,12 @@ class Opportunity:
 
     item_id: str
     ceiling_per_min: float | None
-    #: every positive cap, declaration order: draw, residual, binding
+    #: every positive (or pumped) cap, declaration order: draw, residual, binding
     caps: tuple[CapUse, ...]
     #: set instead of a ceiling when the solve refused, by its own message
     error: str | None = None
+    #: the self-powered ceiling beside the material one; None in the pool pass
+    powered: Powered | None = None
 
 
 #: where an alternate the player does not hold would come from (progression.pool)
@@ -335,6 +414,13 @@ class SiteCard:
     pool_opportunities: tuple[Opportunity, ...] | None = None
     #: the pool alternates the comparison added (not already held)
     pool_added: tuple[str, ...] = ()
+    #: the self-powered column's declarations (A3, A4)
+    water: bool = False
+    grid_mw: float = 0.0
+    spare_mw: float = 0.0
+    generators_open: tuple[str, ...] = ()
+    #: why there is no self-powered column, when there is none (an overclock)
+    powered_error: str | None = None
     status: str = CARD_STATUS
     not_assessed: tuple[str, ...] = NOT_ASSESSED
     ceilings_are_alternatives: bool = True
@@ -351,7 +437,7 @@ def _ceilings(
     allowed, caps: tuple[ResourceCap, ...], weights: Weights,
 ) -> tuple[Opportunity, ...]:
     """One solve_district per item, that item the only target."""
-    positive = tuple(c for c in caps if c.rate_per_min > 0.0)
+    positive = tuple(c for c in caps if c.rate_per_min is None or c.rate_per_min > 0.0)
     out: list[Opportunity] = []
     for item in items:
         request = DistrictRequest(
@@ -375,17 +461,56 @@ def _ceilings(
         out.append(Opportunity(
             item_id=item,
             ceiling_per_min=response.targets[0].rate_per_min,
-            caps=tuple(
-                CapUse(
-                    item_id=c.item_id, cap_per_min=c.rate_per_min,
-                    draw_per_min=draw.get(c.item_id, 0.0),
-                    residual_per_min=c.rate_per_min - draw.get(c.item_id, 0.0),
-                    binding=draw.get(c.item_id, 0.0)
-                    >= c.rate_per_min * (1.0 - BINDING_RELATIVE) - backend.tolerance,
-                    shadow_price=price.get(c.item_id),
-                )
-                for c in positive
-            ),
+            caps=_cap_uses(positive, draw, price, backend.tolerance),
+        ))
+    return tuple(out)
+
+
+def _cap_uses(positive, draw, price, tol, high=None) -> tuple[CapUse, ...]:
+    return tuple(
+        CapUse(
+            item_id=c.item_id, cap_per_min=c.rate_per_min,
+            draw_per_min=draw.get(c.item_id, 0.0),
+            residual_per_min=None if c.rate_per_min is None
+            else c.rate_per_min - draw.get(c.item_id, 0.0),
+            binding=c.rate_per_min is not None and draw.get(c.item_id, 0.0)
+            >= c.rate_per_min * (1.0 - BINDING_RELATIVE) - tol,
+            shadow_price=price.get(c.item_id),
+            shadow_price_high=(high or {}).get(c.item_id),
+        )
+        for c in positive
+    )
+
+
+def _powered(
+    backend: LpBackend, data: ReferenceData, items: tuple[str, ...], allowed,
+    caps: tuple[ResourceCap, ...], segments: tuple[ExtractionSegment, ...],
+    power: PowerBalance, weights: Weights, label: str,
+) -> tuple[Powered, ...]:
+    """One one-site solve_portfolio per item, a one-unit bill: its scale IS
+    the product's rate per minute (spec §10 I: a one-site portfolio is the
+    district bill solve), with the portfolio's grid row and extraction."""
+    positive = tuple(c for c in caps if c.rate_per_min is None or c.rate_per_min > 0.0)
+    site = PortfolioSite(label, caps, segments)
+    out: list[Powered] = []
+    for item in items:
+        try:
+            r = backend.solve_portfolio(PortfolioRequest(
+                sites=(site,), bill=((item, 1.0),), allowed_recipes=allowed, weights=weights,
+                power=power,
+            ), data)
+        except (Infeasible, Unbounded) as e:
+            out.append(Powered(None, error=str(e)))
+            continue
+        plan = r.sites[0]
+        draw = {x.item_id: x.rate_per_min for x in plan.plan.raw_inputs}
+        price = {b.item_id: b.shadow_price for b in plan.binding}
+        high = {b.item_id: b.shadow_price_high for b in plan.binding}
+        out.append(Powered(
+            ceiling_per_min=r.scale,
+            caps=_cap_uses(positive, draw, price, backend.tolerance, high),
+            generators=plan.generators, pumped=plan.pumped, extraction_mw=plan.extraction_mw,
+            lane_mw=plan.lane_mw, grid=r.power,
         ))
     return tuple(out)
 
@@ -420,7 +545,8 @@ def build_card(
     spec: SiteSpec, *, tier: int, scenario: Scenario, goal: str,
     power_statistic: PowerStatistic, declared_recipe_names: tuple[str, ...] = (),
     world_config_id: str = "default_502094", products: tuple[str, ...] | None = None,
-    compare_pool: bool = False, repo: pathlib.Path = REPO,
+    compare_pool: bool = False, water: bool = False, grid_mw: float = 0.0,
+    spare_mw: float = 0.0, repo: pathlib.Path = REPO,
 ) -> SiteCard:
     """Compose the card. `products` None: every product the tier can make
     anywhere with the held recipes, or with the pool too when `compare_pool`;
@@ -431,14 +557,23 @@ def build_card(
     held, each tagged pool / later band / MAM research (progression.pool).
     `compare_pool` adds a second pass of ceilings under held + this tier's
     automatic pool: what the site could be with the alternates obtainable now.
+
+    `water`, `grid_mw`, `spare_mw` declare the self-powered column (A3, A4):
+    Water pumpable here (then uncapped in BOTH columns, its power charged in
+    the second), standing supply from outside, a margin held above the draw.
     """
     if goal not in GOALS:
         raise SiteCardError(f"no goal {goal!r}; known: {list(GOALS)}")
+    if any(item == WATER for item, _ in spec.supply):
+        raise SiteCardError("declared Water supply: Water is never free (A4); declare the site "
+                            "able to pump it (--water) and its power is charged")
     data = load(repo, scenario)
     _, rates = load_logistics(repo)
-    sockets, nodes, skipped, _, caps = site_caps(
+    sockets, nodes, skipped, definition, caps = site_caps(
         spec, data, rates, load_sockets(repo, world_config_id),
     )
+    if water:
+        caps = pumped_caps(caps)
     declared = recipe_ids_by_name(data, declared_recipe_names)
     held = at_tier(repo, tier, declared=declared)
     wider = at_tier(repo, tier, declared=declared, include_pool=True) if compare_pool else None
@@ -448,16 +583,32 @@ def build_card(
         if stray:
             raise SiteCardError(f"no recipe enabled at tier {tier} outputs {stray}")
         candidates = products
-    reach = discover(data, held.recipe_ids, caps, candidates)
+    reach = discover(data, held.recipe_ids, reach_caps(caps), candidates)
 
     backend = LpBackend(power_statistic=power_statistic)
     makeable = tuple(x.item_id for x in reach if x.makeable)
     opportunities = _ceilings(backend, data, makeable, held.allowed_recipes, caps, GOALS[goal])
+    open_classes, generators = generators_at_tier(repo, tier)
+    powered_error = None
+    try:
+        segments = site_segments(spec, definition, rates, load_power_tables(repo).extractors,
+                                 water=water)
+    except DistrictError as e:
+        powered_error = str(e)
+    if powered_error is None:
+        powered = _powered(
+            backend, data, makeable, held.allowed_recipes, caps, segments,
+            PowerBalance(generators=generators, grid_mw=grid_mw, spare_mw=spare_mw),
+            GOALS[goal], spec.label,
+        )
+        opportunities = tuple(dataclasses.replace(o, powered=pw)
+                              for o, pw in zip(opportunities, powered))
 
     blocked = tuple(x for x in reach if not x.makeable)
     pool = available_at(repo, tier)
     not_held = tuple(r for r in data.recipes if r in held.withheld_alternates)
-    hints = unlock_hints(data, held.recipe_ids, not_held, caps, tuple(x.item_id for x in blocked))
+    hints = unlock_hints(data, held.recipe_ids, not_held, reach_caps(caps),
+                         tuple(x.item_id for x in blocked))
     unreachable = tuple(
         Unreachable(
             x.item_id, x.missing_raws,
@@ -468,7 +619,7 @@ def build_card(
 
     pool_opps, added = None, ()
     if wider is not None:
-        wider_reach = discover(data, wider.recipe_ids, caps, candidates)
+        wider_reach = discover(data, wider.recipe_ids, reach_caps(caps), candidates)
         pool_opps = _ceilings(
             backend, data, tuple(x.item_id for x in wider_reach if x.makeable),
             wider.allowed_recipes, caps, GOALS[goal],
@@ -480,6 +631,8 @@ def build_card(
         sockets=sockets, not_extracted=skipped, nodes=nodes, caps=caps,
         opportunities=opportunities, unreachable=unreachable,
         pool_opportunities=pool_opps, pool_added=added,
+        water=water, grid_mw=grid_mw, spare_mw=spare_mw, generators_open=open_classes,
+        powered_error=powered_error,
     )
 
 
@@ -511,22 +664,33 @@ def report(card: SiteCard, data: ReferenceData) -> str:
     out += ["", "caps (declaration order; every other raw is capped at 0: the site is closed)"]
     declared = dict(card.spec.supply)
     for c in card.caps:
-        if c.rate_per_min > 0.0:
+        if c.rate_per_min is None:
+            out.append(f"  {_name(data, c.item_id):18s}    pumped  (declared pumpable; not verified by "
+                       "world data)")
+        elif c.rate_per_min > 0.0:
             tag = f"  (includes declared supply {declared[c.item_id]:g})" if c.item_id in declared else ""
             out.append(f"  {_name(data, c.item_id):18s} {c.rate_per_min:9.2f}/min{tag}")
+    gens = ", ".join(_gen_name(c) for c in card.generators_open) or "none"
     out += ["", f"opportunities ({len(card.opportunities)}, items.csv order). Each ceiling is the "
             "whole site given to that product ALONE:",
-            "  ceilings are alternatives, not additive; two on one cap cannot both be had"]
+            "  ceilings are alternatives, not additive; two on one cap cannot both be had",
+            "  material: power from outside, unlimited (power outside the solve, D5)",
+            f"  self-powered: generators open at tier {card.tier} ({gens}) burning this site's "
+            f"supply + standing grid {card.grid_mw:g} MW, spare {card.spare_mw:g} MW; extractors "
+            "by the draw (A4); " + ("Water pumped here, CONDITIONAL on the declaration"
+                                    if card.water else "no Water (none declared pumpable)"),
+            f"  {shadow_text.MARGIN_NOTE}"]
+    if card.powered_error is not None:
+        out.append(f"  self-powered column not made: {card.powered_error}")
     for o in card.opportunities:
         if o.error is not None:
             out.append(f"  {_name(data, o.item_id):30s} refused: {o.error}")
             continue
-        binds = "; ".join(
-            f"{_name(data, u.item_id)} {u.cap_per_min:g}/min"
-            + ("" if u.shadow_price is None else f" (shadow {u.shadow_price + 0.0:.4g})")
-            for u in o.caps if u.binding
-        ) or "no cap binds"
-        out.append(f"  {_name(data, o.item_id):30s} {o.ceiling_per_min:10.3f}/min  limited by: {binds}")
+        name = _name(data, o.item_id)
+        out.append(f"  {name:30s} material     {o.ceiling_per_min:10.3f}/min  limited by: "
+                   + _limits(data, o.caps, name))
+        if o.powered is not None:
+            out.append(_powered_line(data, o.powered, name))
     out += ["", f"not makeable here with the held recipes ({len(card.unreachable)}): the raws every "
             "held chain needs, then any single alternate not held that would open it alone"]
     for u in card.unreachable:
@@ -542,11 +706,47 @@ def report(card: SiteCard, data: ReferenceData) -> str:
     return "\n".join(out)
 
 
+def _gen_name(cls: str) -> str:
+    return cls.replace("Build_", "").replace("_C", "")
+
+
+def _limits(data: ReferenceData, caps: tuple[CapUse, ...], product: str) -> str:
+    return "; ".join(
+        f"{_name(data, u.item_id)} {u.cap_per_min:g}/min ("
+        + shadow_text.per_unit(u.shadow_price, _name(data, u.item_id), f"{product}/min",
+                               high=u.shadow_price_high) + ")"
+        for u in caps if u.binding
+    ) or "no cap binds"
+
+
+def _powered_line(data: ReferenceData, pw: Powered, product: str) -> str:
+    pad = " " * 32
+    if pw.error is not None:
+        return f"{pad}self-powered refused: {pw.error}"
+    grid = pw.grid
+    if pw.ceiling_per_min <= shadow_text.ZERO and grid is not None and grid.binding \
+            and grid.shadow_price > shadow_text.ZERO:
+        return (f"{pad}self-powered      0.000/min  no power source here ("
+                + shadow_text.per_mw(grid.shadow_price, f"{product}/min") + ")")
+    gens = ", ".join(
+        f"{u.count:.2f} x {_gen_name(u.generator_class)} on {_name(data, u.fuel_item_id)} "
+        f"{u.fuel_per_min:.1f}/min" for u in pw.generators) or "no generators"
+    pumped = "".join(f"; {_name(data, i)} {v:.1f}/min pumped" for i, v in pw.pumped)
+    if grid is not None and grid.binding and grid.shadow_price > shadow_text.ZERO:
+        power = "power LIMITS it (" + shadow_text.per_mw(grid.shadow_price, f"{product}/min") + ")"
+    else:
+        power = "power not limiting"
+    return (f"{pad}self-powered {pw.ceiling_per_min:10.3f}/min  limited by: "
+            + _limits(data, pw.caps, product)
+            + f"; {power}; {gens}{pumped}; machines {pw.lane_mw:.1f} MW + extractors "
+            f"{pw.extraction_mw:.1f} MW")
+
+
 def _pool_section(card: SiteCard, data: ReferenceData) -> list[str]:
     """Held vs held + this tier's automatic pool, items.csv order of the wider pass."""
     held = {o.item_id: o for o in card.opportunities}
     out = ["", f"with this tier's automatic pool added ({len(card.pool_added)} alternates not held; "
-           "MAM-research alternates excluded): ceiling held -> with pool",
+           "MAM-research alternates excluded): MATERIAL ceiling held -> with pool",
            "  every pool alternate at once: an upper bound, each is a separate hard-drive pull"]
     for o in card.pool_opportunities:
         before = held.get(o.item_id)
@@ -592,7 +792,12 @@ def main(argv=None) -> int:
                     help="KIND[:ITEM]=EXTRACTOR_CLASS, e.g. resource_node=Build_MinerMk1_C")
     ap.add_argument("--clock", type=float, required=True, help="extraction clock, 1.0 = 100%%")
     ap.add_argument("--supply", action="append", type=_supply_arg, default=[],
-                    help="ITEM=RATE declared supply no socket carries, e.g. Desc_Water_C=240")
+                    help="ITEM=RATE declared supply no socket carries; not Water (use --water)")
+    ap.add_argument("--water", action="store_true",
+                    help="the site can pump Water: uncapped, charged as Water Extractors (A4)")
+    ap.add_argument("--grid-mw", type=float, default=0.0,
+                    help="self-powered column: standing supply from outside (default 0: none)")
+    ap.add_argument("--spare-mw", type=float, default=0.0)
     ap.add_argument("--recipe-multiplier", type=float, required=True)
     ap.add_argument("--goal", default="balanced", choices=tuple(GOALS))
     ap.add_argument("--product", action="append", default=None, help="limit to these item ids")
@@ -617,7 +822,8 @@ def main(argv=None) -> int:
         power_statistic=PowerStatistic.MEAN, declared_recipe_names=tuple(args.recipe),
         world_config_id=args.world,
         products=None if args.product is None else tuple(args.product),
-        compare_pool=args.compare_pool,
+        compare_pool=args.compare_pool, water=args.water, grid_mw=args.grid_mw,
+        spare_mw=args.spare_mw,
     )
     print(report(card, load(REPO, scenario)))
     return 0

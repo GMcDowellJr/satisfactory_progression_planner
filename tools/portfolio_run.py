@@ -68,13 +68,14 @@ from production_adapter import (  # noqa: E402
 from production_adapter.gamedata import ReferenceData, load_generators, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    at_tier, available_at, bill_units, discover, extraction_nameplate_mw, extraction_segments,
-    pumped_water, recipe_ids_by_name, unlocks,
+    at_tier, available_at, bill_units, discover, extraction_nameplate_mw, recipe_ids_by_name,
+    unlocks,
 )
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
 from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 
+import shadow_text  # noqa: E402
 import site_card  # noqa: E402
 
 #: A1 P5, stated in every report
@@ -213,11 +214,10 @@ def run(
     records = []
     for spec in specs:
         _, _, _, definition, caps = site_card.site_caps(spec, data, rates, sockets)
-        segments = extraction_segments(definition, rates, tables.extractors)
         pumps = spec.label in water_sites
+        segments = site_card.site_segments(spec, definition, rates, tables.extractors, water=pumps)
         if pumps:
-            segments += (pumped_water(rates, tables.extractors),)
-            caps = tuple(ResourceCap(c.item_id, None) if c.item_id == WATER else c for c in caps)
+            caps = site_card.pumped_caps(caps)
         records.append(SiteRecord(spec, caps, extraction_nameplate_mw(definition, tables.extractors),
                                   segments, pumps))
 
@@ -304,6 +304,7 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
         f"  status material_bound; not assessed: " + ", ".join(NOT_ASSESSED),
         f"  {VOLUME_ASSUMPTION}; transfers are free between these sites (A1 P3)",
         f"  power: {POWER_ASSUMPTION}",
+        f"  {shadow_text.MARGIN_NOTE}",
         "",
         f"bill scale together {r.scale:.6f}/min"
         + (f" (horizon {r.horizon_min:.1f} min)" if r.horizon_min
@@ -330,13 +331,17 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
     for rec, plan in zip(pr.sites, r.sites):
         out += ["", f"site {plan.label}: {len(rec.spec.socket_ids)} sockets"]
         draw = {x.item_id: x.rate_per_min for x in plan.plan.raw_inputs}
-        bound = {b.item_id for b in plan.binding}
+        bound = {b.item_id: b for b in plan.binding}
         for c in rec.caps:
             if c.rate_per_min is None:
                 out.append(f"  {_n(data, c.item_id):18s} {draw.get(c.item_id, 0.0):9.2f} / pumped")
             elif c.rate_per_min > 0.0:
+                b = bound.get(c.item_id)
                 out.append(f"  {_n(data, c.item_id):18s} {draw.get(c.item_id, 0.0):9.2f} / "
-                           f"{c.rate_per_min:g}" + ("  BINDING" if c.item_id in bound else ""))
+                           f"{c.rate_per_min:g}" + ("" if b is None else "  BINDING ("
+                           + shadow_text.horizon(b.shadow_price, r.scale, 1.0,
+                                                 f"+1/min {_n(data, c.item_id)}", b.shadow_price_high)
+                           + ")"))
         sent = [t for t in r.transfers if t.source == plan.label]
         got = [t for t in r.transfers if t.destination == plan.label]
         out.append("  ships out: " + (", ".join(f"{_n(data, t.item_id)} {t.rate_per_min:.3f} -> "
@@ -371,7 +376,8 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
             + ("" if not pw.binding else "  LIMITING" if pw.shadow_price > 1e-12
                else "  tight, not limiting (shadow 0: generators built to the draw)")]
     if pw.binding and pw.shadow_price > 1e-12:
-        out.append(f"  shadow price {pw.shadow_price:.4g} bill scale per MW of supply")
+        out.append("  " + shadow_text.horizon(pw.shadow_price, r.scale, shadow_text.MW_STEP,
+                                              f"+{shadow_text.MW_STEP:g} MW"))
     return "\n".join(out)
 
 

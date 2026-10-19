@@ -227,3 +227,42 @@ the solve only as a free, capped `--supply` nobody had declared there.
 - The site card has no power in its solve, so its `--supply` of Water stays a
   capped declared supply. Whether that should change is open.
 - Supersedes A3.3's first two bullets for the portfolio solve only.
+
+## Amendment 5 — 2026-10-19. Power on the site card; shadow prices in plain language
+
+### A5.1 Decided by Greg, 2026-10-19 (holds until proven wrong)
+
+- "Add power to site card", answering A4.4. Each product shows BOTH
+  ceilings side by side: the material ceiling (power from outside,
+  unlimited, as before) and the self-powered ceiling (generators open at
+  the tier burning the site's own supply, a declared standing grid, default
+  0, extractors by the draw, Water only where declared pumpable). The gap
+  between them is what powering itself costs the site. The self-powered
+  ceiling is a one-site `solve_portfolio` with that product as a one-unit
+  bill (spec §10 I), so A3 and A4 apply unchanged. The card's free Water
+  `--supply` is refused, as in portfolio_run.
+- Shadow prices read "per unit, marginal" in every report (site card,
+  portfolio_run, district_run), through tools/shadow_text.py: "+1/min Iron
+  Ore -> +0.6667 Iron Plate/min at the margin"; "+10 MW -> +2.042 Steel
+  Ingot/min at the margin"; for a bill scale, "+10 MW -> horizon 265.2 ->
+  262.0 min at the margin". Each report states once that a marginal figure
+  holds only for small changes.
+
+### A5.2 Defect found and patched while building it
+
+The self-powered column first read "no gain at the margin" for caps it
+was bound by. Under A4 a raw's cap was bounded twice, on its draw and on
+its extraction segments, and the binding-cap price was read from the draw's
+bound while HiGHS had put the dual on the segment. The price is now read
+from the saturated segments, and the draw's own bound is lifted, since the
+segments carry the same total (PortfolioSite checks this). Where segments
+differ in MW per unit and power binds, one more unit is worth different
+amounts depending on the socket, so the price is reported as a range
+(`BindingCap.shadow_price_high`) rather than one socket being chosen.
+The scenario C and D figures in A4.3 are unchanged (suite re-run).
+
+### A5.3 Not changed, said so
+
+- The card's pool comparison (`--compare-pool`) stays material only.
+- A clock above 100 % leaves the card's material column and drops the
+  self-powered one, naming why (A4: overclocking is not modelled).

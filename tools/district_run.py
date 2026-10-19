@@ -80,6 +80,10 @@ from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 from realization import NodeDeclaration, RealizationRequest, realize  # noqa: E402
 
+if str(REPO / "tools") not in sys.path:
+    sys.path.insert(0, str(REPO / "tools"))
+import shadow_text  # noqa: E402
+
 EXPORT_SCHEMA = "district-plan/1"
 #: v5.5 rule 6: labelled, never implied buildable
 UNVERIFIED = ("belts", "pipes", "pumps", "routing", "node reachability")
@@ -262,6 +266,16 @@ def _name(data_items, item_id: str) -> str:
     return item.display_name if item else item_id
 
 
+def _priced(r, shadow: float, step: float, what: str) -> str:
+    """A first-stage dual in plain language: as a horizon when the run has a
+    bill scale, else as weighted output (shadow_text)."""
+    if r.scale is not None:
+        return shadow_text.horizon(shadow + 0.0, r.scale, step, what)
+    if shadow <= shadow_text.ZERO:
+        return f"{what} -> no gain at the margin"
+    return f"{what} -> +{shadow * step:.4g} weighted output at the margin"
+
+
 def report(dr: DistrictRun, data) -> str:
     r = dr.response
     out = [
@@ -306,12 +320,12 @@ def report(dr: DistrictRun, data) -> str:
         floor = "" if t.minimum_rate is None else f" floor {t.minimum_rate:g}"
         bill = "" if t.bill_units is None else f"  bill {t.bill_units:g} share {t.share:.6f}"
         out.append(f"  {_name(data.items, t.item_id):26s} {t.rate_per_min:9.4f}/min  w={t.weight:g}{floor}{bill}  {flag}")
-    unit = "bill scale" if r.scale is not None else "weighted output"
-    out += ["", f"binding caps (shadow price = {unit} per extra unit/min, from the first stage)"]
+    out += ["", "binding caps (first stage; " + shadow_text.MARGIN_NOTE + ")"]
     if not r.binding:
         out.append("  none")
     for b in r.binding:
-        out.append(f"  {_name(data.items, b.item_id):18s} cap {b.cap_per_min:g}  shadow {b.shadow_price + 0.0:.4g}")
+        out.append(f"  {_name(data.items, b.item_id):18s} cap {b.cap_per_min:g}  " + _priced(
+            r, b.shadow_price, 1.0, f"+1/min {_name(data.items, b.item_id)}"))
     out += ["", "power"]
     st = dr.standing
     gens = ", ".join(f"{n} x {g} on {_name(data.items, f)}" for g, f, n in st.generators) or "none"
@@ -337,7 +351,8 @@ def report(dr: DistrictRun, data) -> str:
                    f"{pw.spare_mw:.2f}  <=  grid {pw.grid_mw:.2f} + generated {pw.generated_mw:.2f}; "
                    f"margin {pw.margin_mw:.2f} MW" + ("  BINDING" if pw.binding else ""))
         if pw.binding:
-            out.append(f"  shadow price {pw.shadow_price + 0.0:.4g} {unit} per MW of supply")
+            out.append("  " + _priced(r, pw.shadow_price, shadow_text.MW_STEP,
+                                      f"+{shadow_text.MW_STEP:g} MW"))
         for u in pw.generators:
             supp = "".join(f", {_name(data.items, i)} {v:.2f}/min" for i, v in u.supplemental_per_min)
             out.append(f"  {u.generator_class:24s} {u.count:8.3f} x {u.mw:8.2f} MW; "

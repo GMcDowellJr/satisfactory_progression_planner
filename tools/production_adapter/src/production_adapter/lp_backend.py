@@ -167,6 +167,18 @@ class _Problem:
     bill_rows: tuple[str, ...] = ()
 
 
+def _binding_cap(item: str, cap: float, raw_price: float, seg_prices: list[float] | None) -> BindingCap:
+    """A4: a raw with saturated extraction segments takes its price from
+    them (the raw's own bound is lifted); several that disagree become a
+    range, lowest and highest, so no one socket is chosen."""
+    if not seg_prices:
+        return BindingCap(item_id=item, cap_per_min=cap, shadow_price=raw_price)
+    low, high = min(seg_prices), max(seg_prices)
+    spread = high - low > max(abs(high), 1.0e-12) * 1.0e-6
+    return BindingCap(item_id=item, cap_per_min=cap, shadow_price=low,
+                      shadow_price_high=high if spread else None)
+
+
 class LpBackend:
     """The seam's first implementation. One LP, solved twice for determinism."""
 
@@ -655,10 +667,14 @@ class LpBackend:
                 a_eq[a * n_items + i, col] = -1.0   # leaves a
                 a_eq[b * n_items + i, col] = 1.0    # arrives at b
         bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(len(pairs) * n_items))
-        # A4: s_ki - sum_j e_kij = 0, one row per (site, extracted raw)
+        # A4: s_ki - sum_j e_kij = 0, one row per (site, extracted raw). The
+        # raw's own cap bound is lifted: its segments carry the same total
+        # (PortfolioSite checks), and two bounds on one quantity let the
+        # solver put the dual on either, which left the raw's price at 0
         link_row = {key: n_sites * n_items + r for r, key in enumerate(linked)}
         for (k, item), row in link_row.items():
             a_eq[row, k * n_site + p0.n_x + raw_col[item]] = 1.0
+            bounds[k * n_site + p0.n_x + raw_col[item]] = (0.0, FLOW_UPPER_BOUND)
         for j, (k, e) in enumerate(segs):
             a_eq[link_row[(k, e.item_id)], e0 + j] = -1.0
             bounds.append((0.0, FLOW_UPPER_BOUND if e.cap_per_min is None else float(e.cap_per_min)))
@@ -734,12 +750,16 @@ class LpBackend:
             plan = self._response({}, site.resource_caps, data, p, vs, 0.0, False)
             caps = {c.item_id: c.rate_per_min for c in site.resource_caps}
             draw = vs[p.n_x:p.n_x + p.n_s]
-            # a pumped raw's cap is None: never binding (A4)
+            # a pumped raw's cap is None: never binding (A4). With segments the
+            # price sits on the segment bounds: one per saturated segment
+            seg_price: dict[str, list[float]] = {}
+            for j, (kk, e) in enumerate(segs):
+                if kk == k and e.cap_per_min is not None and e.cap_per_min > 0.0 \
+                        and v[e0 + j] >= e.cap_per_min * (1.0 - 1.0e-6) - tol:
+                    seg_price.setdefault(e.item_id, []).append(-float(marginals[e0 + j]) + 0.0)
             binding = tuple(
-                BindingCap(
-                    item_id=i, cap_per_min=float(caps[i]),
-                    shadow_price=-float(marginals[k * n_site + p.n_x + col]) + 0.0,
-                )
+                _binding_cap(i, float(caps[i]), -float(marginals[k * n_site + p.n_x + col]) + 0.0,
+                             seg_price.get(i))
                 for col, i in enumerate(p.raw_ids)
                 if (caps.get(i) or 0.0) > 0.0 and draw[col] >= caps[i] * (1.0 - 1.0e-6) - tol
             )

@@ -195,3 +195,47 @@ def test_pumped_water_is_a_water_extractor_by_the_draw():
     seg = pumped_water(rates, load_power_tables(REPO).extractors)
     assert (seg.item_id, seg.cap_per_min, seg.nameplate_mw) == (WATER, None, None)
     assert seg.mw_per_unit == pytest.approx(PUMP, rel=1e-12)
+
+
+def test_a_raw_on_sockets_of_different_mw_is_priced_as_a_range(backend, data):
+    """Steel Ingot (45 Iron Ore + 45 Coal -> 45/min, Foundry 16 MW). Coal
+    from a pure Mk.1 node (5 MW / 120) and an impure one (5 MW / 30) both
+    feeds the Foundry and the only generator, so Coal and the grid bind
+    together. One more unit of Coal brings its own MW, so its worth differs
+    by socket: the price is a range, low < high, and the gap is the MW
+    difference times the grid's price. Before the raw's own bound was
+    lifted (A4) the dual sat on it or on the segments by the solver's whim
+    and the report read 0 (measured 2026-10-19)."""
+    steel = AllowedRecipes(mode=RecipeMode.EXPLICIT, recipe_ids=("Recipe_IngotSteel_C",))
+    pure, impure = ExtractionSegment(COAL, 120.0, 5.0 / 120.0, 5.0), ExtractionSegment(COAL, 30.0, 5.0 / 30.0, 5.0)
+    site = PortfolioSite(
+        "s", _caps(data, **{IRON: 1000.0, COAL: 150.0, WATER: None}),
+        (_seg(IRON, 1000.0, MK1), pure, impure, _seg(WATER, None, PUMP)),
+    )
+    r = backend.solve_portfolio(PortfolioRequest((site,), (("Desc_SteelIngot_C", 1.0),), steel,
+                                                 power=_coal_power()), data)
+    [coal] = [b for b in r.sites[0].binding if b.item_id == COAL]
+    assert r.power.binding and r.power.shadow_price > 0.0
+    assert coal.shadow_price_high is not None and coal.shadow_price < coal.shadow_price_high
+    gap = (5.0 / 30.0 - 5.0 / 120.0) * r.power.shadow_price
+    assert coal.shadow_price_high - coal.shadow_price == pytest.approx(gap, rel=1e-6)
+
+
+def test_a_binding_raw_with_segments_keeps_its_price(backend, data):
+    """Iron Plate, ore-bound, power ample (Coal 180 against a few MW): +1/min
+    Iron Ore -> +2/3 Plate/min, the same as with power outside. Read from
+    the raw's own bound, the price was 0: HiGHS put the dual on the segment
+    (the site card said "no gain", measured 2026-10-19). Mutation-checked:
+    reading the raw's price instead of the segments' fails this test and the
+    range test. Lifting the raw's bound keeps the dual off it in the reverse
+    case; that case was not reproduced here."""
+    site = PortfolioSite(
+        "s", _caps(data, **{IRON: 60.0, COAL: 180.0, WATER: None}),
+        (_seg(IRON, 60.0, MK1), _seg(COAL, 180.0, MK1), _seg(WATER, None, PUMP)),
+    )
+    r = backend.solve_portfolio(PortfolioRequest((site,), ((PLATE, 1.0),), PLATES,
+                                                 power=_coal_power()), data)
+    assert r.scale == pytest.approx(40.0, rel=1e-6)
+    [iron] = [b for b in r.sites[0].binding if b.item_id == IRON]
+    assert iron.shadow_price == pytest.approx(2.0 / 3.0, rel=1e-6)
+    assert iron.shadow_price_high is None

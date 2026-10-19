@@ -339,6 +339,11 @@ class BindingCap:
     item_id: ItemId
     cap_per_min: float
     shadow_price: float
+    #: A4: a raw worked by several extraction segments has one price per
+    #: socket kind when power binds (each unit brings its own MW). Then
+    #: `shadow_price` is the lowest and this the highest; None when they agree
+    #: or the raw has no segments. A range, so no one socket is chosen
+    shadow_price_high: float | None = None
 
 
 @dataclass(frozen=True)
