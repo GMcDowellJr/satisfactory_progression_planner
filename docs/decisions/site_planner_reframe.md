@@ -77,3 +77,36 @@ Nothing is recorded as decided by inference from discussion.
   `session-handoff-2026-10-06-1025.md`. In this repository, A26 and A27 mean the
   2026-10-08 amendments from PR #2. Cite by date as well as number when referring to
   the discarded pair.
+
+## Amendment 1 — 2026-10-19. Portfolio inputs
+
+Context: the site card (handoff 2026-10-19 12:35, actions 1-2) reports each
+product's ceiling ALONE. Greg, 2026-10-19 13:14: a site makes a combination,
+never one item ("you'd never have that oil site just make screws"), and
+production must be balanced against power. A combination needs a demand and
+other sites to trade with; it does not need a whole-world plan.
+
+### A1.1 Adopted by Greg, 2026-10-19
+
+Status `adopted` (§4): enough to build toward, and it holds only until something
+comes up that proves it wrong (Greg, 2026-10-19 13:36). A reversal is recorded
+forward, in a later amendment, naming what proved it wrong.
+
+| # | Question | Adopted |
+|---|---|---|
+| P1 | Demand | Project Assembly + milestone bill for now. Declared target rates will be wanted later. |
+| P2 | Power | Outside the solve, as spec F7 / §5 suggest: a later conditional screen. Reported, not constrained. |
+| P3 | Transfers | Free between declared sites. Logistics complexity later. |
+| P4 | Scope | A bounded set of declared sites. World search later. |
+| P5 | Transfer volume units | 1 item = 1 m3 in the tie-break that minimises volume moved; stated as an assumption in every report. |
+| P6 | Raw transfer | Raw resources may move between sites. |
+| P7 | Delivery | The bill counts wherever it is made; no haul to the Space Elevator is modelled. |
+
+### A1.2 Consequence recorded
+
+With free transfers (P3) the bill scale equals that of one merged site with
+every site's caps pooled; which site makes what is otherwise arbitrary. The
+volume tie-break (P5) is what places production near its inputs. It is a
+LATER stage than the bill scale, so it never trades bill coverage for less
+haulage. Its order relative to the goal-cost stage is a design choice the
+design note proposes and Greg confirms.

@@ -392,3 +392,101 @@ class DistrictResponse:
     #: 1 / scale, minutes to cover the declared bill at this rate. None when
     #: scale is None or 0.0. A report, not play time (A24.2)
     horizon_min: float | None = None
+
+
+# --------------------------------------------------------------------------
+# the portfolio solve: several sites, one bill, free transfers
+# (site_planner_reframe.md Amendment 1, adopted by Greg 2026-10-19)
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PortfolioSite:
+    """One site's raw supply. Every cap must be a number: a site is closed
+    (A28.1 T1), and with free transfers (A1 P3) one uncapped raw anywhere
+    would feed every site without limit."""
+
+    label: str
+    resource_caps: tuple[ResourceCap, ...]
+
+    def __post_init__(self) -> None:
+        if not self.label:
+            raise ValueError("a portfolio site needs a label")
+        uncapped = [c.item_id for c in self.resource_caps if c.rate_per_min is None]
+        if uncapped:
+            raise ValueError(f"{self.label}: uncapped raw resources {uncapped}; a site is closed")
+        seen = [c.item_id for c in self.resource_caps]
+        dupes = {i for i in seen if seen.count(i) > 1}
+        if dupes:
+            raise ValueError(f"{self.label}: caps listed twice: {sorted(dupes)}")
+
+
+@dataclass(frozen=True)
+class PortfolioRequest:
+    """Several sites share one bill (A1 P1), delivered wherever it is made (P7).
+
+    Stages, lexicographic: max the bill scale; min transfer volume (P5: one
+    item = one m3); min goal cost under `weights`; min total activity (D3a).
+    Transfers are free (P3) and raws may move (P6); power is outside (P2).
+    """
+
+    sites: tuple[PortfolioSite, ...]
+    bill: tuple[tuple[ItemId, float], ...]
+    allowed_recipes: AllowedRecipes = AllowedRecipes()
+    weights: Weights = Weights()
+
+    def __post_init__(self) -> None:
+        if not self.sites:
+            raise ValueError("a portfolio needs at least one site")
+        labels = [s.label for s in self.sites]
+        dupes = {x for x in labels if labels.count(x) > 1}
+        if dupes:
+            raise ValueError(f"site labels repeat: {sorted(dupes)}")
+        if not self.bill:
+            raise ValueError("a portfolio needs a bill")
+        items = [i for i, _ in self.bill]
+        twice = {i for i in items if items.count(i) > 1}
+        if twice:
+            raise ValueError(f"bill items listed twice: {sorted(twice)}")
+        bad = [(i, u) for i, u in self.bill if not u > 0]
+        if bad:
+            raise ValueError(f"bill units must be positive: {bad}")
+        caps = [{c.item_id for c in s.resource_caps} for s in self.sites]
+        if any(c != caps[0] for c in caps):
+            raise ValueError("every site must cap the same raw resources (0.0 for none)")
+        both = caps[0] & set(items)
+        if both:
+            raise ValueError(f"item is both a bill product and a capped raw: {sorted(both)}")
+
+
+@dataclass(frozen=True)
+class Transfer:
+    source: str
+    destination: str
+    item_id: ItemId
+    rate_per_min: float
+
+
+@dataclass(frozen=True)
+class SitePlan:
+    """What one site's machines do. `plan` is its own recipes and raw draw;
+    its item flows are LOCAL, so an exported item shows as produced here and
+    consumed nowhere. `delivered` is the bill this site makes, per item."""
+
+    label: str
+    plan: SolveResponse
+    delivered: tuple[tuple[ItemId, float], ...]
+    #: caps the FINAL plan draws fully, with the first stage's shadow price
+    binding: tuple[BindingCap, ...]
+
+
+@dataclass(frozen=True)
+class PortfolioResponse:
+    scale: float
+    #: 1 / scale; None when scale is 0.0. A report, not play time (A24.2)
+    horizon_min: float | None
+    sites: tuple[SitePlan, ...]
+    transfers: tuple[Transfer, ...]
+    #: sum of transfers, one item = one m3 (A1 P5)
+    transfer_volume_per_min: float
+    goal: Weights

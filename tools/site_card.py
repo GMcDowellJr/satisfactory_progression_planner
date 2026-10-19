@@ -254,6 +254,24 @@ def with_supply(
     return tuple(ResourceCap(c.item_id, by_item[c.item_id]) for c in caps)
 
 
+def site_caps(spec: SiteSpec, data: ReferenceData, rates, sockets: tuple[Socket, ...]):
+    """(sockets, nodes, not extracted, definition, caps) for one declared site.
+    Shared by the card and tools/portfolio_run.py. `rates` is
+    `gamedata.load_logistics(repo)[1]`."""
+    chosen, nodes, skipped = site_nodes(sockets, spec)
+    # every node carries its own extractor class, so the definition's is never
+    # read; it is the first node's only because the type requires one
+    definition = DistrictDefinition(
+        nodes=nodes, extractor_class=nodes[0].extractor_class,
+        extraction_clock=spec.extraction_clock, reserve_fraction=spec.reserve_fraction,
+        label=spec.label,
+    )
+    caps = with_supply(
+        resource_caps(definition, rates, resources_in_reference_order(data)), spec.supply,
+    )
+    return chosen, nodes, skipped, definition, caps
+
+
 # -- the card -----------------------------------------------------------------
 
 @dataclasses.dataclass(frozen=True)
@@ -418,16 +436,8 @@ def build_card(
         raise SiteCardError(f"no goal {goal!r}; known: {list(GOALS)}")
     data = load(repo, scenario)
     _, rates = load_logistics(repo)
-    sockets, nodes, skipped = site_nodes(load_sockets(repo, world_config_id), spec)
-    # every node carries its own extractor class, so the definition's is never
-    # read; it is the first node's only because the type requires one
-    definition = DistrictDefinition(
-        nodes=nodes, extractor_class=nodes[0].extractor_class,
-        extraction_clock=spec.extraction_clock, reserve_fraction=spec.reserve_fraction,
-        label=spec.label,
-    )
-    caps = with_supply(
-        resource_caps(definition, rates, resources_in_reference_order(data)), spec.supply,
+    sockets, nodes, skipped, _, caps = site_caps(
+        spec, data, rates, load_sockets(repo, world_config_id),
     )
     declared = recipe_ids_by_name(data, declared_recipe_names)
     held = at_tier(repo, tier, declared=declared)

@@ -11,8 +11,9 @@ Progression code imports from here and nowhere deeper.
 from .contracts import (
     AllowedRecipes, BindingCap, DistrictPower, DistrictRequest, DistrictResponse,
     DistrictTarget, GeneratorFuel, GeneratorUse, ItemFlow, MachineCount, OutputTarget,
-    PowerBalance, PowerReport, RawInput, RecipeMode, RecipeUse, ResourceCap, SolveRequest,
-    SolveResponse, TargetRate, Weights,
+    PortfolioRequest, PortfolioResponse, PortfolioSite, PowerBalance, PowerReport, RawInput,
+    RecipeMode, RecipeUse, ResourceCap, SitePlan, SolveRequest, SolveResponse, TargetRate,
+    Transfer, Weights,
 )
 from .backend import Backend, BackendNotSelected, get as get_backend, register, registered
 from .gamedata import (
@@ -30,10 +31,12 @@ __all__ = [
     "DistrictPower", "DistrictRequest", "DistrictResponse", "DistrictTarget",
     "FLUID_ROUNDING_VARIANTS", "FLUID_UNIT", "GameBuild", "GeneratorFuel", "GeneratorUse",
     "ITEM_UNIT", "Item", "ItemFlow", "MARGINAL_PEAK_DEBOTTLENECK",
-    "MachineCount", "OutputTarget", "PowerBalance", "PowerRange", "PowerReport", "Producer",
+    "MachineCount", "OutputTarget", "PortfolioRequest", "PortfolioResponse", "PortfolioSite",
+    "PowerBalance", "PowerRange", "PowerReport", "Producer",
     "ProjectAssemblyRequirement", "RecipeUnlock",
     "RawInput", "Recipe", "RecipeMode", "RecipeUse", "ReferenceData", "ReferenceDataError",
-    "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "TargetRate", "Weights",
+    "ResourceCap", "Scenario", "SitePlan", "SolveRequest", "SolveResponse", "TargetRate",
+    "Transfer", "Weights",
     "get_backend", "load", "load_game_build", "load_project_assembly",
     "load_recipe_unlocks", "register", "registered",
 ]

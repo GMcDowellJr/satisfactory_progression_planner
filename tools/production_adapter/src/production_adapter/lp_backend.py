@@ -38,6 +38,7 @@ Power excludes extraction throughout (D5).
 """
 from __future__ import annotations
 
+import dataclasses
 import enum
 import math
 from dataclasses import dataclass
@@ -46,9 +47,10 @@ import numpy as np
 from scipy.optimize import linprog
 
 from .contracts import (
-    BindingCap, DistrictPower, DistrictRequest, DistrictResponse, GeneratorUse, ItemFlow,
-    MachineCount, PowerBalance, PowerReport, RawInput, RecipeMode, RecipeUse, ResourceCap,
-    SolveRequest, SolveResponse, TargetRate,
+    BindingCap, DistrictPower, DistrictRequest, DistrictResponse, GeneratorUse,
+    ItemFlow, MachineCount, PortfolioRequest, PortfolioResponse, PowerBalance, PowerReport,
+    RawInput, RecipeMode, RecipeUse, ResourceCap, SitePlan, SolveRequest, SolveResponse,
+    TargetRate, Transfer,
 )
 from .gamedata import ReferenceData, Recipe
 
@@ -117,7 +119,7 @@ def _statistic(recipe: Recipe, statistic: PowerStatistic) -> float:
 
 
 def enabled_recipe_ids(
-    request: SolveRequest | DistrictRequest, data: ReferenceData,
+    request: SolveRequest | DistrictRequest | PortfolioRequest, data: ReferenceData,
 ) -> tuple[str, ...]:
     """Sorted, per D3a mitigation 1. The sort is the determinism guard.
 
@@ -584,6 +586,146 @@ class LpBackend:
             plan=plan, targets=target_rates, weighted_output=z1,
             goal=request.weights, binding=binding, power=power_report,
             scale=scale_value, horizon_min=horizon,
+        )
+
+    # -- the portfolio solve (site_planner_reframe.md A1) -------------------
+
+    def solve_portfolio(self, request: PortfolioRequest, data: ReferenceData) -> PortfolioResponse:
+        """Several sites, one bill, free transfers. Four LPs, lexicographic,
+        each pinned within 1e-9 relative slack (the D3a pattern):
+
+            1  max  scale                     sum_s l_si >= scale * bill_i
+            2  min  transfer volume           sum of t_abi, one item = one m3 (P5)
+            3  min  goal cost                 request.weights, summed over sites
+            4  min  total activity            D3a tie-break
+
+        Each site is the section 7 matrices from `_build_core` (same recipe
+        set, its own caps), so a one-site portfolio IS the district bill
+        solve (spec §10 I). Transfers t_abi move any item, raws included (P6),
+        from site a to site b at no cost before stage 2 (P3). Stage 2 comes
+        before stage 3 so locality is preferred over a cheaper recipe mix
+        among plans of equal scale; the order is A1.2's design choice.
+        Power is outside (P2): each site's plan carries its machine-time MW
+        as `solve` reports it.
+        """
+        if self.unconsumed is not UnconsumedMode.FREE:
+            raise NotImplementedError("bill output is leftover flow; needs unconsumed=FREE (A31)")
+        recipe_ids = enabled_recipe_ids(request, data)
+        targets = {i: 0.0 for i, _ in request.bill}
+        problems = [
+            self._build_core(
+                recipe_ids, targets, {c.item_id: c.rate_per_min for c in site.resource_caps},
+                request.weights, data,
+            )
+            for site in request.sites
+        ]
+        p0 = problems[0]
+        n_items, n_site = len(p0.item_ids), p0.n_x + p0.n_s + p0.n_l
+        n_sites = len(problems)
+        pairs = tuple((a, b) for a in range(n_sites) for b in range(n_sites) if a != b)
+        t0 = n_sites * n_site
+        n = t0 + len(pairs) * n_items + 1
+        lam = n - 1
+
+        a_eq = np.zeros((n_sites * n_items, n), dtype=float)
+        bounds: list[tuple[float, float | None]] = []
+        for k, p in enumerate(problems):
+            a_eq[k * n_items:(k + 1) * n_items, k * n_site:(k + 1) * n_site] = p.a_eq
+            bounds.extend(p.bounds)
+        for m, (a, b) in enumerate(pairs):
+            for i in range(n_items):
+                col = t0 + m * n_items + i
+                a_eq[a * n_items + i, col] = -1.0   # leaves a
+                a_eq[b * n_items + i, col] = 1.0    # arrives at b
+        bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(len(pairs) * n_items))
+        bounds.append((0.0, FLOW_UPPER_BOUND))
+        index = {i: n for n, i in enumerate(p0.item_ids)}
+        a_ub = np.zeros((len(request.bill), n), dtype=float)
+        for r, (item, units) in enumerate(request.bill):
+            a_ub[r, lam] = float(units)
+            for k in range(n_sites):
+                a_ub[r, k * n_site + p0.n_x + p0.n_s + index[item]] = -1.0
+        whole = _Problem(
+            recipe_ids=recipe_ids, item_ids=p0.item_ids, raw_ids=p0.raw_ids,
+            n_x=0, n_s=0, n_l=0, a_eq=a_eq, b_eq=np.zeros(n_sites * n_items),
+            bounds=bounds, primary=np.zeros(n), secondary=np.zeros(n),
+            a_ub=a_ub, b_ub=np.zeros(len(request.bill)),
+        )
+
+        stage_ub: list[np.ndarray] = []
+        stage_b: list[float] = []
+
+        def run(c):
+            return self._run(
+                c, whole,
+                extra_ub=np.vstack(stage_ub) if stage_ub else None,
+                extra_b=np.array(stage_b) if stage_b else None,
+                on_unbounded="portfolio scale is unbounded; every site is capped, so this is a defect",
+            )
+
+        def pin(c, value):
+            stage_ub.append(c.reshape(1, -1))
+            stage_b.append(value + max(abs(value), 1.0) * 1.0e-9)
+
+        c1 = np.zeros(n)
+        c1[lam] = -1.0
+        first = run(c1)
+        # HiGHS returns -1e-13 for a bill nothing here can cover; that is 0.0
+        scale = -float(first.fun) if -float(first.fun) > self.tolerance else 0.0
+        pin(c1, float(first.fun))
+        c2 = np.zeros(n)
+        c2[t0:lam] = 1.0
+        second = run(c2)
+        pin(c2, float(second.fun))
+        c3 = np.zeros(n)
+        for k, p in enumerate(problems):
+            c3[k * n_site:(k + 1) * n_site] = p.primary[:n_site]
+        third = run(c3)
+        pin(c3, float(third.fun))
+        c4 = np.ones(n)
+        c4[lam] = 0.0
+        v = np.asarray(run(c4).x, dtype=float)
+        if bool(np.any(v[:t0].reshape(n_sites, n_site)[:, :p0.n_x]
+                       >= self.activity_upper_bound * (1.0 - 1.0e-6))):
+            raise Unbounded("a site's recipe activity sits on the guard; the answer is the guard's")
+
+        tol = self.tolerance
+        marginals = np.asarray(first.upper.marginals, dtype=float)
+        sites = []
+        for k, (site, p) in enumerate(zip(request.sites, problems)):
+            vs = v[k * n_site:(k + 1) * n_site]
+            plan = self._response({}, site.resource_caps, data, p, vs, 0.0, False)
+            caps = {c.item_id: c.rate_per_min for c in site.resource_caps}
+            draw = vs[p.n_x:p.n_x + p.n_s]
+            binding = tuple(
+                BindingCap(
+                    item_id=i, cap_per_min=float(caps[i]),
+                    shadow_price=-float(marginals[k * n_site + p.n_x + col]) + 0.0,
+                )
+                for col, i in enumerate(p.raw_ids)
+                if caps.get(i, 0.0) > 0.0 and draw[col] >= caps[i] * (1.0 - 1.0e-6) - tol
+            )
+            delivered = tuple(
+                (item, float(vs[p.n_x + p.n_s + index[item]]))
+                for item, _ in request.bill
+                if vs[p.n_x + p.n_s + index[item]] > tol
+            )
+            # the local warnings would call an export "unconsumed"; the
+            # portfolio's ledger is the transfers, so they are not carried
+            sites.append(SitePlan(site.label, dataclasses.replace(plan, warnings=()), delivered, binding))
+        transfers = tuple(
+            Transfer(request.sites[a].label, request.sites[b].label, p0.item_ids[i],
+                     float(v[t0 + m * n_items + i]))
+            for m, (a, b) in enumerate(pairs)
+            for i in range(n_items)
+            if v[t0 + m * n_items + i] > tol
+        )
+        return PortfolioResponse(
+            scale=scale,
+            horizon_min=(1.0 / scale) if scale > tol else None,
+            sites=tuple(sites), transfers=transfers,
+            transfer_volume_per_min=float(sum(t.rate_per_min for t in transfers)),
+            goal=request.weights,
         )
 
     def _floor_diagnosis(
