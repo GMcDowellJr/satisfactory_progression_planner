@@ -80,6 +80,15 @@ def card_b(sockets):
                  tier=4, recipes=("Caterium Ingot", "Quickwire"))
 
 
+@pytest.fixture(scope="module")
+def card_b_pool(sockets):
+    return site_card.build_card(
+        _spec_around(sockets, *SITE_B, "B"), tier=4, scenario=Scenario(), goal="balanced",
+        power_statistic=PowerStatistic.MEAN, declared_recipe_names=("Caterium Ingot", "Quickwire"),
+        compare_pool=True,
+    )
+
+
 def _opp(card, item):
     return next(o for o in card.opportunities if o.item_id == item)
 
@@ -247,6 +256,44 @@ def test_b_ceilings_are_alternatives_and_none_overdraws(card_b):
 def test_b_motor_needs_copper(card_b):
     motor = next(u for u in card_b.unreachable if u.item_id == "Desc_Motor_C")
     assert motor.missing_raws == (COPPER,)
+
+
+def test_b_motor_is_opened_by_any_of_three_single_alternates(card_b):
+    """Greg, 2026-10-19: Motor is makeable here with wire from an alternate.
+    Rigor Motor and Electric Motor still need a Stator (directly or through
+    the Electromagnetic Control Rod), so neither opens it alone."""
+    motor = next(u for u in card_b.unreachable if u.item_id == "Desc_Motor_C")
+    assert motor.opened_by == (
+        ("Recipe_Alternate_Wire_2_C", site_card.MAM_RESEARCH),   # Caterium Wire
+        ("Recipe_Alternate_Wire_1_C", site_card.POOL_NOW),       # Iron Wire
+        ("Recipe_Alternate_Stator_C", site_card.MAM_RESEARCH),   # Quickwire Stator
+    )
+
+
+def test_b_copper_ingot_has_no_alternate_way_in(card_b):
+    copper = next(u for u in card_b.unreachable if u.item_id == "Desc_CopperIngot_C")
+    assert copper.missing_raws == (COPPER,) and copper.opened_by == ()
+
+
+def test_b_hints_are_not_computed_from_held_recipes(card_b):
+    held = set(card_b.declared_recipes)
+    assert not [r for u in card_b.unreachable for r, _ in u.opened_by if r in held]
+
+
+def test_b_pool_comparison_held_beside_obtainable(card_b, card_b_pool):
+    """Measured 2026-10-19 (container): with this tier's 24 automatic pool
+    alternates added, Motor goes from not makeable to 25.35/min; Concrete,
+    Quickwire and Caterium Ingot are unchanged."""
+    assert card_b.pool_opportunities is None
+    held = {o.item_id: o.ceiling_per_min for o in card_b_pool.opportunities}
+    pool = {o.item_id: o.ceiling_per_min for o in card_b_pool.pool_opportunities}
+    assert held == {o.item_id: o.ceiling_per_min for o in card_b.opportunities}
+    assert "Desc_Motor_C" not in held
+    assert pool["Desc_Motor_C"] == pytest.approx(25.35, abs=1e-3)
+    for item in ("Desc_Cement_C", "Desc_HighSpeedWire_C", "Desc_GoldIngot_C"):
+        assert pool[item] == pytest.approx(held[item], rel=1e-6), item
+    assert len(card_b_pool.pool_added) == 24
+    assert not set(card_b_pool.pool_added) & set(card_b_pool.declared_recipes)
 
 
 def test_b_report_says_the_ceilings_are_not_additive(card_b):

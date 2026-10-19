@@ -23,6 +23,16 @@ district_run.py. No new solver, no new arithmetic on recipes:
     ceiling   one LpBackend.solve_district per makeable product, that product
               the only target: its MATERIAL CEILING alone, the caps it binds
               and their shadow prices, and the draw on every cap
+    hints     for each product NOT makeable with the held recipes (tier base
+              + declared), every single alternate not held that alone makes
+              it makeable, tagged pool / later band / after MAM research from
+              progression.pool. Reachability only; pairs are not tried
+    pool      --compare-pool: the ceilings again with the tier's automatic
+              pool added, beside the held ones. Every pool alternate at once,
+              so an upper bound on what the drives at this tier could open
+
+"Held" vs "pool" is Greg's framing (2026-10-19): what this site is with the
+alternates I have, and what it could be with the ones I could get.
 
 **Ceilings are alternatives, not a portfolio.** Each product's ceiling is the
 whole site's supply given to that product alone. Two ceilings on one cap
@@ -65,8 +75,8 @@ from production_adapter import (  # noqa: E402
 from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic, Unbounded  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, NodeCount, at_tier, discover, recipe_ids_by_name, resource_caps,
-    resources_in_reference_order,
+    DistrictDefinition, NodeCount, at_tier, available_at, discover, recipe_ids_by_name,
+    resource_caps, resources_in_reference_order,
 )
 
 WORLD = pathlib.Path("planning_data") / "world"
@@ -269,11 +279,21 @@ class Opportunity:
     error: str | None = None
 
 
+#: where an alternate the player does not hold would come from (progression.pool)
+POOL_NOW, LATER_BAND, MAM_RESEARCH, UNCLASSIFIED = (
+    "pool", "later band", "after MAM research", "unclassified",
+)
+
+
 @dataclasses.dataclass(frozen=True)
 class Unreachable:
     item_id: str
     #: raws every enabled chain would need that the site does not have
     missing_raws: tuple[str, ...]
+    #: single alternates NOT held, each of which alone makes the item makeable
+    #: here, with where it comes from: (recipe_id, POOL_NOW | LATER_BAND |
+    #: MAM_RESEARCH | UNCLASSIFIED). recipes.csv order. Pairs are not tried
+    opened_by: tuple[tuple[str, str], ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -291,6 +311,12 @@ class SiteCard:
     caps: tuple[ResourceCap, ...]
     opportunities: tuple[Opportunity, ...]
     unreachable: tuple[Unreachable, ...]
+    #: --compare-pool: the same products under held + this tier's automatic
+    #: pool, items.csv order; None when not asked for. MAM-research alternates
+    #: are not in it (progression.pool: an advisory, not a filter)
+    pool_opportunities: tuple[Opportunity, ...] | None = None
+    #: the pool alternates the comparison added (not already held)
+    pool_added: tuple[str, ...] = ()
     status: str = CARD_STATUS
     not_assessed: tuple[str, ...] = NOT_ASSESSED
     ceilings_are_alternatives: bool = True
@@ -302,15 +328,92 @@ def tier_products(data: ReferenceData, recipe_ids: tuple[str, ...]) -> tuple[str
     return tuple(i for i in data.items if i in made and i not in data.resource_items)
 
 
+def _ceilings(
+    backend: LpBackend, data: ReferenceData, items: tuple[str, ...],
+    allowed, caps: tuple[ResourceCap, ...], weights: Weights,
+) -> tuple[Opportunity, ...]:
+    """One solve_district per item, that item the only target."""
+    positive = tuple(c for c in caps if c.rate_per_min > 0.0)
+    out: list[Opportunity] = []
+    for item in items:
+        request = DistrictRequest(
+            targets=(DistrictTarget(item, weight=1.0),),
+            allowed_recipes=allowed, resource_caps=caps, weights=weights,
+        )
+        try:
+            response = backend.solve_district(request, data)
+        except (Infeasible, Unbounded) as e:
+            out.append(Opportunity(item, None, (), error=str(e)))
+            continue
+        draw = {r.item_id: r.rate_per_min for r in response.plan.raw_inputs}
+        # Binding is read from the FINAL plan's draw. `response.binding` comes
+        # from the first-stage vertex, where unconsumed=FREE lets an unused raw
+        # be drawn to its cap and left over: Crude Oil "binding" at 0/1020 for
+        # Iron Plate (measured 2026-10-19). The shadow price is still the
+        # solver's, None where it listed none. "On the cap" is relative: each
+        # lexicographic pin allows 1e-9 of the objective, and four stages left
+        # Plastic's oil draw 1.02e-6 under 1020 (measured 2026-10-19)
+        price = {b.item_id: b.shadow_price for b in response.binding}
+        out.append(Opportunity(
+            item_id=item,
+            ceiling_per_min=response.targets[0].rate_per_min,
+            caps=tuple(
+                CapUse(
+                    item_id=c.item_id, cap_per_min=c.rate_per_min,
+                    draw_per_min=draw.get(c.item_id, 0.0),
+                    residual_per_min=c.rate_per_min - draw.get(c.item_id, 0.0),
+                    binding=draw.get(c.item_id, 0.0)
+                    >= c.rate_per_min * (1.0 - BINDING_RELATIVE) - backend.tolerance,
+                    shadow_price=price.get(c.item_id),
+                )
+                for c in positive
+            ),
+        ))
+    return tuple(out)
+
+
+def _source(recipe_id: str, pool) -> str:
+    if recipe_id in pool.recipe_ids:
+        return POOL_NOW
+    if recipe_id in pool.not_yet:
+        return LATER_BAND
+    if recipe_id in pool.research_gated:
+        return MAM_RESEARCH
+    return UNCLASSIFIED
+
+
+def unlock_hints(
+    data: ReferenceData, held: tuple[str, ...], candidates: tuple[str, ...],
+    caps: tuple[ResourceCap, ...], items: tuple[str, ...],
+) -> dict[str, tuple[str, ...]]:
+    """For each of `items`, the candidate recipes that ALONE make it makeable
+    when added to `held`: one discover() closure per candidate, no LP and no
+    choice among them. Candidates in the order given; pairs are not tried, so
+    an item that needs two alternates at once lists none."""
+    opened: dict[str, list[str]] = {i: [] for i in items}
+    for rid in candidates:
+        for x in discover(data, held + (rid,), caps, items):
+            if x.makeable:
+                opened[x.item_id].append(rid)
+    return {i: tuple(r) for i, r in opened.items()}
+
+
 def build_card(
     spec: SiteSpec, *, tier: int, scenario: Scenario, goal: str,
     power_statistic: PowerStatistic, declared_recipe_names: tuple[str, ...] = (),
     world_config_id: str = "default_502094", products: tuple[str, ...] | None = None,
-    repo: pathlib.Path = REPO,
+    compare_pool: bool = False, repo: pathlib.Path = REPO,
 ) -> SiteCard:
     """Compose the card. `products` None: every product the tier can make
-    anywhere; otherwise those item ids, each refused if no enabled recipe
-    outputs it."""
+    anywhere with the held recipes, or with the pool too when `compare_pool`;
+    otherwise those item ids, each refused if no recipe in that set outputs it.
+
+    Held = the tier's base recipes + the declared ones: what the player has.
+    Every unreachable product gets its unlock hints over ALL alternates not
+    held, each tagged pool / later band / MAM research (progression.pool).
+    `compare_pool` adds a second pass of ceilings under held + this tier's
+    automatic pool: what the site could be with the alternates obtainable now.
+    """
     if goal not in GOALS:
         raise SiteCardError(f"no goal {goal!r}; known: {list(GOALS)}")
     data = load(repo, scenario)
@@ -327,62 +430,46 @@ def build_card(
         resource_caps(definition, rates, resources_in_reference_order(data)), spec.supply,
     )
     declared = recipe_ids_by_name(data, declared_recipe_names)
-    unlocked = at_tier(repo, tier, declared=declared)
-    candidates = tier_products(data, unlocked.recipe_ids)
+    held = at_tier(repo, tier, declared=declared)
+    wider = at_tier(repo, tier, declared=declared, include_pool=True) if compare_pool else None
+    candidates = tier_products(data, (wider or held).recipe_ids)
     if products is not None:
         stray = [i for i in products if i not in candidates]
         if stray:
             raise SiteCardError(f"no recipe enabled at tier {tier} outputs {stray}")
         candidates = products
-    reach = discover(data, unlocked.recipe_ids, caps, candidates)
+    reach = discover(data, held.recipe_ids, caps, candidates)
 
     backend = LpBackend(power_statistic=power_statistic)
-    positive = tuple(c for c in caps if c.rate_per_min > 0.0)
-    opportunities: list[Opportunity] = []
-    for x in reach:
-        if not x.makeable:
-            continue
-        request = DistrictRequest(
-            targets=(DistrictTarget(x.item_id, weight=1.0),),
-            allowed_recipes=unlocked.allowed_recipes, resource_caps=caps, weights=GOALS[goal],
-        )
-        try:
-            response = backend.solve_district(request, data)
-        except (Infeasible, Unbounded) as e:
-            opportunities.append(Opportunity(x.item_id, None, (), error=str(e)))
-            continue
-        draw = {r.item_id: r.rate_per_min for r in response.plan.raw_inputs}
-        # Binding is read from the FINAL plan's draw. `response.binding` comes
-        # from the first-stage vertex, where unconsumed=FREE lets an unused raw
-        # be drawn to its cap and left over: Crude Oil "binding" at 0/1020 for
-        # Iron Plate (measured 2026-10-19). The shadow price is still the
-        # solver's, None where it listed none. "On the cap" is relative: each
-        # lexicographic pin allows 1e-9 of the objective, and four stages left
-        # Plastic's oil draw 1.02e-6 under 1020 (measured 2026-10-19)
-        price = {b.item_id: b.shadow_price for b in response.binding}
-        opportunities.append(Opportunity(
-            item_id=x.item_id,
-            ceiling_per_min=response.targets[0].rate_per_min,
-            caps=tuple(
-                CapUse(
-                    item_id=c.item_id, cap_per_min=c.rate_per_min,
-                    draw_per_min=draw.get(c.item_id, 0.0),
-                    residual_per_min=c.rate_per_min - draw.get(c.item_id, 0.0),
-                    binding=draw.get(c.item_id, 0.0)
-                    >= c.rate_per_min * (1.0 - BINDING_RELATIVE) - backend.tolerance,
-                    shadow_price=price.get(c.item_id),
-                )
-                for c in positive
-            ),
-        ))
+    makeable = tuple(x.item_id for x in reach if x.makeable)
+    opportunities = _ceilings(backend, data, makeable, held.allowed_recipes, caps, GOALS[goal])
+
+    blocked = tuple(x for x in reach if not x.makeable)
+    pool = available_at(repo, tier)
+    not_held = tuple(r for r in data.recipes if r in held.withheld_alternates)
+    hints = unlock_hints(data, held.recipe_ids, not_held, caps, tuple(x.item_id for x in blocked))
     unreachable = tuple(
-        Unreachable(x.item_id, x.missing_raws) for x in reach if not x.makeable
+        Unreachable(
+            x.item_id, x.missing_raws,
+            opened_by=tuple((r, _source(r, pool)) for r in hints[x.item_id]),
+        )
+        for x in blocked
     )
+
+    pool_opps, added = None, ()
+    if wider is not None:
+        wider_reach = discover(data, wider.recipe_ids, caps, candidates)
+        pool_opps = _ceilings(
+            backend, data, tuple(x.item_id for x in wider_reach if x.makeable),
+            wider.allowed_recipes, caps, GOALS[goal],
+        )
+        added = tuple(r for r in wider.recipe_ids if r not in held.recipe_ids)
     return SiteCard(
         spec=spec, world_config_id=world_config_id, game_build_id=data.game_build_id,
         scenario=data.scenario, tier=tier, declared_recipes=declared, goal=goal,
         sockets=sockets, not_extracted=skipped, nodes=nodes, caps=caps,
-        opportunities=tuple(opportunities), unreachable=unreachable,
+        opportunities=opportunities, unreachable=unreachable,
+        pool_opportunities=pool_opps, pool_added=added,
     )
 
 
@@ -430,12 +517,40 @@ def report(card: SiteCard, data: ReferenceData) -> str:
             for u in o.caps if u.binding
         ) or "no cap binds"
         out.append(f"  {_name(data, o.item_id):30s} {o.ceiling_per_min:10.3f}/min  limited by: {binds}")
-    out += ["", f"not makeable here ({len(card.unreachable)}): the raws every enabled chain needs"]
+    out += ["", f"not makeable here with the held recipes ({len(card.unreachable)}): the raws every "
+            "held chain needs, then any single alternate not held that would open it alone"]
     for u in card.unreachable:
         out.append(f"  {_name(data, u.item_id):30s} needs "
                    + (", ".join(_name(data, i) for i in u.missing_raws)
                       or "an input that is not a socket resource (none named)"))
+        if u.opened_by:
+            out.append("  " + " " * 30 + " or one of: " + "; ".join(
+                f"{data.recipes[r].display_name} [{src}]" for r, src in u.opened_by))
+    out.append("  (pairs of alternates are not tried: an item that needs two at once lists none)")
+    if card.pool_opportunities is not None:
+        out += _pool_section(card, data)
     return "\n".join(out)
+
+
+def _pool_section(card: SiteCard, data: ReferenceData) -> list[str]:
+    """Held vs held + this tier's automatic pool, items.csv order of the wider pass."""
+    held = {o.item_id: o for o in card.opportunities}
+    out = ["", f"with this tier's automatic pool added ({len(card.pool_added)} alternates not held; "
+           "MAM-research alternates excluded): ceiling held -> with pool",
+           "  every pool alternate at once: an upper bound, each is a separate hard-drive pull"]
+    for o in card.pool_opportunities:
+        before = held.get(o.item_id)
+        was = "not makeable" if before is None else (
+            "refused" if before.ceiling_per_min is None else f"{before.ceiling_per_min:10.3f}")
+        if o.error is not None:
+            out.append(f"  {_name(data, o.item_id):30s} {was:>12s} -> refused: {o.error}")
+            continue
+        changed = before is None or before.ceiling_per_min is None or \
+            abs(o.ceiling_per_min - before.ceiling_per_min) > 1e-6 * (1.0 + abs(o.ceiling_per_min))
+        limits = ", ".join(_name(data, u.item_id) for u in o.caps if u.binding) or "no cap binds"
+        out.append(f"  {_name(data, o.item_id):30s} {was:>12s} -> {o.ceiling_per_min:10.3f}/min"
+                   f"  {'CHANGED' if changed else '       '}  limited by: {limits}")
+    return out
 
 
 def _extractor_arg(text: str) -> tuple[tuple[str, str | None], str]:
@@ -471,6 +586,8 @@ def main(argv=None) -> int:
     ap.add_argument("--recipe-multiplier", type=float, required=True)
     ap.add_argument("--goal", default="balanced", choices=tuple(GOALS))
     ap.add_argument("--product", action="append", default=None, help="limit to these item ids")
+    ap.add_argument("--compare-pool", action="store_true",
+                    help="also solve with this tier's automatic alternate pool added")
     args = ap.parse_args(argv)
     if args.at is not None and args.radius is None:
         ap.error("--at needs --radius")
@@ -490,6 +607,7 @@ def main(argv=None) -> int:
         power_statistic=PowerStatistic.MEAN, declared_recipe_names=tuple(args.recipe),
         world_config_id=args.world,
         products=None if args.product is None else tuple(args.product),
+        compare_pool=args.compare_pool,
     )
     print(report(card, load(REPO, scenario)))
     return 0
