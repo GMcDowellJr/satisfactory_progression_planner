@@ -163,3 +163,232 @@ class SolveResponse:
     machines: tuple[MachineCount, ...]
     backend: str = ""
     warnings: tuple[str, ...] = field(default_factory=tuple)
+
+
+# --------------------------------------------------------------------------
+# the district solve (crossover A27.1 K2, A27.2)
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DistrictTarget:
+    """One selected output of a supply-side solve. Two kinds (crossover A31):
+
+        bill product   `bill_units` set: how much of it the declared bill needs.
+                       The solve first makes every bill product in the bill's
+                       PROPORTIONS, as much as the caps allow (max scale s.t.
+                       out_i >= scale * bill_units_i). Value comes from need,
+                       never from a weight someone typed (Greg, 2026-10-08)
+        extra          `bill_units` None: wanted outside the bill, by `weight`
+                       and an optional floor, the A27.2 shape
+
+    Rates are VARIABLES, not inputs. After the scale is maximised, spare
+    capacity goes by weight: an extra's weight as given, a bill product's
+    weight times its bill share, so 1.0 means "worth what the bill says",
+    0 means "the proportion and no more". Everything is printed with the
+    result (LP record 21 R2).
+
+        weight         0 excludes an extra from the objective; the PWA's
+                       Trickle / Normal / Prioritize are three values of it
+        minimum_rate   a declared floor, in items per minute. A trickle is a
+                       small floor, never a clock (v5.5 rule 2). None: no floor
+    """
+
+    item_id: ItemId
+    weight: float = 1.0
+    minimum_rate: float | None = None
+    bill_units: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.weight < 0:
+            raise ValueError(f"{self.item_id}: weight must be non-negative")
+        if self.minimum_rate is not None and self.minimum_rate <= 0:
+            raise ValueError(f"{self.item_id}: minimum_rate must be positive when given")
+        if self.bill_units is not None and self.bill_units <= 0:
+            raise ValueError(
+                f"{self.item_id}: bill_units must be positive when given; an item the "
+                "bill does not need is an extra, not a bill product of zero"
+            )
+
+    @property
+    def is_bill(self) -> bool:
+        return self.bill_units is not None
+
+    @property
+    def is_active(self) -> bool:
+        """In the solve at all: a bill product, weighted, or held above a floor."""
+        return self.is_bill or self.weight > 0 or self.minimum_rate is not None
+
+
+@dataclass(frozen=True)
+class GeneratorFuel:
+    """One generator_fuels.csv row as the solver sees it: a generator burning
+    one fuel. Rates are per generator per minute at 100 %; `power_mw` is the
+    generator's gross output and is NOT scaled by the scenario's machine-power
+    multiplier (the 5x run multiplies consumers, not generators). Loaded by
+    `gamedata.load_generators`, never constructed from a note."""
+
+    generator_class: ProducerClass
+    fuel_item_id: ItemId
+    burn_rate_per_min: float
+    power_mw: float
+    supplemental: tuple[tuple[ItemId, float], ...] = ()   # (item, rate): water
+    byproduct: tuple[tuple[ItemId, float], ...] = ()      # (item, rate): waste
+
+    def __post_init__(self) -> None:
+        if self.burn_rate_per_min <= 0 or self.power_mw <= 0:
+            raise ValueError(f"{self.generator_class}/{self.fuel_item_id}: rates must be positive")
+
+
+@dataclass(frozen=True)
+class PowerBalance:
+    """Power inside the solve (crossover A25.3 P1, mechanics A29).
+
+        generators      the (generator, fuel) pairs the district may build;
+                        each becomes a column consuming fuel and water
+        grid_mw         standing supply declared outside the district: an
+                        existing or imported grid, A25.3 P3 "base + fed"
+        spare_mw        the required margin, held above the draw
+        extraction_mw   the declared extractors at NAMEPLATE (P2), a constant
+
+    The balance row: generated + grid >= lane MW + extraction + spare. Lane
+    MW is the LP's machine-time at the chosen power statistic, which the
+    scenario multiplier scales; generator MW is not scaled.
+    """
+
+    generators: tuple[GeneratorFuel, ...] = ()
+    grid_mw: float = 0.0
+    spare_mw: float = 0.0
+    extraction_mw: float = 0.0
+
+    def __post_init__(self) -> None:
+        for name in ("grid_mw", "spare_mw", "extraction_mw"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be non-negative")
+        seen = [(g.generator_class, g.fuel_item_id) for g in self.generators]
+        if len(seen) != len(set(seen)):
+            raise ValueError("duplicate (generator, fuel) pair")
+
+
+@dataclass(frozen=True)
+class DistrictRequest:
+    """A supply-side solve: selected outputs, a recipe set, caps, and the goal
+    that breaks ties among plans of equal weighted output.
+
+    `weights` is the SECONDARY objective: among the plans that reach the
+    maximum weighted output, the one cheapest under these weights is chosen.
+    It is the same `Weights` the demand-driven solve uses, so a named goal
+    (balanced, resources, power, buildings) means the same thing in both.
+    """
+
+    targets: tuple[DistrictTarget, ...]
+    allowed_recipes: AllowedRecipes = AllowedRecipes()
+    resource_caps: tuple[ResourceCap, ...] = ()
+    weights: Weights = Weights()
+    #: None: power stays outside the solve, as `solve` leaves it (D5)
+    power: PowerBalance | None = None
+
+    def __post_init__(self) -> None:
+        if not self.targets:
+            raise ValueError("a district solve needs at least one target")
+        seen = [t.item_id for t in self.targets]
+        dupes = {i for i in seen if seen.count(i) > 1}
+        if dupes:
+            raise ValueError(f"duplicate district targets: {sorted(dupes)}")
+        if not any(t.is_active for t in self.targets):
+            raise ValueError(
+                "every target has weight 0 and no floor: nothing to maximise and "
+                "nothing to hold. Exclusion is a per-target setting, not a request"
+            )
+
+        capped = {c.item_id for c in self.resource_caps}
+        both = capped & set(seen)
+        if both:
+            raise ValueError(f"item is both a target and a capped input: {sorted(both)}")
+
+    @property
+    def bill_total(self) -> float:
+        return sum(t.bill_units for t in self.targets if t.is_bill)
+
+
+@dataclass(frozen=True)
+class TargetRate:
+    """What one target got. `at_floor` says the floor is all it got; for a
+    bill product `share` is rate / bill_units, the scale it reached (equal to
+    the response's `scale` unless spare capacity lifted it)."""
+
+    item_id: ItemId
+    rate_per_min: float
+    weight: float
+    minimum_rate: float | None
+    at_floor: bool
+    excluded: bool
+    bill_units: float | None = None
+    share: float | None = None
+
+
+@dataclass(frozen=True)
+class BindingCap:
+    """A resource cap the solve pressed against, with its shadow price.
+
+    `shadow_price` is d(weighted output) / d(cap), read from the LP's dual on
+    the cap's bound. It can be 0.0 at a degenerate optimum; the cap is still
+    reported as binding because the draw sits on it.
+    """
+
+    item_id: ItemId
+    cap_per_min: float
+    shadow_price: float
+
+
+@dataclass(frozen=True)
+class GeneratorUse:
+    generator_class: ProducerClass
+    fuel_item_id: ItemId
+    count: float               # fractional generator-equivalents
+    mw: float
+    fuel_per_min: float
+    supplemental_per_min: tuple[tuple[ItemId, float], ...] = ()
+
+
+@dataclass(frozen=True)
+class DistrictPower:
+    """The balance as solved. `margin_mw` is generated + grid - lane -
+    extraction - spare, which the row holds at >= 0; `binding` says the row
+    was tight and `shadow_price` what one more MW of supply would buy in
+    weighted output. Reported; nothing here judges it."""
+
+    lane_mw: float
+    extraction_mw: float
+    grid_mw: float
+    spare_mw: float
+    generated_mw: float
+    margin_mw: float
+    generators: tuple[GeneratorUse, ...]
+    binding: bool
+    shadow_price: float
+
+
+@dataclass(frozen=True)
+class DistrictResponse:
+    """The district plan: a `SolveResponse` plus what each target got and why.
+
+    `plan.items` carries each target's output as that item's net flow, which is
+    the material ledger v5.5 Stage 1 asks for. `targets` keeps request order;
+    nothing here is ranked.
+    """
+
+    plan: SolveResponse
+    targets: tuple[TargetRate, ...]
+    weighted_output: float
+    goal: Weights
+    binding: tuple[BindingCap, ...]
+    #: None when the request carried no PowerBalance
+    power: DistrictPower | None = None
+    #: A31: the bill scale, per minute. out_i >= scale * bill_units_i for every
+    #: bill product. None when the request has no bill product; 0.0 when some
+    #: bill product cannot be made at all (the binding caps say which)
+    scale: float | None = None
+    #: 1 / scale, minutes to cover the declared bill at this rate. None when
+    #: scale is None or 0.0. A report, not play time (A24.2)
+    horizon_min: float | None = None

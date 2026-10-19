@@ -71,6 +71,7 @@ def test_the_scan_sees_every_module():
         "schedule.py",   # A13 (D2), 2026-09-23
         "power.py",      # goal run A5 (D4 P5), 2026-09-24
         "lag.py",        # crossover A18, 2026-09-24
+        "district.py",   # crossover A26/A27, 2026-10-08
     }
 
 

@@ -761,7 +761,10 @@ def test_an_input_absent_from_sources_is_out_of_scope(scaled, caps):
 
 def test_lane_power_is_linear_backing_up_and_convex_when_clocked(scaled, caps):
     """The nine-cell table's 99.5% row, through `decompose` rather than through
-    `residual` directly: 19.90 MW as a duty cycle, 19.87 MW as a clock."""
+    `residual` directly: 19.90 MW as a duty cycle, 19.87 MW as a clock, AT 1x.
+    The scenario of record carries a 2x machine-power multiplier, which the
+    producer's base power ignored until crossover A32.1 (2026-10-08); the
+    figures below are the record's, doubled."""
     def total(**kw):
         lanes = B.decompose(
             scaled, build.R_SCREWS, 199.0, (), _cap(caps, "belt_mk3"), caps,
@@ -769,8 +772,8 @@ def test_lane_power_is_linear_backing_up_and_convex_when_clocked(scaled, caps):
         )
         return sum(l.power_mw for l in lanes)
 
-    assert total() == pytest.approx(19.90, abs=0.005)
-    assert total(clock_mode=ClockMode.EXPLICIT) == pytest.approx(19.87, abs=0.005)
+    assert total() == pytest.approx(2 * 19.90, abs=0.01)
+    assert total(clock_mode=ClockMode.EXPLICIT) == pytest.approx(2 * 19.87, abs=0.01)
 
 
 # --------------------------------------------------------------------------

@@ -46,8 +46,9 @@ import numpy as np
 from scipy.optimize import linprog
 
 from .contracts import (
-    ItemFlow, MachineCount, PowerReport, RawInput, RecipeMode, RecipeUse,
-    SolveRequest, SolveResponse,
+    BindingCap, DistrictPower, DistrictRequest, DistrictResponse, GeneratorUse, ItemFlow,
+    MachineCount, PowerBalance, PowerReport, RawInput, RecipeMode, RecipeUse, ResourceCap,
+    SolveRequest, SolveResponse, TargetRate,
 )
 from .gamedata import ReferenceData, Recipe
 
@@ -98,6 +99,15 @@ class SolverFailure(RuntimeError):
     """HiGHS returned neither an optimum nor an infeasibility."""
 
 
+class Unbounded(RuntimeError):
+    """A district solve with a weighted output that no cap bounds (A27.2).
+
+    Routine, not a defect: a target whose whole chain runs on uncapped raw
+    resources can be made at any rate, and "any rate" is not a plan. The
+    message names the uncapped raws; cap them or drop the weight.
+    """
+
+
 def _statistic(recipe: Recipe, statistic: PowerStatistic) -> float:
     if statistic is PowerStatistic.MIN:
         return recipe.power.min_mw
@@ -106,7 +116,9 @@ def _statistic(recipe: Recipe, statistic: PowerStatistic) -> float:
     return recipe.power.mean_mw
 
 
-def enabled_recipe_ids(request: SolveRequest, data: ReferenceData) -> tuple[str, ...]:
+def enabled_recipe_ids(
+    request: SolveRequest | DistrictRequest, data: ReferenceData,
+) -> tuple[str, ...]:
     """Sorted, per D3a mitigation 1. The sort is the determinism guard.
 
     Public because `analysis.py` needs it to decide whether two solve
@@ -140,6 +152,17 @@ class _Problem:
     bounds: list[tuple[float, float | None]]
     primary: np.ndarray
     secondary: np.ndarray
+    #: generator columns, appended AFTER x, s and l so the first three blocks
+    #: keep their positions whether or not power is in the solve (A29)
+    n_g: int = 0
+    generators: tuple = ()
+    #: the power balance row (A_ub, b_ub), or None: power outside the solve
+    a_ub: np.ndarray | None = None
+    b_ub: np.ndarray | None = None
+    #: A31: one scale column after everything else, and one row per bill
+    #: product  bill_i * scale - l_i <= 0. n_lam is 0 or 1
+    n_lam: int = 0
+    bill_rows: tuple[str, ...] = ()
 
 
 class LpBackend:
@@ -175,13 +198,36 @@ class LpBackend:
             )
 
         recipe_ids = enabled_recipe_ids(request, data)
+        targets = {o.item_id: o.rate_per_min for o in request.outputs}
+        caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
+        return self._build_core(recipe_ids, targets, caps, request.weights, data)
+
+    def _build_core(
+        self, recipe_ids: tuple[str, ...], targets: dict[str, float],
+        caps: dict[str, float | None], w, data: ReferenceData,
+        floors: dict[str, float] | None = None, power: PowerBalance | None = None,
+        bill: dict[str, float] | None = None,
+    ) -> _Problem:
+        """The section 7 matrices. `solve` and `solve_district` share them.
+
+        `targets` are the b_eq demands (0.0 for a district target, whose output
+        is then the item's leftover flow). `floors` are lower bounds on those
+        leftovers and exist only for the district solve; the demand-driven
+        solve never passes them, so its problem is unchanged by construction.
+        """
+        floors = floors or {}
+        bill = bill or {}
         recipes = [data.recipes[rid] for rid in recipe_ids]
+        generators = tuple(power.generators) if power is not None else ()
 
         items: set[str] = set()
         for r in recipes:
             items.update(i for i, _ in r.inputs)
             items.update(i for i, _ in r.outputs)
-        targets = {o.item_id: o.rate_per_min for o in request.outputs}
+        for g in generators:
+            items.add(g.fuel_item_id)
+            items.update(i for i, _ in g.supplemental)
+            items.update(i for i, _ in g.byproduct)
         items.update(targets)
         item_ids = tuple(sorted(items))
         item_index = {i: n for n, i in enumerate(item_ids)}
@@ -200,7 +246,9 @@ class LpBackend:
 
         n_x, n_s = len(recipe_ids), len(raw_ids)
         n_l = len(item_ids) if self.unconsumed is UnconsumedMode.FREE else 0
-        n = n_x + n_s + n_l
+        n_g = len(generators)
+        n_lam = 1 if bill else 0
+        n = n_x + n_s + n_l + n_g + n_lam
 
         a_eq = np.zeros((len(item_ids), n), dtype=float)
         b_eq = np.zeros(len(item_ids), dtype=float)
@@ -214,44 +262,91 @@ class LpBackend:
         if n_l:
             for item, row in item_index.items():
                 a_eq[row, n_x + n_s + row] = -1.0
+        for col, g in enumerate(generators):
+            gcol = n_x + n_s + n_l + col
+            a_eq[item_index[g.fuel_item_id], gcol] -= g.burn_rate_per_min
+            for item, rate in g.supplemental:
+                a_eq[item_index[item], gcol] -= rate
+            for item, rate in g.byproduct:
+                a_eq[item_index[item], gcol] += rate
         for item, rate in targets.items():
             b_eq[item_index[item]] = rate
 
-        caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
         bounds: list[tuple[float, float | None]] = [
             (0.0, self.activity_upper_bound) for _ in recipe_ids
         ]
         for item in raw_ids:
             cap = caps.get(item)
             bounds.append((0.0, FLOW_UPPER_BOUND if cap is None else float(cap)))
-        bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(n_l))
+        if n_l:
+            bounds.extend((floors.get(item, 0.0), FLOW_UPPER_BOUND) for item in item_ids)
+        bounds.extend((0.0, self.activity_upper_bound) for _ in generators)
+        if n_lam:
+            bounds.append((0.0, FLOW_UPPER_BOUND))
 
-        w = request.weights
         primary = np.zeros(n, dtype=float)
         for col, r in enumerate(recipes):
             primary[col] = w.power * _statistic(r, self.power_statistic) + w.buildings
         primary[n_x:n_x + n_s] = w.resources
+        # A generator is a building; its fuel is priced through the raw draw
+        # it causes, and it carries no power term because it supplies power.
+        primary[n_x + n_s + n_l:n_x + n_s + n_l + n_g] = w.buildings
+        # the scale column costs nothing in any goal: it is a proportion
+
+        a_ub = b_ub = None
+        if power is not None:
+            # generated + grid >= lanes + extraction + spare, as a <= row:
+            #   sum_i mw_i x_i - sum_j MW_j g_j <= grid - spare - extraction
+            a_ub = np.zeros((1, n), dtype=float)
+            for col, r in enumerate(recipes):
+                a_ub[0, col] = _statistic(r, self.power_statistic)
+            for col, g in enumerate(generators):
+                a_ub[0, n_x + n_s + n_l + col] = -g.power_mw
+            b_ub = np.array([power.grid_mw - power.spare_mw - power.extraction_mw], dtype=float)
+        bill_rows: tuple[str, ...] = ()
+        if n_lam:
+            if not n_l:
+                raise NotImplementedError("a bill product's output is its leftover flow; needs unconsumed=FREE")
+            bill_rows = tuple(bill)
+            rows = np.zeros((len(bill_rows), n), dtype=float)
+            for k, item in enumerate(bill_rows):
+                rows[k, n - 1] = float(bill[item])
+                rows[k, n_x + n_s + item_index[item]] = -1.0
+            a_ub = rows if a_ub is None else np.vstack([a_ub, rows])
+            zeros = np.zeros(len(bill_rows), dtype=float)
+            b_ub = zeros if b_ub is None else np.concatenate([b_ub, zeros])
         # Leftover slack carries zero cost. Section 2.4 rejects an objective
         # penalty on leftovers: lambda has no physical referent. The secondary
         # objective below keeps leftovers minimal among optima instead, which
         # costs nothing and invents nothing.
 
         secondary = np.ones(n, dtype=float)
+        if n_lam:
+            secondary[n - 1] = 0.0
 
         return _Problem(
             recipe_ids=recipe_ids, item_ids=item_ids, raw_ids=raw_ids,
             n_x=n_x, n_s=n_s, n_l=n_l,
             a_eq=a_eq, b_eq=b_eq, bounds=bounds,
             primary=primary, secondary=secondary,
+            n_g=n_g, generators=generators, a_ub=a_ub, b_ub=b_ub,
+            n_lam=n_lam, bill_rows=bill_rows,
         )
 
     # -- solve ------------------------------------------------------------
 
-    def _run(self, c, p: _Problem, extra_ub=None, extra_b=None):
+    def _run(self, c, p: _Problem, extra_ub=None, extra_b=None, on_unbounded: str | None = None):
+        # The power row, when present, is ALWAYS row 0 of A_ub, so its dual
+        # is at a known index; stage constraints stack beneath it.
+        if p.a_ub is not None:
+            extra_ub = p.a_ub if extra_ub is None else np.vstack([p.a_ub, extra_ub])
+            extra_b = p.b_ub if extra_b is None else np.concatenate([p.b_ub, extra_b])
         result = linprog(
             c, A_ub=extra_ub, b_ub=extra_b, A_eq=p.a_eq, b_eq=p.b_eq,
             bounds=p.bounds, method="highs",
         )
+        if result.status == 3 and on_unbounded:
+            raise Unbounded(on_unbounded)
         if result.status == 2:
             raise Infeasible(
                 "no feasible production plan"
@@ -292,13 +387,267 @@ class LpBackend:
             > self.tolerance
         )
 
-        return self._response(request, data, p, v, z, tie_broken)
+        targets = {o.item_id: o.rate_per_min for o in request.outputs}
+        return self._response(targets, request.resource_caps, data, p, v, z, tie_broken)
+
+    # -- the district solve (A27.1 K2, A27.2) ------------------------------
+
+    def solve_district(self, request: DistrictRequest, data: ReferenceData) -> DistrictResponse:
+        """Supply-side: maximise the weighted selected outputs within the caps.
+
+        Four LPs, lexicographic, each a refinement of the last within a 1e-9
+        relative slack (the D3a pattern, extended; A31):
+
+            1  max  scale                     out_i >= scale * bill_i for every
+                                              bill product. Skipped with no bill
+            2  max  sum_i w'_i * out_i        out_i = the target's leftover flow,
+                                              bounded below by its floor; w' is
+                                              the weight, times the bill share
+                                              for a bill product
+            3  min  goal cost                 request.weights, as `solve` prices it
+            4  min  total activity            D3a tie-break
+
+        A target with weight 0 and no floor is not in the problem at all and is
+        reported as excluded at 0.0. A floor that cannot be met raises
+        `Infeasible` naming the floor(s): alone-infeasible ones first, then the
+        joint case. A weighted output that no cap bounds raises `Unbounded`.
+        Needs `unconsumed=FREE`: the outputs ARE leftover flows.
+        """
+        if self.unconsumed is not UnconsumedMode.FREE:
+            raise NotImplementedError(
+                "a district target's output is its leftover flow (A27.2); under "
+                "unconsumed=forbid every leftover is zero and there is nothing to maximise"
+            )
+        recipe_ids = enabled_recipe_ids(request, data)
+        active = tuple(t for t in request.targets if t.is_active)
+        targets = {t.item_id: 0.0 for t in active}
+        floors = {t.item_id: t.minimum_rate for t in active if t.minimum_rate is not None}
+        caps = {c.item_id: c.rate_per_min for c in request.resource_caps}
+        bill = {t.item_id: t.bill_units for t in active if t.is_bill}
+        total_bill = request.bill_total
+        p = self._build_core(
+            recipe_ids, targets, caps, request.weights, data, floors, request.power, bill,
+        )
+        index = {i: n for n, i in enumerate(p.item_ids)}
+        out_col = {t.item_id: p.n_x + p.n_s + index[t.item_id] for t in active}
+
+        n = p.n_x + p.n_s + p.n_l + p.n_g + p.n_lam
+        # Stage weights (A31): an extra's weight as given; a bill product's
+        # weight times its bill share, so 1.0 reads "worth what the bill says".
+        c_w = np.zeros(n, dtype=float)
+        for t in active:
+            share = (t.bill_units / total_bill) if t.is_bill else 1.0
+            c_w[out_col[t.item_id]] = -t.weight * share
+        uncapped = [i for i in p.raw_ids if caps.get(i) is None]
+        weighted = [t.item_id for t in active if t.weight > 0 or t.is_bill]
+        unbounded_msg = (
+            f"output of {weighted} is unbounded: raw inputs without a cap {uncapped} can "
+            "feed it at any rate (the answer sits on the section 5 guard). Cap them or drop "
+            "the weight"
+        )
+        stage_ub: list[np.ndarray] = []
+        stage_b: list[float] = []
+
+        def run_stage(c):
+            return self._run(
+                c, p,
+                extra_ub=np.vstack(stage_ub) if stage_ub else None,
+                extra_b=np.array(stage_b) if stage_b else None,
+                on_unbounded=unbounded_msg,
+            )
+
+        def pin(c, value):
+            slack = max(abs(value), 1.0) * 1.0e-9
+            stage_ub.append(c.reshape(1, -1))
+            stage_b.append(value + slack)
+
+        # 1  max scale (bill products in proportion), when there is a bill
+        scale_value = None
+        first = None
+        try:
+            if p.n_lam:
+                c_lam = np.zeros(n, dtype=float)
+                c_lam[n - 1] = -1.0
+                first = run_stage(c_lam)
+                scale_value = -float(first.fun)
+                pin(c_lam, float(first.fun))
+            # 2  max weighted output (extras, and bill products beyond the scale)
+            second = run_stage(c_w)
+        except Infeasible:
+            raise self._floor_diagnosis(recipe_ids, caps, request, data, floors) from None
+        if first is None:
+            first = second
+        x1 = np.asarray(first.x, dtype=float)
+        on_guard = (
+            bool(np.any(x1[:p.n_x] >= self.activity_upper_bound - self.tolerance))
+            or bool(np.any(x1[p.n_x:p.n_x + p.n_s] >= FLOW_UPPER_BOUND - 1.0))
+            or (p.n_lam and x1[n - 1] >= FLOW_UPPER_BOUND - 1.0)
+        )
+        if on_guard:
+            raise Unbounded(unbounded_msg)
+        z1 = -float(second.fun)
+        pin(c_w, float(second.fun))
+        # 3  min goal cost among those optima
+        third = run_stage(p.primary)
+        z2 = float(third.fun)
+        pin(p.primary, z2)
+        # 4  min total activity (D3a)
+        fourth = run_stage(p.secondary)
+        v = np.asarray(fourth.x, dtype=float)
+        tie_broken = bool(
+            np.max(np.abs(v[:p.n_x] - np.asarray(third.x, dtype=float)[:p.n_x]))
+            > self.tolerance
+        )
+
+        rates = {t.item_id: float(v[out_col[t.item_id]]) for t in active}
+        plan = self._response(rates, request.resource_caps, data, p, v, z2, tie_broken)
+
+        tol = self.tolerance
+        target_rates = tuple(
+            TargetRate(
+                item_id=t.item_id,
+                rate_per_min=rates.get(t.item_id, 0.0),
+                weight=t.weight,
+                minimum_rate=t.minimum_rate,
+                at_floor=(
+                    t.minimum_rate is not None
+                    and rates.get(t.item_id, 0.0) <= t.minimum_rate + tol
+                ),
+                excluded=not t.is_active,
+                bill_units=t.bill_units,
+                share=(rates.get(t.item_id, 0.0) / t.bill_units) if t.is_bill else None,
+            )
+            for t in request.targets
+        )
+        # Shadow prices come from the first stage: the scale when there is a
+        # bill (price in scale per unit/min), else the weighted output. HiGHS
+        # reports a dual on every variable bound; for an upper bound in a
+        # minimisation it is <= 0, and loosening the bound by one unit changes
+        # the objective by that much, so the price of one more unit of cap is
+        # its negation.
+        marginals = np.asarray(first.upper.marginals, dtype=float)
+        s_first = np.asarray(first.x, dtype=float)[p.n_x:p.n_x + p.n_s]
+        binding = tuple(
+            BindingCap(
+                item_id=i,
+                cap_per_min=float(caps[i]),
+                shadow_price=-float(marginals[p.n_x + col]) + 0.0,
+            )
+            for col, i in enumerate(p.raw_ids)
+            if caps.get(i) is not None and s_first[col] >= float(caps[i]) - tol
+        )
+        power_report = None
+        if request.power is not None:
+            x = v[:p.n_x]
+            g = v[p.n_x + p.n_s + p.n_l:]
+            lane_mw = float(sum(
+                _statistic(data.recipes[rid], self.power_statistic) * val
+                for rid, val in zip(p.recipe_ids, x)
+            ))
+            uses = tuple(
+                GeneratorUse(
+                    generator_class=gen.generator_class, fuel_item_id=gen.fuel_item_id,
+                    count=float(val), mw=float(val) * gen.power_mw,
+                    fuel_per_min=float(val) * gen.burn_rate_per_min,
+                    supplemental_per_min=tuple((i, float(val) * r) for i, r in gen.supplemental),
+                )
+                for gen, val in zip(p.generators, g) if val > tol
+            )
+            generated = float(sum(u.mw for u in uses))
+            pb = request.power
+            margin = generated + pb.grid_mw - lane_mw - pb.extraction_mw - pb.spare_mw
+            # row 0 of A_ub is the power row (bill rows follow it). The dual is
+            # in the first stage's units: scale per MW with a bill, else
+            # weighted output per MW
+            row_dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
+            power_report = DistrictPower(
+                lane_mw=lane_mw, extraction_mw=pb.extraction_mw, grid_mw=pb.grid_mw,
+                spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
+                generators=uses, binding=margin <= tol, shadow_price=-row_dual + 0.0,
+            )
+        horizon = None
+        if scale_value is not None and scale_value > tol:
+            horizon = 1.0 / scale_value
+        return DistrictResponse(
+            plan=plan, targets=target_rates, weighted_output=z1,
+            goal=request.weights, binding=binding, power=power_report,
+            scale=scale_value, horizon_min=horizon,
+        )
+
+    def _floor_diagnosis(
+        self, recipe_ids, caps, request: DistrictRequest, data: ReferenceData,
+        floors: dict[str, float],
+    ) -> Infeasible:
+        """Name the floors, one at a time, then jointly. Never drops one."""
+        if not floors:
+            return Infeasible("no feasible district plan, and no floor is declared")
+        alone: list[str] = []
+        for item, floor in floors.items():
+            p1 = self._build_core(
+                recipe_ids, {item: 0.0}, caps, request.weights, data, {item: floor}, request.power,
+            )  # alone: no bill rows, the floor is the question
+            try:
+                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l + p1.n_g + p1.n_lam), p1)
+            except Infeasible:
+                alone.append(f"{item} {floor:g}/min")
+        if alone:
+            return Infeasible(
+                "declared floors unreachable under the caps even alone: "
+                + ", ".join(alone)
+                + ". The remaining floors were not tested jointly"
+            )
+        scale, binding = self._floor_scale(recipe_ids, caps, request, data, floors)
+        return Infeasible(
+            "declared floors are each reachable alone but not together: "
+            + ", ".join(f"{i} {f:g}/min" for i, f in floors.items())
+            + f". Scaled together they fit up to {scale:.4f} of the declared values"
+            + (f"; the caps that bind there: {binding}" if binding else "")
+            + " (v5.5 rule 1: a conflict with the compromise named, nothing dropped)"
+        )
+
+    def _floor_scale(
+        self, recipe_ids, caps, request: DistrictRequest, data: ReferenceData,
+        floors: dict[str, float],
+    ) -> tuple[float, list[str]]:
+        """The largest lambda in (0, 1) for which every floor * lambda fits,
+        by bisection to 1e-4, and the caps the draw sits on at that lambda.
+        A diagnostic only: it is not a plan and nothing reads it as one."""
+        targets = {i: 0.0 for i in floors}
+
+        def feasible(lam: float):
+            p = self._build_core(
+                recipe_ids, targets, caps, request.weights, data,
+                {i: f * lam for i, f in floors.items()}, request.power,
+            )
+            try:
+                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l + p.n_g + p.n_lam), p)
+            except Infeasible:
+                return p, None
+
+        lo, hi = 0.0, 1.0
+        best = feasible(lo)
+        for _ in range(16):
+            mid = (lo + hi) / 2.0
+            p, res = feasible(mid)
+            if res is None:
+                hi = mid
+            else:
+                lo, best = mid, (p, res)
+        p, res = best
+        if res is None:
+            return 0.0, []
+        s = np.asarray(res.x, dtype=float)[p.n_x:p.n_x + p.n_s]
+        binding = [
+            i for i, val in zip(p.raw_ids, s)
+            if caps.get(i) is not None and caps[i] > 0.0 and val >= caps[i] - self.tolerance
+        ]
+        return lo, binding
 
     # -- response ---------------------------------------------------------
 
     def _response(
-        self, request: SolveRequest, data: ReferenceData, p: _Problem,
-        v: np.ndarray, z: float, tie_broken: bool,
+        self, targets: dict[str, float], caps: tuple[ResourceCap, ...],
+        data: ReferenceData, p: _Problem, v: np.ndarray, z: float, tie_broken: bool,
     ) -> SolveResponse:
         tol = self.tolerance
         x = v[:p.n_x]
@@ -337,7 +686,6 @@ class LpBackend:
         # Leftovers are derived from the reported flows, not read off the slack
         # variable, so the warning and the ItemFlow tuple cannot disagree. The
         # slack carries the solver's noise; the filtered flows do not.
-        targets = {o.item_id: o.rate_per_min for o in request.outputs}
         net = {i: produced[i] - consumed[i] - targets.get(i, 0.0) for i in p.item_ids}
 
         raw_inputs = tuple(
@@ -373,11 +721,11 @@ class LpBackend:
         return SolveResponse(
             recipes=recipes, items=items, raw_inputs=raw_inputs,
             power=power, machines=machines, backend=self.name,
-            warnings=self._warnings(request, data, p, x, s, net, z, tie_broken),
+            warnings=self._warnings(caps, data, p, x, s, net, z, tie_broken),
         )
 
     def _warnings(
-        self, request: SolveRequest, data: ReferenceData, p: _Problem,
+        self, caps: tuple[ResourceCap, ...], data: ReferenceData, p: _Problem,
         x: np.ndarray, s: np.ndarray, net: dict[str, float], z: float, tie_broken: bool,
     ) -> tuple[str, ...]:
         tol = self.tolerance
@@ -409,7 +757,7 @@ class LpBackend:
         capped = sorted(
             i for i, val in zip(p.raw_ids, s)
             if any(c.item_id == i and c.rate_per_min is not None
-                   and val >= c.rate_per_min - tol for c in request.resource_caps)
+                   and val >= c.rate_per_min - tol for c in caps)
         )
         if capped:
             out.append(f"resource cap binds on {capped}")
