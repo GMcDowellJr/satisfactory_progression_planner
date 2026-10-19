@@ -287,10 +287,16 @@ class DistrictRequest:
     weights: Weights = Weights()
     #: None: power stays outside the solve, as `solve` leaves it (D5)
     power: PowerBalance | None = None
+    #: A4/A6: the district's extractors, charged by their draw on the power
+    #: row (needs `power`, with extraction_mw 0.0). Empty: no extractor power
+    #: beyond the constant `power.extraction_mw`
+    extraction: tuple["ExtractionSegment", ...] = ()
 
     def __post_init__(self) -> None:
         if not self.targets:
             raise ValueError("a district solve needs at least one target")
+        check_extraction("district", self.resource_caps, self.extraction)
+        check_extraction_power(bool(self.extraction), self.power)
         seen = [t.item_id for t in self.targets]
         dupes = {i for i in seen if seen.count(i) > 1}
         if dupes:
@@ -372,10 +378,12 @@ class DistrictPower:
     generators: tuple[GeneratorUse, ...]
     binding: bool
     shadow_price: float
-    #: A4 (portfolio): the capped extractors' nameplate, reported beside
-    #: `extraction_mw`, which is then the draw. None where extraction is the
-    #: constant nameplate charge (solve_district), so the two are the same
+    #: A4: the capped extractors' nameplate, reported beside `extraction_mw`,
+    #: which is then the draw. None where extraction is the constant
+    #: nameplate charge, so the two are the same
     extraction_nameplate_mw: float | None = None
+    #: A4/A6: (item, rate/min) drawn from pumped (uncapped) segments
+    pumped: tuple[tuple[ItemId, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -446,6 +454,41 @@ class ExtractionSegment:
             raise ValueError(f"{self.item_id}: nameplate_mw is set exactly when the segment is capped")
 
 
+def check_extraction(
+    label: str, resource_caps: tuple[ResourceCap, ...], extraction: tuple[ExtractionSegment, ...],
+) -> None:
+    """A4, shared by PortfolioSite and DistrictRequest: every segment's raw
+    is in the caps; a pumped raw (an uncapped segment) has cap None; any
+    other raw with segments has a cap equal to their sum. The solver lifts
+    the raw's own bound on that equality (A5.2), so a mismatch would change
+    the supply silently."""
+    caps = {c.item_id: c.rate_per_min for c in resource_caps}
+    pumped = {e.item_id for e in extraction if e.cap_per_min is None}
+    stray = sorted({e.item_id for e in extraction} - set(caps))
+    if stray:
+        raise ValueError(f"{label}: extraction on raws the caps do not list: {stray}")
+    for item in dict.fromkeys(e.item_id for e in extraction):
+        if item in pumped:
+            if caps[item] is not None:
+                raise ValueError(f"{label}: {item} is pumped (uncapped) but capped at {caps[item]!r}")
+            continue
+        total = sum(e.cap_per_min for e in extraction if e.item_id == item)
+        if caps[item] is None or abs(caps[item] - total) > max(abs(total), 1.0) * 1.0e-9:
+            raise ValueError(f"{label}: {item} cap {caps[item]!r} is not its "
+                             f"extraction segments' sum {total!r}")
+
+
+def check_extraction_power(extraction_present: bool, power: "PowerBalance | None") -> None:
+    """A4: the draw is charged on the grid row, so a grid must exist, and a
+    constant nameplate charge beside it counts twice."""
+    if not extraction_present:
+        return
+    if power is None:
+        raise ValueError("extraction segments are charged on the grid; power is None")
+    if power.extraction_mw != 0.0:
+        raise ValueError("extraction segments AND a constant extraction_mw: charged twice")
+
+
 @dataclass(frozen=True)
 class PortfolioSite:
     """One site's raw supply. Every cap must be a number: a site is closed
@@ -475,20 +518,7 @@ class PortfolioSite:
         dupes = {i for i in seen if seen.count(i) > 1}
         if dupes:
             raise ValueError(f"{self.label}: caps listed twice: {sorted(dupes)}")
-        caps = {c.item_id: c.rate_per_min for c in self.resource_caps}
-        stray = sorted({e.item_id for e in self.extraction} - set(caps))
-        if stray:
-            raise ValueError(f"{self.label}: extraction on raws the caps do not list: {stray}")
-        for item in dict.fromkeys(e.item_id for e in self.extraction):
-            if item in pumped:
-                if caps[item] is not None:
-                    raise ValueError(f"{self.label}: {item} is pumped (uncapped) but capped "
-                                     f"at {caps[item]!r}")
-                continue
-            total = sum(e.cap_per_min for e in self.extraction if e.item_id == item)
-            if caps[item] is None or abs(caps[item] - total) > max(abs(total), 1.0) * 1.0e-9:
-                raise ValueError(f"{self.label}: {item} cap {caps[item]!r} is not its "
-                                 f"extraction segments' sum {total!r}")
+        check_extraction(self.label, self.resource_caps, self.extraction)
 
 
 @dataclass(frozen=True)
@@ -530,13 +560,7 @@ class PortfolioRequest:
         caps = [{c.item_id for c in s.resource_caps} for s in self.sites]
         if any(c != caps[0] for c in caps):
             raise ValueError("every site must cap the same raw resources (0.0 for none)")
-        if any(s.extraction for s in self.sites):
-            # A4: the draw is charged on the shared grid row, so a grid must
-            # exist, and a constant nameplate charge beside it counts twice
-            if self.power is None:
-                raise ValueError("extraction segments are charged on the grid; power is None")
-            if self.power.extraction_mw != 0.0:
-                raise ValueError("extraction segments AND a constant extraction_mw: charged twice")
+        check_extraction_power(any(s.extraction for s in self.sites), self.power)
         both = caps[0] & set(items)
         if both:
             raise ValueError(f"item is both a bill product and a capped raw: {sorted(both)}")

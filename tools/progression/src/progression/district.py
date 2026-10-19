@@ -47,7 +47,9 @@ from dataclasses import dataclass
 from production_adapter.contracts import (
     ExtractionSegment, GeneratorFuel, ItemId, ProducerClass, RecipeId, ResourceCap,
 )
-from production_adapter.gamedata import ExtractionRate, ReferenceData
+from production_adapter.gamedata import ExtractionRate, ReferenceData, load_generators
+
+from .unlocks import generators_open_at_tier
 
 #: The game's overclock ceiling, as extraction_rates.csv's max_250 column states it.
 MAX_CLOCK = 2.5
@@ -231,6 +233,71 @@ def pumped_water(
         mw_per_unit=base_mw[WATER_EXTRACTOR] / rate.nominal_rate_min,
         nameplate_mw=None, source=f"pumped by {WATER_EXTRACTOR}",
     )
+
+
+def site_extraction(
+    definition: DistrictDefinition, rates: tuple[ExtractionRate, ...],
+    base_mw: dict[ProducerClass, float], *, supply: tuple[tuple[ItemId, float], ...] = (),
+    water: bool = False,
+) -> tuple[ExtractionSegment, ...]:
+    """A site's whole extraction as the solver charges it (A4; one composer
+    for the site card, portfolio_run and district_run, A6): one segment per
+    declared node by the draw, a zero-MW segment per declared supply (it
+    comes from elsewhere and carries no extractor here, and a raw's cap must
+    equal its segments' sum), and pumped Water when the site is declared
+    able to pump it. Pass caps through `pumped_caps` when `water`."""
+    segs = extraction_segments(definition, rates, base_mw)
+    segs += tuple(ExtractionSegment(item, rate, 0.0, 0.0, source="declared supply")
+                  for item, rate in supply)
+    if water:
+        segs += (pumped_water(rates, base_mw),)
+    return segs
+
+
+def pumped_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:
+    """Water uncapped (None) at a site declared able to pump it (A4)."""
+    return tuple(ResourceCap(c.item_id, None) if c.item_id == WATER else c for c in caps)
+
+
+def reach_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:
+    """For REACH only: a pumped raw (None) is available in any amount, so
+    `discover` sees it as present; nothing sizes from this."""
+    return tuple(ResourceCap(c.item_id, float("inf")) if c.rate_per_min is None else c for c in caps)
+
+
+def generators_at_tier(repo_root, tier: int) -> tuple[tuple[ProducerClass, ...], tuple[GeneratorFuel, ...]]:
+    """(open classes in generator_fuels.csv order, the (generator, fuel) rows
+    of those classes): A3's join, `unlocks.generators_open_at_tier`, read
+    once for every tool (A6)."""
+    rows = load_generators(repo_root)
+    classes = tuple(dict.fromkeys(g.generator_class for g in rows))
+    open_classes = generators_open_at_tier(repo_root, tier, classes)
+    return open_classes, tuple(g for g in rows if g.generator_class in open_classes)
+
+
+def extraction_at_share(
+    segments: tuple[ExtractionSegment, ...], draws: dict[ItemId, float],
+) -> float:
+    """MW for a plan solved WITHOUT power (A6, district_run's report mode):
+    every segment of a raw worked at the same share of its cap, draw / cap,
+    which is one choice-free reading (no socket preferred) and floor-safe at
+    or below 100 % (A4). A pumped segment is charged on the raw's whole draw;
+    a raw with two pumped segments is refused, since splitting it would be a
+    choice."""
+    mw = 0.0
+    for item in dict.fromkeys(e.item_id for e in segments):
+        mine = tuple(e for e in segments if e.item_id == item)
+        drawn = draws.get(item, 0.0)
+        pumped = tuple(e for e in mine if e.cap_per_min is None)
+        if len(pumped) > 1:
+            raise DistrictError(f"{item}: two pumped segments; their split is not declared")
+        if pumped:
+            mw += pumped[0].mw_per_unit * drawn
+            continue
+        cap = sum(e.cap_per_min for e in mine)
+        if cap > 0.0:
+            mw += sum(e.mw_per_unit * e.cap_per_min for e in mine) * drawn / cap
+    return mw
 
 
 def bill_units(

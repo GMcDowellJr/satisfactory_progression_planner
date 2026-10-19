@@ -20,6 +20,13 @@ layer returns, and adds no arithmetic of its own:
               report (default: the draw stated against the standing MW),
               solve (A29 balance row, standing MW as supply, no new
               generators), none
+    extract   A6 (Greg, 2026-10-19, option a): extractors by the DRAW, as the
+              site card and portfolio_run charge them, through the shared
+              progression.site_extraction; nameplate reported beside it.
+              In solve mode the draw is on the power row; in report mode
+              the plan has no power row, so every socket of a raw is read
+              at the same share of its cap (progression.extraction_at_share).
+              WATER_PUMPABLE in the declaration, required
     realize   realization.realize over the plan with the declaration's BUSES
               (one recipe per item, declared) and its nodes: whole machines,
               explicit clocks, power at those clocks (v5.5 Stage 5; A32).
@@ -73,7 +80,8 @@ from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic 
 from production_adapter import DistrictTarget  # noqa: E402
 from progression import (  # noqa: E402
     DistrictDefinition, StandingSupply, at_tier, bill_units, caps_less_draws, discover,
-    extraction_nameplate_mw, partition_recipes, recipe_ids_by_name, resource_caps,
+    extraction_at_share, extraction_nameplate_mw, partition_recipes, pumped_caps,
+    recipe_ids_by_name, resource_caps, site_extraction,
     resources_in_reference_order, standing_generation, unlocks,
 )
 from progression import stock  # noqa: E402
@@ -128,6 +136,7 @@ class DistrictRun:
     caps: tuple
     gross_caps: tuple
     standing: StandingSupply
+    #: the declared extractors at nameplate (A25.3 P2), reported beside the draw
     extraction_mw: float
     power_mode: str
     recipe_ids: tuple[str, ...]
@@ -142,6 +151,9 @@ class DistrictRun:
     baseline_error: str | None = None
     #: realization over the plan, when the declaration carries BUSES
     realization: object | None = None   # realization.RealizationReport
+    #: A6: the extractors by the draw: on the power row in solve mode, at an
+    #: equal share of each raw's cap in report mode; None with power none
+    extraction_drawn_mw: float | None = None
 
 
 def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
@@ -158,6 +170,8 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         raise DistrictRunError(f"no goal {goal!r}; known: {list(GOALS)}")
     if power not in ("report", "solve", "none"):
         raise DistrictRunError(f"power must be report, solve or none; got {power!r}")
+    if not hasattr(decl, "WATER_PUMPABLE"):
+        raise DistrictRunError(f"{decl.LABEL}: WATER_PUMPABLE is not declared (A6; no default)")
     data = load(repo, decl.SCENARIO)
     capabilities, rates = load_logistics(repo)
     definition = DistrictDefinition(
@@ -166,6 +180,8 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         reserve_fraction=decl.RESERVE, label=f"{decl.LABEL} [{case}]",
     )
     gross_caps = resource_caps(definition, rates, resources_in_reference_order(data))
+    if decl.WATER_PUMPABLE:
+        gross_caps = pumped_caps(gross_caps)
 
     # A34: the recipe set IS the partition's; the tier plus the declared
     # unlocks must grant every recipe in it
@@ -212,18 +228,32 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
 
     tables = load_power_tables(repo)
     extraction_mw = extraction_nameplate_mw(definition, tables.extractors)
-    balance = None
+    segments = site_extraction(definition, rates, tables.extractors, water=decl.WATER_PUMPABLE)
+    balance, extraction = None, ()
     if power == "solve":
-        balance = PowerBalance(
-            generators=(), grid_mw=standing.mw, spare_mw=decl.SPARE_MW,
-            extraction_mw=extraction_mw,
-        )
+        if decl.STANDING_FED_FROM_DISTRICT:
+            # the caps are net of the standing draw and no longer the
+            # segments' sum; the draw that feeds the standing generators
+            # would need its own charge. Not modelled: refused, not guessed
+            raise DistrictRunError(
+                f"{decl.LABEL}: standing generators fed from the district's caps with "
+                "extraction charged by the draw is not modelled (A6)"
+            )
+        balance = PowerBalance(generators=(), grid_mw=standing.mw, spare_mw=decl.SPARE_MW)
+        extraction = segments
     request = DistrictRequest(
         targets=targets, allowed_recipes=allowed, resource_caps=caps,
-        weights=GOALS[goal], power=balance,
+        weights=GOALS[goal], power=balance, extraction=extraction,
     )
     backend = LpBackend(power_statistic=PowerStatistic.MEAN)
     response = backend.solve_district(request, data)
+    drawn = None
+    if response.power is not None:
+        drawn = response.power.extraction_mw
+    elif power == "report":
+        drawn = extraction_at_share(
+            segments, {x.item_id: x.rate_per_min for x in response.plan.raw_inputs},
+        )
 
     base, base_err = None, None
     if baseline:
@@ -255,7 +285,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         gross_caps=gross_caps, standing=standing, extraction_mw=extraction_mw,
         power_mode=power, recipe_ids=recipe_ids, bill=bill, reach=reach,
         request=request, response=response, baseline=base, baseline_error=base_err,
-        realization=report,
+        realization=report, extraction_drawn_mw=drawn,
     )
 
 
@@ -336,10 +366,11 @@ def report(dr: DistrictRun, data) -> str:
     if r.power is None and dr.power_mode == "report":
         lane_mw = r.plan.power.scenario_mw
         realized = dr.realization.total_power_mw if dr.realization is not None else None
-        draw_mw = (realized if realized is not None else lane_mw) + dr.extraction_mw
+        draw_mw = (realized if realized is not None else lane_mw) + dr.extraction_drawn_mw
         out.append(f"  factory draw: lanes {lane_mw:.2f} MW machine-time"
                    + (f" ({realized:.2f} MW realized at clock)" if realized is not None else "")
-                   + f" + extraction (nameplate) {dr.extraction_mw:.2f} MW = {draw_mw:.2f} MW"
+                   + f" + extraction {dr.extraction_drawn_mw:.2f} MW drawn (each raw's sockets at "
+                   f"an equal share; nameplate {dr.extraction_mw:.2f}) = {draw_mw:.2f} MW"
                    f" against {st.mw:.2f} MW standing: "
                    + (f"{st.mw - draw_mw:.2f} MW to spare" if draw_mw <= st.mw else
                       f"SHORT by {draw_mw - st.mw:.2f} MW (reported, not solved: A34)"))
@@ -347,7 +378,8 @@ def report(dr: DistrictRun, data) -> str:
         out.append("  outside the solve (power=none): the LP figure below excludes extraction, D5")
     else:
         pw = r.power
-        out.append(f"  lanes {pw.lane_mw:.2f} + extraction (nameplate) {pw.extraction_mw:.2f} + spare "
+        out.append(f"  lanes {pw.lane_mw:.2f} + extraction {pw.extraction_mw:.2f} drawn (nameplate "
+                   f"{dr.extraction_mw:.2f}) + spare "
                    f"{pw.spare_mw:.2f}  <=  grid {pw.grid_mw:.2f} + generated {pw.generated_mw:.2f}; "
                    f"margin {pw.margin_mw:.2f} MW" + ("  BINDING" if pw.binding else ""))
         if pw.binding:
@@ -439,6 +471,7 @@ def export(dr: DistrictRun, data, path: pathlib.Path) -> None:
         "power": None if dr.response.power is None else dataclasses.asdict(dr.response.power),
         "standing": dataclasses.asdict(dr.standing),
         "extraction_mw": dr.extraction_mw,
+        "extraction_drawn_mw": dr.extraction_drawn_mw,
         "power_mode": dr.power_mode,
         "standing_fed_from_district": bool(dr.decl.STANDING_FED_FROM_DISTRICT),
         "gross_caps": [dataclasses.asdict(c) for c in dr.gross_caps],

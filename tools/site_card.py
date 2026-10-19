@@ -85,12 +85,12 @@ from production_adapter import (  # noqa: E402
     DistrictPower, DistrictRequest, DistrictTarget, ExtractionSegment, GeneratorUse,
     PortfolioRequest, PortfolioSite, PowerBalance, ResourceCap, Scenario, Weights, load,
 )
-from production_adapter.gamedata import ReferenceData, load_generators, load_logistics  # noqa: E402
+from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic, Unbounded  # noqa: E402
 from progression import (  # noqa: E402
     DistrictDefinition, DistrictError, NodeCount, at_tier, available_at, discover,
-    extraction_segments, pumped_water, recipe_ids_by_name, resource_caps,
-    resources_in_reference_order, unlocks,
+    generators_at_tier, pumped_caps, reach_caps, recipe_ids_by_name, resource_caps,
+    resources_in_reference_order, site_extraction,
 )
 from progression.district import WATER  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
@@ -273,42 +273,6 @@ def with_supply(
             raise SiteCardError(f"declared supply {item}: rate {rate!r} must be positive")
         by_item[item] = by_item[item] + rate
     return tuple(ResourceCap(c.item_id, by_item[c.item_id]) for c in caps)
-
-
-def pumped_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:
-    """Water uncapped (None) at a site declared able to pump it (A4)."""
-    return tuple(ResourceCap(c.item_id, None) if c.item_id == WATER else c for c in caps)
-
-
-def reach_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:
-    """For REACH only: a pumped raw (None) is available in any amount, so
-    discover() sees it as present; nothing sizes from this."""
-    return tuple(ResourceCap(c.item_id, float("inf")) if c.rate_per_min is None else c for c in caps)
-
-
-def site_segments(
-    spec: SiteSpec, definition: DistrictDefinition, rates, base_mw, *, water: bool,
-) -> tuple[ExtractionSegment, ...]:
-    """The site's extraction as the portfolio solve charges it (A4): one
-    segment per socket by the draw, a zero-MW segment per declared supply
-    (it comes from elsewhere and carries no extractor here, and the caps
-    must equal their segments' sum), and pumped Water when declared. Shared
-    with tools/portfolio_run.py."""
-    segs = extraction_segments(definition, rates, base_mw)
-    segs += tuple(ExtractionSegment(item, rate, 0.0, 0.0, source="declared supply")
-                  for item, rate in spec.supply)
-    if water:
-        segs += (pumped_water(rates, base_mw),)
-    return segs
-
-
-def generators_at_tier(repo: pathlib.Path, tier: int):
-    """(open classes in generator_fuels.csv order, the (generator, fuel)
-    rows of those classes): A3's join, unlocks.generators_open_at_tier."""
-    rows = load_generators(repo)
-    classes = tuple(dict.fromkeys(g.generator_class for g in rows))
-    open_classes = unlocks.generators_open_at_tier(repo, tier, classes)
-    return open_classes, tuple(g for g in rows if g.generator_class in open_classes)
 
 
 def site_caps(spec: SiteSpec, data: ReferenceData, rates, sockets: tuple[Socket, ...]):
@@ -591,8 +555,8 @@ def build_card(
     open_classes, generators = generators_at_tier(repo, tier)
     powered_error = None
     try:
-        segments = site_segments(spec, definition, rates, load_power_tables(repo).extractors,
-                                 water=water)
+        segments = site_extraction(definition, rates, load_power_tables(repo).extractors,
+                                   supply=spec.supply, water=water)
     except DistrictError as e:
         powered_error = str(e)
     if powered_error is None:

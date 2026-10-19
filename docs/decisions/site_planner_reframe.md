@@ -266,3 +266,66 @@ The scenario C and D figures in A4.3 are unchanged (suite re-run).
 - The card's pool comparison (`--compare-pool`) stays material only.
 - A clock above 100 % leaves the card's material column and drops the
   self-powered one, naming why (A4: overclocking is not modelled).
+
+## Amendment 6 — 2026-10-19. One power implementation; district_run by the draw
+
+### A6.1 What raised it
+
+After A4 and A5 the same work was assembled in several places. The site card
+and portfolio_run each built their generator set at the tier and their
+extraction segments (the card held helpers portfolio_run borrowed). The
+solver had two power rows, one in `_build_core` (district, constant
+extraction) and one in `solve_portfolio` (draw, as separate columns).
+district_run still charged extractors at nameplate and could not pump
+Water (A4.4). Greg, 2026-10-19: "we should have shared modules for stuff
+like this".
+
+### A6.2 Decided by Greg, 2026-10-19 (holds until proven wrong)
+
+- Shared modules, and district_run moves to the draw (option a), with
+  nameplate reported beside it.
+
+### A6.3 What was built
+
+- Solver: the extraction columns, link rows, bound lift (A5.2), power-row
+  charge and power-goal price live in `_build_core`. `solve_district` and
+  every site of `solve_portfolio` use them, and read binding prices and the
+  drawn / nameplate / pumped figures through one helper each.
+  `solve_portfolio` lays sites at their own offsets, since their extraction
+  differs. `DistrictRequest.extraction` mirrors `PortfolioSite.extraction`,
+  with one shared validator (`contracts.check_extraction`).
+- Composer, in `progression.district`: `site_extraction` (sockets by the
+  draw, declared supplies at 0 MW, pumped Water when declared),
+  `pumped_caps`, `reach_caps`, `generators_at_tier`, and
+  `extraction_at_share` (below). The site card, portfolio_run and
+  district_run call these; tests/test_shared_power.py fails if any of them
+  assembles extraction or a generator set itself, or passes a constant
+  nameplate charge.
+- district_run: solve mode charges the draw on the power row. Report mode
+  has no power row, so each raw's sockets are read at the same share of its
+  cap (`extraction_at_share`): no socket is preferred, and it is floor-safe
+  at or below 100 %. The declaration must state `WATER_PUMPABLE`
+  (district_phase2: False, since A35 G2 put the standing generators' water
+  outside). Standing generators fed from the district's caps are refused in
+  solve mode: the caps are then net of their draw and the draw feeding them
+  would need its own charge.
+
+### A6.4 Measured 2026-10-19 (container, py3.13), not derived
+
+district_phase2, scenario 1.25x recipe / 5x machine power:
+
+- shipped, power solve: extraction 4.99 MW drawn of 35 nameplate; scale
+  0.000435 (was 0.000386), horizon 2296.4 min (was 2589.7); lanes 265.01 MW
+  (was 235); 25 whole machines (was 24), 200.07 MW realized (was 174.41).
+  The 25 % case gives the same plan: MW per unit does not depend on the
+  clock.
+- shipped, power report: extraction 25.95 MW at equal shares; SHORT by
+  866.15 MW (was 875.20).
+- Scenario C and D (A4.3) and the site card (A5) unchanged: the suite pins
+  them and passes.
+
+### A6.5 Open, not decided
+
+- The 5x machine-power multiplier scales machine draw and has never scaled
+  extraction (the 35 MW nameplate was always unscaled). Whether miners and
+  pumps count as consumers under the multiplier is Greg's to decide.

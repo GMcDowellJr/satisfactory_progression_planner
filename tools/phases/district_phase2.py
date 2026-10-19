@@ -90,6 +90,10 @@ EXTRACTOR = "Build_MinerMk1_C"
 #: materials, so their draw does NOT come off the caps
 STANDING_GENERATORS = (("Build_GeneratorCoal_C", I["COAL"], 4),)
 STANDING_FED_FROM_DISTRICT = False
+#: A4/A6: whether the district can pump Water (uncapped, charged as Water
+#: Extractors by the draw). False: A35 G2 placed the standing generators'
+#: water extractors outside the district, and no district node is water
+WATER_PUMPABLE = False
 #: the required margin on the balance row; the v5.4.1 setting
 SPARE_MW = 30.0
 #: A27.1 K1: two cases, both inputs. Keys are the CLI's --case values.

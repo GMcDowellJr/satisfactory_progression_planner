@@ -158,6 +158,10 @@ class _Problem:
     #: keep their positions whether or not power is in the solve (A29)
     n_g: int = 0
     generators: tuple = ()
+    #: A4/A6: extraction columns after the generators, one per segment whose
+    #: raw has a draw column; their link rows follow the item rows in a_eq
+    n_e: int = 0
+    extraction: tuple = ()
     #: the power balance row (A_ub, b_ub), or None: power outside the solve
     a_ub: np.ndarray | None = None
     b_ub: np.ndarray | None = None
@@ -165,6 +169,14 @@ class _Problem:
     #: product  bill_i * scale - l_i <= 0. n_lam is 0 or 1
     n_lam: int = 0
     bill_rows: tuple[str, ...] = ()
+
+    @property
+    def n(self) -> int:
+        return self.n_x + self.n_s + self.n_l + self.n_g + self.n_e + self.n_lam
+
+    @property
+    def e0(self) -> int:
+        return self.n_x + self.n_s + self.n_l + self.n_g
 
 
 def _binding_cap(item: str, cap: float, raw_price: float, seg_prices: list[float] | None) -> BindingCap:
@@ -177,6 +189,45 @@ def _binding_cap(item: str, cap: float, raw_price: float, seg_prices: list[float
     spread = high - low > max(abs(high), 1.0e-12) * 1.0e-6
     return BindingCap(item_id=item, cap_per_min=cap, shadow_price=low,
                       shadow_price_high=high if spread else None)
+
+
+def _binding(p: _Problem, block: np.ndarray, marginals: np.ndarray, caps: dict, tol: float,
+             relative: float, zero_caps: bool) -> tuple[BindingCap, ...]:
+    """The caps a block's draw sits on, with their first-stage prices (A6:
+    one reading for the district and every portfolio site). `block` and
+    `marginals` are this problem's columns only. A raw with extraction
+    segments takes its price from the saturated ones (its own bound is
+    lifted, A5.2); a pumped raw (cap None) never binds. `relative` is the
+    share of the cap the draw may sit under and still count (the
+    portfolio's 1e-6; the district's historical 0.0); `zero_caps` whether a
+    cap of 0.0 is listed (the district always did, the portfolio never)."""
+    e0, s = p.e0, block[p.n_x:p.n_x + p.n_s]
+    seg_price: dict[str, list[float]] = {}
+    for j, e in enumerate(p.extraction):
+        if e.cap_per_min is not None and e.cap_per_min > 0.0 \
+                and block[e0 + j] >= e.cap_per_min * (1.0 - relative) - tol:
+            seg_price.setdefault(e.item_id, []).append(-float(marginals[e0 + j]) + 0.0)
+    return tuple(
+        _binding_cap(i, float(caps[i]), -float(marginals[p.n_x + col]) + 0.0, seg_price.get(i))
+        for col, i in enumerate(p.raw_ids)
+        if caps.get(i) is not None and (zero_caps or caps[i] > 0.0)
+        and s[col] >= float(caps[i]) * (1.0 - relative) - tol
+    )
+
+
+def _extraction_read(p: _Problem, block: np.ndarray, tol: float, declared: tuple):
+    """(drawn MW, nameplate MW, pumped (item, rate) pairs) from a block's
+    final values. Nameplate is over every DECLARED capped segment, including
+    one on a raw nothing reads (no column, draws nothing): the extractors
+    the site has, as P2 counted them."""
+    vals = block[p.e0:p.e0 + p.n_e]
+    drawn = float(sum(e.mw_per_unit * float(x) for e, x in zip(p.extraction, vals)))
+    nameplate = float(sum(e.nameplate_mw for e in declared if e.nameplate_mw is not None))
+    pumped: dict[str, float] = {}
+    for e, x in zip(p.extraction, vals):
+        if e.cap_per_min is None and x > tol:
+            pumped[e.item_id] = pumped.get(e.item_id, 0.0) + float(x)
+    return drawn, nameplate, tuple(pumped.items())
 
 
 class LpBackend:
@@ -220,9 +271,19 @@ class LpBackend:
         self, recipe_ids: tuple[str, ...], targets: dict[str, float],
         caps: dict[str, float | None], w, data: ReferenceData,
         floors: dict[str, float] | None = None, power: PowerBalance | None = None,
-        bill: dict[str, float] | None = None,
+        bill: dict[str, float] | None = None, extraction: tuple = (),
     ) -> _Problem:
-        """The section 7 matrices. `solve` and `solve_district` share them.
+        """The section 7 matrices. `solve`, `solve_district` and every site of
+        `solve_portfolio` share them, power row and extraction included (A6:
+        one implementation of the row).
+
+        `extraction` (A4): ExtractionSegments, each a column e_j in [0, cap]
+        (uncapped for a pumped supply), tied to its raw's draw by a link row
+        s_i - sum_j e_ij = 0 and charged mw_per_unit * e_j on the power row
+        and under the power goal. The raw's own cap bound is lifted, since
+        its segments carry the same total (contracts.check_extraction): two
+        bounds on one quantity let the solver put the dual on either (A5.2).
+        A segment whose raw nothing reads has no draw column and no column.
 
         `targets` are the b_eq demands (0.0 for a district target, whose output
         is then the item's leftover flow). `floors` are lower bounds on those
@@ -261,11 +322,20 @@ class LpBackend:
         n_x, n_s = len(recipe_ids), len(raw_ids)
         n_l = len(item_ids) if self.unconsumed is UnconsumedMode.FREE else 0
         n_g = len(generators)
+        segs = tuple(e for e in extraction if e.item_id in raw_index)
+        linked = tuple(dict.fromkeys(e.item_id for e in segs))
+        n_e = len(segs)
+        e0 = n_x + n_s + n_l + n_g
         n_lam = 1 if bill else 0
-        n = n_x + n_s + n_l + n_g + n_lam
+        n = e0 + n_e + n_lam
 
-        a_eq = np.zeros((len(item_ids), n), dtype=float)
-        b_eq = np.zeros(len(item_ids), dtype=float)
+        a_eq = np.zeros((len(item_ids) + len(linked), n), dtype=float)
+        b_eq = np.zeros(len(item_ids) + len(linked), dtype=float)
+        link_row = {item: len(item_ids) + r for r, item in enumerate(linked)}
+        for item, row in link_row.items():
+            a_eq[row, n_x + raw_index[item]] = 1.0
+        for j, e in enumerate(segs):
+            a_eq[link_row[e.item_id], e0 + j] = -1.0
         for col, r in enumerate(recipes):
             for item, rate in r.outputs:
                 a_eq[item_index[item], col] += rate
@@ -295,6 +365,10 @@ class LpBackend:
         if n_l:
             bounds.extend((floors.get(item, 0.0), FLOW_UPPER_BOUND) for item in item_ids)
         bounds.extend((0.0, self.activity_upper_bound) for _ in generators)
+        bounds.extend((0.0, FLOW_UPPER_BOUND if e.cap_per_min is None else float(e.cap_per_min))
+                      for e in segs)
+        for item in linked:
+            bounds[n_x + raw_index[item]] = (0.0, FLOW_UPPER_BOUND)
         if n_lam:
             bounds.append((0.0, FLOW_UPPER_BOUND))
 
@@ -305,6 +379,8 @@ class LpBackend:
         # A generator is a building; its fuel is priced through the raw draw
         # it causes, and it carries no power term because it supplies power.
         primary[n_x + n_s + n_l:n_x + n_s + n_l + n_g] = w.buildings
+        for j, e in enumerate(segs):
+            primary[e0 + j] = w.power * e.mw_per_unit   # A4: priced like lane MW
         # the scale column costs nothing in any goal: it is a proportion
 
         a_ub = b_ub = None
@@ -316,6 +392,8 @@ class LpBackend:
                 a_ub[0, col] = _statistic(r, self.power_statistic)
             for col, g in enumerate(generators):
                 a_ub[0, n_x + n_s + n_l + col] = -g.power_mw
+            for j, e in enumerate(segs):
+                a_ub[0, e0 + j] = e.mw_per_unit   # A4: the draw, on the same row
             b_ub = np.array([power.grid_mw - power.spare_mw - power.extraction_mw], dtype=float)
         bill_rows: tuple[str, ...] = ()
         if n_lam:
@@ -343,7 +421,7 @@ class LpBackend:
             n_x=n_x, n_s=n_s, n_l=n_l,
             a_eq=a_eq, b_eq=b_eq, bounds=bounds,
             primary=primary, secondary=secondary,
-            n_g=n_g, generators=generators, a_ub=a_ub, b_ub=b_ub,
+            n_g=n_g, generators=generators, n_e=n_e, extraction=segs, a_ub=a_ub, b_ub=b_ub,
             n_lam=n_lam, bill_rows=bill_rows,
         )
 
@@ -441,11 +519,12 @@ class LpBackend:
         total_bill = request.bill_total
         p = self._build_core(
             recipe_ids, targets, caps, request.weights, data, floors, request.power, bill,
+            request.extraction,
         )
         index = {i: n for n, i in enumerate(p.item_ids)}
         out_col = {t.item_id: p.n_x + p.n_s + index[t.item_id] for t in active}
 
-        n = p.n_x + p.n_s + p.n_l + p.n_g + p.n_lam
+        n = p.n
         # Stage weights (A31): an extra's weight as given; a bill product's
         # weight times its bill share, so 1.0 reads "worth what the bill says".
         c_w = np.zeros(n, dtype=float)
@@ -552,16 +631,9 @@ class LpBackend:
         # the objective by that much, so the price of one more unit of cap is
         # its negation.
         marginals = np.asarray(first.upper.marginals, dtype=float)
-        s_first = np.asarray(first.x, dtype=float)[p.n_x:p.n_x + p.n_s]
-        binding = tuple(
-            BindingCap(
-                item_id=i,
-                cap_per_min=float(caps[i]),
-                shadow_price=-float(marginals[p.n_x + col]) + 0.0,
-            )
-            for col, i in enumerate(p.raw_ids)
-            if caps.get(i) is not None and s_first[col] >= float(caps[i]) - tol
-        )
+        binding = _binding(p, np.asarray(first.x, dtype=float), marginals, caps, tol,
+                           relative=0.0, zero_caps=True)
+        drawn_mw, nameplate_mw, pumped = _extraction_read(p, v, tol, request.extraction)
         power_report = None
         if request.power is not None:
             x = v[:p.n_x]
@@ -581,15 +653,19 @@ class LpBackend:
             )
             generated = float(sum(u.mw for u in uses))
             pb = request.power
-            margin = generated + pb.grid_mw - lane_mw - pb.extraction_mw - pb.spare_mw
+            # A6: the segments' draw, or P2's constant (the request refuses both)
+            extraction = pb.extraction_mw + drawn_mw
+            margin = generated + pb.grid_mw - lane_mw - extraction - pb.spare_mw
             # row 0 of A_ub is the power row (bill rows follow it). The dual is
             # in the first stage's units: scale per MW with a bill, else
             # weighted output per MW
             row_dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
             power_report = DistrictPower(
-                lane_mw=lane_mw, extraction_mw=pb.extraction_mw, grid_mw=pb.grid_mw,
+                lane_mw=lane_mw, extraction_mw=extraction, grid_mw=pb.grid_mw,
                 spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
                 generators=uses, binding=margin <= tol, shadow_price=-row_dual + 0.0,
+                extraction_nameplate_mw=nameplate_mw if request.extraction else None,
+                pumped=pumped,
             )
         horizon = None
         if scale_value is not None and scale_value > tol:
@@ -636,69 +712,57 @@ class LpBackend:
         problems = [
             self._build_core(
                 recipe_ids, targets, {c.item_id: c.rate_per_min for c in site.resource_caps},
-                request.weights, data, power=request.power,
+                request.weights, data, power=request.power, extraction=site.extraction,
             )
             for site in request.sites
         ]
         p0 = problems[0]
-        n_items, n_site = len(p0.item_ids), p0.n_x + p0.n_s + p0.n_l + p0.n_g
+        n_items = len(p0.item_ids)   # every site shares recipes, generators, bill: same items
         n_sites = len(problems)
+        # A6: sites differ in extraction columns and link rows, so each block
+        # sits at its own offset; a site's item rows come first in its block
+        col0, row0 = [], []
+        cols = rows = 0
+        for q in problems:
+            col0.append(cols)
+            row0.append(rows)
+            cols += q.n
+            rows += q.a_eq.shape[0]
         pairs = tuple((a, b) for a in range(n_sites) for b in range(n_sites) if a != b)
-        t0 = n_sites * n_site
-        e0 = t0 + len(pairs) * n_items
-        raw_col = {i: c for c, i in enumerate(p0.raw_ids)}
-        # A4: one column per (site k, segment), site order then segment order.
-        # A raw no enabled recipe or generator reads has no draw column, so
-        # its segments would draw nothing; they get no column
-        segs = tuple((k, e) for k, site in enumerate(request.sites)
-                     for e in site.extraction if e.item_id in raw_col)
-        linked = tuple(dict.fromkeys((k, e.item_id) for k, e in segs))
-        n = e0 + len(segs) + 1
+        t0 = cols
+        n = t0 + len(pairs) * n_items + 1
         lam = n - 1
 
-        a_eq = np.zeros((n_sites * n_items + len(linked), n), dtype=float)
+        a_eq = np.zeros((rows, n), dtype=float)
         bounds: list[tuple[float, float | None]] = []
-        for k, p in enumerate(problems):
-            a_eq[k * n_items:(k + 1) * n_items, k * n_site:(k + 1) * n_site] = p.a_eq
-            bounds.extend(p.bounds)
+        for k, q in enumerate(problems):
+            a_eq[row0[k]:row0[k] + q.a_eq.shape[0], col0[k]:col0[k] + q.n] = q.a_eq
+            bounds.extend(q.bounds)
         for m, (a, b) in enumerate(pairs):
             for i in range(n_items):
                 col = t0 + m * n_items + i
-                a_eq[a * n_items + i, col] = -1.0   # leaves a
-                a_eq[b * n_items + i, col] = 1.0    # arrives at b
+                a_eq[row0[a] + i, col] = -1.0   # leaves a
+                a_eq[row0[b] + i, col] = 1.0    # arrives at b
         bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(len(pairs) * n_items))
-        # A4: s_ki - sum_j e_kij = 0, one row per (site, extracted raw). The
-        # raw's own cap bound is lifted: its segments carry the same total
-        # (PortfolioSite checks), and two bounds on one quantity let the
-        # solver put the dual on either, which left the raw's price at 0
-        link_row = {key: n_sites * n_items + r for r, key in enumerate(linked)}
-        for (k, item), row in link_row.items():
-            a_eq[row, k * n_site + p0.n_x + raw_col[item]] = 1.0
-            bounds[k * n_site + p0.n_x + raw_col[item]] = (0.0, FLOW_UPPER_BOUND)
-        for j, (k, e) in enumerate(segs):
-            a_eq[link_row[(k, e.item_id)], e0 + j] = -1.0
-            bounds.append((0.0, FLOW_UPPER_BOUND if e.cap_per_min is None else float(e.cap_per_min)))
         bounds.append((0.0, FLOW_UPPER_BOUND))
         index = {i: n for n, i in enumerate(p0.item_ids)}
-        # A3: ONE shared grid row, row 0 when present: every site's lanes and
-        # generators (each site's own row from _build_core, laid side by side)
-        # <= grid - spare - extraction, counted once
+        # A3: ONE shared grid row, row 0 when present: every site's own row
+        # from _build_core (lanes, generators, extraction draw) side by side
+        # <= grid - spare - constant extraction, counted once
         n_pw = 1 if request.power is not None else 0
         a_ub = np.zeros((n_pw + len(request.bill), n), dtype=float)
         b_ub = np.zeros(n_pw + len(request.bill), dtype=float)
         if n_pw:
-            for k, p in enumerate(problems):
-                a_ub[0, k * n_site:(k + 1) * n_site] = p.a_ub[0]
-            for j, (_, e) in enumerate(segs):
-                a_ub[0, e0 + j] = e.mw_per_unit   # A4: the draw, on the same row
+            for k, q in enumerate(problems):
+                a_ub[0, col0[k]:col0[k] + q.n] = q.a_ub[0]
             b_ub[0] = float(p0.b_ub[0])
         for r, (item, units) in enumerate(request.bill):
             a_ub[n_pw + r, lam] = float(units)
-            for k in range(n_sites):
-                a_ub[n_pw + r, k * n_site + p0.n_x + p0.n_s + index[item]] = -1.0
+            for k, q in enumerate(problems):
+                a_ub[n_pw + r, col0[k] + q.n_x + q.n_s + index[item]] = -1.0
         whole = _Problem(
             recipe_ids=recipe_ids, item_ids=p0.item_ids, raw_ids=p0.raw_ids,
-            n_x=0, n_s=0, n_l=0, a_eq=a_eq, b_eq=np.zeros(n_sites * n_items + len(linked)),
+            n_x=0, n_s=0, n_l=0, a_eq=a_eq, b_eq=np.zeros(rows),
             bounds=bounds, primary=np.zeros(n), secondary=np.zeros(n),
             a_ub=a_ub, b_ub=b_ub,
         )
@@ -725,55 +789,37 @@ class LpBackend:
         scale = -float(first.fun) if -float(first.fun) > self.tolerance else 0.0
         pin(c1, float(first.fun))
         c2 = np.zeros(n)
-        c2[t0:e0] = 1.0
+        c2[t0:lam] = 1.0
         second = run(c2)
         pin(c2, float(second.fun))
         c3 = np.zeros(n)
-        for k, p in enumerate(problems):
-            c3[k * n_site:(k + 1) * n_site] = p.primary[:n_site]
-        for j, (_, e) in enumerate(segs):
-            c3[e0 + j] = request.weights.power * e.mw_per_unit   # A4: priced like lane MW
+        for k, q in enumerate(problems):
+            c3[col0[k]:col0[k] + q.n] = q.primary   # extraction priced in it (A4)
         third = run(c3)
         pin(c3, float(third.fun))
         c4 = np.ones(n)
         c4[lam] = 0.0
         v = np.asarray(run(c4).x, dtype=float)
-        if bool(np.any(v[:t0].reshape(n_sites, n_site)[:, :p0.n_x]
-                       >= self.activity_upper_bound * (1.0 - 1.0e-6))):
+        if any(bool(np.any(v[col0[k]:col0[k] + q.n_x] >= self.activity_upper_bound * (1.0 - 1.0e-6)))
+               for k, q in enumerate(problems)):
             raise Unbounded("a site's recipe activity sits on the guard; the answer is the guard's")
 
         tol = self.tolerance
         marginals = np.asarray(first.upper.marginals, dtype=float)
         sites = []
         for k, (site, p) in enumerate(zip(request.sites, problems)):
-            vs = v[k * n_site:(k + 1) * n_site]
+            vs = v[col0[k]:col0[k] + p.n]
             plan = self._response({}, site.resource_caps, data, p, vs, 0.0, False)
             caps = {c.item_id: c.rate_per_min for c in site.resource_caps}
-            draw = vs[p.n_x:p.n_x + p.n_s]
-            # a pumped raw's cap is None: never binding (A4). With segments the
-            # price sits on the segment bounds: one per saturated segment
-            seg_price: dict[str, list[float]] = {}
-            for j, (kk, e) in enumerate(segs):
-                if kk == k and e.cap_per_min is not None and e.cap_per_min > 0.0 \
-                        and v[e0 + j] >= e.cap_per_min * (1.0 - 1.0e-6) - tol:
-                    seg_price.setdefault(e.item_id, []).append(-float(marginals[e0 + j]) + 0.0)
-            binding = tuple(
-                _binding_cap(i, float(caps[i]), -float(marginals[k * n_site + p.n_x + col]) + 0.0,
-                             seg_price.get(i))
-                for col, i in enumerate(p.raw_ids)
-                if (caps.get(i) or 0.0) > 0.0 and draw[col] >= caps[i] * (1.0 - 1.0e-6) - tol
-            )
-            mine = tuple((e, float(v[e0 + j])) for j, (kk, e) in enumerate(segs) if kk == k)
-            pumped: dict[str, float] = {}
-            for e, val in mine:
-                if e.cap_per_min is None and val > tol:
-                    pumped[e.item_id] = pumped.get(e.item_id, 0.0) + val
+            binding = _binding(p, vs, marginals[col0[k]:col0[k] + p.n], caps, tol,
+                               relative=1.0e-6, zero_caps=False)
+            drawn_mw, nameplate_mw, pumped = _extraction_read(p, vs, tol, site.extraction)
             delivered = tuple(
                 (item, float(vs[p.n_x + p.n_s + index[item]]))
                 for item, _ in request.bill
                 if vs[p.n_x + p.n_s + index[item]] > tol
             )
-            g = vs[p.n_x + p.n_s + p.n_l:]
+            g = vs[p.n_x + p.n_s + p.n_l:p.e0]
             gens = tuple(
                 GeneratorUse(
                     generator_class=gen.generator_class, fuel_item_id=gen.fuel_item_id,
@@ -791,11 +837,8 @@ class LpBackend:
             # portfolio's ledger is the transfers, so they are not carried
             sites.append(SitePlan(
                 site.label, dataclasses.replace(plan, warnings=()), delivered, binding,
-                generators=gens, lane_mw=lane_mw,
-                extraction_mw=float(sum(e.mw_per_unit * val for e, val in mine)),
-                extraction_nameplate_mw=float(sum(e.nameplate_mw for e in site.extraction
-                                                  if e.nameplate_mw is not None)),
-                pumped=tuple(pumped.items()),
+                generators=gens, lane_mw=lane_mw, extraction_mw=drawn_mw,
+                extraction_nameplate_mw=nameplate_mw, pumped=pumped,
             ))
         transfers = tuple(
             Transfer(request.sites[a].label, request.sites[b].label, p0.item_ids[i],
@@ -812,10 +855,14 @@ class LpBackend:
             # A4: segments' draw when any site carries them (the request then
             # refuses a constant beside them); else P2's constant nameplate
             drawn = any(s.extraction for s in request.sites)
-            extraction = float(sum(s.extraction_mw for s in sites)) if drawn else pb.extraction_mw
+            extraction = pb.extraction_mw + float(sum(s.extraction_mw for s in sites))
             margin = generated + pb.grid_mw - lane - extraction - pb.spare_mw
             # row 0 of A_ub; its dual is in the first stage's units: scale per MW
             dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
+            total_pumped: dict[str, float] = {}
+            for s in sites:
+                for item, rate in s.pumped:
+                    total_pumped[item] = total_pumped.get(item, 0.0) + rate
             grid = DistrictPower(
                 lane_mw=lane, extraction_mw=extraction, grid_mw=pb.grid_mw,
                 spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
@@ -824,6 +871,7 @@ class LpBackend:
                 shadow_price=-dual + 0.0,
                 extraction_nameplate_mw=(float(sum(s.extraction_nameplate_mw for s in sites))
                                          if drawn else None),
+                pumped=tuple(total_pumped.items()),
             )
         return PortfolioResponse(
             scale=scale,
@@ -844,9 +892,10 @@ class LpBackend:
         for item, floor in floors.items():
             p1 = self._build_core(
                 recipe_ids, {item: 0.0}, caps, request.weights, data, {item: floor}, request.power,
+                extraction=request.extraction,
             )  # alone: no bill rows, the floor is the question
             try:
-                self._run(np.zeros(p1.n_x + p1.n_s + p1.n_l + p1.n_g + p1.n_lam), p1)
+                self._run(np.zeros(p1.n), p1)
             except Infeasible:
                 alone.append(f"{item} {floor:g}/min")
         if alone:
@@ -877,9 +926,10 @@ class LpBackend:
             p = self._build_core(
                 recipe_ids, targets, caps, request.weights, data,
                 {i: f * lam for i, f in floors.items()}, request.power,
+                extraction=request.extraction,
             )
             try:
-                return p, self._run(np.zeros(p.n_x + p.n_s + p.n_l + p.n_g + p.n_lam), p)
+                return p, self._run(np.zeros(p.n), p)
             except Infeasible:
                 return p, None
 
