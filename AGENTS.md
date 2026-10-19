@@ -128,13 +128,16 @@ in an `unresolved` list. Don't coerce them silently.
 
 Two integrity manifests: `REPO_MANIFEST.csv` (repo-relative) and
 `planning_data/manifest.csv` (relative to `planning_data/`). Both are
-`path,bytes,sha256`, sorted, with CRLF line endings. They hash **working-copy
-bytes**. The scope is declared in `tools/regenerate_manifests.py`. At the repo
+`path,bytes,sha256`, sorted, with CRLF line endings. They hash **content as git
+stores it** (2026-10-19): text is read with CRLF as LF, so a stale CRLF checkout
+cannot drift them; `-text`/`binary` paths in `.gitattributes`, and files with a
+NUL in their first 8000 bytes, are hashed byte for byte. The scope is declared in `tools/regenerate_manifests.py`. At the repo
 root, only the files listed in `root_files` are covered.
 
 - Convention: every content commit is followed by a separate
   `Regenerate manifests` commit (`python tools/regenerate_manifests.py --write`).
-- `.gitattributes` makes a checkout's bytes the same on every platform. Text
+- `.gitattributes` makes a fresh checkout's bytes the same on every platform
+  (a checkout older than the file can keep CRLF; the manifests no longer care). Text
   is LF in the index and in the working copy, and the two manifests are
   `-text` so their CRLF is stored as written. `--check` on a fresh clone is
   in sync anywhere, and `--write` is safe from a container.

@@ -1,9 +1,10 @@
 """Every text writer in the repo pins its line ending to LF, asserted from source.
 
-The manifests hash working-copy bytes. `.gitattributes` stores text as LF and
-checks it out as LF, but git does not rewrite a file a script has just written:
-a CRLF file on disk stays CRLF, `git status` shows it clean, and a manifest
-regenerated then records bytes no clone will have. That is how thirteen data
+Generated files should be written as git stores them. `.gitattributes` stores
+text as LF and checks it out as LF, but git does not rewrite a file a script has
+just written: a CRLF file on disk stays CRLF and `git status` shows it clean.
+(Until 2026-10-19 that also drifted the manifests, which hashed working-copy
+bytes; they now hash git's form of the content.) That is how thirteen data
 files drifted before 2026-09-24. The CRLF came from two defaults:
 
     csv.writer / csv.DictWriter   lineterminator defaults to "\\r\\n", on every OS

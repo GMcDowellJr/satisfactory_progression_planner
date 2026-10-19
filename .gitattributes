@@ -1,5 +1,6 @@
-# Line endings. The manifests hash working-copy bytes, so every checkout must
-# produce the bytes git stores, on every platform. Found 2026-09-24: the index
+# Line endings. Text is stored LF. (Until 2026-10-19 the manifests hashed
+# working-copy bytes, so every checkout had to produce exactly these bytes; they
+# now hash content as git stores it, read from the patterns below.) Found 2026-09-24: the index
 # held LF for every text file, but thirteen data files had been rewritten with
 # CRLF by Python writers on Windows (csv.writer's default lineterminator is
 # "\r\n"; text-mode writes translate "\n"). autocrlf normalized them on commit

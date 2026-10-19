@@ -11,6 +11,14 @@ neither lists itself. Those conventions were read off the committed files and ar
 reproduced here exactly, so a regeneration is a content change and never a format
 change.
 
+What is hashed is a file's content as git stores it, not the working-copy bytes
+(2026-10-19). For a text file that means CRLF is read as LF before hashing, and
+`bytes` is the LF size, so a checkout whose line endings went stale (one made
+before `.gitattributes` existed, or a file an editor rewrote) cannot make the
+manifests drift. A file is hashed raw when `.gitattributes` marks it `-text` or
+`binary`, or when its first 8000 bytes hold a NUL, which is git's own binary test.
+The raw patterns are read from `.gitattributes`, so the two cannot disagree.
+
 Scope is declared below rather than inferred, because what belongs in an integrity
 baseline is a judgement, not a property of the filesystem. Two subtrees are outside
 it: `data/` (route-tool working directory) and `planning_data/analysis/derived/`
@@ -34,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fnmatch
 import hashlib
 import io
 import pathlib
@@ -53,6 +62,42 @@ SKIP_DIR_SUFFIXES = (".egg-info",)
 SKIP_SUFFIXES = (".pyc", ".pyo", ".log", ".tmp")
 # Exact file names never listed.
 SKIP_NAMES = {".DS_Store", "Thumbs.db"}
+
+#: git's binary test reads this many leading bytes for a NUL.
+BINARY_PROBE = 8000
+
+
+def raw_patterns(gitattributes: pathlib.Path) -> tuple[str, ...]:
+    """Patterns `.gitattributes` marks `-text` or `binary`: hashed byte for byte."""
+    if not gitattributes.is_file():
+        return ()
+    out = []
+    for line in gitattributes.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if not parts or parts[0].startswith("#"):
+            continue
+        if any(a in ("-text", "binary") for a in parts[1:]):
+            out.append(parts[0])
+    return tuple(out)
+
+
+RAW_PATTERNS = raw_patterns(REPO / ".gitattributes")
+
+
+def is_raw(repo_rel: str, patterns: tuple[str, ...] = RAW_PATTERNS) -> bool:
+    """True when git stores this path's bytes unconverted.
+
+    A pattern without a slash matches the file name at any depth; one with a slash
+    matches from the repo root, `**/` matching any number of directories.
+    """
+    name = repo_rel.rsplit("/", 1)[-1]
+    for pat in patterns:
+        if "/" not in pat:
+            if fnmatch.fnmatchcase(name, pat):
+                return True
+        elif fnmatch.fnmatchcase(repo_rel, pat.lstrip("/").replace("**/", "*")):
+            return True
+    return False
 
 
 class Manifest:
@@ -135,13 +180,35 @@ def _walk(base: pathlib.Path):
                 yield entry
 
 
-def digest(path: pathlib.Path) -> tuple[int, str]:
+def digest(path: pathlib.Path, repo_rel: str | None = None,
+           patterns: tuple[str, ...] = RAW_PATTERNS) -> tuple[int, str]:
+    """(bytes, sha256) of the file's content as git stores it.
+
+    Text: CRLF read as LF, a CRLF split across a chunk boundary included. Raw (a
+    `-text`/`binary` path, or a NUL in the first BINARY_PROBE bytes): as on disk.
+    `repo_rel` is the path relative to the repo root, for the pattern match.
+    """
+    if repo_rel is None:
+        repo_rel = path.resolve().relative_to(REPO).as_posix()
     h = hashlib.sha256()
     n = 0
     with open(path, "rb") as f:
-        while chunk := f.read(CHUNK):
+        chunk = f.read(CHUNK)
+        raw = is_raw(repo_rel, patterns) or b"\0" in chunk[:BINARY_PROBE]
+        carry = b""
+        while chunk:
+            if not raw:
+                chunk = carry + chunk
+                carry = b""
+                if chunk.endswith(b"\r"):
+                    carry, chunk = b"\r", chunk[:-1]
+                chunk = chunk.replace(b"\r\n", b"\n")
             h.update(chunk)
             n += len(chunk)
+            chunk = f.read(CHUNK)
+        if carry:
+            h.update(carry)
+            n += len(carry)
     return n, h.hexdigest()
 
 
@@ -167,7 +234,8 @@ def process(m: Manifest, write: bool, verbose: bool) -> bool:
     old = read_existing(m.out)
     rows = []
     for rel in m.targets():
-        size, sha = digest(m.root / rel)
+        path = m.root / rel
+        size, sha = digest(path, path.relative_to(REPO).as_posix())
         rows.append((rel, size, sha))
     new = {p: (str(s), h) for p, s, h in rows}
 
