@@ -110,3 +110,20 @@ volume tie-break (P5) is what places production near its inputs. It is a
 LATER stage than the bill scale, so it never trades bill coverage for less
 haulage. Its order relative to the goal-cost stage is a design choice the
 design note proposes and Greg confirms.
+
+## Amendment 2 — 2026-10-19. Portfolio stage order
+
+### A2.1 Adopted by Greg, 2026-10-19
+
+A1.2 left the order of the volume stage and the goal-cost stage open. Greg,
+2026-10-19 13:52: "produce locally better than transporting items". Adopted
+(§4; holds until something proves it wrong): among plans of equal bill scale,
+least volume moved comes before the cheapest goal cost. This is the order
+`LpBackend.solve_portfolio` already uses, pinned by
+`test_locality_comes_before_a_cheaper_recipe_mix`.
+
+### A2.2 Recorded as ideas, not adopted
+
+- Capacity left idle after the bill scale (scenario C: ~890 of 1020/min
+  Crude Oil) is to be addressed, possibly as part of later progression steps.
+- Whether power belongs in the portfolio solve is under discussion.
