@@ -366,3 +366,66 @@ district_phase2 (1.25x recipe / 5x machine power), shipped:
 `progression.power.ledger` (the report-only ledger from the D4/A5 goal_run
 work) still lists bootstrap extractors at unscaled nameplate. No tool calls
 it; tests do. Left as recorded. Carrying A7 there is open.
+
+## Amendment 8 — 2026-10-19. By-products are used; idle capacity is reported only
+
+### A8.1 What raised it
+
+Greg, 2026-10-19, on the handoff's "the slowest item paces the bill and the
+rest of the site sits idle": nothing is idle until storage fills, assuming
+overflow doesn't go to a sink. Checking scenario C against that found a
+built line with no consumer. The portfolio solve runs with unconsumed output
+FREE (LpBackend D1 stopgap: a disposal activity is blocked on P5, and the
+bill output is itself leftover flow, so FORBID is refused there, A31). So
+the oil site's Fuel refineries leave Polymer Resin with nowhere to go, and
+`portfolio_run.report` does not list it.
+
+### A8.2 Measured 2026-10-19 (container, py3.13, master 6da07ee), not derived
+
+Scenario C as in A3.1 (tier 6, bill phase 3 + tiers 5-6, recipe x1):
+
+- No site pumps Water (the shipped case): Polymer Resin 53.33/min made,
+  0 consumed, at the oil site, from 1.778 Fuel refineries. Heavy Oil Residue
+  58.78/58.78 (all burned as Residual Fuel). Crude draw 234.19/min.
+- Oil site declared to pump Water: resin 58.18/58.18, all of it consumed by
+  0.970 Residual Plastic. Dedicated Plastic refineries 2.624 -> 1.654; Fuel
+  1.778 -> 1.939; Crude 234.19 -> 214.80/min; 19.39 m3/min Water pumped.
+  Scale unchanged (0.003499; Coal binds); grid 1378.7 MW either way.
+- The same under goal "resources", and with both sites pumping.
+
+Read: the solve already uses resin when a held recipe can take it. Both
+held consumers (Residual Plastic: 60 resin + 20 Water; Residual Rubber:
+40 resin + 40 Water) need Water, so without Water the resin is left over,
+and FREE lets it go. Used, it displaces part of the dedicated Plastic line.
+
+### A8.3 Decided by Greg, 2026-10-19 (holds until proven wrong)
+
+- By-products are to be used, not left as free overflow. Mechanism open
+  (A8.5). Greg's notes: one option is to sink the solids (a liquid cannot be
+  sunk without being packaged first); resin can become Plastic or Rubber,
+  which means the dedicated lines may not need to make as much.
+- Capacity left unclaimed after the bill scale is REPORTED ONLY for now.
+  This settles the A2.2 idea for the present: no later stage, no weighted
+  extras.
+
+### A8.4 A future note, not decided
+
+The report's wording should be consistent across tools, but it has not
+landed. The mockup of 2026-10-19 (drawn / unclaimed / backs up) is one
+proposal and no more. Until it lands the tools keep their present wording.
+
+### A8.5 Open: how by-products are used (options, unmeasured unless said)
+
+1. No free overflow for non-bill items: a leftover of anything that is not
+   a bill item is refused (or priced) in the portfolio solve. Then the solve
+   must route resin into a consumer, or not make it. Whether C without Water
+   stays feasible, and at what scale, is not measured.
+2. A sink for solids: a disposal activity for solid items only, liquids
+   refused by name until packaged. Blocked on P5 today: the reference layer
+   carries no AWESOME Sink. Polymer Resin is solid (stack 200 in items.csv);
+   Heavy Oil Residue and Fuel are fluids.
+3. Report only: list every leftover with its rate, and a fill time against
+   storage the caller declares (tools/storage_view.py already has the
+   formula). Measures the problem; changes no plan.
+
+These combine: 3 alongside 1 or 2 is likely either way.
