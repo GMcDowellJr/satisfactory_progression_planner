@@ -1,16 +1,20 @@
 """tools/portfolio_run.py: spec v1.0 (proposed) §10 C on the default world.
 
 Oil site: 16 sockets within 500 m of BP_ResourceNode98 (5 Oil nodes, 1 impure
-Copper). Copper site: 20 sockets within 500 m of BP_ResourceNode213 (Iron,
+Copper). Copper site: 19 sockets within 500 m of BP_ResourceNode213 (Iron,
 Copper, Coal, Limestone, Sulfur; no Oil). Tier 6, canonical scenario, Miner
 Mk.1 / Oil Extractor at 100 %. Bill: Project Assembly phase 3 + milestones of
 tiers 5 and 6 (A31 composition). Measured 2026-10-19, container, py3.13:
 
-    together      0.003499 bill/min      oil alone 0.000704   copper alone 0
-    oil site      makes Plastic, Rubber, Computer, Adaptive Control Unit
+    together      0.003499 bill/min      oil alone 0.000704
+    copper alone  infeasible: no oil, and Coal generators need Water nobody
+                  declared, so its 95 MW of miners cannot run
+    oil site      makes Plastic, Rubber, Computer, Adaptive Control Unit;
+                  builds 6.528 Fuel generators (1632 MW) on ~131 Fuel/min
     copper site   makes Motor, Copper Sheet; ships Motor and Automated
-                  Wiring to the oil site; receives nothing
-    Coal binds at both sites; the oil site draws ~128 of 1020 Crude Oil
+                  Wiring to the oil site; receives nothing; no generators
+    power         one shared grid (A3): tight but not limiting (shadow 0);
+                  Coal binds at both sites; oil draws ~265 of 1020/min
 
 No three-role partition is declared anywhere: the placement is the solve's.
 """
@@ -81,7 +85,7 @@ def test_c_together_beats_either_site_alone(run_c):
     assert run_c.response.scale == pytest.approx(0.003499, rel=1e-3)
     alone = dict(run_c.alone)
     assert alone["oil"] == pytest.approx(0.000704, rel=1e-3)
-    assert alone["copper"] == 0.0
+    assert alone["copper"].startswith("infeasible: cannot power its own extractors")
 
 
 def test_c_oil_products_are_made_at_the_oil_site(run_c):
@@ -102,14 +106,28 @@ def test_c_coal_binds_at_both_and_oil_is_left_over(run_c):
         assert COAL in [b.item_id for b in site.binding], site.label
     oil = next(s for s in run_c.response.sites if s.label == "oil")
     draw = {x.item_id: x.rate_per_min for x in oil.plan.raw_inputs}
-    assert draw[OIL] < 200.0
+    assert 250.0 < draw[OIL] < 300.0
+
+
+def test_c_idle_oil_powers_both_sites(run_c):
+    assert run_c.generators_open == (
+        "Build_GeneratorBiomass_Automated_C", "Build_GeneratorCoal_C", "Build_GeneratorFuel_C")
+    oil, copper = run_c.response.sites
+    assert [(u.generator_class, u.fuel_item_id) for u in oil.generators] == [
+        ("Build_GeneratorFuel_C", "Desc_LiquidFuel_C")]
+    assert oil.generators[0].count == pytest.approx(6.528, rel=1e-3)
+    assert copper.generators == ()
+    pw = run_c.response.power
+    assert pw.generated_mw == pytest.approx(pw.lane_mw + pw.extraction_mw, rel=1e-6)
+    assert pw.extraction_mw == pytest.approx(380.0, rel=1e-9)
+    assert pw.shadow_price == pytest.approx(0.0, abs=1e-12)
 
 
 def test_c_report_states_power_and_the_volume_assumption(run_c):
     from production_adapter import load
     text = portfolio_run.report(run_c, load(REPO))
-    assert "reported, not constrained" in text and "one item as one m3" in text
-    assert "copper alone: 0.000000/min" in text
+    assert "one shared grid (A3)" in text and "one item as one m3" in text
+    assert "tight, not limiting" in text and "copper alone: infeasible" in text
 
 
 def test_a_socket_in_two_sites_refuses(specs):

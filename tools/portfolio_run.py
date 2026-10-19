@@ -4,7 +4,7 @@ what moves between them, and what each would manage alone.
 
 Site-planner reframe, Amendment 1 (adopted by Greg, 2026-10-19; holds until
 something proves it wrong): demand is the Project Assembly + milestone bill
-(P1); power stays outside the solve and is reported per site (P2); transfers
+(P1); power is in the solve as one shared grid (A3, reversing P2); transfers
 between the declared sites are free (P3) and raws may move (P6); the sites are
 a bounded set the caller declares (P4); the volume tie-break counts one item
 as one m3 (P5); the bill counts wherever it is made (P7). A joint at tools/
@@ -23,8 +23,10 @@ root like district_run.py and site_card.py, whose site composition it reuses:
               moved, then goal cost, then total activity
     alone     the same bill on each site by itself, for comparison: what the
               portfolio adds over its parts
-    power     per site, machine-time MW at the scenario multiplier (mean) +
-              extractors at nameplate: REPORTED, not a constraint (P2)
+    power     A3 (P2 reversed by Greg, 2026-10-19): one shared grid IN the
+              solve. Generators open at the tier (unlocks.generators_open_at_
+              tier) may be built at any site, burning its supply; machines at
+              100 % clock, mean draw; extractors at nameplate
 
 **It cannot choose, and that is the guardrail.** Sites, tier, declared
 recipes, bill phases and tiers, scenario and goal are inputs. No min, max or
@@ -53,10 +55,10 @@ if str(REPO / "tools") not in sys.path:
     sys.path.insert(0, str(REPO / "tools"))
 
 from production_adapter import (  # noqa: E402
-    PortfolioRequest, PortfolioResponse, PortfolioSite, ResourceCap, Scenario, load,
+    PortfolioRequest, PortfolioResponse, PortfolioSite, PowerBalance, ResourceCap, Scenario, load,
 )
-from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
-from production_adapter.lp_backend import LpBackend, PowerStatistic  # noqa: E402
+from production_adapter.gamedata import ReferenceData, load_generators, load_logistics  # noqa: E402
+from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
     at_tier, available_at, bill_units, discover, extraction_nameplate_mw, recipe_ids_by_name,
     unlocks,
@@ -68,8 +70,12 @@ import site_card  # noqa: E402
 
 #: A1 P5, stated in every report
 VOLUME_ASSUMPTION = "transfer volume counts one item as one m3 (A1 P5)"
-NOT_ASSESSED = ("power (reported, not constrained: A1 P2)", "routes", "belts", "pipes",
-                "node reachability", "buildable area")
+#: A3, stated in every report
+POWER_ASSUMPTION = ("one shared grid (A3); machines at 100 % clock, mean draw for variable "
+                    "power; extractors at nameplate; generators open at the tier; declared "
+                    "supplies (Water) carry no extractor power")
+NOT_ASSESSED = ("routes", "belts", "pipes", "power lines", "node reachability", "buildable area",
+                "clock / shard / Somersloop settings")
 
 
 class PortfolioRunError(ValueError):
@@ -104,8 +110,10 @@ class PortfolioRun:
     blocked: tuple[BlockedBillItem, ...]
     sites: tuple[SiteRecord, ...]
     response: PortfolioResponse
-    #: each site alone on the same bill items: (label, scale)
-    alone: tuple[tuple[str, float], ...]
+    #: each site alone on the same bill items: (label, scale or the reason it has none)
+    alone: tuple[tuple[str, float | str], ...]
+    #: generator classes open at the tier (A3), in generator_fuels.csv order
+    generators_open: tuple[str, ...] = ()
 
 
 def compose_bill(repo: pathlib.Path, data: ReferenceData, phases: tuple[int, ...],
@@ -143,8 +151,12 @@ def run(
     specs: tuple[site_card.SiteSpec, ...], *, tier: int, scenario: Scenario, goal: str,
     bill_phases: tuple[int, ...], bill_tiers: tuple[int, ...],
     declared_recipe_names: tuple[str, ...] = (), world_config_id: str = "default_502094",
-    power_statistic: PowerStatistic = PowerStatistic.MEAN, repo: pathlib.Path = REPO,
+    power_statistic: PowerStatistic = PowerStatistic.MEAN, grid_mw: float = 0.0,
+    spare_mw: float = 0.0, repo: pathlib.Path = REPO,
 ) -> PortfolioRun:
+    """`grid_mw` is standing supply from outside these sites (an existing
+    grid); 0.0 means none, which is the reading of A1 P1's "existing sites are
+    not in the model". `spare_mw` is a margin held above the draw."""
     if goal not in site_card.GOALS:
         raise PortfolioRunError(f"no goal {goal!r}; known: {list(site_card.GOALS)}")
     if not specs:
@@ -186,27 +198,48 @@ def run(
     if not target:
         raise PortfolioRunError("no bill item can be made by these sites together")
 
+    rows = load_generators(repo)
+    classes = tuple(dict.fromkeys(g.generator_class for g in rows))
+    open_classes = unlocks.generators_open_at_tier(repo, tier, classes)
+    generators = tuple(g for g in rows if g.generator_class in open_classes)
+
+    def grid(recs) -> PowerBalance:
+        return PowerBalance(
+            generators=generators, grid_mw=grid_mw, spare_mw=spare_mw,
+            extraction_mw=float(sum(r.extraction_mw for r in recs)),
+        )
+
     backend = LpBackend(power_statistic=power_statistic)
     weights = site_card.GOALS[goal]
     response = backend.solve_portfolio(PortfolioRequest(
         sites=tuple(PortfolioSite(r.spec.label, r.caps) for r in records),
         bill=target, allowed_recipes=held.allowed_recipes, weights=weights,
+        power=grid(records),
     ), data)
-    alone = tuple(
-        (r.spec.label, backend.solve_portfolio(PortfolioRequest(
-            sites=(PortfolioSite(r.spec.label, r.caps),), bill=target,
-            allowed_recipes=held.allowed_recipes, weights=weights,
-        ), data).scale)
-        for r in records
-    )
+    alone = tuple((r.spec.label, _alone(backend, r, target, held, weights, grid((r,)), data))
+                  for r in records)
     return PortfolioRun(
         tier=tier, declared_recipes=held.declared, scenario=data.scenario, goal=goal,
         bill_phases=bill_phases, bill_tiers=bill_tiers, bill=bill, blocked=blocked,
-        sites=tuple(records), response=response, alone=alone,
+        sites=tuple(records), response=response, alone=alone, generators_open=open_classes,
     )
 
 
 # -- report -------------------------------------------------------------------
+
+def _alone(backend, rec, target, held, weights, power, data) -> float | str:
+    """One site on the bill by itself: its scale, or why it has none. With
+    extractors charged at nameplate (A25.3 P2) a site that cannot fuel any
+    open generator cannot even run its own miners: Infeasible, said so."""
+    try:
+        return backend.solve_portfolio(PortfolioRequest(
+            sites=(PortfolioSite(rec.spec.label, rec.caps),), bill=target,
+            allowed_recipes=held.allowed_recipes, weights=weights, power=power,
+        ), data).scale
+    except Infeasible:
+        return (f"infeasible: cannot power its own extractors ({rec.extraction_mw:.0f} MW "
+                "nameplate) from any generator open at this tier")
+
 
 def _n(data: ReferenceData, item_id: str) -> str:
     item = data.items.get(item_id)
@@ -222,12 +255,13 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
         f"{list(pr.bill_tiers)}: {len(pr.bill)} items, delivered wherever made (A1 P7)",
         f"  status material_bound; not assessed: " + ", ".join(NOT_ASSESSED),
         f"  {VOLUME_ASSUMPTION}; transfers are free between these sites (A1 P3)",
+        f"  power: {POWER_ASSUMPTION}",
         "",
         f"bill scale together {r.scale:.6f}/min"
         + (f" (horizon {r.horizon_min:.1f} min)" if r.horizon_min else " (some bill item cannot be made)"),
     ]
     for label, scale in pr.alone:
-        out.append(f"  {label} alone: {scale:.6f}/min")
+        out.append(f"  {label} alone: " + (scale if isinstance(scale, str) else f"{scale:.6f}/min"))
     out += ["", "bill (bill order): units; made where, per minute"]
     made = {s.label: dict(s.delivered) for s in r.sites}
     for item, units in pr.bill.items():
@@ -252,12 +286,26 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
                                                 f"{t.destination}" for t in sent) or "nothing"))
         out.append("  receives:  " + (", ".join(f"{_n(data, t.item_id)} {t.rate_per_min:.3f} <- "
                                                 f"{t.source}" for t in got) or "nothing"))
-        out.append(f"  power (reported, not constrained): machines {plan.plan.power.scenario_mw:.1f} MW "
-                   f"machine-time + extractors {rec.extraction_mw:.1f} MW nameplate")
+        gens = ", ".join(
+            f"{u.count:.2f} x {u.generator_class.replace('Build_', '').replace('_C', '')} on "
+            f"{_n(data, u.fuel_item_id)} ({u.mw:.0f} MW, {u.fuel_per_min:.1f}/min)"
+            for u in plan.generators) or "none"
+        out.append(f"  power: machines {plan.lane_mw:.1f} MW + extractors {rec.extraction_mw:.1f} MW "
+                   f"nameplate; generators here: {gens}")
         out.append("  recipes: " + ", ".join(
             f"{data.recipes[u.recipe_id].display_name} {u.machine_equivalents:.2f}"
             for u in plan.plan.recipes))
     out += ["", f"transfer volume {r.transfer_volume_per_min:.3f}/min ({VOLUME_ASSUMPTION})"]
+    pw = r.power
+    out += ["", "shared grid (A3): generators open at this tier: "
+            + ", ".join(c.replace("Build_", "").replace("_C", "") for c in pr.generators_open),
+            f"  machines {pw.lane_mw:.1f} + extractors {pw.extraction_mw:.1f} + spare {pw.spare_mw:.1f}"
+            f"  <=  generated {pw.generated_mw:.1f} + standing grid {pw.grid_mw:.1f};"
+            f" margin {pw.margin_mw:.1f} MW"
+            + ("" if not pw.binding else "  LIMITING" if pw.shadow_price > 1e-12
+               else "  tight, not limiting (shadow 0: generators built to the draw)")]
+    if pw.binding and pw.shadow_price > 1e-12:
+        out.append(f"  shadow price {pw.shadow_price:.4g} bill scale per MW of supply")
     return "\n".join(out)
 
 
@@ -267,6 +315,14 @@ def _site_arg(text: str) -> tuple[str, float, float, float]:
     if not sep or len(parts) != 3:
         raise argparse.ArgumentTypeError(f"expected LABEL:EAST,NORTH,RADIUS, got {text!r}")
     return label, float(parts[0]), float(parts[1]), float(parts[2])
+
+
+def _supply_arg(text: str) -> tuple[str, str, float]:
+    site, sep, rest = text.partition(":")
+    item, sep2, rate = rest.partition("=")
+    if not sep or not sep2:
+        raise argparse.ArgumentTypeError(f"expected LABEL:ITEM=RATE, got {text!r}")
+    return site, item, float(rate)
 
 
 def main(argv=None) -> int:
@@ -282,6 +338,12 @@ def main(argv=None) -> int:
     ap.add_argument("--bill-phase", action="append", type=int, default=[])
     ap.add_argument("--bill-tier", action="append", type=int, default=[])
     ap.add_argument("--goal", default="balanced", choices=tuple(site_card.GOALS))
+    ap.add_argument("--supply", action="append", type=_supply_arg, default=[],
+                    help="LABEL:ITEM=RATE declared supply at a site no socket carries, "
+                         "e.g. oil:Desc_Water_C=240")
+    ap.add_argument("--grid-mw", type=float, default=0.0,
+                    help="standing supply from outside these sites (default 0: none)")
+    ap.add_argument("--spare-mw", type=float, default=0.0)
     args = ap.parse_args(argv)
     if not args.bill_phase and not args.bill_tier:
         ap.error("declare the bill: --bill-phase and/or --bill-tier")
@@ -291,13 +353,19 @@ def main(argv=None) -> int:
             label=label,
             socket_ids=site_card.sockets_within(sockets, east, north, radius),
             extractors=tuple(args.extractor), extraction_clock=args.clock,
+            supply=tuple((item, rate) for site, item, rate in args.supply if site == label),
         )
         for label, east, north, radius in args.site
     )
+    labels = [label for label, _, _, _ in args.site]
+    stray = [site for site, _, _ in args.supply if site not in labels]
+    if stray:
+        ap.error(f"--supply names sites that are not declared: {stray}")
     scenario = Scenario(recipe_input_multiplier=args.recipe_multiplier)
     pr = run(specs, tier=args.tier, scenario=scenario, goal=args.goal,
              bill_phases=tuple(args.bill_phase), bill_tiers=tuple(args.bill_tier),
-             declared_recipe_names=tuple(args.recipe), world_config_id=args.world)
+             declared_recipe_names=tuple(args.recipe), world_config_id=args.world,
+             grid_mw=args.grid_mw, spare_mw=args.spare_mw)
     print(report(pr, load(REPO, scenario)))
     return 0
 

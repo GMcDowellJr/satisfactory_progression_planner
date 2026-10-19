@@ -14,6 +14,7 @@ import pytest
 from production_adapter import OutputTarget, SolveRequest, load
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic
 from progression import TierUnlocks, at_tier
+from progression import unlocks
 from progression.unlocks import PROGRESSION_TYPES
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -346,3 +347,31 @@ def test_schematics_in_tiers_returns_ids_and_never_a_quantity():
 def test_schematics_in_tiers_refuses_a_negative_tier():
     with pytest.raises(ValueError):
         _u.schematics_in_tiers(REPO, (-1,))
+
+
+# -- generators by tier (site-planner reframe A3, Greg 2026-10-19) -----------
+
+def _generator_classes():
+    from production_adapter.gamedata import load_generators
+    return tuple(dict.fromkeys(g.generator_class for g in load_generators(REPO)))
+
+
+@pytest.mark.parametrize("tier, opened", [
+    (0, ("Build_GeneratorBiomass_Automated_C",)),
+    (2, ("Build_GeneratorBiomass_Automated_C",)),
+    (3, ("Build_GeneratorBiomass_Automated_C", "Build_GeneratorCoal_C")),
+    (5, ("Build_GeneratorBiomass_Automated_C", "Build_GeneratorCoal_C", "Build_GeneratorFuel_C")),
+    (8, ("Build_GeneratorBiomass_Automated_C", "Build_GeneratorCoal_C", "Build_GeneratorFuel_C",
+         "Build_GeneratorNuclear_C")),
+])
+def test_generators_open_with_their_milestones(tier, opened):
+    """Coal Power 3-1, Petroleum Power 5-5, Nuclear Power 8-1; the Biomass
+    Burner is HUB Upgrade 6 (tutorial, tier 0). Measured 2026-10-19."""
+    assert unlocks.generators_open_at_tier(REPO, tier, _generator_classes()) == opened
+
+
+def test_generators_open_keeps_the_callers_order_and_refuses_unknowns():
+    classes = ("Build_GeneratorFuel_C", "Build_GeneratorCoal_C")
+    assert unlocks.generators_open_at_tier(REPO, 9, classes) == classes
+    with pytest.raises(unlocks.UnlockDataError, match="no build recipe"):
+        unlocks.generators_open_at_tier(REPO, 9, ("Build_GeneratorNope_C",))

@@ -427,13 +427,18 @@ class PortfolioRequest:
 
     Stages, lexicographic: max the bill scale; min transfer volume (P5: one
     item = one m3); min goal cost under `weights`; min total activity (D3a).
-    Transfers are free (P3) and raws may move (P6); power is outside (P2).
+    Transfers are free (P3) and raws may move (P6). Power: `power` (A3).
     """
 
     sites: tuple[PortfolioSite, ...]
     bill: tuple[tuple[ItemId, float], ...]
     allowed_recipes: AllowedRecipes = AllowedRecipes()
     weights: Weights = Weights()
+    #: A3 (P2 reversed, Greg 2026-10-19): ONE shared grid. `generators` may be
+    #: built at any site and burn that site's supply (or fuel moved in);
+    #: `extraction_mw` is every site's extractors at nameplate, summed by the
+    #: caller. None: power outside the solve, as before A3
+    power: PowerBalance | None = None
 
     def __post_init__(self) -> None:
         if not self.sites:
@@ -478,6 +483,10 @@ class SitePlan:
     delivered: tuple[tuple[ItemId, float], ...]
     #: caps the FINAL plan draws fully, with the first stage's shadow price
     binding: tuple[BindingCap, ...]
+    #: generators built HERE, burning fuel here (A3); not in `plan.items`
+    generators: tuple[GeneratorUse, ...] = ()
+    #: this site's machines at the power statistic, 100 % clock (A3)
+    lane_mw: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -490,3 +499,6 @@ class PortfolioResponse:
     #: sum of transfers, one item = one m3 (A1 P5)
     transfer_volume_per_min: float
     goal: Weights
+    #: the shared grid as solved (A3): every site's generators and lanes; None
+    #: when the request carried no PowerBalance
+    power: DistrictPower | None = None

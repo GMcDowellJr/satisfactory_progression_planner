@@ -615,12 +615,12 @@ class LpBackend:
         problems = [
             self._build_core(
                 recipe_ids, targets, {c.item_id: c.rate_per_min for c in site.resource_caps},
-                request.weights, data,
+                request.weights, data, power=request.power,
             )
             for site in request.sites
         ]
         p0 = problems[0]
-        n_items, n_site = len(p0.item_ids), p0.n_x + p0.n_s + p0.n_l
+        n_items, n_site = len(p0.item_ids), p0.n_x + p0.n_s + p0.n_l + p0.n_g
         n_sites = len(problems)
         pairs = tuple((a, b) for a in range(n_sites) for b in range(n_sites) if a != b)
         t0 = n_sites * n_site
@@ -640,16 +640,25 @@ class LpBackend:
         bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(len(pairs) * n_items))
         bounds.append((0.0, FLOW_UPPER_BOUND))
         index = {i: n for n, i in enumerate(p0.item_ids)}
-        a_ub = np.zeros((len(request.bill), n), dtype=float)
+        # A3: ONE shared grid row, row 0 when present: every site's lanes and
+        # generators (each site's own row from _build_core, laid side by side)
+        # <= grid - spare - extraction, counted once
+        n_pw = 1 if request.power is not None else 0
+        a_ub = np.zeros((n_pw + len(request.bill), n), dtype=float)
+        b_ub = np.zeros(n_pw + len(request.bill), dtype=float)
+        if n_pw:
+            for k, p in enumerate(problems):
+                a_ub[0, k * n_site:(k + 1) * n_site] = p.a_ub[0]
+            b_ub[0] = float(p0.b_ub[0])
         for r, (item, units) in enumerate(request.bill):
-            a_ub[r, lam] = float(units)
+            a_ub[n_pw + r, lam] = float(units)
             for k in range(n_sites):
-                a_ub[r, k * n_site + p0.n_x + p0.n_s + index[item]] = -1.0
+                a_ub[n_pw + r, k * n_site + p0.n_x + p0.n_s + index[item]] = -1.0
         whole = _Problem(
             recipe_ids=recipe_ids, item_ids=p0.item_ids, raw_ids=p0.raw_ids,
             n_x=0, n_s=0, n_l=0, a_eq=a_eq, b_eq=np.zeros(n_sites * n_items),
             bounds=bounds, primary=np.zeros(n), secondary=np.zeros(n),
-            a_ub=a_ub, b_ub=np.zeros(len(request.bill)),
+            a_ub=a_ub, b_ub=b_ub,
         )
 
         stage_ub: list[np.ndarray] = []
@@ -710,9 +719,26 @@ class LpBackend:
                 for item, _ in request.bill
                 if vs[p.n_x + p.n_s + index[item]] > tol
             )
+            g = vs[p.n_x + p.n_s + p.n_l:]
+            gens = tuple(
+                GeneratorUse(
+                    generator_class=gen.generator_class, fuel_item_id=gen.fuel_item_id,
+                    count=float(val), mw=float(val) * gen.power_mw,
+                    fuel_per_min=float(val) * gen.burn_rate_per_min,
+                    supplemental_per_min=tuple((i, float(val) * r) for i, r in gen.supplemental),
+                )
+                for gen, val in zip(p.generators, g) if val > tol
+            )
+            lane_mw = float(sum(
+                _statistic(data.recipes[rid], self.power_statistic) * val
+                for rid, val in zip(p.recipe_ids, vs[:p.n_x])
+            ))
             # the local warnings would call an export "unconsumed"; the
             # portfolio's ledger is the transfers, so they are not carried
-            sites.append(SitePlan(site.label, dataclasses.replace(plan, warnings=()), delivered, binding))
+            sites.append(SitePlan(
+                site.label, dataclasses.replace(plan, warnings=()), delivered, binding,
+                generators=gens, lane_mw=lane_mw,
+            ))
         transfers = tuple(
             Transfer(request.sites[a].label, request.sites[b].label, p0.item_ids[i],
                      float(v[t0 + m * n_items + i]))
@@ -720,12 +746,27 @@ class LpBackend:
             for i in range(n_items)
             if v[t0 + m * n_items + i] > tol
         )
+        grid = None
+        if request.power is not None:
+            pb = request.power
+            lane = float(sum(s.lane_mw for s in sites))
+            generated = float(sum(u.mw for s in sites for u in s.generators))
+            margin = generated + pb.grid_mw - lane - pb.extraction_mw - pb.spare_mw
+            # row 0 of A_ub; its dual is in the first stage's units: scale per MW
+            dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
+            grid = DistrictPower(
+                lane_mw=lane, extraction_mw=pb.extraction_mw, grid_mw=pb.grid_mw,
+                spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
+                generators=tuple(u for s in sites for u in s.generators),
+                binding=margin <= max(abs(lane), 1.0) * 1.0e-6,
+                shadow_price=-dual + 0.0,
+            )
         return PortfolioResponse(
             scale=scale,
             horizon_min=(1.0 / scale) if scale > tol else None,
             sites=tuple(sites), transfers=transfers,
             transfer_volume_per_min=float(sum(t.rate_per_min for t in transfers)),
-            goal=request.weights,
+            goal=request.weights, power=grid,
         )
 
     def _floor_diagnosis(

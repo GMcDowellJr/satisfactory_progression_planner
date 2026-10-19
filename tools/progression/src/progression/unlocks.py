@@ -337,3 +337,43 @@ def extractors_open_at_tier(
         if "Desc_" + extractor[len("Build_"):] in open_buildings:
             by_item.setdefault(r["item_id"], []).append(extractor)
     return {item: tuple(classes) for item, classes in by_item.items()}
+
+
+def generators_open_at_tier(
+    repo_root: str | pathlib.Path,
+    tier: int,
+    generator_classes: tuple[ProducerClass, ...],
+) -> tuple[ProducerClass, ...]:
+    """The generator classes, of those given, whose BUILD recipe a schematic
+    reached at `tier` unlocks. Site-planner reframe A3 (Greg, 2026-10-19:
+    "join back to unlock data for what generators are available and when").
+
+    The same join as `extractors_open_at_tier`: `Build_X_C -> Desc_X_C` to
+    building_recipes.csv, then schematic_recipe_unlocks.csv, then the tier
+    filter `_reached_at_tier` (Milestone, Tutorial, Custom; MAM research is
+    not implied by a tier, so the Geothermal Generator is not opened here).
+    The classes come from the caller (`gamedata.load_generators`), so this
+    reads no new table. Returned in the order given; a filter, it chooses none.
+    A class whose building has no build recipe at all is refused by name.
+    """
+    if tier < 0:
+        raise ValueError(f"tier must be non-negative, got {tier}")
+    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
+    reached = {
+        s["schematic_id"] for s in _rows(ref / "schematics.csv") if _reached_at_tier(s, tier)
+    }
+    open_recipes = {
+        r["recipe_id"] for r in _rows(ref / "schematic_recipe_unlocks.csv")
+        if r["schematic_id"] in reached
+    }
+    built_by = {r["building_class"]: r["recipe_id"] for r in _rows(ref / "building_recipes.csv")}
+    out: list[ProducerClass] = []
+    for cls in generator_classes:
+        if not cls.startswith("Build_"):
+            raise UnlockDataError(f"{cls!r} is not a Build_*_C class")
+        recipe = built_by.get("Desc_" + cls[len("Build_"):])
+        if recipe is None:
+            raise UnlockDataError(f"{cls}: no build recipe in building_recipes.csv")
+        if recipe in open_recipes and cls not in out:
+            out.append(cls)
+    return tuple(out)

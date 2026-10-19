@@ -127,3 +127,45 @@ least volume moved comes before the cheapest goal cost. This is the order
 - Capacity left idle after the bill scale (scenario C: ~890 of 1020/min
   Crude Oil) is to be addressed, possibly as part of later progression steps.
 - Whether power belongs in the portfolio solve is under discussion.
+
+## Amendment 3 — 2026-10-19. Power into the portfolio solve (A1 P2 reversed)
+
+### A3.1 What proved P2 wrong
+
+Measured 2026-10-19 (container, scenario C: oil site r 500 m around
+BP_ResourceNode98 + copper site r 500 m around BP_ResourceNode213, tier 6,
+bill phase 3 + tiers 5-6, recipe x1). With power outside the solve, the
+plan needed ~1534 MW (machines + extractors). Coal power for that is ~307
+Coal/min plus ~920 Water/min, while Coal already bound at both sites for
+steel; and ~890/min Crude Oil sat idle that could give ~595 Fuel/min,
+~7,400 MW gross from Fuel generators. Outside the solve neither coupling
+could appear, and spec scenario D (Coal to steel vs Coal to power) could not
+be represented at all.
+
+### A3.2 Adopted by Greg, 2026-10-19 (holds until proven wrong)
+
+- Power is in the portfolio solve as ONE shared grid: generated + standing
+  grid >= machines + extractors + spare, one row over every site.
+  Generators may be built at any site and burn that site's supply, or fuel
+  moved there (A1 P3 applies to fuel like any item).
+- Machine power at 100 % clock is the default (mean draw for variable-power
+  recipes). The scenario's machine-power multiplier already applies;
+  clock changes, shards and Somersloops may move into the solve later.
+- Which generators exist comes from the unlock data by tier:
+  `progression.unlocks.generators_open_at_tier` (Build_X_C -> Desc_X_C ->
+  build recipe -> schematic -> tier, the join `extractors_open_at_tier`
+  already uses). Biomass tier 0, Coal tier 3, Fuel tier 5, Nuclear tier 8;
+  Geothermal is MAM research and not implied by a tier. Sub-tier
+  (milestone-level) granularity: possibly later, for recipes and
+  generators together.
+
+### A3.3 Carried conventions, not new decisions
+
+- Extractors are charged at nameplate as a constant (A25.3 P2). Measured
+  consequence: a site that can fuel no open generator cannot run its own
+  miners, so the copper site alone in scenario C is infeasible (said so by
+  name in the report). Whether extraction power should follow the draw is
+  open.
+- A declared supply (Water) carries no extractor power.
+- After A3 the oil site draws ~265 of 1020/min Crude Oil; the A2.2 idea
+  (put idle capacity to work, possibly in later progression steps) stands.

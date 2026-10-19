@@ -162,3 +162,64 @@ def test_locality_comes_before_a_cheaper_recipe_mix(backend, data):
     assert r.scale == pytest.approx(20.0, rel=1e-6)
     assert r.transfers == ()
     assert "Recipe_Alternate_FusedWire_C" not in {u.recipe_id for u in r.sites[0].plan.recipes}
+
+
+# -- power in the solve: one shared grid (reframe A3, Greg 2026-10-19) --------
+
+COAL, WATER = "Desc_Coal_C", "Desc_Water_C"
+PLATES = AllowedRecipes(mode=RecipeMode.EXPLICIT, recipe_ids=("Recipe_IngotIron_C", "Recipe_IronPlate_C"))
+
+
+def _coal_power():
+    from production_adapter import PowerBalance
+    from production_adapter.gamedata import load_generators
+    rows = tuple(g for g in load_generators(REPO)
+                 if g.generator_class == "Build_GeneratorCoal_C" and g.fuel_item_id == COAL)
+    return PowerBalance(generators=rows)
+
+
+def test_power_can_limit_the_scale(backend, data):
+    """One Coal generator (15 Coal + 45 Water -> 75 MW) runs Smelters and
+    Constructors at 4 MW each: 20 Plate/min costs 8 MW, so 75 MW makes 187.5
+    Plate/min while 300 ore would allow 200. The grid row binds with a price."""
+    r = backend.solve_portfolio(PortfolioRequest(
+        (_site(data, "s", **{IRON: 300.0, COAL: 15.0, WATER: 45.0}),), ((PLATE, 1.0),), PLATES,
+        power=_coal_power(),
+    ), data)
+    assert r.scale == pytest.approx(187.5, rel=1e-6)
+    assert r.power.generated_mw == pytest.approx(75.0, rel=1e-6)
+    assert r.power.binding and r.power.shadow_price > 0.0
+    assert [(u.generator_class, u.fuel_item_id) for u in r.sites[0].generators] == [
+        ("Build_GeneratorCoal_C", COAL)]
+
+
+def test_one_site_powers_another_over_the_shared_grid(backend, data):
+    """A plant with coal and water, a mine with iron: the mine's machines run
+    on the plant's generators and no item moves (A3: power is free between
+    sites, like the grid it stands for)."""
+    r = backend.solve_portfolio(PortfolioRequest(
+        (_site(data, "plant", **{COAL: 15.0, WATER: 45.0}), _site(data, "mine", **{IRON: 60.0})),
+        ((PLATE, 1.0),), PLATES, power=_coal_power(),
+    ), data)
+    assert r.scale == pytest.approx(40.0, rel=1e-6)
+    assert r.transfers == ()
+    plant, mine = r.sites
+    assert plant.generators and not mine.generators
+    assert plant.lane_mw == pytest.approx(0.0, abs=1e-9) and mine.lane_mw == pytest.approx(16.0, rel=1e-6)
+
+
+def test_extractors_must_be_powered_even_at_zero_output(backend, data):
+    """Extraction at nameplate is a constant (A25.3 P2): a site that cannot
+    fuel a generator cannot run its miners, and the solve says so."""
+    from production_adapter import PowerBalance
+    from production_adapter.lp_backend import Infeasible
+    with pytest.raises(Infeasible):
+        backend.solve_portfolio(PortfolioRequest(
+            (_site(data, "s", **{IRON: 60.0}),), ((PLATE, 1.0),), PLATES,
+            power=PowerBalance(generators=_coal_power().generators, extraction_mw=5.0),
+        ), data)
+
+
+def test_without_power_the_response_carries_none(backend, data):
+    r = backend.solve_portfolio(PortfolioRequest((_site(data, "s", **{IRON: 30.0}),), ((PLATE, 1.0),), PLATES), data)
+    assert r.power is None and r.sites[0].generators == ()
