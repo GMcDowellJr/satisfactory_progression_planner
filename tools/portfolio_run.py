@@ -45,11 +45,34 @@ order, bill items in bill order, transfers in the solver's order.
         --extractor resource_node=Build_MinerMk1_C \\
         --extractor resource_node:Desc_LiquidOil_C=Build_OilPump_C \\
         --water copper
+
+**The record (`--export PATH`, handoff 2026-10-19 15:56 next step; Greg,
+2026-10-19: "build the json record").** One JSON document, the data contract
+for the HTML layer: the inputs as declared, the bill with its scale, every
+site's caps beside its draw, recipes, generators and power, the transfers,
+the shared grid, and per site a LEDGER of every item it touches. Display
+names ride along so a client needs no copy of the reference layer (as
+district_run's A27.3 export). LF pinned.
+
+The ledger exists because the portfolio solve drops each site's local
+warnings (lp_backend: "the portfolio's ledger is the transfers"), and with
+them D1's "unconsumed output is free" note. So a leftover, such as scenario
+C's Polymer Resin from the Fuel refineries (A8.2), appears nowhere else.
+Each row is accounting on the response, not a choice:
+
+    left = produced + received - consumed - burned - shipped - to_bill
+
+A raw's `produced` is its draw: the plan's flows count a raw drawn as
+produced (the caps carry the same figure as `drawn_per_min`). `burned` is
+generator fuel and supplemental (A3). Rows keep the solver's
+item order; values are exact, so solver residue (~1e-9) is the client's to
+round. A leftover is REPORTED; what to do with it is open (A8.5).
 """
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import pathlib
 import sys
 
@@ -87,6 +110,8 @@ POWER_ASSUMPTION = ("one shared grid (A3); machines at 100 % clock, mean draw fo
                     "(A4); generators open at the tier")
 NOT_ASSESSED = ("routes", "belts", "pipes", "power lines", "node reachability", "buildable area",
                 "clock / shard / Somersloop settings")
+#: the record's schema tag; a client checks it before reading
+RECORD_SCHEMA = "portfolio-plan/1"
 
 
 class PortfolioRunError(ValueError):
@@ -378,6 +403,122 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
     return "\n".join(out)
 
 
+# -- record ---------------------------------------------------------------------
+
+def site_ledger(pr: PortfolioRun, label: str) -> tuple[dict, ...]:
+    """One row per item the site's plan, its generators or the transfers
+    touch, in first-seen order: plan items, generator fuels, transfers,
+    bill deliveries. The identity in the module docstring gives `left`."""
+    plan = next(s for s in pr.response.sites if s.label == label)
+    rows: dict[str, dict] = {}
+
+    def row(item: str) -> dict:
+        if item not in rows:
+            rows[item] = {"item_id": item, "produced": 0.0, "received": 0.0, "consumed": 0.0,
+                          "burned": 0.0, "shipped": 0.0, "to_bill": 0.0}
+        return rows[item]
+
+    for f in plan.plan.items:
+        row(f.item_id)["produced"] += f.produced_per_min
+        row(f.item_id)["consumed"] += f.consumed_per_min
+    for u in plan.generators:
+        row(u.fuel_item_id)["burned"] += u.fuel_per_min
+        for item, rate in u.supplemental_per_min:
+            row(item)["burned"] += rate
+    for t in pr.response.transfers:
+        if t.source == label:
+            row(t.item_id)["shipped"] += t.rate_per_min
+        if t.destination == label:
+            row(t.item_id)["received"] += t.rate_per_min
+    for item, rate in plan.delivered:
+        row(item)["to_bill"] += rate
+    for r in rows.values():
+        r["left"] = (r["produced"] + r["received"] - r["consumed"] - r["burned"]
+                     - r["shipped"] - r["to_bill"])
+    return tuple(rows.values())
+
+
+def record(pr: PortfolioRun, data: ReferenceData) -> dict:
+    """The run as one JSON-ready document (module docstring)."""
+    r = pr.response
+    items: dict[str, None] = dict.fromkeys(pr.bill)
+    recipes: dict[str, None] = {}
+    producers: dict[str, None] = {}
+    sites = []
+    for rec, plan in zip(pr.sites, r.sites):
+        draw = {x.item_id: x.rate_per_min for x in plan.plan.raw_inputs}
+        ledger = site_ledger(pr, plan.label)
+        items.update(dict.fromkeys(c.item_id for c in rec.caps))
+        items.update(dict.fromkeys(x["item_id"] for x in ledger))
+        recipes.update(dict.fromkeys(u.recipe_id for u in plan.plan.recipes))
+        producers.update(dict.fromkeys(u.producer_class for u in plan.plan.recipes))
+        producers.update(dict.fromkeys(u.generator_class for u in plan.generators))
+        sites.append({
+            "label": plan.label,
+            "socket_ids": list(rec.spec.socket_ids),
+            "extractors": [{"source_kind": kind, "item_id": item, "extractor_class": cls}
+                           for (kind, item), cls in rec.spec.extractors],
+            "extraction_clock": rec.spec.extraction_clock,
+            "declared_supply": [{"item_id": i, "rate_per_min": v} for i, v in rec.spec.supply],
+            "pumps_water": rec.pumps_water,
+            # rate_per_min None: pumped (A4), uncapped; 0.0 caps (a closed site's
+            # raws it has no socket for) are kept, so the client sees the full set
+            "caps": [{"item_id": c.item_id, "cap_per_min": c.rate_per_min,
+                      "drawn_per_min": draw.get(c.item_id, 0.0)} for c in rec.caps],
+            "binding": [dataclasses.asdict(b) for b in plan.binding],
+            "recipes": [dataclasses.asdict(u) for u in plan.plan.recipes],
+            "generators": [dataclasses.asdict(u) for u in plan.generators],
+            "lane_mw": plan.lane_mw,
+            "extraction_mw": plan.extraction_mw,
+            "extraction_nameplate_mw": plan.extraction_nameplate_mw,
+            "pumped": [{"item_id": i, "rate_per_min": v} for i, v in plan.pumped],
+            "ledger": list(ledger),
+        })
+    for b in pr.blocked:
+        items.update(dict.fromkeys(b.missing_raws))
+    alone_blocked = dict(pr.alone_blocked)
+    return {
+        "schema": RECORD_SCHEMA,
+        "game_build_id": data.game_build_id,
+        "scenario": dataclasses.asdict(pr.scenario),
+        "tier": pr.tier,
+        "declared_recipes": list(pr.declared_recipes),
+        "goal": {"name": pr.goal, **dataclasses.asdict(r.goal)},
+        "generators_open": list(pr.generators_open),
+        "status": site_card.CARD_STATUS,
+        "not_assessed": list(NOT_ASSESSED),
+        "assumptions": {"volume": VOLUME_ASSUMPTION, "power": POWER_ASSUMPTION},
+        "bill": {
+            "phases": list(pr.bill_phases), "tiers": list(pr.bill_tiers),
+            "units": dict(pr.bill), "scale": r.scale, "horizon_min": r.horizon_min,
+            "blocked": [{"item_id": b.item_id, "units": b.units, "missing_raws": list(b.missing_raws),
+                         "opened_by": [{"recipe_id": rid, "source": src} for rid, src in b.opened_by]}
+                        for b in pr.blocked],
+        },
+        # a str is the reason a site has no scale alone (Infeasible), else its scale
+        "alone": [{"label": label,
+                   "scale": None if isinstance(v, str) else v,
+                   "reason": v if isinstance(v, str) else None,
+                   "cannot_make": list(alone_blocked.get(label, ()))}
+                  for label, v in pr.alone],
+        "sites": sites,
+        "transfers": [dataclasses.asdict(t) for t in r.transfers],
+        "transfer_volume_per_min": r.transfer_volume_per_min,
+        "power": None if r.power is None else dataclasses.asdict(r.power),
+        "names": {
+            "items": {i: data.items[i].display_name for i in items if i in data.items},
+            "recipes": {i: data.recipes[i].display_name for i in recipes if i in data.recipes},
+            "producers": {p: p.replace("Build_", "").replace("_C", "") for p in producers},
+        },
+    }
+
+
+def export(pr: PortfolioRun, data: ReferenceData, path: pathlib.Path) -> None:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(record(pr, data), f, indent=1)
+        f.write("\n")
+
+
 def _site_arg(text: str) -> tuple[str, float, float, float]:
     label, sep, rest = text.partition(":")
     parts = rest.split(",")
@@ -415,6 +556,8 @@ def main(argv=None) -> int:
     ap.add_argument("--grid-mw", type=float, default=0.0,
                     help="standing supply from outside these sites (default 0: none)")
     ap.add_argument("--spare-mw", type=float, default=0.0)
+    ap.add_argument("--export", type=pathlib.Path, default=None,
+                    help="write the run as one JSON record here (schema portfolio-plan/1)")
     args = ap.parse_args(argv)
     if not args.bill_phase and not args.bill_tier:
         ap.error("declare the bill: --bill-phase and/or --bill-tier")
@@ -437,7 +580,11 @@ def main(argv=None) -> int:
              bill_phases=tuple(args.bill_phase), bill_tiers=tuple(args.bill_tier),
              declared_recipe_names=tuple(args.recipe), world_config_id=args.world,
              grid_mw=args.grid_mw, spare_mw=args.spare_mw, water_sites=tuple(args.water))
-    print(report(pr, load(REPO, scenario)))
+    data = load(REPO, scenario)
+    print(report(pr, data))
+    if args.export:
+        export(pr, data, args.export)
+        print(f"\nexported: {args.export}")
     return 0
 
 
