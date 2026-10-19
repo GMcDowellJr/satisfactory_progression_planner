@@ -36,4 +36,5 @@ __all__ = [
     "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "TargetRate", "Weights",
     "get_backend", "load", "load_game_build", "load_project_assembly",
     "load_recipe_unlocks", "register", "registered",
+]
 __version__ = "0.1.0"
