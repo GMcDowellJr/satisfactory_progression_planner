@@ -380,3 +380,22 @@ def test_the_bill_and_power_share_one_coal_cap(backend, data, coal_gen):
     ), data)
     assert r.scale == pytest.approx(20.0, abs=1e-6)
     assert r.power.generators[0].fuel_per_min == pytest.approx(1.6, abs=1e-6)
+
+
+def test_a_zero_net_packaging_loop_is_not_unbounded(backend, data):
+    """Package Crude Oil / Unpackage Oil move the same items per minute both
+    ways, so the loop costs nothing in the output stages and their vertex can
+    park it on the activity bound. That is not an unbounded output: stage 4
+    (min total activity) removes it, and the guard reads activity there
+    (found 2026-10-19 by tools/site_card.py over tier 5's whole recipe set,
+    which raised Unbounded for every product of an Oil site)."""
+    loop = AllowedRecipes(mode=RecipeMode.EXPLICIT, recipe_ids=IRON_SET.recipe_ids + (
+        "Recipe_PackagedCrudeOil_C", "Recipe_UnpackageOil_C",
+        "Recipe_PackagedOilResidue_C", "Recipe_UnpackageOilResidue_C", "Recipe_Rubber_C",
+    ))
+    r = backend.solve_district(DistrictRequest(
+        targets=(DistrictTarget(IRON_PLATE),), allowed_recipes=loop,
+        resource_caps=(ResourceCap(IRON_ORE, 30.0), ResourceCap("Desc_LiquidOil_C", 60.0)),
+    ), data)
+    assert _rates(r)[IRON_PLATE] == pytest.approx(20.0, abs=1e-6)
+    assert not [u.recipe_id for u in r.plan.recipes if "ackage" in u.recipe_id]

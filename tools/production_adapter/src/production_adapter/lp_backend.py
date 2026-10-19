@@ -478,9 +478,16 @@ class LpBackend:
         if first is None:
             first = second
         x1 = np.asarray(first.x, dtype=float)
+        # Flows and the scale are read here: the pins carry them into every
+        # later stage. Recipe ACTIVITY is read after stage 4 instead: a
+        # zero-net loop (Packaged Oil <-> Crude Oil, Packaged Heavy Oil
+        # Residue <-> Heavy Oil Residue: same items per minute both ways)
+        # costs nothing in stages 1-2, so their vertex can park it on the
+        # activity bound; stage 4 (min total activity) removes it. Found
+        # 2026-10-19 by the site card over a whole tier's recipes; a declared
+        # partition (one recipe per item, A34) cannot hold such a pair.
         on_guard = (
-            bool(np.any(x1[:p.n_x] >= self.activity_upper_bound - self.tolerance))
-            or bool(np.any(x1[p.n_x:p.n_x + p.n_s] >= FLOW_UPPER_BOUND - 1.0))
+            bool(np.any(x1[p.n_x:p.n_x + p.n_s] >= FLOW_UPPER_BOUND - 1.0))
             or (p.n_lam and x1[n - 1] >= FLOW_UPPER_BOUND - 1.0)
         )
         if on_guard:
@@ -494,6 +501,11 @@ class LpBackend:
         # 4  min total activity (D3a)
         fourth = run_stage(p.secondary)
         v = np.asarray(fourth.x, dtype=float)
+        # Relative, not `tolerance`: the stage-2 pin lets output fall 1e-9 of
+        # itself, so a genuinely unbounded recipe ends a hair under the bound;
+        # a zero-net loop ends at 0. 1e-6 is that pin slack with 1000x room
+        if bool(np.any(v[:p.n_x] >= self.activity_upper_bound * (1.0 - 1.0e-6))):
+            raise Unbounded(unbounded_msg)
         tie_broken = bool(
             np.max(np.abs(v[:p.n_x] - np.asarray(third.x, dtype=float)[:p.n_x]))
             > self.tolerance
