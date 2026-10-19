@@ -16,20 +16,24 @@ from .contracts import (
 )
 from .backend import Backend, BackendNotSelected, get as get_backend, register, registered
 from .gamedata import (
-    Item, PowerRange, Producer, Recipe, ReferenceData, ReferenceDataError, load,
+    GameBuild, Item, PowerRange, Producer, ProjectAssemblyRequirement, Recipe,
+    RecipeUnlock, ReferenceData, ReferenceDataError, load, load_game_build,
+    load_project_assembly, load_recipe_unlocks,
 )
 from .scenario import (
-    CHALLENGE_1_25X_2X, FLUID_UNIT, ITEM_UNIT, MARGINAL_PEAK_DEBOTTLENECK, Scenario,
+    CHALLENGE_1_25X_2X, FLUID_ROUNDING_VARIANTS, FLUID_UNIT, ITEM_UNIT,
+    MARGINAL_PEAK_DEBOTTLENECK, Scenario,
 )
 
 __all__ = [
     "AllowedRecipes", "Backend", "BackendNotSelected", "BindingCap", "CHALLENGE_1_25X_2X",
-    "DistrictPower", "DistrictRequest", "DistrictResponse", "DistrictTarget", "FLUID_UNIT",
-    "GeneratorFuel", "GeneratorUse", "ITEM_UNIT", "Item", "ItemFlow",
-    "MARGINAL_PEAK_DEBOTTLENECK", "MachineCount", "OutputTarget", "PowerBalance",
-    "PowerRange", "PowerReport", "Producer",
+    "DistrictPower", "DistrictRequest", "DistrictResponse", "DistrictTarget",
+    "FLUID_ROUNDING_VARIANTS", "FLUID_UNIT", "GameBuild", "GeneratorFuel", "GeneratorUse",
+    "ITEM_UNIT", "Item", "ItemFlow", "MARGINAL_PEAK_DEBOTTLENECK",
+    "MachineCount", "OutputTarget", "PowerBalance", "PowerRange", "PowerReport", "Producer",
+    "ProjectAssemblyRequirement", "RecipeUnlock",
     "RawInput", "Recipe", "RecipeMode", "RecipeUse", "ReferenceData", "ReferenceDataError",
     "ResourceCap", "Scenario", "SolveRequest", "SolveResponse", "TargetRate", "Weights",
-    "get_backend", "load", "register", "registered",
-]
+    "get_backend", "load", "load_game_build", "load_project_assembly",
+    "load_recipe_unlocks", "register", "registered",
 __version__ = "0.1.0"

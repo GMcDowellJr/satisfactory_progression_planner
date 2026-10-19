@@ -1,0 +1,16 @@
+[project]
+name = "satisfactory-demand-expansion"
+version = "0.1.0"
+description = "Demand expansion: declared requirements to item quantities, per unit and per phase. The LP record section 11 shared module."
+requires-python = ">=3.11"
+# No solver, no scipy, no file access of its own. Reference data arrives through
+# `production_adapter.gamedata`; `tests/test_demand_expansion_import_boundary.py`
+# asserts that this package opens no files and reaches no deeper into the adapter.
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

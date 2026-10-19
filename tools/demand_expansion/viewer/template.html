@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Project Assembly Demand</title>
+<style>
+/* Layout: one filter row (recipe cost, elevator parts, alternates, view) above a single column; phase screen = deliveries, drill-down tree, phase table. */
+:root {
+  --bg: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --accent: #2a78d6; --accent-soft: #cde2fb; --warning: #fab219; --warning-ink: #7a5200;
+  --critical: #d03b3b; --leaf: #f0efec; --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5; --accent-soft: #184f95; --warning: #fab219; --warning-ink: #fab219; --critical: #e66767; --leaf: #383835; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5; --accent-soft: #184f95; --warning: #fab219; --warning-ink: #fab219; --critical: #e66767; --leaf: #383835; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); margin: 0; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 20px 48px; padding-inline: 16px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 15px; margin: 0; }
+.sub { color: var(--ink-2); margin: 4px 0 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--grid); }
+.filters .group { display: inline-flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; }
+.seg button { background: transparent; color: var(--ink-2); border: 0; padding: 9px 12px; min-height: 40px; font: inherit; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.seg button:focus-visible, .chip:focus-visible, .tree button:focus-visible, .link:focus-visible, .alt-row:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: inherit; padding: 8px 10px; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); min-height: 40px; }
+.narrow-only { display: none; }
+.cols-toggle { display: none; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.chip { border: 1px solid var(--axis); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 14px; min-height: 40px; font: inherit; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chip small { color: var(--muted); }
+.chip.alts { border-style: dashed; }
+.chip.alts.on { border-style: solid; border-color: var(--accent); }
+.incomplete { color: var(--warning-ink); font-weight: 600; }
+.incomplete::before { content: "▲ "; color: var(--warning); }
+.lb { color: var(--warning-ink); font-weight: 600; }
+.banner { border-radius: 8px; padding: 10px 14px; margin: 0 0 14px; background: color-mix(in srgb, var(--critical) 14%, var(--surface)); border: 1px solid var(--critical); color: var(--ink); }
+.banner code { font-family: var(--mono); font-size: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0 18px; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.card .big { font-size: 26px; font-weight: 600; margin-top: 2px; }
+.card .refused { color: var(--ink-2); font-size: 12px; margin-top: 6px; }
+section { margin-top: 26px; }
+.tree { list-style: none; margin: 8px 0 0; padding: 0; }
+.tree ul { list-style: none; margin: 0; padding-left: 22px; border-left: 1px solid var(--grid); }
+.tree li { margin: 2px 0; }
+.node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 6px 6px; border-radius: 6px; min-width: 0; min-height: 36px; }
+.node:hover { background: var(--surface); }
+.tree button { background: transparent; border: 0; color: var(--ink); font: inherit; cursor: pointer; padding: 0; display: inline-flex; gap: 6px; align-items: baseline; text-align: left; }
+.tree .tw { display: inline-block; width: 12px; color: var(--muted); }
+.qty { font-variant-numeric: tabular-nums; font-weight: 600; }
+.per { color: var(--muted); font-size: 12px; }
+.leaf { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--leaf); color: var(--ink-2); }
+.leaf.co { background: color-mix(in srgb, var(--warning) 22%, var(--surface)); color: var(--warning-ink); }
+.leaf.alt { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--ink); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; margin-top: 10px; }
+th, td { text-align: right; padding: 8px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th:first-child, td:first-child { text-align: left; }
+td:first-child { white-space: normal; min-width: 160px; }
+.link { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; padding: 4px 0; text-align: left; }
+.muted { color: var(--muted); }
+.search { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+input[type=text] { font: inherit; padding: 7px 10px; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 260px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.stat .label { margin-bottom: 2px; }
+.stat .v { font-size: 22px; font-weight: 600; }
+figure { margin: 14px 0 0; background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 12px 14px 8px; }
+figcaption { font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+svg { width: 100%; height: auto; display: block; max-width: 100%; }
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 9px; border-radius: 6px; font-size: 12px; display: none; z-index: 5; }
+.about p { max-width: 68ch; }
+.about code, .mono { font-family: var(--mono); font-size: 12px; }
+.alt-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.alt-row { display: grid; grid-template-columns: 28px 1fr; gap: 6px 10px; align-items: start; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--ring); }
+.alt-row.on { border-color: var(--accent); }
+.alt-row.off { opacity: 0.6; }
+.alt-row input { width: 20px; height: 20px; margin: 2px 0 0; }
+.alt-row .what { color: var(--ink-2); font-size: 12px; }
+.alt-row .why { color: var(--warning-ink); font-size: 12px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+.btn { border: 1px solid var(--axis); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 8px 12px; min-height: 40px; font: inherit; cursor: pointer; }
+footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--grid); padding-top: 12px; }
+@media (prefers-reduced-motion: no-preference) { .node { transition: background .12s; } }
+@media (max-width: 640px) {
+  .wrap { padding-block: 14px 84px; }
+  h1 { font-size: 20px; }
+  .filters { gap: 10px 14px; margin: 14px 0 16px; }
+  .filters .group { gap: 6px; }
+  .seg.multi { display: none; }
+  .narrow-only { display: inline-flex; }
+  .filters .group.view { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; margin: 0; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--grid); }
+  .filters .group.view .label { display: none; }
+  .filters .group.view .seg { display: flex; width: 100%; }
+  .filters .group.view .seg button { flex: 1; min-height: 44px; padding-inline: 4px; }
+  input[type=text] { font-size: 16px; min-width: 0; width: 100%; }
+  .search { align-items: stretch; }
+  .card .big { font-size: 24px; }
+  th, td { padding: 9px 6px; }
+  td:first-child { min-width: 120px; }
+  .col-more { display: none; }
+  .show-more .col-more { display: table-cell; }
+  .cols-toggle { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 0; color: var(--ink-2); min-height: 40px; }
+  .tree ul { padding-left: 14px; }
+  .per { flex-basis: 100%; margin-left: 18px; }
+  figure svg text { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Project Assembly Demand</h1>
+  <p class="sub" id="subtitle">What each Space Elevator phase makes you produce, in units, down to the parts inside the parts.</p>
+  <div id="check"></div>
+
+  <div class="filters">
+    <div class="group"><label class="label" for="rmsel">Recipe cost</label><div class="seg multi" id="rm" role="group" aria-label="Recipe cost multiplier"></div><select class="narrow-only" id="rmsel" aria-label="Recipe cost multiplier"></select></div>
+    <div class="group"><label class="label" for="pmsel">Elevator parts</label><div class="seg multi" id="pm" role="group" aria-label="Space Elevator deliverable multiplier"></div><select class="narrow-only" id="pmsel" aria-label="Space Elevator deliverable multiplier"></select></div>
+    <div class="group"><span class="label">Alternates</span><button class="chip alts" id="altchip" data-screen="alternates"></button></div>
+    <div class="group view"><span class="label">View</span>
+      <div class="seg" id="screens" role="group" aria-label="View">
+        <button data-screen="phases" aria-pressed="true">Phases</button>
+        <button data-screen="parts" aria-pressed="false">Parts</button>
+        <button data-screen="alternates" aria-pressed="false">Alternates</button>
+        <button data-screen="about" aria-pressed="false">About</button>
+      </div></div>
+  </div>
+
+  <div id="phases"></div>
+  <div id="parts" hidden></div>
+  <div id="alternates" hidden></div>
+  <div id="about" hidden class="about"></div>
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip"></div>
+<script type="application/json" id="payload" data-generated="__GENERATED__" data-repo-head="__REPO_HEAD__">__PAYLOAD__</script>
+<script id="engine">
+// A port of demand_expansion's four structural rules, expand() and aggregate().
+// DOM-free so it can run under Node for the cross-check test. The Python
+// engine is the oracle: the page recomputes the default configuration at
+// load and compares against the embedded results (selfCheck).
+const Engine = (() => {
+  const rha = x => Math.sign(x) * Math.floor(Math.abs(x) + 0.5);   // nearest, ties away from zero (record 3.2.5)
+  function scaleInput(amount, unit, m, fluid) {
+    if (m === 1) return amount;
+    const x = amount * m;
+    if (unit === 'm3') { if (fluid === null) return x; if (fluid === 'mL') return rha(x * 1000) / 1000; }
+    return rha(x);
+  }
+  const refusal = (kind, item, path, candidates) => Object.assign(new Error(kind), {refusal: kind, item, path, candidates: candidates || []});
+  function build(D, routes) {
+    const R = D.recipes, res = new Set(D.resources);
+    const primary = rid => R[rid].out[0][0];
+    for (const e of routes.exclusions) {
+      if (!R[e]) throw new Error(`${routes.name} excludes ${e}, which is not in the reference layer`);
+      if (R[e].alt) throw new Error(`${routes.name} excludes ${e}, which the data flags as an alternate`);
+    }
+    const pinned = new Set(routes.pins.map(p => p[0])), altItems = routes.alternates.map(a => a[0]);
+    if (new Set(altItems).size !== altItems.length) throw new Error(`${routes.name}: an item carries two alternate pins`);
+    const both = altItems.filter(i => pinned.has(i));
+    if (both.length) throw new Error(`${routes.name}: ${both.join(', ')} carry both a RoutePin and an AlternatePin`);
+    const ex = new Set(routes.exclusions), enabled = new Set(), producers = new Map();
+    for (const rid of Object.keys(R)) {
+      const r = R[rid]; if (r.alt || ex.has(rid)) continue;
+      const p = primary(rid); if (res.has(p)) continue;
+      enabled.add(rid); if (!producers.has(p)) producers.set(p, []); producers.get(p).push(rid);
+    }
+    for (const v of producers.values()) v.sort();
+    for (const [item, rid] of routes.alternates) {
+      const r = R[rid];
+      if (!r) throw new Error(`${routes.name} enables ${rid}, which is not in the reference layer`);
+      if (!r.alt) throw new Error(`${routes.name} enables ${rid} as an alternate, but the data flags it base`);
+      const p = primary(rid);
+      if (p !== item) throw new Error(`${routes.name} enables ${rid} for ${item}, but its primary output is ${p}`);
+      if (res.has(p)) throw new Error(`${routes.name} enables ${rid}, whose primary output ${p} is a resource`);
+      enabled.add(rid); producers.set(p, [rid]);
+    }
+    for (const [item, rid] of routes.pins) {
+      const c = producers.get(item) || [];
+      if (c.length < 2) throw new Error(`${routes.name} pins ${item} to ${rid}, but that item has ${c.length} enabled producer(s)`);
+      if (!c.includes(rid)) throw new Error(`${routes.name} pins ${item} to ${rid}, which is not among its enabled producers`);
+      producers.set(item, [rid]);
+    }
+    const cop = new Set();
+    for (const rid of enabled) for (const o of R[rid].out.slice(1)) cop.add(o[0]);
+    const leaves = new Set([...cop].filter(i => !producers.has(i) && !res.has(i)));
+    return {D, routes, R, res, enabled, producers, leaves, isLeaf: i => res.has(i) || leaves.has(i)};
+  }
+  function routeFor(G, item, path) {
+    const c = G.producers.get(item) || [];
+    if (c.length === 1) return c[0];
+    if (!c.length) throw refusal('UnproducibleItem', item, [...path, item]);
+    throw refusal('AmbiguousRoute', item, [...path, item], c);
+  }
+  function expand(G, target, m, fluid) {
+    if (G.res.has(target) || G.leaves.has(target)) throw refusal('NotExpandable', target, [target]);
+    const memo = new Map();
+    function one(item, path) {
+      if (memo.has(item)) return memo.get(item);
+      if (path.includes(item)) throw refusal('CycleDetected', item, [...path.slice(path.indexOf(item)), item]);
+      const rid = routeFor(G, item, path), r = G.R[rid], outAmt = r.out[0][1];
+      const emb = new Map(), dep = new Map(), cyc = new Map([[rid, 1 / outAmt]]), co = new Map();
+      for (const [ci, ca] of r.out.slice(1)) co.set(ci, (co.get(ci) || 0) + ca / outAmt);
+      for (const [ii, ia, iu] of r.in) {
+        const per = scaleInput(ia, iu, m, fluid) / outAmt;
+        emb.set(ii, (emb.get(ii) || 0) + per);
+        dep.set(ii, Math.min(dep.has(ii) ? dep.get(ii) : 1, 1));
+        if (G.isLeaf(ii)) continue;
+        const c = one(ii, [...path, item]);
+        for (const [k, v] of c.emb) emb.set(k, (emb.get(k) || 0) + per * v);
+        for (const [k, v] of c.dep) dep.set(k, Math.min(dep.has(k) ? dep.get(k) : v + 1, v + 1));
+        for (const [k, v] of c.cyc) cyc.set(k, (cyc.get(k) || 0) + per * v);
+        for (const [k, v] of c.co) co.set(k, (co.get(k) || 0) + per * v);
+      }
+      const out = {emb, dep, cyc, co}; memo.set(item, out); return out;
+    }
+    const t = one(target, []);
+    const rid = routeFor(G, target, []), r = G.R[rid], outAmt = r.out[0][1], direct = new Map();
+    for (const [ii, ia, iu] of r.in) direct.set(ii, (direct.get(ii) || 0) + scaleInput(ia, iu, m, fluid) / outAmt);
+    return {target, emb: t.emb, direct, dep: t.dep, cyc: t.cyc, co: t.co, leaves: [...t.emb.keys()].filter(i => G.leaves.has(i)).sort()};
+  }
+  const ROUTE_REFUSALS = new Set(['AmbiguousRoute', 'UnproducibleItem', 'CycleDetected']);
+  function aggregate(G, deliveries, m, pa, fluid) {
+    const phases = [...new Set(deliveries.map(d => d[0]))].sort((a, b) => a - b);
+    const per = new Map(phases.map(p => [p, new Map()])), complete = {};
+    for (const p of phases) complete[p] = true;
+    const rows = [], unresolved = [], exps = new Map();
+    for (const [ph, phName, item, q1x] of deliveries) {
+      const q = pa === 1 ? q1x : rha(q1x * pa);
+      const b = per.get(ph); b.set(item, (b.get(item) || 0) + q);
+      let e;
+      try { if (!exps.has(item)) exps.set(item, expand(G, item, m, fluid)); e = exps.get(item); }
+      catch (err) {
+        if (!err.refusal || !ROUTE_REFUSALS.has(err.refusal)) throw err;
+        const row = {ph, phName, item, q1x, q, refusal: err}; rows.push(row); unresolved.push(row); complete[ph] = false; continue;
+      }
+      rows.push({ph, phName, item, q1x, q, refusal: null});
+      for (const [k, v] of e.emb) b.set(k, (b.get(k) || 0) + v * q);
+    }
+    const items = [...new Set([].concat(...[...per.values()].map(b => [...b.keys()])))].sort();
+    const cells = new Map();
+    for (const item of items) {
+      const series = phases.map(p => per.get(p).get(item) || 0), total = series.reduce((a, b) => a + b, 0);
+      let running = 0, runningOk = true; const out = [];
+      phases.forEach((p, k) => {
+        const q = series[k], prev = k ? series[k - 1] : 0; running += q; runningOk = runningOk && complete[p];
+        const later = phases.slice(k + 1);
+        const growth = prev > 0 ? {kind: 'ratio', ratio: q / prev} : q > 0 ? {kind: 'new', ratio: null} : {kind: 'none', ratio: null};
+        out.push({item, ph: p, q, prev, growth, cum: running, rem: total - running, ok: complete[p], cumOk: runningOk, remOk: later.every(l => complete[l])});
+      });
+      cells.set(item, out);
+    }
+    return {phases, cells, deliveries: rows, unresolved, complete};
+  }
+  function inScopeTargets(G) { return [...G.producers.keys()].filter(i => i in G.D.names).sort(); }
+  function coefficients(G, m, fluid) {
+    const rows = [], refused = [];
+    for (const t of inScopeTargets(G)) {
+      let e; try { e = expand(G, t, m, fluid); } catch (err) { if (!err.refusal) throw err; refused.push([t, err]); continue; }
+      for (const [s, per] of e.emb) rows.push([s, t, per, e.direct.get(s) || 0, e.dep.get(s), G.res.has(s) ? 'R' : G.leaves.has(s) ? 'C' : '']);
+    }
+    rows.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0);
+    return {rows, refused};
+  }
+  const close = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+  function selfCheck(D) {
+    const G = build(D, D.routes), problems = []; let checked = 0;
+    for (const m of D.recipe_multipliers) {
+      const mine = coefficients(G, +m, D.fluid_rounding_unit).rows, theirs = D.oracle.coefficients[m];
+      if (mine.length !== theirs.length) problems.push(`recipe ${m}x: ${mine.length} coefficient rows here, ${theirs.length} in the engine's record`);
+      const n = Math.min(mine.length, theirs.length);
+      for (let i = 0; i < n; i++) {
+        const a = mine[i], b = theirs[i]; checked++;
+        if (a[0] !== b[0] || a[1] !== b[1] || !close(a[2], b[2]) || !close(a[3], b[3]) || a[4] !== b[4] || a[5] !== b[5]) { problems.push(`recipe ${m}x: ${b[0]} in ${b[1]}: page ${a.slice(2).join('/')} vs engine ${b.slice(2).join('/')}`); if (problems.length > 20) break; }
+      }
+    }
+    for (const [combo, fx] of Object.entries(D.oracle.phases)) {
+      const [m, pa] = combo.split('|').map(Number), agg = aggregate(G, D.deliveries, m, pa, D.fluid_rounding_unit);
+      const mine = []; for (const [item, cs] of [...agg.cells.entries()].sort()) for (const c of cs) mine.push([item, c.ph, c.q, c.prev, c.growth.kind, c.growth.ratio, c.cum, c.rem, c.ok, c.cumOk, c.remOk]);
+      if (mine.length !== fx.cells.length) problems.push(`phases ${combo}: ${mine.length} cells here, ${fx.cells.length} in the engine's record`);
+      const n = Math.min(mine.length, fx.cells.length);
+      for (let i = 0; i < n; i++) {
+        const a = mine[i], b = fx.cells[i]; checked++;
+        const same = a[0] === b[0] && a[1] === b[1] && close(a[2], b[2]) && close(a[3], b[3]) && a[4] === b[4] && ((a[5] == null && b[5] == null) || close(a[5] ?? 0, b[5] ?? 0)) && close(a[6], b[6]) && close(a[7], b[7]) && a[8] === b[8] && a[9] === b[9] && a[10] === b[10];
+        if (!same) { problems.push(`phases ${combo}: ${b[0]} phase ${b[1]}: page ${a.slice(2).join('/')} vs engine ${b.slice(2).join('/')}`); if (problems.length > 20) break; }
+      }
+      for (const p of Object.keys(fx.complete)) if (!!agg.complete[p] !== fx.complete[p]) problems.push(`phases ${combo}: phase ${p} completeness differs`);
+    }
+    return {checked, problems};
+  }
+  return {rha, scaleInput, build, expand, aggregate, inScopeTargets, coefficients, selfCheck};
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+</script>
+<script>
+const payloadEl = document.getElementById('payload');
+const P = JSON.parse(payloadEl.textContent);
+const RES = new Set(P.resources);
+const name = id => P.names[id] || id;
+const FLUID = P.fluid_rounding_unit;
+const ALT = Object.fromEntries(P.alternates.map(a => [a[0], {rid: a[0], name: a[1], item: a[2], unlock: a[3], reason: a[4]}]));
+const state = { rm: '1', pm: '1', screen: 'phases', phase: 3, part: 'Desc_Motor_C', open: new Set(), seen: new Set(), more: false, alts: new Set(), altq: '' };
+try { const s = JSON.parse(localStorage.getItem('pad-state') || '{}');
+  if (P.recipe_multipliers.includes(s.rm)) state.rm = s.rm;
+  if (P.pa_multipliers.includes(s.pm)) state.pm = s.pm;
+  if (['phases', 'parts', 'alternates', 'about'].includes(s.screen)) state.screen = s.screen;
+  if (P.deliveries.some(d => d[0] === s.phase)) state.phase = s.phase;
+  if (P.names[s.part]) state.part = s.part;
+  state.more = !!s.more;
+  for (const rid of (s.alts || [])) if (ALT[rid] && !ALT[rid].reason) state.alts.add(rid);
+} catch (e) {}
+// A page built with `viewer --alternate ...` carries those pins in the payload and its
+// oracle was computed with them; they are the starting selection, shown ticked.
+const BAKED = P.routes.alternates.map(a => a[1]);
+if (!state.alts.size) for (const rid of BAKED) state.alts.add(rid);
+const BASE_NAME = P.routes.name.split('+')[0];
+document.getElementById('subtitle').textContent += ` Satisfactory ${P.provenance.game_version} build ${P.provenance.build_number}.`;
+function remember() { try { localStorage.setItem('pad-state', JSON.stringify({rm: state.rm, pm: state.pm, screen: state.screen, phase: state.phase, part: state.part, more: state.more, alts: [...state.alts]})); } catch (e) {} }
+
+// ---- the graph for the current alternates, the expansions for the current multipliers
+const GRAPHS = new Map(), AGG = new Map(), COEF = new Map();
+const altKey = () => [...state.alts].sort().join('+');
+function routes() { return {...P.routes, alternates: [...state.alts].sort().map(rid => [ALT[rid].item, rid])}; }
+function graph() { const k = altKey(); if (!GRAPHS.has(k)) GRAPHS.set(k, Engine.build(P, routes())); return GRAPHS.get(k); }
+function agg() { const k = altKey() + '|' + state.rm + '|' + state.pm; if (!AGG.has(k)) AGG.set(k, Engine.aggregate(graph(), P.deliveries, +state.rm, +state.pm, FLUID)); return AGG.get(k); }
+function coef() {
+  const k = altKey() + '|' + state.rm;
+  if (!COEF.has(k)) {
+    const {rows, refused} = Engine.coefficients(graph(), +state.rm, FLUID), byTarget = new Map(), bySource = new Map();
+    for (const [s, t, per, direct, depth, kind] of rows) {
+      if (!byTarget.has(t)) byTarget.set(t, []); byTarget.get(t).push({s, per, direct, depth, kind});
+      if (!bySource.has(s)) bySource.set(s, []); bySource.get(s).push({t, per, direct, depth, kind});
+    }
+    COEF.set(k, {byTarget, bySource, refused});
+  }
+  return COEF.get(k);
+}
+const phases = () => agg().phases;
+const phaseName = ph => (P.deliveries.find(d => d[0] === ph) || [])[1] || '';
+const phaseUnlock = ph => (P.deliveries.find(d => d[0] === ph) || [])[4] || '';
+const configId = () => `${BASE_NAME}${[...state.alts].sort().map(r => '+' + r).join('')}/recipe${state.rm}/pa${state.pm}/fluid-${FLUID || 'none'}`;
+const isLeaf = id => graph().isLeaf(id);
+
+// ---- formatting
+const fmt = n => { if (n == null || n === '') return ''; const a = Math.abs(n); const d = a >= 1000 ? 0 : a >= 100 ? 1 : a >= 10 ? 2 : 3; return Number(n).toLocaleString(undefined, {maximumFractionDigits: d}); };
+const growth = c => c.growth.kind === 'ratio' ? fmt(c.growth.ratio) + '×' : c.growth.kind === 'new' ? 'new' : '·';
+const leafTag = id => RES.has(id) ? '<span class="leaf">resource</span>' : graph().leaves.has(id) ? '<span class="leaf co">coproduct-supplied</span>' : altTag(id);
+const altTag = id => { const rid = (graph().producers.get(id) || [])[0]; return rid && P.recipes[rid].alt ? `<span class="leaf alt" title="${esc(P.recipes[rid].n)}">alt</span>` : ''; };
+const lb = ok => ok ? '' : '<span class="lb" title="lower bound">+</span>';
+// remaining-to-end: how many more of this phase's worth is still to come. Undefined when this phase needs none.
+const toEnd = c => c.q > 0 ? fmt(c.rem / c.q) + '×' + lb(c.remOk) : '<span class="muted">·</span>';
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const refusalText = err => err.refusal === 'AmbiguousRoute' ? `${name(err.item)} has ${err.candidates.length} possible recipes and no declared choice` : err.refusal === 'UnproducibleItem' ? `no enabled recipe makes ${name(err.item)}` : err.refusal === 'CycleDetected' ? `recipe cycle at ${name(err.item)}` : String(err.message);
+
+// ---- drill-down tree
+const parentUnits = {};
+function directInputs(item) { return (coef().byTarget.get(item) || []).filter(r => r.direct > 0).sort((a, b) => b.direct - a.direct || name(a.s).localeCompare(name(b.s))); }
+function treeNode(item, units, key, depth) {
+  const kids = isLeaf(item) ? [] : directInputs(item);
+  const isOpen = state.open.has(key);
+  const tw = kids.length ? (isOpen ? '▾' : '▸') : '';
+  let html = `<li><div class="node">` +
+    (kids.length
+      ? `<button data-toggle="${esc(key)}" aria-expanded="${isOpen}"><span class="tw">${tw}</span><span>${esc(name(item))}</span></button>`
+      : `<span><span class="tw"></span>${esc(name(item))}</span>`) +
+    `<span class="qty">${fmt(units)}</span>` +
+    (depth ? `<span class="per">${fmt(units / parentUnits[key])} per parent</span>` : '') +
+    leafTag(item) + `</div>`;
+  if (kids.length && isOpen) {
+    html += '<ul>';
+    for (const k of kids) { const ck = key + '/' + k.s; parentUnits[ck] = units; html += treeNode(k.s, units * k.direct, ck, depth + 1); }
+    html += '</ul>';
+  }
+  return html + '</li>';
+}
+function openOnce(key) { if (!state.seen.has(key)) { state.seen.add(key); state.open.add(key); } }
+const colsToggle = () => `<label class="cols-toggle"><input type="checkbox" id="morecols" ${state.more ? 'checked' : ''}> Show cumulative, remaining and to end</label>`;
+
+// ---- phases screen
+function renderPhases() {
+  const a = agg(), ph = state.phase, rows = a.deliveries.filter(r => r.ph === ph), complete = a.complete[ph];
+  let html = `<div class="chips" role="group" aria-label="Phase">` + phases().map(p =>
+    `<button class="chip" data-phase="${p}" aria-pressed="${p === ph}">Phase ${p} <small>${esc(phaseName(p))}</small>${a.complete[p] ? '' : ' <span class="incomplete" title="a delivery was refused">incomplete</span>'}</button>`).join('') + `</div>`;
+  html += `<h2>Phase ${ph}, ${esc(phaseName(ph))} <span class="muted">· delivery unlocks ${esc(phaseUnlock(ph))}</span></h2>`;
+  html += `<div class="grid">` + rows.map(r => `<div class="card"><div class="label">Delivered</div><div>${esc(name(r.item))}</div><div class="big">${fmt(r.q)}</div>` +
+    (r.q !== r.q1x ? `<div class="muted">${fmt(r.q1x)} at 1×</div>` : '') +
+    (r.refusal ? `<div class="refused"><span class="incomplete">not expanded</span> ${esc(refusalText(r.refusal))}</div>` : '') + `</div>`).join('') + `</div>`;
+  if (!complete) html += `<p class="incomplete">Phase ${ph} is incomplete: a delivery above could not be expanded, so every total that includes this phase is a lower bound.</p>`;
+  html += `<section><h2>Inside the deliveries</h2><p class="sub">Each delivered part, then the parts its recipe takes, scaled to this phase's quantity. Open a part to see what it is made of. Expansion stops at a resource, or at a part supplied as a byproduct of another line.</p><ul class="tree">`;
+  for (const r of rows) { if (r.refusal) continue; const key = `${altKey()}|${state.rm}|${state.pm}|${ph}:${r.item}`; parentUnits[key] = r.q; openOnce(key); html += treeNode(r.item, r.q, key, 0); }
+  html += `</ul></section>`;
+  const items = [...a.cells.values()].map(cs => cs.find(c => c.ph === ph)).filter(c => c && c.q > 0).sort((x, y) => name(x.item).localeCompare(name(y.item)));
+  html += `<section><h2>Everything phase ${ph} requires</h2><p class="sub">${items.length} parts and resources, in units. Growth is against the previous phase; cumulative includes earlier phases; remaining is later phases only; to end is remaining divided by this phase, how many more of this phase's worth is still to come.</p>${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Part</th><th>This phase</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th><th class="col-more">To end</th></tr></thead><tbody>` +
+    items.map(cl => `<tr><td><button class="link" data-part="${esc(cl.item)}">${esc(name(cl.item))}</button> ${leafTag(cl.item)}</td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td><td class="col-more">${toEnd(cl)}</td></tr>`).join('') +
+    `</tbody></table></div></section>`;
+  document.getElementById('phases').innerHTML = html;
+}
+
+// ---- parts screen
+function renderParts() {
+  const c = coef(), a = agg(), part = state.part, series = a.cells.get(part) || [];
+  const all = [...new Set([...a.cells.keys(), ...c.bySource.keys(), ...c.byTarget.keys()])].sort((x, y) => name(x).localeCompare(name(y)));
+  let html = `<div class="search"><label for="partq" class="label">Part</label><input type="text" id="partq" list="partlist" value="${esc(name(part))}" autocomplete="off"><datalist id="partlist">${all.map(x => `<option value="${esc(name(x))}">`).join('')}</datalist>${leafTag(part)}</div>`;
+  if (series.length) {
+    const lastCell = series[series.length - 1], first = series.find(s => s.q > 0), last = [...series].reverse().find(s => s.q > 0);
+    html += `<div class="stats"><div class="card stat"><div class="label">Lifetime units</div><div class="v">${fmt(lastCell.cum)}${lb(lastCell.cumOk)}</div></div><div class="card stat"><div class="label">First required</div><div class="v">${first ? 'Phase ' + first.ph : '–'}</div></div><div class="card stat"><div class="label">Last required</div><div class="v">${last ? 'Phase ' + last.ph : '–'}</div></div></div>`;
+    html += chart(series);
+    html += `${colsToggle()}<div class="tablewrap"><table class="${state.more ? 'show-more' : ''}"><thead><tr><th>Phase</th><th>Units</th><th>Growth</th><th class="col-more">Cumulative</th><th class="col-more">Remaining</th><th class="col-more">To end</th></tr></thead><tbody>` +
+      series.map(cl => `<tr><td>Phase ${cl.ph} <span class="muted">${esc(phaseName(cl.ph))}</span></td><td>${fmt(cl.q)}${lb(cl.ok)}</td><td>${growth(cl)}</td><td class="col-more">${fmt(cl.cum)}${lb(cl.cumOk)}</td><td class="col-more">${fmt(cl.rem)}${lb(cl.remOk)}</td><td class="col-more">${toEnd(cl)}</td></tr>`).join('') + `</tbody></table></div>`;
+  } else html += `<p class="sub">No Project Assembly delivery requires ${esc(name(part))} under this configuration.</p>`;
+  const dest = (c.bySource.get(part) || []).sort((x, y) => name(x.t).localeCompare(name(y.t)));
+  html += `<section><h2>Where ${esc(name(part))} ends up</h2><p class="sub">Units of ${esc(name(part))} inside one unit of each part below, by every recipe path, at ${esc(state.rm)}× recipe cost. Direct means the part's own recipe takes it.</p>` +
+    (dest.length ? `<div class="tablewrap"><table><thead><tr><th>Target</th><th>Per unit</th><th>Direct</th><th>Depth</th></tr></thead><tbody>` +
+      dest.map(d => `<tr><td><button class="link" data-part="${esc(d.t)}">${esc(name(d.t))}</button></td><td>${fmt(d.per)}</td><td>${d.direct ? fmt(d.direct) : '<span class="muted">·</span>'}</td><td>${d.depth}</td></tr>`).join('') + `</tbody></table></div>` : `<p class="sub">Nothing consumes it.</p>`) + `</section>`;
+  const made = isLeaf(part) ? [] : directInputs(part);
+  if (made.length) html += `<section><h2>What one ${esc(name(part))} takes</h2><ul class="tree">` + (() => { const key = `${altKey()}|${state.rm}|p:` + part; parentUnits[key] = 1; openOnce(key); return treeNode(part, 1, key, 0); })() + `</ul></section>`;
+  document.getElementById('parts').innerHTML = html;
+}
+
+function chart(series) {
+  const W = 640, H = 220, L = 60, R = 12, T = 18, B = 34, n = series.length;
+  const max = Math.max(1, ...series.map(s => s.q)), step = niceStep(max), top = Math.ceil(max / step) * step;
+  const y = v => T + (H - T - B) * (1 - v / top), slot = (W - L - R) / n, bw = Math.min(24, slot * 0.6);
+  let g = '';
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${compact(v)}</text>`;
+  let bars = '', maxI = series.reduce((m, s, k) => s.q > series[m].q ? k : m, 0);
+  series.forEach((s, k) => {
+    const x = L + slot * k + (slot - bw) / 2, yv = y(s.q), h = Math.max(0, y(0) - yv), rr = Math.min(4, h);
+    const path = h > 0 ? `M${x},${y(0)} v${-(h - rr)} a${rr},${rr} 0 0 1 ${rr},${-rr} h${bw - 2 * rr} a${rr},${rr} 0 0 1 ${rr},${rr} v${h - rr} z` : '';
+    bars += `<g class="bar" data-k="${k}"><rect x="${L + slot * k}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>` +
+      (path ? `<path d="${path}" fill="var(--accent)"/>` : '') +
+      (!s.ok && h > 0 ? `<path d="${path}" fill="url(#hatch)"/>` : '') +
+      `<text x="${L + slot * k + slot / 2}" y="${H - B + 16}" text-anchor="middle" font-size="11" fill="var(--ink-2)">Phase ${s.ph}</text>` +
+      ((k === maxI || k === n - 1) && s.q > 0 ? `<text x="${L + slot * k + slot / 2}" y="${yv - 6}" text-anchor="middle" font-size="11" fill="var(--ink)">${fmt(s.q)}${s.ok ? '' : '+'}</text>` : '') + `</g>`;
+  });
+  return `<figure><figcaption>Units required per phase (incremental). A hatched bar is a lower bound: that phase has a delivery the engine could not expand.</figcaption><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Units required per phase"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--surface)" opacity="0.55"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" stroke-width="2"/></pattern></defs>${g}<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>${bars}</svg></figure>`;
+}
+function niceStep(max) { const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p; return 10 * p; }
+function compact(v) { return v >= 1e6 ? +(v / 1e6).toFixed(2) + 'M' : v >= 1000 ? +(v / 1000).toFixed(2) + 'K' : String(+v.toFixed(2)); }
+
+// ---- alternates screen
+function renderAlternates() {
+  const q = state.altq.trim().toLowerCase();
+  const list = P.alternates.map(a => ALT[a[0]]).filter(a => !q || a.name.toLowerCase().includes(q) || name(a.item).toLowerCase().includes(q) || a.unlock.toLowerCase().includes(q));
+  const selected = [...state.alts].map(r => ALT[r]).sort((x, y) => x.name.localeCompare(y.name));
+  let html = `<h2>Alternate recipes</h2><p class="sub">Tick an alternate to make it the only recipe for the part it makes, everywhere that part appears. One alternate per part; ticking a second one for the same part replaces the first. Alternates that cannot be declared on this route table say why. Nothing here is ranked: the engine reports, you choose.</p>`;
+  html += `<div class="toolbar"><input type="text" id="altq" placeholder="Search by alternate, part or unlock" value="${esc(state.altq)}" autocomplete="off"><button class="btn" id="altclear" ${selected.length ? '' : 'disabled'}>Clear ${selected.length ? selected.length : ''}</button></div>`;
+  if (selected.length) html += `<p class="sub">In effect: ${selected.map(a => esc(a.name)).join(', ')}.</p>`;
+  html += `<ul class="alt-list">` + list.map(a => {
+    const on = state.alts.has(a.rid), off = !!a.reason;
+    return `<li class="alt-row ${on ? 'on' : ''} ${off ? 'off' : ''}"><input type="checkbox" id="alt-${esc(a.rid)}" data-alt="${esc(a.rid)}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''}><label for="alt-${esc(a.rid)}"><div>${esc(a.name)}</div><div class="what">makes ${esc(name(a.item))}${a.unlock ? ' · ' + esc(a.unlock) : ''}</div>${off ? `<div class="why">${esc(a.reason)}</div>` : ''}</label></li>`;
+  }).join('') + `</ul>`;
+  document.getElementById('alternates').innerHTML = html;
+}
+
+// ---- about
+function renderAbout() {
+  const p = P.provenance, c = coef(), selected = [...state.alts].map(r => ALT[r]);
+  document.getElementById('about').innerHTML = `
+  <h2>What this page shows</h2>
+  <p>Quantities, in units, that each Space Elevator phase requires: the delivered parts themselves, plus everything inside them by every recipe path. There is no time here, no machine counts and no rates. The page carries a port of the repository's demand-expansion engine and runs it for the multipliers and alternates you choose. The port is checked, not trusted: at every load the page recomputes the default configuration and compares it with the Python engine's results embedded here, and says so below.</p>
+  <h2>The two multipliers</h2>
+  <p>Recipe cost scales every recipe's inputs per cycle, rounded to the nearest whole part as the game does, so it compounds unevenly through a chain. The settings below 1× need a floor rule the record leaves open and are not offered. Elevator parts scales the delivery quantities, rounded the same way (50 becomes 13 at 0.25×). Fluids round in ${esc(FLUID)}, as observed in game on 2026-10-10.</p>
+  <h2>Rules the numbers rest on</h2>
+  <p>A recipe produces only the output the game lists first; everything else is a coproduct and is never expanded through. Resources are leaves. Alternates are off unless declared; this view declares ${selected.length ? selected.map(a => esc(a.name)).join(', ') : 'none'}. A part that no recipe makes first but some recipe makes as a byproduct is a leaf (in this view: ${[...graph().leaves].map(name).sort().map(esc).join(', ') || 'none'}): the requirement is shown as <span class="leaf co">coproduct-supplied</span> and which line covers it is left to the planner. A delivered part counts as itself in its own phase. A delivery whose recipe path reaches a part with several possible recipes and no declared choice is not expanded; its own quantity still counts and its phase is marked incomplete.</p>
+  <h2>Configuration in view</h2>
+  <p><span class="mono">${esc(configId())}</span></p>
+  <h2>Self-check</h2>
+  <p id="checkabout"></p>
+  <h2>Provenance</h2>
+  <p>Game ${esc(p.game_version)} build ${esc(p.build_number)}, reference data <span class="mono">${esc(p.game_build_id)}</span>, docs sha256 <span class="mono">${esc(p.docs_sha256.slice(0, 16))}…</span>. Route table <span class="mono">${esc(p.route_table)}</span>, hash <span class="mono">${esc(p.route_table_sha256.slice(0, 16))}…</span>.${payloadEl.dataset.repoHead ? ' Repository <span class="mono">' + esc(payloadEl.dataset.repoHead.slice(0, 12)) + '</span>.' : ''}${payloadEl.dataset.generated ? ' Generated ' + esc(payloadEl.dataset.generated) + '.' : ''}</p>
+  <h2>Parts not expanded in this view</h2>
+  <div class="tablewrap"><table><thead><tr><th>Part</th><th style="text-align:left">Why</th></tr></thead><tbody>${c.refused.map(([t, err]) => `<tr><td>${esc(name(t))}</td><td style="text-align:left;white-space:normal">${esc(refusalText(err))}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('checkabout').textContent = CHECK.text;
+}
+
+// ---- self-check against the engine's record, once per load
+const CHECK = (() => {
+  try {
+    const r = Engine.selfCheck(P);
+    if (r.problems.length) return {ok: false, text: `${r.problems.length} difference(s) from the engine's record across ${r.checked} checks: ${r.problems.slice(0, 3).join('; ')}`};
+    return {ok: true, text: `Passed: ${r.checked.toLocaleString()} coefficient rows and phase cells recomputed here match the engine's record for every recipe multiplier and two phase tables.`};
+  } catch (e) { return {ok: false, text: `The page's engine failed on the default configuration: ${e.message}`}; }
+})();
+document.getElementById('check').innerHTML = CHECK.ok ? '' : `<div class="banner" role="alert"><strong>Figures on this page may be wrong.</strong> ${esc(CHECK.text)}</div>`;
+
+// ---- wiring
+function render() {
+  document.getElementById('rm').innerHTML = P.recipe_multipliers.map(m => `<button data-rm="${m}" aria-pressed="${m === state.rm}">${m}×</button>`).join('');
+  document.getElementById('pm').innerHTML = P.pa_multipliers.map(m => `<button data-pm="${m}" aria-pressed="${m === state.pm}">${m}×</button>`).join('');
+  document.getElementById('rmsel').innerHTML = P.recipe_multipliers.map(m => `<option value="${m}" ${m === state.rm ? 'selected' : ''}>${m}×</option>`).join('');
+  document.getElementById('pmsel').innerHTML = P.pa_multipliers.map(m => `<option value="${m}" ${m === state.pm ? 'selected' : ''}>${m}×</option>`).join('');
+  const chip = document.getElementById('altchip'); chip.textContent = state.alts.size ? `${state.alts.size} in effect` : 'none'; chip.classList.toggle('on', state.alts.size > 0);
+  for (const b of document.querySelectorAll('#screens button')) b.setAttribute('aria-pressed', String(b.dataset.screen === state.screen));
+  for (const s of ['phases', 'parts', 'alternates', 'about']) document.getElementById(s).hidden = s !== state.screen;
+  ({phases: renderPhases, parts: renderParts, alternates: renderAlternates, about: renderAbout})[state.screen]();
+  document.getElementById('foot').textContent = `${configId()}. ${CHECK.ok ? 'Self-check passed.' : 'Self-check failed; see About.'} Every figure is exact in the engine; this page rounds for display.`;
+  remember();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.rm) { state.rm = t.dataset.rm; render(); }
+  else if (t.dataset.pm) { state.pm = t.dataset.pm; render(); }
+  else if (t.dataset.screen) { state.screen = t.dataset.screen; render(); }
+  else if (t.dataset.phase) { state.phase = +t.dataset.phase; render(); }
+  else if (t.dataset.toggle) { const k = t.dataset.toggle; state.open.has(k) ? state.open.delete(k) : state.open.add(k); render(); }
+  else if (t.dataset.part) { state.part = t.dataset.part; state.screen = 'parts'; render(); window.scrollTo({top: 0}); }
+  else if (t.id === 'altclear') { state.alts.clear(); render(); }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'rmsel') { state.rm = e.target.value; render(); return; }
+  if (e.target.id === 'pmsel') { state.pm = e.target.value; render(); return; }
+  if (e.target.id === 'morecols') { state.more = e.target.checked; render(); return; }
+  if (e.target.dataset && e.target.dataset.alt) {
+    const rid = e.target.dataset.alt, a = ALT[rid];
+    if (e.target.checked) { for (const other of [...state.alts]) if (ALT[other].item === a.item) state.alts.delete(other); state.alts.add(rid); }
+    else state.alts.delete(rid);
+    render(); return;
+  }
+  if (e.target.id !== 'partq') return;
+  const v = e.target.value.trim(); const hit = Object.entries(P.names).find(([id, n]) => n.toLowerCase() === v.toLowerCase());
+  if (hit) { state.part = hit[0]; render(); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'altq') { state.altq = e.target.value; renderAlternates(); const el = document.getElementById('altq'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
+const tip = document.getElementById('tip');
+document.addEventListener('mousemove', e => {
+  const g = e.target.closest && e.target.closest('g.bar'); if (!g) { tip.style.display = 'none'; return; }
+  const s = (agg().cells.get(state.part) || [])[+g.dataset.k]; if (!s) return;
+  tip.textContent = `Phase ${s.ph}: ${fmt(s.q)} units${s.ok ? '' : ' (lower bound)'} · cumulative ${fmt(s.cum)} · remaining ${fmt(s.rem)}`;
+  tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY + 12) + 'px';
+});
+render();
+</script>
+</body>
+</html>
