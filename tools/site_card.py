@@ -556,7 +556,7 @@ def build_card(
     powered_error = None
     try:
         segments = site_extraction(definition, rates, load_power_tables(repo).extractors,
-                                   supply=spec.supply, water=water)
+                                   scenario=data.scenario, supply=spec.supply, water=water)
     except DistrictError as e:
         powered_error = str(e)
     if powered_error is None:

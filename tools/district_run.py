@@ -80,7 +80,7 @@ from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic 
 from production_adapter import DistrictTarget  # noqa: E402
 from progression import (  # noqa: E402
     DistrictDefinition, StandingSupply, at_tier, bill_units, caps_less_draws, discover,
-    extraction_at_share, extraction_nameplate_mw, partition_recipes, pumped_caps,
+    extraction_at_share, nameplate_mw, partition_recipes, pumped_caps,
     recipe_ids_by_name, resource_caps, site_extraction,
     resources_in_reference_order, standing_generation, unlocks,
 )
@@ -227,8 +227,9 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
         raise DistrictRunError(f"{decl.LABEL}: no makeable bill item is left after BILL_EXCLUDED")
 
     tables = load_power_tables(repo)
-    extraction_mw = extraction_nameplate_mw(definition, tables.extractors)
-    segments = site_extraction(definition, rates, tables.extractors, water=decl.WATER_PUMPABLE)
+    segments = site_extraction(definition, rates, tables.extractors, scenario=data.scenario,
+                               water=decl.WATER_PUMPABLE)
+    extraction_mw = nameplate_mw(segments)
     balance, extraction = None, ()
     if power == "solve":
         if decl.STANDING_FED_FROM_DISTRICT:

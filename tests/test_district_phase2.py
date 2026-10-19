@@ -12,24 +12,25 @@ Measured in the agent container 2026-10-08, scenario 1.25x recipe / 5x
 machine power, LpBackend MEAN, goal "balanced" as the tie-break. Bill =
 Project Assembly phase 2 + schematic costs of tiers 3, 4, 5: 18 items, 15
 makeable here, all targets. Re-measured 2026-10-19 (container, py3.13)
-with extraction charged by the DRAW (reframe A6, Greg's option a; before
-it, 35 MW at nameplate: scale 0.000386, horizon 2589.7, lanes 235 MW,
-24 machines, SHORT by 875.20 MW):
+with extraction charged by the DRAW (reframe A6, Greg's option a) and the
+5x machine-power multiplier applied to extractors too (A7, Greg). Before
+both, 35 MW at unscaled nameplate: scale 0.000386, horizon 2589.7, lanes
+235 MW, 24 machines, SHORT by 875.20 MW:
 
-    on 300 MW (default)   lanes 265.01 MW + extraction 4.99 MW drawn (35
-                          nameplate) + 30 spare: scale 0.000435 /min,
-                          horizon 2296.4 min; iron 77 of 360; 25 whole
-                          machines (9 Asm, 11 Con, 1 Fdy, 4 Sml), 200.07 MW
+    on 300 MW (default)   lanes 246.78 MW + extraction 23.22 MW drawn (175
+                          nameplate at 5x) + 30 spare: scale 0.000406 /min,
+                          horizon 2466.0 min; iron 72 of 360; 24 whole
+                          machines (9 Asm, 10 Con, 1 Fdy, 4 Sml), 186.06 MW
                           realized. The 25 % case gives the SAME plan:
                           power binds, no cap does, and MW per unit does not
                           depend on the clock, so the miners' clock does
                           not enter
     --power report        the unconstrained draw: scale 0.002031, horizon
                           492.4 min; iron binds; 54 machines; 1140.20 MW
-                          realized + 25.95 MW extraction (each raw's
-                          sockets at an equal share of its cap; 35
+                          realized + 129.76 MW extraction (each raw's
+                          sockets at an equal share of its cap; 175
                           nameplate) against 300 MW standing: SHORT by
-                          866.15 MW
+                          969.96 MW
     baseline              v5.4.4's shipped portfolio as demands under the
                           partition's recipes, uncapped: coal 238.75,
                           limestone 150.4 (cap 120), caterium 48; ONE Solid
@@ -128,13 +129,13 @@ def test_caps_compose_from_extraction_rates_both_cases(shipped, readme):
 def test_the_power_plant_is_outside_the_districts_materials(shipped):
     """A35 G2: 4 coal generators, 300 MW; their 60 coal + 180 water are not
     off the caps (STANDING_FED_FROM_DISTRICT False), the water extractors are
-    not district nodes, extraction at nameplate is the 7 miners' 35 MW
-    (reported beside the draw, A6)."""
+    not district nodes, extraction at nameplate is the 7 miners' 35 MW,
+    175 MW under the 5x multiplier (A7; reported beside the draw, A6)."""
     st = shipped.standing
     assert st.mw == 300.0 and dict(st.draws) == {I["COAL"]: 60.0, I["WATER"]: 180.0}
     assert DECL.STANDING_FED_FROM_DISTRICT is False
     assert shipped.caps == shipped.gross_caps
-    assert len(DECL.NODES) == 4 and shipped.extraction_mw == 35.0
+    assert len(DECL.NODES) == 4 and shipped.extraction_mw == 5.0 * 35.0
 
 
 def test_the_district_is_closed(shipped):
@@ -204,33 +205,34 @@ def test_an_exclusion_removes_a_target_and_a_stray_exclusion_is_refused():
 # --- the plan on 300 MW (A35, the default) ------------------------------------
 
 def test_what_fits_on_300_mw(shipped):
-    """Lanes 265 MW beside 4.99 MW of extraction by the draw (A6); every
-    bill product at the scale; no cap binds."""
+    """Lanes 246.8 MW beside 23.2 MW of extraction by the draw at 5x (A6,
+    A7); every bill product at the scale; no cap binds."""
     r = shipped.response
     assert shipped.power_mode == "solve"
-    assert r.scale == pytest.approx(0.00043547, abs=1e-7)
-    assert r.horizon_min == pytest.approx(2296.394, abs=1e-2)
+    assert r.scale == pytest.approx(0.00040551, abs=1e-7)
+    assert r.horizon_min == pytest.approx(2466.027, abs=1e-2)
     rates = _rates(shipped)
-    assert rates[I["SP"]] == pytest.approx(0.435464, abs=1e-5)
-    assert rates[I["VF"]] == pytest.approx(0.435464, abs=1e-5)
-    assert rates[I["MOTOR"]] == pytest.approx(0.087093, abs=1e-5)
+    assert rates[I["SP"]] == pytest.approx(0.405511, abs=1e-5)
+    assert rates[I["VF"]] == pytest.approx(0.405511, abs=1e-5)
+    assert rates[I["MOTOR"]] == pytest.approx(0.081102, abs=1e-5)
     # at the scale within a part in a thousand: the spare-capacity stage lifts
     # one share by 1e-7 where a lane has a sliver of room
     assert [t.share for t in r.targets] == pytest.approx([r.scale] * 15, rel=1e-3)
-    assert r.weighted_output == pytest.approx(0.92115, abs=1e-4)
+    assert r.weighted_output == pytest.approx(0.85780, abs=1e-4)
     assert r.binding == ()
     pw = r.power
     assert pw.grid_mw == 300.0 and pw.spare_mw == 30.0
-    assert pw.extraction_nameplate_mw == 35.0
+    assert pw.extraction_nameplate_mw == 5.0 * 35.0
     assert pw.generators == () and pw.binding
     raw = _raw(r.plan)
     assert raw == pytest.approx(
-        {I["ORE"]: 77.193, I["COAL"]: 25.9972, I["STONE"]: 11.8446, I["GOLD"]: 2.3167}, abs=1e-3,
+        {I["ORE"]: 71.8831, I["COAL"]: 24.2089, I["STONE"]: 11.0299, I["GOLD"]: 2.1573}, abs=1e-3,
     )
-    # Mk.1: 5 MW per 120/min on a pure node, per 60/min on a normal one
-    by_hand = (raw[I["ORE"]] + raw[I["COAL"]] + raw[I["STONE"]]) * 5.0 / 120.0 + raw[I["GOLD"]] * 5.0 / 60.0
-    assert pw.extraction_mw == pytest.approx(by_hand, rel=1e-6) == pytest.approx(4.9862, abs=1e-3)
-    assert shipped.extraction_drawn_mw == pw.extraction_mw and shipped.extraction_mw == 35.0
+    # Mk.1: 5 MW per 120/min on a pure node, per 60/min on a normal one, x5 (A7)
+    by_hand = 5.0 * ((raw[I["ORE"]] + raw[I["COAL"]] + raw[I["STONE"]]) * 5.0 / 120.0
+                     + raw[I["GOLD"]] * 5.0 / 60.0)
+    assert pw.extraction_mw == pytest.approx(by_hand, rel=1e-6) == pytest.approx(23.216, abs=1e-3)
+    assert shipped.extraction_drawn_mw == pw.extraction_mw and shipped.extraction_mw == 175.0
     assert pw.lane_mw + pw.extraction_mw + pw.spare_mw == pytest.approx(300.0, abs=1e-6)
 
 
@@ -269,11 +271,11 @@ def test_the_unconstrained_draw_is_stated_against_the_standing_supply(shipped_re
     assert sum(_machines(shipped_report).values()) == 54
     # A6: no power row, so each raw's sockets at an equal share of its cap:
     # ore 360/360 of 15 MW, coal 121.24/240 of 10, stone 120/120 of 5,
-    # caterium 10.80/60 of 5
+    # caterium 10.80/60 of 5; all x5 (A7)
     assert shipped_report.extraction_drawn_mw == pytest.approx(
-        15.0 + 10.0 * 121.242 / 240.0 + 5.0 + 5.0 * 10.8041 / 60.0, abs=1e-3)
+        5.0 * (15.0 + 10.0 * 121.242 / 240.0 + 5.0 + 5.0 * 10.8041 / 60.0), abs=1e-2)
     text = district_run.report(shipped_report, load(REPO, DECL.SCENARIO))
-    assert "SHORT by 866.15 MW" in text and "nameplate 35.00" in text
+    assert "SHORT by 969.96 MW" in text and "nameplate 175.00" in text
 
 
 # --- realization (A32) ---------------------------------------------------------
@@ -296,9 +298,9 @@ def test_realization_reproduces_the_plans_rates_bus_by_bus(shipped):
 
 
 def test_realization_sizes_whole_machines_at_explicit_clocks(shipped):
-    assert _machines(shipped) == {"Build_AssemblerMk1_C": 9, "Build_ConstructorMk1_C": 11,
+    assert _machines(shipped) == {"Build_AssemblerMk1_C": 9, "Build_ConstructorMk1_C": 10,
                                   "Build_FoundryMk1_C": 1, "Build_SmelterMk1_C": 4}
-    assert shipped.realization.total_power_mw == pytest.approx(200.0685, abs=1e-3)
+    assert shipped.realization.total_power_mw == pytest.approx(186.0596, abs=1e-3)
     [steel] = _lanes(shipped, "steel_ingot")
     assert steel.machines == 1 and steel.recipe_id == STEEL_SOLID
     [vf] = _lanes(shipped, "versatile_framework")
@@ -348,8 +350,8 @@ def test_export_is_one_lf_json_document_with_the_plan_and_its_inputs(shipped_rep
     doc = json.loads(raw)
     assert doc["schema"] == district_run.EXPORT_SCHEMA and doc["case"] == "shipped"
     assert doc["power_mode"] == "report" and doc["power"] is None
-    assert doc["standing"]["mw"] == 300.0 and doc["extraction_mw"] == 35.0
-    assert doc["extraction_drawn_mw"] == pytest.approx(25.952, abs=1e-3)
+    assert doc["standing"]["mw"] == 300.0 and doc["extraction_mw"] == 175.0
+    assert doc["extraction_drawn_mw"] == pytest.approx(129.760, abs=1e-3)
     assert doc["standing_fed_from_district"] is False
     assert len(doc["gross_caps"]) == 13 and len(doc["district"]["caps"]) == 13
     assert [n["item_id"] for n in doc["district"]["nodes"]] == [I["ORE"], I["COAL"], I["STONE"], I["GOLD"]]

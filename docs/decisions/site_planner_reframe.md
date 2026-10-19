@@ -329,3 +329,40 @@ district_phase2, scenario 1.25x recipe / 5x machine power:
 - The 5x machine-power multiplier scales machine draw and has never scaled
   extraction (the 35 MW nameplate was always unscaled). Whether miners and
   pumps count as consumers under the multiplier is Greg's to decide.
+
+## Amendment 7 — 2026-10-19. The machine-power multiplier applies to extractors
+
+### A7.1 Decided by Greg, 2026-10-19 (holds until proven wrong)
+
+"Yes, the 5x power multiplier affects extractors too", answering A6.5.
+Miners, oil and water extractors and pumps draw power scaled by the
+scenario's machine-power multiplier, like machines. Generators are not
+scaled (unchanged; `GeneratorFuel`).
+
+### A7.2 What was built
+
+`progression.site_extraction` takes the scenario (required, no default)
+and scales the canonical extractor MW through `Scenario.apply_power`, the
+same transform machine power goes through. Everything that reads the
+segments follows from that: the power-row charge, the power-goal price,
+the drawn and nameplate figures, the pumped charge, and
+`extraction_at_share`. The tools' nameplate now comes from the scaled
+segments (`progression.nameplate_mw`). tests/test_shared_power.py refuses
+a tool importing the unscaled `extraction_nameplate_mw`.
+
+### A7.3 Measured 2026-10-19 (container, py3.13), not derived
+
+district_phase2 (1.25x recipe / 5x machine power), shipped:
+
+- power solve: extraction 23.22 MW drawn of 175 nameplate; scale 0.000406,
+  horizon 2466.0 min (A6: 0.000435 / 2296.4; before A6: 0.000386 /
+  2589.7); lanes 246.78 MW; 24 machines; 186.06 MW realized.
+- power report: extraction 129.76 MW at equal shares; SHORT by 969.96 MW.
+- Every canonical (1x) figure is unchanged: scenarios C and D, the site
+  card. The suite pins them and passes.
+
+### A7.4 Not changed, said so
+
+`progression.power.ledger` (the report-only ledger from the D4/A5 goal_run
+work) still lists bootstrap extractors at unscaled nameplate. No tool calls
+it; tests do. Left as recorded. Carrying A7 there is open.

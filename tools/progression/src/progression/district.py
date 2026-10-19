@@ -48,6 +48,7 @@ from production_adapter.contracts import (
     ExtractionSegment, GeneratorFuel, ItemId, ProducerClass, RecipeId, ResourceCap,
 )
 from production_adapter.gamedata import ExtractionRate, ReferenceData, load_generators
+from production_adapter.scenario import Scenario
 
 from .unlocks import generators_open_at_tier
 
@@ -237,21 +238,34 @@ def pumped_water(
 
 def site_extraction(
     definition: DistrictDefinition, rates: tuple[ExtractionRate, ...],
-    base_mw: dict[ProducerClass, float], *, supply: tuple[tuple[ItemId, float], ...] = (),
-    water: bool = False,
+    base_mw: dict[ProducerClass, float], *, scenario: Scenario,
+    supply: tuple[tuple[ItemId, float], ...] = (), water: bool = False,
 ) -> tuple[ExtractionSegment, ...]:
     """A site's whole extraction as the solver charges it (A4; one composer
     for the site card, portfolio_run and district_run, A6): one segment per
     declared node by the draw, a zero-MW segment per declared supply (it
     comes from elsewhere and carries no extractor here, and a raw's cap must
     equal its segments' sum), and pumped Water when the site is declared
-    able to pump it. Pass caps through `pumped_caps` when `water`."""
-    segs = extraction_segments(definition, rates, base_mw)
+    able to pump it. Pass caps through `pumped_caps` when `water`.
+
+    `base_mw` is canonical (extraction_buildings.csv); the scenario's
+    machine-power multiplier is applied HERE, through `Scenario.apply_power`
+    as machine power is (A7, Greg 2026-10-19: "the 5x power multiplier
+    affects extractors too"). Required: no default multiplier."""
+    scaled = {cls: scenario.apply_power(mw) for cls, mw in base_mw.items()}
+    segs = extraction_segments(definition, rates, scaled)
     segs += tuple(ExtractionSegment(item, rate, 0.0, 0.0, source="declared supply")
                   for item, rate in supply)
     if water:
-        segs += (pumped_water(rates, base_mw),)
+        segs += (pumped_water(rates, scaled),)
     return segs
+
+
+def nameplate_mw(segments: tuple[ExtractionSegment, ...]) -> float:
+    """The capped segments' nameplate, summed: the A25.3 P2 figure reported
+    beside the draw, at the scenario's multiplier (A7). A pumped supply has
+    none."""
+    return float(sum(e.nameplate_mw for e in segments if e.nameplate_mw is not None))
 
 
 def pumped_caps(caps: tuple[ResourceCap, ...]) -> tuple[ResourceCap, ...]:

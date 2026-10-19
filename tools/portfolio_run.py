@@ -68,8 +68,8 @@ from production_adapter import (  # noqa: E402
 from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    at_tier, available_at, bill_units, discover, extraction_nameplate_mw, generators_at_tier,
-    pumped_caps, recipe_ids_by_name, site_extraction, unlocks,
+    at_tier, available_at, bill_units, discover, generators_at_tier, nameplate_mw, pumped_caps,
+    recipe_ids_by_name, site_extraction, unlocks,
 )
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
 from progression import stock  # noqa: E402
@@ -215,12 +215,11 @@ def run(
     for spec in specs:
         _, _, _, definition, caps = site_card.site_caps(spec, data, rates, sockets)
         pumps = spec.label in water_sites
-        segments = site_extraction(definition, rates, tables.extractors, supply=spec.supply,
-                                   water=pumps)
+        segments = site_extraction(definition, rates, tables.extractors, scenario=data.scenario,
+                                   supply=spec.supply, water=pumps)
         if pumps:
             caps = pumped_caps(caps)
-        records.append(SiteRecord(spec, caps, extraction_nameplate_mw(definition, tables.extractors),
-                                  segments, pumps))
+        records.append(SiteRecord(spec, caps, nameplate_mw(segments), segments, pumps))
 
     held = at_tier(repo, tier, declared=recipe_ids_by_name(data, declared_recipe_names))
     bill = compose_bill(repo, data, bill_phases, bill_tiers)

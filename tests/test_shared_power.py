@@ -93,6 +93,25 @@ def test_extraction_at_share_reads_every_socket_alike():
         extraction_at_share((_seg(WATER, None, PUMP), _seg(WATER, None, PUMP)), {WATER: 1.0})
 
 
+def test_the_scenario_multiplier_reaches_extractors():
+    """A7 (Greg, 2026-10-19): the machine-power multiplier applies to
+    extractors and pumps: MW per unit, nameplate and the pumped charge all
+    scale by it; caps do not."""
+    from production_adapter import Scenario
+    from production_adapter.gamedata import load_logistics
+    from progression import DistrictDefinition, NodeCount, nameplate_mw, site_extraction
+    from progression.power import load_power_tables
+    _, rates = load_logistics(REPO)
+    base = load_power_tables(REPO).extractors
+    d = DistrictDefinition((NodeCount(IRON, "normal", 2),), "Build_MinerMk1_C", 1.0)
+    one = site_extraction(d, rates, base, scenario=Scenario(), water=True)
+    five = site_extraction(d, rates, base, scenario=Scenario(machine_power_multiplier=5.0), water=True)
+    assert [e.cap_per_min for e in five] == [e.cap_per_min for e in one] == [120.0, None]
+    assert [e.mw_per_unit for e in five] == pytest.approx([5.0 * e.mw_per_unit for e in one])
+    assert nameplate_mw(one) == 10.0 and nameplate_mw(five) == 50.0
+    assert five[1].mw_per_unit == pytest.approx(5.0 * PUMP)
+
+
 def test_generators_at_tier_is_the_a3_join():
     assert generators_at_tier(REPO, 4)[0] == ("Build_GeneratorBiomass_Automated_C", "Build_GeneratorCoal_C")
     classes, rows = generators_at_tier(REPO, 6)
@@ -102,15 +121,19 @@ def test_generators_at_tier_is_the_a3_join():
 TOOLS = ("site_card", "portfolio_run", "district_run")
 #: assembled once, in progression (A6); a tool naming one assembles its own
 ASSEMBLERS = {"extraction_segments", "pumped_water", "generators_open_at_tier"}
+#: also refused as an import or bare name (A7: nameplate comes from the
+#: scaled segments); as an attribute it is a response field of the same name
+UNSCALED = {"extraction_nameplate_mw"}
 
 
 @pytest.mark.parametrize("tool", TOOLS)
 def test_the_tools_do_not_assemble_power_themselves(tool):
     tree = ast.parse((REPO / "tools" / f"{tool}.py").read_text(encoding="utf-8"))
-    named = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
-    named |= {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
-    named |= {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) for a in n.names}
+    bare = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    bare |= {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) for a in n.names}
+    named = bare | {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     assert ASSEMBLERS.isdisjoint(named), ASSEMBLERS & named
+    assert UNSCALED.isdisjoint(bare), UNSCALED & bare
     constant = [k for n in ast.walk(tree) if isinstance(n, ast.Call)
                 and getattr(n.func, "id", getattr(n.func, "attr", None)) == "PowerBalance"
                 for k in n.keywords if k.arg == "extraction_mw"]
