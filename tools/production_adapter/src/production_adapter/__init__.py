@@ -10,7 +10,8 @@ Progression code imports from here and nowhere deeper.
 """
 from .contracts import (
     AllowedRecipes, BindingCap, DistrictPower, DistrictRequest, DistrictResponse,
-    DistrictTarget, GeneratorFuel, GeneratorUse, ItemFlow, MachineCount, OutputTarget,
+    DistrictTarget, ExtractionSegment, GeneratorFuel, GeneratorUse, ItemFlow, MachineCount,
+    OutputTarget,
     PortfolioRequest, PortfolioResponse, PortfolioSite, PowerBalance, PowerReport, RawInput,
     RecipeMode, RecipeUse, ResourceCap, SitePlan, SolveRequest, SolveResponse, TargetRate,
     Transfer, Weights,
@@ -29,6 +30,7 @@ from .scenario import (
 __all__ = [
     "AllowedRecipes", "Backend", "BackendNotSelected", "BindingCap", "CHALLENGE_1_25X_2X",
     "DistrictPower", "DistrictRequest", "DistrictResponse", "DistrictTarget",
+    "ExtractionSegment",
     "FLUID_ROUNDING_VARIANTS", "FLUID_UNIT", "GameBuild", "GeneratorFuel", "GeneratorUse",
     "ITEM_UNIT", "Item", "ItemFlow", "MARGINAL_PEAK_DEBOTTLENECK",
     "MachineCount", "OutputTarget", "PortfolioRequest", "PortfolioResponse", "PortfolioSite",

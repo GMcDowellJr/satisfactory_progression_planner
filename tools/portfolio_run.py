@@ -26,7 +26,13 @@ root like district_run.py and site_card.py, whose site composition it reuses:
     power     A3 (P2 reversed by Greg, 2026-10-19): one shared grid IN the
               solve. Generators open at the tier (unlocks.generators_open_at_
               tier) may be built at any site, burning its supply; machines at
-              100 % clock, mean draw; extractors at nameplate
+              100 % clock, mean draw
+    extract   A4 (Greg, 2026-10-19): extractors charged by their DRAW on the
+              grid, MW per unit = base MW / nominal rate, 100 % clock at most;
+              nameplate reported beside it. Water only where a site is
+              declared able to pump it (--water LABEL): uncapped, charged as
+              Water Extractors by the draw, and reported as what is needed.
+              A declared --supply of Water is refused: Water is never free
 
 **It cannot choose, and that is the guardrail.** Sites, tier, declared
 recipes, bill phases and tiers, scenario and goal are inputs. No min, max or
@@ -37,7 +43,8 @@ order, bill items in bill order, transfers in the solver's order.
         --bill-tier 6 --recipe-multiplier 1.0 --clock 1.0 \\
         --site oil:1697.17,-2033.86,500 --site copper:3555.0,1498.0,500 \\
         --extractor resource_node=Build_MinerMk1_C \\
-        --extractor resource_node:Desc_LiquidOil_C=Build_OilPump_C
+        --extractor resource_node:Desc_LiquidOil_C=Build_OilPump_C \\
+        --water copper
 """
 from __future__ import annotations
 
@@ -55,14 +62,16 @@ if str(REPO / "tools") not in sys.path:
     sys.path.insert(0, str(REPO / "tools"))
 
 from production_adapter import (  # noqa: E402
-    PortfolioRequest, PortfolioResponse, PortfolioSite, PowerBalance, ResourceCap, Scenario, load,
+    ExtractionSegment, PortfolioRequest, PortfolioResponse, PortfolioSite, PowerBalance,
+    ResourceCap, Scenario, load,
 )
 from production_adapter.gamedata import ReferenceData, load_generators, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    at_tier, available_at, bill_units, discover, extraction_nameplate_mw, recipe_ids_by_name,
-    unlocks,
+    at_tier, available_at, bill_units, discover, extraction_nameplate_mw, extraction_segments,
+    pumped_water, recipe_ids_by_name, unlocks,
 )
+from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
 from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 
@@ -72,8 +81,9 @@ import site_card  # noqa: E402
 VOLUME_ASSUMPTION = "transfer volume counts one item as one m3 (A1 P5)"
 #: A3, stated in every report
 POWER_ASSUMPTION = ("one shared grid (A3); machines at 100 % clock, mean draw for variable "
-                    "power; extractors at nameplate; generators open at the tier; declared "
-                    "supplies (Water) carry no extractor power")
+                    "power; extractors by their draw, at most 100 % clock, nameplate beside "
+                    "it (A4); Water pumped only where declared, charged as Water Extractors "
+                    "(A4); generators open at the tier")
 NOT_ASSESSED = ("routes", "belts", "pipes", "power lines", "node reachability", "buildable area",
                 "clock / shard / Somersloop settings")
 
@@ -93,8 +103,13 @@ class BlockedBillItem:
 @dataclasses.dataclass(frozen=True)
 class SiteRecord:
     spec: site_card.SiteSpec
+    #: Water None where the site pumps it (A4)
     caps: tuple[ResourceCap, ...]
+    #: the declared extractors at nameplate (A25.3 P2), reported beside the draw
     extraction_mw: float
+    #: A4: what the solve charges by the draw; pumped Water last when declared
+    segments: tuple[ExtractionSegment, ...] = ()
+    pumps_water: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -114,6 +129,9 @@ class PortfolioRun:
     alone: tuple[tuple[str, float | str], ...]
     #: generator classes open at the tier (A3), in generator_fuels.csv order
     generators_open: tuple[str, ...] = ()
+    #: per site, the bill items it cannot reach by itself (its own caps, the
+    #: held recipes): why an alone scale is 0.0 when material is the reason
+    alone_blocked: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
 def compose_bill(repo: pathlib.Path, data: ReferenceData, phases: tuple[int, ...],
@@ -139,11 +157,14 @@ def compose_bill(repo: pathlib.Path, data: ReferenceData, phases: tuple[int, ...
 
 
 def pooled(caps_by_site: tuple[tuple[ResourceCap, ...], ...]) -> tuple[ResourceCap, ...]:
-    """Each raw's caps summed over the sites, in the first site's order."""
+    """Each raw's caps summed over the sites, in the first site's order. For
+    REACH only: a pumped raw (cap None, A4) is available in any amount, so
+    its pooled cap is infinite; nothing sizes from this."""
     total: dict[str, float] = {}
     for caps in caps_by_site:
         for c in caps:
-            total[c.item_id] = total.get(c.item_id, 0.0) + c.rate_per_min
+            rate = float("inf") if c.rate_per_min is None else c.rate_per_min
+            total[c.item_id] = total.get(c.item_id, 0.0) + rate
     return tuple(ResourceCap(c.item_id, total[c.item_id]) for c in caps_by_site[0])
 
 
@@ -152,15 +173,30 @@ def run(
     bill_phases: tuple[int, ...], bill_tiers: tuple[int, ...],
     declared_recipe_names: tuple[str, ...] = (), world_config_id: str = "default_502094",
     power_statistic: PowerStatistic = PowerStatistic.MEAN, grid_mw: float = 0.0,
-    spare_mw: float = 0.0, repo: pathlib.Path = REPO,
+    spare_mw: float = 0.0, water_sites: tuple[str, ...] = (), repo: pathlib.Path = REPO,
 ) -> PortfolioRun:
     """`grid_mw` is standing supply from outside these sites (an existing
     grid); 0.0 means none, which is the reading of A1 P1's "existing sites are
-    not in the model". `spare_mw` is a margin held above the draw."""
+    not in the model". `spare_mw` is a margin held above the draw.
+    `water_sites` are the labels of sites declared able to pump Water (A4);
+    the world data does not say where water is, so nothing defaults it."""
     if goal not in site_card.GOALS:
         raise PortfolioRunError(f"no goal {goal!r}; known: {list(site_card.GOALS)}")
     if not specs:
         raise PortfolioRunError("a portfolio needs at least one site")
+    labels = [s.label for s in specs]
+    stray = [w for w in water_sites if w not in labels]
+    if stray:
+        raise PortfolioRunError(f"water declared at sites that are not declared: {stray}")
+    twice = [w for n, w in enumerate(water_sites) if w in water_sites[:n]]
+    if twice:
+        raise PortfolioRunError(f"water declared twice at {twice}")
+    free = [s.label for s in specs if any(item == WATER for item, _ in s.supply)]
+    if free:
+        raise PortfolioRunError(
+            f"declared Water supply at {free}: Water is never free (A4); declare the site "
+            "able to pump it (--water LABEL) and the solve charges Water Extractor power"
+        )
     data = load(repo, scenario)
     _, rates = load_logistics(repo)
     sockets = site_card.load_sockets(repo, world_config_id)
@@ -177,7 +213,13 @@ def run(
     records = []
     for spec in specs:
         _, _, _, definition, caps = site_card.site_caps(spec, data, rates, sockets)
-        records.append(SiteRecord(spec, caps, extraction_nameplate_mw(definition, tables.extractors)))
+        segments = extraction_segments(definition, rates, tables.extractors)
+        pumps = spec.label in water_sites
+        if pumps:
+            segments += (pumped_water(rates, tables.extractors),)
+            caps = tuple(ResourceCap(c.item_id, None) if c.item_id == WATER else c for c in caps)
+        records.append(SiteRecord(spec, caps, extraction_nameplate_mw(definition, tables.extractors),
+                                  segments, pumps))
 
     held = at_tier(repo, tier, declared=recipe_ids_by_name(data, declared_recipe_names))
     bill = compose_bill(repo, data, bill_phases, bill_tiers)
@@ -203,25 +245,30 @@ def run(
     open_classes = unlocks.generators_open_at_tier(repo, tier, classes)
     generators = tuple(g for g in rows if g.generator_class in open_classes)
 
-    def grid(recs) -> PowerBalance:
-        return PowerBalance(
-            generators=generators, grid_mw=grid_mw, spare_mw=spare_mw,
-            extraction_mw=float(sum(r.extraction_mw for r in recs)),
-        )
+    # A4: extraction is charged by the draw through each site's segments, so
+    # the constant nameplate term is 0.0
+    grid = PowerBalance(generators=generators, grid_mw=grid_mw, spare_mw=spare_mw)
 
     backend = LpBackend(power_statistic=power_statistic)
     weights = site_card.GOALS[goal]
     response = backend.solve_portfolio(PortfolioRequest(
-        sites=tuple(PortfolioSite(r.spec.label, r.caps) for r in records),
+        sites=tuple(PortfolioSite(r.spec.label, r.caps, r.segments) for r in records),
         bill=target, allowed_recipes=held.allowed_recipes, weights=weights,
-        power=grid(records),
+        power=grid,
     ), data)
-    alone = tuple((r.spec.label, _alone(backend, r, target, held, weights, grid((r,)), data))
+    alone = tuple((r.spec.label, _alone(backend, r, target, held, weights, grid, data))
                   for r in records)
+    alone_blocked = tuple(
+        (r.spec.label, tuple(x.item_id for x in discover(data, held.recipe_ids, pooled((r.caps,)),
+                                                          tuple(i for i, _ in target))
+                             if not x.makeable))
+        for r in records
+    )
     return PortfolioRun(
         tier=tier, declared_recipes=held.declared, scenario=data.scenario, goal=goal,
         bill_phases=bill_phases, bill_tiers=bill_tiers, bill=bill, blocked=blocked,
         sites=tuple(records), response=response, alone=alone, generators_open=open_classes,
+        alone_blocked=alone_blocked,
     )
 
 
@@ -229,16 +276,17 @@ def run(
 
 def _alone(backend, rec, target, held, weights, power, data) -> float | str:
     """One site on the bill by itself: its scale, or why it has none. With
-    extractors charged at nameplate (A25.3 P2) a site that cannot fuel any
-    open generator cannot even run its own miners: Infeasible, said so."""
+    extraction charged by the draw (A4) an idle site draws nothing, so a site
+    that can fuel no open generator has scale 0.0 rather than no plan;
+    Infeasible remains possible (a declared spare with nothing to cover it)
+    and is said so with the solver's reason."""
     try:
         return backend.solve_portfolio(PortfolioRequest(
-            sites=(PortfolioSite(rec.spec.label, rec.caps),), bill=target,
+            sites=(PortfolioSite(rec.spec.label, rec.caps, rec.segments),), bill=target,
             allowed_recipes=held.allowed_recipes, weights=weights, power=power,
         ), data).scale
-    except Infeasible:
-        return (f"infeasible: cannot power its own extractors ({rec.extraction_mw:.0f} MW "
-                "nameplate) from any generator open at this tier")
+    except Infeasible as exc:
+        return f"infeasible: {exc}"
 
 
 def _n(data: ReferenceData, item_id: str) -> str:
@@ -258,10 +306,17 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
         f"  power: {POWER_ASSUMPTION}",
         "",
         f"bill scale together {r.scale:.6f}/min"
-        + (f" (horizon {r.horizon_min:.1f} min)" if r.horizon_min else " (some bill item cannot be made)"),
+        + (f" (horizon {r.horizon_min:.1f} min)" if r.horizon_min
+           else " (the grid holds every machine at 0: no power source)"
+           if r.power is not None and r.power.binding and r.power.shadow_price > 1e-12
+           else " (some bill item cannot be made)"),
     ]
+    blocked_alone = dict(pr.alone_blocked)
     for label, scale in pr.alone:
-        out.append(f"  {label} alone: " + (scale if isinstance(scale, str) else f"{scale:.6f}/min"))
+        line = f"  {label} alone: " + (scale if isinstance(scale, str) else f"{scale:.6f}/min")
+        if blocked_alone.get(label):
+            line += "; cannot make alone: " + ", ".join(_n(data, i) for i in blocked_alone[label])
+        out.append(line)
     out += ["", "bill (bill order): units; made where, per minute"]
     made = {s.label: dict(s.delivered) for s in r.sites}
     for item, units in pr.bill.items():
@@ -277,7 +332,9 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
         draw = {x.item_id: x.rate_per_min for x in plan.plan.raw_inputs}
         bound = {b.item_id for b in plan.binding}
         for c in rec.caps:
-            if c.rate_per_min > 0.0:
+            if c.rate_per_min is None:
+                out.append(f"  {_n(data, c.item_id):18s} {draw.get(c.item_id, 0.0):9.2f} / pumped")
+            elif c.rate_per_min > 0.0:
                 out.append(f"  {_n(data, c.item_id):18s} {draw.get(c.item_id, 0.0):9.2f} / "
                            f"{c.rate_per_min:g}" + ("  BINDING" if c.item_id in bound else ""))
         sent = [t for t in r.transfers if t.source == plan.label]
@@ -290,8 +347,16 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
             f"{u.count:.2f} x {u.generator_class.replace('Build_', '').replace('_C', '')} on "
             f"{_n(data, u.fuel_item_id)} ({u.mw:.0f} MW, {u.fuel_per_min:.1f}/min)"
             for u in plan.generators) or "none"
-        out.append(f"  power: machines {plan.lane_mw:.1f} MW + extractors {rec.extraction_mw:.1f} MW "
-                   f"nameplate; generators here: {gens}")
+        out.append(f"  power: machines {plan.lane_mw:.1f} MW + extractors {plan.extraction_mw:.1f} MW "
+                   f"drawn (nameplate {plan.extraction_nameplate_mw:.1f} MW); generators here: {gens}")
+        for item, rate in plan.pumped:
+            pump = next(e for e in rec.segments if e.item_id == item and e.cap_per_min is None)
+            out.append(f"  pumped {_n(data, item)}: {rate:.1f}/min needed, {rate * pump.mw_per_unit:.1f} "
+                       f"MW ({WATER_EXTRACTOR} by the draw; not counted, grouped or clocked)")
+        if rec.pumps_water:
+            # spec §10 D: water not verified makes the power alternative conditional
+            out.append("  Water: DECLARED pumpable here, not verified by world data; "
+                       "power that needs it is CONDITIONAL on that declaration")
         out.append("  recipes: " + ", ".join(
             f"{data.recipes[u.recipe_id].display_name} {u.machine_equivalents:.2f}"
             for u in plan.plan.recipes))
@@ -299,7 +364,8 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
     pw = r.power
     out += ["", "shared grid (A3): generators open at this tier: "
             + ", ".join(c.replace("Build_", "").replace("_C", "") for c in pr.generators_open),
-            f"  machines {pw.lane_mw:.1f} + extractors {pw.extraction_mw:.1f} + spare {pw.spare_mw:.1f}"
+            f"  machines {pw.lane_mw:.1f} + extractors {pw.extraction_mw:.1f} drawn"
+            f" (nameplate {pw.extraction_nameplate_mw or 0.0:.1f}) + spare {pw.spare_mw:.1f}"
             f"  <=  generated {pw.generated_mw:.1f} + standing grid {pw.grid_mw:.1f};"
             f" margin {pw.margin_mw:.1f} MW"
             + ("" if not pw.binding else "  LIMITING" if pw.shadow_price > 1e-12
@@ -339,8 +405,10 @@ def main(argv=None) -> int:
     ap.add_argument("--bill-tier", action="append", type=int, default=[])
     ap.add_argument("--goal", default="balanced", choices=tuple(site_card.GOALS))
     ap.add_argument("--supply", action="append", type=_supply_arg, default=[],
-                    help="LABEL:ITEM=RATE declared supply at a site no socket carries, "
-                         "e.g. oil:Desc_Water_C=240")
+                    help="LABEL:ITEM=RATE declared supply at a site no socket carries; "
+                         "not Water (use --water)")
+    ap.add_argument("--water", action="append", default=[],
+                    help="LABEL of a site able to pump Water, charged as Water Extractors (A4)")
     ap.add_argument("--grid-mw", type=float, default=0.0,
                     help="standing supply from outside these sites (default 0: none)")
     ap.add_argument("--spare-mw", type=float, default=0.0)
@@ -365,7 +433,7 @@ def main(argv=None) -> int:
     pr = run(specs, tier=args.tier, scenario=scenario, goal=args.goal,
              bill_phases=tuple(args.bill_phase), bill_tiers=tuple(args.bill_tier),
              declared_recipe_names=tuple(args.recipe), world_config_id=args.world,
-             grid_mw=args.grid_mw, spare_mw=args.spare_mw)
+             grid_mw=args.grid_mw, spare_mw=args.spare_mw, water_sites=tuple(args.water))
     print(report(pr, load(REPO, scenario)))
     return 0
 

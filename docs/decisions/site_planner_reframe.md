@@ -169,3 +169,61 @@ be represented at all.
 - A declared supply (Water) carries no extractor power.
 - After A3 the oil site draws ~265 of 1020/min Crude Oil; the A2.2 idea
   (put idle capacity to work, possibly in later progression steps) stands.
+
+## Amendment 4 — 2026-10-19. Extraction by the draw; Water pumped, never free
+
+### A4.1 What raised it
+
+A3.3 left open whether extraction power should follow the draw. Under the
+carried A25.3 P2 constant (every declared extractor at nameplate) the copper
+site in scenario C was "infeasible" alone: 95 MW of miners and no generator
+it could fuel. Greg asked why copper needed Water at all. It does not; power
+does. At tier 6 the open generators are Biomass (no source in the solve),
+Coal (45 m3/min Water each) and Fuel (no Oil at that site), and Water entered
+the solve only as a free, capped `--supply` nobody had declared there.
+
+### A4.2 Decided by Greg, 2026-10-19 (holds until proven wrong)
+
+- Extraction is charged by the DRAW in the portfolio solve: MW per unit =
+  base MW / nominal rate at 100 %, linear on what is extracted. An idle
+  socket costs nothing. Floor-safe at or below 100 % clock, since the game's
+  curve (P = base * clock ** 1.321929, extraction_buildings.csv) sits below
+  the line.
+- 100 % clock is the cap for now. Underclocking is always available (no
+  shards); overclocking is limited and rare. A clock above 100 % is refused
+  by the composer, not modelled.
+- The report gives the draw WITH the nameplate figure beside it.
+- Water is never free. Water extraction and pumps are expensive to operate.
+  A site is DECLARED able to pump Water (the world data does not say where
+  water bodies are, so nothing defaults it). There it is uncapped, charged as
+  Water Extractors by the draw (20 MW per 120 m3/min), and reported as the
+  amount needed, to be used later to count, group and clock extractors. The
+  free declared Water supply is replaced: refused by name.
+- Build counts (how many machines) are reported later, once belt speed, pipe
+  volume, number of lanes, clocking and multipliers are taken into account.
+  For now the materials to make the buildings are assumed on hand or to be
+  obtained.
+
+### A4.3 Measured 2026-10-19 (container, py3.13), not derived
+
+- Scenario C (as A3.1, no site pumping): together 0.003499/min and oil alone
+  0.000704, both unchanged; power was never the limit there (shadow 0).
+  Extractors draw 141.9 MW of 380 MW nameplate. Fuel generators 5.515
+  (1379 MW) where A3 built 6.528 (1632 MW). Copper alone is now 0.0, and the
+  report says why: it cannot make Plastic, Rubber, Computer, Modular Engine
+  or Adaptive Control Unit without Oil. The "infeasible" label had hidden
+  that the bill, not power, was the reason.
+- Spec scenario D (copper site alone, tier 4, bill phase 2 + tiers 3-4): Water
+  declared pumpable 0.003770/min, 72.4 of 180 Coal/min burned in 4.82 Coal
+  generators, 217 m3/min pumped, power limiting; no Water and no grid 0.0;
+  a 5000 MW standing grid instead 0.006305/min with every Coal to steel. The
+  power alternative is labelled CONDITIONAL on the Water declaration, as
+  spec §10 D asks.
+
+### A4.4 Not changed, said so
+
+- `solve_district` (district_run, site card) keeps the A25.3 P2 constant;
+  its `DistrictPower.extraction_nameplate_mw` is None there.
+- The site card has no power in its solve, so its `--supply` of Water stays a
+  capped declared supply. Whether that should change is open.
+- Supersedes A3.3's first two bullets for the portfolio solve only.

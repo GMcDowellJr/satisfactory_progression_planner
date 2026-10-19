@@ -14,8 +14,8 @@ point of the boundary — see section 11.1 of docs/decisions/production_lp_formu
 """
 from .district import (
     DistrictDefinition, DistrictError, NodeCount, Reach, StandingSupply, bill_units,
-    caps_less_draws, discover, extraction_nameplate_mw, partition_recipes, recipe_ids_by_name,
-    resource_caps, resources_in_reference_order, standing_generation,
+    caps_less_draws, discover, extraction_nameplate_mw, extraction_segments, partition_recipes,
+    pumped_water, recipe_ids_by_name, resource_caps, resources_in_reference_order, standing_generation,
 )
 from .pool import PoolAvailability, PoolDataError, available_at, resolve_slugs
 from .unlocks import PROGRESSION_TYPES, TierUnlocks, UnlockDataError, at_tier
@@ -23,7 +23,7 @@ from .unlocks import PROGRESSION_TYPES, TierUnlocks, UnlockDataError, at_tier
 __all__ = [
     "DistrictDefinition", "DistrictError", "NodeCount", "PROGRESSION_TYPES", "Reach",
     "StandingSupply", "caps_less_draws", "discover", "partition_recipes", "standing_generation",
-    "extraction_nameplate_mw",
+    "extraction_nameplate_mw", "extraction_segments", "pumped_water",
     "PoolAvailability", "PoolDataError", "TierUnlocks", "UnlockDataError", "at_tier",
     "available_at", "bill_units", "recipe_ids_by_name", "resolve_slugs", "resource_caps",
     "resources_in_reference_order",

@@ -605,8 +605,17 @@ class LpBackend:
         from site a to site b at no cost before stage 2 (P3). Stage 2 comes
         before stage 3 so locality is preferred over a cheaper recipe mix
         among plans of equal scale; the order is A1.2's design choice.
-        Power is outside (P2): each site's plan carries its machine-time MW
-        as `solve` reports it.
+        Power (A3): one shared grid row over every site when `request.power`
+        is set.
+
+        Extraction by the draw (A4, Greg 2026-10-19): each site's
+        `extraction` segments are columns e_ksj in [0, cap] (or uncapped for
+        a pumped supply), tied to the site's raw draw by s_ki = sum_j e_kij,
+        and charged mw_per_unit * e on the grid row; under the power goal
+        they are priced like machine MW. A raw without segments carries no
+        extractor power. Several segments on one raw (purities, extractor
+        classes) let the solve work the cheaper MW per unit first, which is
+        a choice the player can make the same way.
         """
         if self.unconsumed is not UnconsumedMode.FREE:
             raise NotImplementedError("bill output is leftover flow; needs unconsumed=FREE (A31)")
@@ -624,10 +633,18 @@ class LpBackend:
         n_sites = len(problems)
         pairs = tuple((a, b) for a in range(n_sites) for b in range(n_sites) if a != b)
         t0 = n_sites * n_site
-        n = t0 + len(pairs) * n_items + 1
+        e0 = t0 + len(pairs) * n_items
+        raw_col = {i: c for c, i in enumerate(p0.raw_ids)}
+        # A4: one column per (site k, segment), site order then segment order.
+        # A raw no enabled recipe or generator reads has no draw column, so
+        # its segments would draw nothing; they get no column
+        segs = tuple((k, e) for k, site in enumerate(request.sites)
+                     for e in site.extraction if e.item_id in raw_col)
+        linked = tuple(dict.fromkeys((k, e.item_id) for k, e in segs))
+        n = e0 + len(segs) + 1
         lam = n - 1
 
-        a_eq = np.zeros((n_sites * n_items, n), dtype=float)
+        a_eq = np.zeros((n_sites * n_items + len(linked), n), dtype=float)
         bounds: list[tuple[float, float | None]] = []
         for k, p in enumerate(problems):
             a_eq[k * n_items:(k + 1) * n_items, k * n_site:(k + 1) * n_site] = p.a_eq
@@ -638,6 +655,13 @@ class LpBackend:
                 a_eq[a * n_items + i, col] = -1.0   # leaves a
                 a_eq[b * n_items + i, col] = 1.0    # arrives at b
         bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(len(pairs) * n_items))
+        # A4: s_ki - sum_j e_kij = 0, one row per (site, extracted raw)
+        link_row = {key: n_sites * n_items + r for r, key in enumerate(linked)}
+        for (k, item), row in link_row.items():
+            a_eq[row, k * n_site + p0.n_x + raw_col[item]] = 1.0
+        for j, (k, e) in enumerate(segs):
+            a_eq[link_row[(k, e.item_id)], e0 + j] = -1.0
+            bounds.append((0.0, FLOW_UPPER_BOUND if e.cap_per_min is None else float(e.cap_per_min)))
         bounds.append((0.0, FLOW_UPPER_BOUND))
         index = {i: n for n, i in enumerate(p0.item_ids)}
         # A3: ONE shared grid row, row 0 when present: every site's lanes and
@@ -649,6 +673,8 @@ class LpBackend:
         if n_pw:
             for k, p in enumerate(problems):
                 a_ub[0, k * n_site:(k + 1) * n_site] = p.a_ub[0]
+            for j, (_, e) in enumerate(segs):
+                a_ub[0, e0 + j] = e.mw_per_unit   # A4: the draw, on the same row
             b_ub[0] = float(p0.b_ub[0])
         for r, (item, units) in enumerate(request.bill):
             a_ub[n_pw + r, lam] = float(units)
@@ -656,7 +682,7 @@ class LpBackend:
                 a_ub[n_pw + r, k * n_site + p0.n_x + p0.n_s + index[item]] = -1.0
         whole = _Problem(
             recipe_ids=recipe_ids, item_ids=p0.item_ids, raw_ids=p0.raw_ids,
-            n_x=0, n_s=0, n_l=0, a_eq=a_eq, b_eq=np.zeros(n_sites * n_items),
+            n_x=0, n_s=0, n_l=0, a_eq=a_eq, b_eq=np.zeros(n_sites * n_items + len(linked)),
             bounds=bounds, primary=np.zeros(n), secondary=np.zeros(n),
             a_ub=a_ub, b_ub=b_ub,
         )
@@ -683,12 +709,14 @@ class LpBackend:
         scale = -float(first.fun) if -float(first.fun) > self.tolerance else 0.0
         pin(c1, float(first.fun))
         c2 = np.zeros(n)
-        c2[t0:lam] = 1.0
+        c2[t0:e0] = 1.0
         second = run(c2)
         pin(c2, float(second.fun))
         c3 = np.zeros(n)
         for k, p in enumerate(problems):
             c3[k * n_site:(k + 1) * n_site] = p.primary[:n_site]
+        for j, (_, e) in enumerate(segs):
+            c3[e0 + j] = request.weights.power * e.mw_per_unit   # A4: priced like lane MW
         third = run(c3)
         pin(c3, float(third.fun))
         c4 = np.ones(n)
@@ -706,14 +734,20 @@ class LpBackend:
             plan = self._response({}, site.resource_caps, data, p, vs, 0.0, False)
             caps = {c.item_id: c.rate_per_min for c in site.resource_caps}
             draw = vs[p.n_x:p.n_x + p.n_s]
+            # a pumped raw's cap is None: never binding (A4)
             binding = tuple(
                 BindingCap(
                     item_id=i, cap_per_min=float(caps[i]),
                     shadow_price=-float(marginals[k * n_site + p.n_x + col]) + 0.0,
                 )
                 for col, i in enumerate(p.raw_ids)
-                if caps.get(i, 0.0) > 0.0 and draw[col] >= caps[i] * (1.0 - 1.0e-6) - tol
+                if (caps.get(i) or 0.0) > 0.0 and draw[col] >= caps[i] * (1.0 - 1.0e-6) - tol
             )
+            mine = tuple((e, float(v[e0 + j])) for j, (kk, e) in enumerate(segs) if kk == k)
+            pumped: dict[str, float] = {}
+            for e, val in mine:
+                if e.cap_per_min is None and val > tol:
+                    pumped[e.item_id] = pumped.get(e.item_id, 0.0) + val
             delivered = tuple(
                 (item, float(vs[p.n_x + p.n_s + index[item]]))
                 for item, _ in request.bill
@@ -738,6 +772,10 @@ class LpBackend:
             sites.append(SitePlan(
                 site.label, dataclasses.replace(plan, warnings=()), delivered, binding,
                 generators=gens, lane_mw=lane_mw,
+                extraction_mw=float(sum(e.mw_per_unit * val for e, val in mine)),
+                extraction_nameplate_mw=float(sum(e.nameplate_mw for e in site.extraction
+                                                  if e.nameplate_mw is not None)),
+                pumped=tuple(pumped.items()),
             ))
         transfers = tuple(
             Transfer(request.sites[a].label, request.sites[b].label, p0.item_ids[i],
@@ -751,15 +789,21 @@ class LpBackend:
             pb = request.power
             lane = float(sum(s.lane_mw for s in sites))
             generated = float(sum(u.mw for s in sites for u in s.generators))
-            margin = generated + pb.grid_mw - lane - pb.extraction_mw - pb.spare_mw
+            # A4: segments' draw when any site carries them (the request then
+            # refuses a constant beside them); else P2's constant nameplate
+            drawn = any(s.extraction for s in request.sites)
+            extraction = float(sum(s.extraction_mw for s in sites)) if drawn else pb.extraction_mw
+            margin = generated + pb.grid_mw - lane - extraction - pb.spare_mw
             # row 0 of A_ub; its dual is in the first stage's units: scale per MW
             dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
             grid = DistrictPower(
-                lane_mw=lane, extraction_mw=pb.extraction_mw, grid_mw=pb.grid_mw,
+                lane_mw=lane, extraction_mw=extraction, grid_mw=pb.grid_mw,
                 spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
                 generators=tuple(u for s in sites for u in s.generators),
                 binding=margin <= max(abs(lane), 1.0) * 1.0e-6,
                 shadow_price=-dual + 0.0,
+                extraction_nameplate_mw=(float(sum(s.extraction_nameplate_mw for s in sites))
+                                         if drawn else None),
             )
         return PortfolioResponse(
             scale=scale,

@@ -367,6 +367,10 @@ class DistrictPower:
     generators: tuple[GeneratorUse, ...]
     binding: bool
     shadow_price: float
+    #: A4 (portfolio): the capped extractors' nameplate, reported beside
+    #: `extraction_mw`, which is then the draw. None where extraction is the
+    #: constant nameplate charge (solve_district), so the two are the same
+    extraction_nameplate_mw: float | None = None
 
 
 @dataclass(frozen=True)
@@ -401,24 +405,85 @@ class DistrictResponse:
 
 
 @dataclass(frozen=True)
+class ExtractionSegment:
+    """Extractors on one raw at one site, charged by what they draw
+    (site_planner_reframe.md A4, decided by Greg 2026-10-19).
+
+        cap_per_min     what these extractors give at their declared clock;
+                        None for a PUMPED supply with no socket limit (Water
+                        at a site declared able to pump it)
+        mw_per_unit     base MW / nominal rate at 100 %: the power of one unit
+                        per minute, charged linearly on the draw
+        nameplate_mw    count * base MW, the A25.3 P2 figure, reported beside
+                        the draw; None for a pumped supply (no count exists)
+
+    Linear in the draw is floor-safe at or below 100 % clock: the game's
+    curve is P = base * clock ** 1.321929 (extraction_buildings.csv), which
+    sits below the straight line, so a socket worked at part of its rate
+    draws no more than charged. Above 100 % the line under-counts, so a
+    clock above 1.0 is refused by the composer, not here."""
+
+    item_id: ItemId
+    cap_per_min: float | None
+    mw_per_unit: float
+    nameplate_mw: float | None
+    source: str = ""
+
+    def __post_init__(self) -> None:
+        if self.cap_per_min is not None and self.cap_per_min < 0:
+            raise ValueError(f"{self.item_id}: segment cap must be non-negative")
+        if self.mw_per_unit < 0:
+            raise ValueError(f"{self.item_id}: mw_per_unit must be non-negative")
+        if self.cap_per_min is None and not self.mw_per_unit > 0:
+            # an uncapped supply that costs nothing is the free supply A28.1 T1 refuses
+            raise ValueError(f"{self.item_id}: an uncapped (pumped) segment must cost power")
+        if (self.cap_per_min is None) != (self.nameplate_mw is None):
+            raise ValueError(f"{self.item_id}: nameplate_mw is set exactly when the segment is capped")
+
+
+@dataclass(frozen=True)
 class PortfolioSite:
     """One site's raw supply. Every cap must be a number: a site is closed
     (A28.1 T1), and with free transfers (A1 P3) one uncapped raw anywhere
-    would feed every site without limit."""
+    would feed every site without limit. The one exception (A4): a raw whose
+    cap is None because an uncapped `extraction` segment pumps it, which
+    costs power per unit, so the shared grid bounds it.
+
+    `extraction` (A4): the site's extractors, charged by their draw on the
+    shared grid. A raw with segments has its cap equal to the segments' sum
+    (None when any is uncapped); a raw without segments (a declared supply
+    from elsewhere) carries no extractor power."""
 
     label: str
     resource_caps: tuple[ResourceCap, ...]
+    extraction: tuple[ExtractionSegment, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.label:
             raise ValueError("a portfolio site needs a label")
-        uncapped = [c.item_id for c in self.resource_caps if c.rate_per_min is None]
+        pumped = {e.item_id for e in self.extraction if e.cap_per_min is None}
+        uncapped = [c.item_id for c in self.resource_caps
+                    if c.rate_per_min is None and c.item_id not in pumped]
         if uncapped:
             raise ValueError(f"{self.label}: uncapped raw resources {uncapped}; a site is closed")
         seen = [c.item_id for c in self.resource_caps]
         dupes = {i for i in seen if seen.count(i) > 1}
         if dupes:
             raise ValueError(f"{self.label}: caps listed twice: {sorted(dupes)}")
+        caps = {c.item_id: c.rate_per_min for c in self.resource_caps}
+        stray = sorted({e.item_id for e in self.extraction} - set(caps))
+        if stray:
+            raise ValueError(f"{self.label}: extraction on raws the caps do not list: {stray}")
+        for item in dict.fromkeys(e.item_id for e in self.extraction):
+            if item in pumped:
+                if caps[item] is not None:
+                    raise ValueError(f"{self.label}: {item} is pumped (uncapped) but capped "
+                                     f"at {caps[item]!r}")
+                continue
+            total = sum(e.cap_per_min for e in self.extraction if e.item_id == item)
+            if caps[item] is None or abs(caps[item] - total) > max(abs(total), 1.0) * 1.0e-9:
+                raise ValueError(f"{self.label}: {item} cap {caps[item]!r} is not its "
+                                 f"extraction segments' sum {total!r}")
 
 
 @dataclass(frozen=True)
@@ -435,9 +500,10 @@ class PortfolioRequest:
     allowed_recipes: AllowedRecipes = AllowedRecipes()
     weights: Weights = Weights()
     #: A3 (P2 reversed, Greg 2026-10-19): ONE shared grid. `generators` may be
-    #: built at any site and burn that site's supply (or fuel moved in);
-    #: `extraction_mw` is every site's extractors at nameplate, summed by the
-    #: caller. None: power outside the solve, as before A3
+    #: built at any site and burn that site's supply (or fuel moved in).
+    #: Extraction: each site's `extraction` segments by the draw (A4), and
+    #: then `extraction_mw` must be 0.0; without segments, `extraction_mw` is
+    #: the caller's nameplate constant (P2). None: power outside the solve
     power: PowerBalance | None = None
 
     def __post_init__(self) -> None:
@@ -459,6 +525,13 @@ class PortfolioRequest:
         caps = [{c.item_id for c in s.resource_caps} for s in self.sites]
         if any(c != caps[0] for c in caps):
             raise ValueError("every site must cap the same raw resources (0.0 for none)")
+        if any(s.extraction for s in self.sites):
+            # A4: the draw is charged on the shared grid row, so a grid must
+            # exist, and a constant nameplate charge beside it counts twice
+            if self.power is None:
+                raise ValueError("extraction segments are charged on the grid; power is None")
+            if self.power.extraction_mw != 0.0:
+                raise ValueError("extraction segments AND a constant extraction_mw: charged twice")
         both = caps[0] & set(items)
         if both:
             raise ValueError(f"item is both a bill product and a capped raw: {sorted(both)}")
@@ -487,6 +560,14 @@ class SitePlan:
     generators: tuple[GeneratorUse, ...] = ()
     #: this site's machines at the power statistic, 100 % clock (A3)
     lane_mw: float = 0.0
+    #: A4: this site's extractors by their draw, and the nameplate of its
+    #: capped extractors (count * base MW) beside it; a pumped supply has no
+    #: nameplate, so it is in the first and not the second
+    extraction_mw: float = 0.0
+    extraction_nameplate_mw: float = 0.0
+    #: A4: (item, rate/min) drawn from uncapped (pumped) segments: what is
+    #: needed, for counting, grouping and clocking extractors later
+    pumped: tuple[tuple[ItemId, float], ...] = ()
 
 
 @dataclass(frozen=True)

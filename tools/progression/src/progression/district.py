@@ -44,7 +44,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from production_adapter.contracts import GeneratorFuel, ItemId, ProducerClass, RecipeId, ResourceCap
+from production_adapter.contracts import (
+    ExtractionSegment, GeneratorFuel, ItemId, ProducerClass, RecipeId, ResourceCap,
+)
 from production_adapter.gamedata import ExtractionRate, ReferenceData
 
 #: The game's overclock ceiling, as extraction_rates.csv's max_250 column states it.
@@ -169,6 +171,66 @@ def extraction_nameplate_mw(
             raise DistrictError(f"{cls}: no base power in extraction_buildings.csv")
         total += node.count * base_mw[cls]
     return total
+
+
+#: the extractor a pumped Water supply is charged as (A4, Greg 2026-10-19)
+WATER_EXTRACTOR: ProducerClass = "Build_WaterPump_C"
+WATER: ItemId = "Desc_Water_C"
+
+
+def extraction_segments(
+    definition: DistrictDefinition, rates: tuple[ExtractionRate, ...],
+    base_mw: dict[ProducerClass, float],
+) -> tuple[ExtractionSegment, ...]:
+    """One segment per declared node, charged by the draw (A4, decided by
+    Greg 2026-10-19; supersedes A25.3 P2's constant for the portfolio solve).
+
+        cap          the node's cap exactly as `resource_caps` composes it
+        mw_per_unit  base MW / nominal rate at 100 %: a socket worked at part
+                     of its rate is the same as one underclocked to that part
+        nameplate    count * base MW, the P2 figure, reported beside the draw
+
+    A clock above 100 % is refused: the line under-counts above nameplate,
+    and overclocking is not modelled (A4: underclocking is free, shards are
+    rare). Same refusals as `resource_caps` for a missing (class, purity)
+    row; a class with no base power is refused by name."""
+    out = []
+    for node in definition.nodes:
+        cls = node.extractor_class or definition.extractor_class
+        clock = node.clock(definition.extraction_clock)
+        if clock > 1.0:
+            raise DistrictError(
+                f"{node.item_id} {node.purity}: clock {clock} is above 100 %; the draw charge "
+                "is linear only up to nameplate and overclocking is not modelled (A4)"
+            )
+        if cls not in base_mw:
+            raise DistrictError(f"{cls}: no base power in extraction_buildings.csv")
+        rate = _rate_for(rates, cls, node.purity)
+        cap = node.count * rate.nominal_rate_min * clock * (1.0 - definition.reserve_fraction)
+        out.append(ExtractionSegment(
+            item_id=node.item_id, cap_per_min=cap,
+            mw_per_unit=base_mw[cls] / rate.nominal_rate_min,
+            nameplate_mw=node.count * base_mw[cls],
+            source=f"{node.count} x {cls} on {node.purity}",
+        ))
+    return tuple(out)
+
+
+def pumped_water(
+    rates: tuple[ExtractionRate, ...], base_mw: dict[ProducerClass, float],
+) -> ExtractionSegment:
+    """Water at a site DECLARED able to pump it (A4, Greg 2026-10-19): no
+    socket limit, charged as Water Extractors by the draw. The solve says how
+    much is needed; counting, grouping and clocking the extractors is later
+    work, so there is no count and no nameplate here."""
+    if WATER_EXTRACTOR not in base_mw:
+        raise DistrictError(f"{WATER_EXTRACTOR}: no base power in extraction_buildings.csv")
+    rate = _rate_for(rates, WATER_EXTRACTOR, "none")
+    return ExtractionSegment(
+        item_id=WATER, cap_per_min=None,
+        mw_per_unit=base_mw[WATER_EXTRACTOR] / rate.nominal_rate_min,
+        nameplate_mw=None, source=f"pumped by {WATER_EXTRACTOR}",
+    )
 
 
 def bill_units(
