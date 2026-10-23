@@ -143,3 +143,54 @@ def test_names_cover_every_id_the_document_mentions(rec_c):
         recipes |= {u["recipe_id"] for u in s["recipes"]}
     assert items <= set(rec_c["names"]["items"])
     assert recipes <= set(rec_c["names"]["recipes"])
+
+
+# -- additions 2026-10-23 (handoff action 1, "Step 1") -------------------------
+
+def test_margin_text_is_the_reports_wording(specs, data):
+    """Each binding cap's margin_text appears verbatim in the text report:
+    one helper words both, so a client cannot drift from the CLI."""
+    pr = _run(specs)
+    rec = portfolio_run.record(pr, data)
+    text = portfolio_run.report(pr, data)
+    phrases = [b["margin_text"] for s in rec["sites"] for b in s["binding"]]
+    assert phrases and all(f"BINDING ({p})" in text for p in phrases)
+    coal = next(b for b in rec["sites"][0]["binding"] if b["item_id"] == "Desc_Coal_C")
+    assert coal["margin_text"] == "+1/min Coal -> horizon 285.8 -> 285.2 min at the margin"
+    assert rec["assumptions"]["margin"] == portfolio_run.shadow_text.MARGIN_NOTE
+
+
+def test_grid_margin_text_when_binding(rec_c):
+    pw = rec_c["power"]
+    # C: generators built to the draw, so the grid row binds with dual 0
+    assert pw["binding"] and pw["margin_text"] == "+10 MW -> no gain at the margin"
+
+
+def test_items_cover_every_mentioned_item_with_form_and_solid_stack(rec_c, data):
+    assert set(rec_c["items"]) == set(rec_c["names"]["items"])
+    for i, f in rec_c["items"].items():
+        assert f["form"] == data.items[i].form
+        assert f["stack_size"] == (data.items[i].stack_size if f["form"] == "solid" else None), i
+    assert rec_c["items"][RESIN] == {"form": "solid", "stack_size": 200}
+    assert rec_c["items"]["Desc_LiquidFuel_C"] == {"form": "liquid", "stack_size": None}
+
+
+def test_record_is_deterministic_and_provenance_is_only_in_export(specs, data, tmp_path):
+    """record() leaves provenance null, so a native and a Pyodide record can
+    be compared byte for byte; export() always states it."""
+    pr = _run(specs)
+    a, b = portfolio_run.record(pr, data), portfolio_run.record(pr, data)
+    assert a["provenance"] is None and json.dumps(a) == json.dumps(b)
+    path = tmp_path / "c.json"
+    portfolio_run.export(pr, data, path)
+    prov = json.loads(path.read_text(encoding="utf-8"))["provenance"]
+    assert set(prov) == {"generated_utc", "python", "implementation", "numpy", "scipy",
+                         "commit", "worktree_dirty", "commit_unavailable"}
+    # a commit, or the reason there is none: never both, never neither
+    assert (prov["commit"] is None) != (prov["commit_unavailable"] is None)
+
+
+def test_provenance_without_git_names_the_reason(tmp_path):
+    prov = portfolio_run.provenance(tmp_path)  # not a checkout
+    assert prov["commit"] is None and prov["worktree_dirty"] is None
+    assert prov["commit_unavailable"]

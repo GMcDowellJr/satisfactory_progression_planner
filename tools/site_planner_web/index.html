@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Site Planner Record</title>
+<!--
+  Renders one portfolio-plan/1 record (tools/portfolio_run.py --export).
+  Handoff 2026-10-19 18:28 action 1 ("Step 1"): the 2026-10-19 mockup moved
+  into the repo and wired to the record instead of typed-in numbers.
+
+  It reads; it does not solve, size or choose. Everything shown is in the
+  record except: storage (declared here by the viewer, never inferred) and
+  the fill time, slots x stack / rate, the formula tools/storage_view.py uses.
+  Not carried from the mockup, on purpose:
+    - the "drawn / unclaimed / backs up" wording: a proposal (A8.4), not landed;
+      until it lands the tools keep their present wording (cap, drawn, left)
+    - "what the leftover supply could make": site_card ceilings, not in the record
+    - the sink toggle and per-leftover "where it can go" prose: A8.5 is open
+  SCHEMA and ZERO are pinned by tests/test_site_planner_web.py against
+  portfolio_run.RECORD_SCHEMA and shadow_text.ZERO.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #eceff2; --surface: #ffffff; --fg: #1a2229; --muted: #5a6773; --line: #cdd5dc;
+  --flow: #2d6a8a; --accent: #b8650f; --bind: #b03e1c; --ok: #2f7448; --hatch: #9aa6b1;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --hatch: #56626d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --hatch: #56626d; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: .01em; text-wrap: balance; margin: 0; }
+h1 { font-size: 2rem; line-height: 1.05; }
+h2 { font-size: 1.35rem; line-height: 1.15; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+header { display: grid; gap: 6px; }
+.prov { font-family: var(--f-mono); font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+
+.loader { display: grid; gap: 8px; background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 14px 16px; }
+.loader.drag { border-color: var(--accent); }
+.loader input[type=file] { font: inherit; font-size: .85rem; max-width: 100%; }
+.error { border-left: 3px solid var(--bind); padding: 6px 10px; background: color-mix(in srgb, var(--bind) 8%, transparent); font-size: .88rem; }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.summary > div { background: var(--surface); padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.summary .v { font-family: var(--f-mono); font-size: 1.15rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: grid; gap: 4px; }
+
+.chip { display: inline-block; font-family: var(--f-mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; vertical-align: 1px; }
+.chip.bind { color: var(--bind); } .chip.oncap { color: var(--accent); } .chip.quiet { color: var(--muted); } .chip.ok { color: var(--ok); }
+
+.site { display: grid; gap: 8px; }
+.site + .site { border-top: 1px solid var(--line); padding-top: 12px; }
+.site-title { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.row { display: grid; grid-template-columns: 7.5rem 1fr; gap: 4px 10px; align-items: center; }
+.row .label { font-size: .88rem; min-width: 0; overflow-wrap: anywhere; }
+.row .meta { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .8rem; color: var(--muted); align-items: center; }
+.bar { position: relative; height: 14px; border-radius: 2px; overflow: hidden; border: 1px solid var(--line);
+  background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--hatch) 55%, transparent) 4px 5px); }
+.bar .drawn { position: absolute; inset: 0 auto 0 0; background: var(--flow); }
+.bar .drawn.bind { background: var(--bind); } .bar .drawn.oncap { background: var(--accent); }
+.bar.pumped { background: color-mix(in srgb, var(--flow) 25%, transparent); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 18px; height: 10px; border-radius: 2px; border: 1px solid var(--line); display: inline-block; }
+.sw.drawn { background: var(--flow); } .sw.bind { background: var(--bind); } .sw.oncap { background: var(--accent); }
+.sw.rest { background: repeating-linear-gradient(135deg, transparent 0 3px, var(--hatch) 3px 4px); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.controls label { display: grid; gap: 3px; font-size: .78rem; color: var(--muted); }
+.controls select, .controls input { font: inherit; font-size: .9rem; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; }
+.controls input[type=number] { width: 5.5rem; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.callout { border-left: 3px solid var(--bind); padding: 6px 10px; display: grid; gap: 4px; background: color-mix(in srgb, var(--bind) 7%, transparent); }
+.callout.calm { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 7%, transparent); }
+.callout.fluid { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-family: var(--f-mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; }
+tr.blocked td { color: var(--bind); }
+ul.plain { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
+.stack { display: flex; height: 22px; border-radius: 2px; overflow: hidden; border: 1px solid var(--line); }
+.stack > div { height: 100%; }
+footer { display: grid; gap: 6px; font-size: .8rem; color: var(--muted); }
+@media (max-width: 440px) { .row { grid-template-columns: 6rem 1fr; } }
+@media (prefers-reduced-motion: no-preference) { .bar .drawn { transition: width .4s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Site Planner · portfolio record</div>
+    <h1 id="title">No record loaded</h1>
+    <p class="muted small" id="subtitle">Open a portfolio-plan/1 JSON file from <span class="num">tools/portfolio_run.py --export</span>.</p>
+    <div class="prov" id="prov"></div>
+  </header>
+
+  <div class="loader" id="loader">
+    <label class="small" for="file">Record file (.json)</label>
+    <input id="file" type="file" accept="application/json,.json">
+    <span class="small muted">Read in this browser only; nothing is sent anywhere. The last record opened is kept in this browser for next time.</span>
+    <div id="err" hidden></div>
+  </div>
+
+  <div id="out" hidden>
+    <div class="summary" id="summary" aria-label="Summary"></div>
+
+    <section class="panel" aria-labelledby="h-supply">
+      <div class="panel-head">
+        <div class="eyebrow">Supply</div>
+        <h2 id="h-supply">Cap and draw, per site</h2>
+        <p class="small muted">One bar per raw the site has a cap for. Solid is drawn; hatched is cap not drawn. The margin text is the solve's dual, worded as the CLI report words it.</p>
+      </div>
+      <div class="legend">
+        <span><i class="sw bind"></i>binding, limits the bill</span>
+        <span><i class="sw oncap"></i>binding, no gain at the margin</span>
+        <span><i class="sw drawn"></i>drawn, below cap</span>
+        <span><i class="sw rest"></i>not drawn</span>
+      </div>
+      <div id="sites"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-left">
+      <div class="panel-head">
+        <div class="eyebrow">Left over · per-site ledger</div>
+        <h2 id="h-left">What is made and not used</h2>
+        <p class="small muted">left = produced + received − consumed − burned − shipped − to bill. The solve lets unconsumed output go for free (D1 stopgap), so a leftover shows here and nowhere else. Decided (A8.3): by-products are to be used; how is open (A8.5). Storage is declared here, never inferred.</p>
+      </div>
+      <div class="controls">
+        <label for="ctype">Container
+          <select id="ctype">
+            <option value="48">Industrial Storage (48 slots)</option>
+            <option value="24">Storage Container (24 slots)</option>
+          </select>
+        </label>
+        <label for="ccount">Count per item
+          <input id="ccount" type="number" min="1" max="999" step="1" value="1">
+        </label>
+      </div>
+      <div id="left"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-bill">
+      <div class="panel-head">
+        <div class="eyebrow">The bill</div>
+        <h2 id="h-bill">Made, used, delivered, per minute</h2>
+        <p class="small muted" id="bill-note"></p>
+      </div>
+      <div class="tbl-wrap"><table id="bill"><thead></thead><tbody></tbody></table></div>
+      <div id="transfers"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-plans">
+      <div class="panel-head">
+        <div class="eyebrow">Per site</div>
+        <h2 id="h-plans">Recipes and generators</h2>
+        <p class="small muted">Machine equivalents at 100 % clock (continuous; not rounded to whole machines).</p>
+      </div>
+      <div id="plans"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-grid">
+      <div class="panel-head">
+        <div class="eyebrow">Shared grid (A3)</div>
+        <h2 id="h-grid">Power</h2>
+        <p class="small muted" id="grid-note"></p>
+      </div>
+      <div class="stack" id="grid-stack" aria-label="Power draw against generation"></div>
+      <div class="legend" id="grid-legend"></div>
+    </section>
+
+    <footer id="foot"></footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+// Pinned by tests/test_site_planner_web.py:
+const SCHEMA = "portfolio-plan/1";   // portfolio_run.RECORD_SCHEMA
+const ZERO = 1e-12;                  // shadow_text.ZERO: below this a dual is zero
+// Below this a ledger residue is solver noise (tests/test_portfolio_record.py NOISE)
+const NOISE = 1e-4;
+const STORE_RECORD = "sp-record", STORE_STORAGE = "sp-storage";
+
+const $ = id => document.getElementById(id);
+const fmt = (x, d = 1) => Number(x).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } }
+function recall(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+let R = null;  // the record shown
+const item = id => (R.names && R.names.items && R.names.items[id]) || id;
+const recipe = id => (R.names && R.names.recipes && R.names.recipes[id]) || id;
+const producer = id => (R.names && R.names.producers && R.names.producers[id]) || id;
+
+function fail(msg) {
+  // a refused file clears the view: the record still on screen would read as the refused one
+  R = null; $("out").hidden = true;
+  $("title").textContent = "No record loaded"; $("prov").textContent = "";
+  const e = $("err"); e.hidden = false; e.className = "error"; e.textContent = msg;
+}
+
+function accept(text, source) {
+  let doc;
+  try { doc = JSON.parse(text); } catch (e) { fail(`${source}: not JSON (${e.message})`); return false; }
+  if (!doc || doc.schema !== SCHEMA) {
+    fail(`${source}: schema ${JSON.stringify(doc && doc.schema)}, this page reads ${SCHEMA}. Refused.`);
+    return false;
+  }
+  $("err").hidden = true;
+  R = doc;
+  render();
+  return true;
+}
+
+$("file").addEventListener("change", async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  const text = await f.text();
+  if (accept(text, f.name)) store(STORE_RECORD, text);
+});
+const loader = $("loader");
+loader.addEventListener("dragover", ev => { ev.preventDefault(); loader.classList.add("drag"); });
+loader.addEventListener("dragleave", () => loader.classList.remove("drag"));
+loader.addEventListener("drop", async ev => {
+  ev.preventDefault(); loader.classList.remove("drag");
+  const f = ev.dataTransfer.files[0]; if (!f) return;
+  const text = await f.text();
+  if (accept(text, f.name)) store(STORE_RECORD, text);
+});
+
+function render() {
+  $("out").hidden = false;
+  header(); summary(); supply(); bill(); plans(); grid(); foot(); leftovers();
+}
+
+function header() {
+  const sc = R.scenario || {};
+  const sites = R.sites.map(s => s.label).join(" + ");
+  $("title").textContent = `${sites}, tier ${R.tier}`;
+  const water = R.sites.filter(s => s.pumps_water).map(s => s.label);
+  const ex = R.sites[0] ? R.sites[0].extractors.map(e => `${producer(e.extractor_class)}${e.item_id ? " (" + item(e.item_id) + ")" : ""}`).join(", ") : "";
+  $("subtitle").textContent =
+    `Bill: Project Assembly phases [${R.bill.phases.join(", ")}] + milestones of tiers [${R.bill.tiers.join(", ")}], ` +
+    `recipe ×${sc.recipe_input_multiplier ?? "?"}, goal ${R.goal.name}` +
+    (R.declared_recipes.length ? `, ${R.declared_recipes.length} declared recipes` : "") +
+    `. Extractors ${ex}. ` + (water.length ? `Water pumped at ${water.join(", ")} (declared).` : "No site pumps Water.");
+  const p = R.provenance;
+  $("prov").textContent = p
+    ? `made ${p.generated_utc} · python ${p.python} ${p.implementation} · scipy ${p.scipy} · ` +
+      (p.commit ? `commit ${p.commit.slice(0, 7)}${p.worktree_dirty ? " (worktree modified)" : ""}` : `commit unknown: ${p.commit_unavailable}`) +
+      ` · build ${R.game_build_id} · status ${R.status}`
+    : `provenance not stated in this record · build ${R.game_build_id} · status ${R.status}`;
+}
+
+function limits(b) { return b.shadow_price > ZERO || (b.shadow_price_high != null && b.shadow_price_high > ZERO); }
+
+function summary() {
+  const s = $("summary"); s.replaceChildren();
+  const tile = (label, value, sub) => {
+    const d = el("div"); d.append(el("span", "eyebrow", label), el("span", "v", value));
+    if (sub) d.append(el("span", "small muted", sub));
+    s.append(d);
+  };
+  const alone = R.alone.map(a => `${a.label} alone ${a.scale == null ? "no plan" : fmt(a.scale, 6)}`).join(" · ");
+  tile("Bill scale", `${fmt(R.bill.scale, 6)}/min`, alone);
+  tile("Whole bill in", R.bill.horizon_min ? `${fmt(R.bill.horizon_min)} min` : "—", "every item together, in proportion");
+  const pacing = [];
+  for (const site of R.sites) for (const b of site.binding) if (limits(b)) pacing.push(`${item(b.item_id)} (${site.label})`);
+  if (R.power && R.power.binding && R.power.shadow_price > ZERO) pacing.push("the grid");
+  tile("Limited by", pacing.length ? pacing.map(x => x.split(" (")[0]).filter((x, i, a) => a.indexOf(x) === i).join(", ") : "—",
+       pacing.length ? pacing.join(", ") : "no binding cap with a dual above zero");
+  const n = R.sites.reduce((k, site) => k + site.ledger.filter(x => x.left > NOISE).length, 0);
+  tile("Left over", n ? `${n} item${n > 1 ? "s" : ""}` : "nothing", "per the site ledgers, below");
+}
+
+function supply() {
+  const host = $("sites"); host.replaceChildren();
+  for (const site of R.sites) {
+    const box = el("div", "site"), t = el("div", "site-title");
+    t.append(el("h3", null, `${site.label} site`),
+             el("span", "small muted num", `${site.socket_ids.length} sockets · machines ${fmt(site.lane_mw)} MW · extractors ${fmt(site.extraction_mw)} MW drawn of ${fmt(site.extraction_nameplate_mw)} nameplate`));
+    box.append(t);
+    const bound = Object.fromEntries(site.binding.map(b => [b.item_id, b]));
+    for (const c of site.caps) {
+      if (c.cap_per_min === 0) continue;  // a raw this site has no socket for
+      const r = el("div", "row"); r.append(el("div", "label", item(c.item_id)));
+      const bar = el("div", "bar"); bar.setAttribute("role", "img");
+      const meta = el("div", "meta");
+      if (c.cap_per_min == null) {
+        bar.classList.add("pumped");
+        bar.setAttribute("aria-label", `${item(c.item_id)}: ${fmt(c.drawn_per_min, 2)} per minute pumped, uncapped`);
+        meta.append(el("span", "num", `${fmt(c.drawn_per_min, 2)}/min pumped`), el("span", "chip quiet", "declared, uncapped (A4)"));
+      } else {
+        const b = bound[c.item_id];
+        const d = el("div", "drawn" + (b ? (limits(b) ? " bind" : " oncap") : ""));
+        d.style.width = Math.min(100, 100 * c.drawn_per_min / c.cap_per_min) + "%";
+        bar.append(d);
+        bar.setAttribute("aria-label", `${item(c.item_id)}: ${fmt(c.drawn_per_min, 2)} of ${fmt(c.cap_per_min, 0)} per minute drawn`);
+        meta.append(el("span", "num", `${fmt(c.drawn_per_min, 2)} / ${fmt(c.cap_per_min, 0)}/min`));
+        if (b) meta.append(el("span", limits(b) ? "chip bind" : "chip oncap", limits(b) ? "limits bill" : "binding"));
+        if (b && b.margin_text) meta.append(el("span", "num", b.margin_text));
+      }
+      r.append(bar, meta); box.append(r);
+    }
+    host.append(box);
+  }
+}
+
+function leftovers() {
+  const host = $("left"); host.replaceChildren();
+  const slots = +$("ctype").value * Math.max(1, Math.round(+$("ccount").value || 1));
+  store(STORE_STORAGE, JSON.stringify({ t: $("ctype").value, n: $("ccount").value }));
+  const H = R.bill.horizon_min;
+  let any = false;
+  for (const site of R.sites) for (const x of site.ledger) {
+    if (x.left <= NOISE) continue;
+    any = true;
+    const f = R.items ? R.items[x.item_id] : null;
+    const c = el("div", "callout");
+    const head = el("span", "small");
+    head.append(el("b", null, item(x.item_id)), document.createTextNode(` · ${site.label} site · `),
+                el("span", "num", `${fmt(x.left, 2)}/min left`),
+                document.createTextNode(` (produced ${fmt(x.produced, 2)}, consumed ${fmt(x.consumed, 2)}, burned ${fmt(x.burned, 2)}, shipped ${fmt(x.shipped, 2)}, to bill ${fmt(x.to_bill, 2)})`));
+    c.append(head);
+    let line;
+    if (!f) {
+      line = "Form and stack size are not in this record (an export before 2026-10-23); no fill time.";
+    } else if (f.form !== "solid" || f.stack_size == null) {
+      c.className = "callout fluid";
+      line = `A ${f.form}: no container slot holds it (tanks, or package it first), so no fill time from container storage.`;
+    } else {
+      const cap = slots * f.stack_size, t = cap / x.left;
+      const fills = H && t < H;
+      if (!fills) c.className = "callout calm";
+      line = `${slots.toLocaleString("en-US")} slots × ${f.stack_size} = ${cap.toLocaleString("en-US")} units: full at ${fmt(t)} min` +
+        (H ? (fills ? `, ${fmt(H - t)} min before the bill is done (${fmt(H)} min).` : `, past the bill (${fmt(H)} min); ${fmt(x.left * H, 0)} units accumulate over the bill.`) : ".");
+    }
+    c.append(el("span", "small", line));
+    host.append(c);
+  }
+  if (!any) host.append(el("p", "small muted", "Nothing left over: every item made at every site is consumed, burned, shipped or delivered."));
+}
+
+function bill() {
+  const thead = $("bill").querySelector("thead"), tb = $("bill").querySelector("tbody");
+  const hr = el("tr");
+  for (const [h, r] of [["Item"], ["Units", 1], ["Made", 1], ["Used in parts", 1], ["To bill", 1], ...R.sites.map(s => [s.label, 1])]) {
+    hr.append(el("th", r ? "r" : null, h));
+  }
+  thead.replaceChildren(hr); tb.replaceChildren();
+  const blocked = Object.fromEntries(R.bill.blocked.map(b => [b.item_id, b]));
+  const sum = (id, key) => R.sites.reduce((k, s) => k + s.ledger.filter(x => x.item_id === id).reduce((a, x) => a + x[key], 0), 0);
+  for (const [id, units] of Object.entries(R.bill.units)) {
+    const tr = el("tr"); tr.append(el("td", null, item(id)), el("td", "r num", Number(units).toLocaleString("en-US")));
+    const b = blocked[id];
+    if (b) {
+      tr.className = "blocked";
+      const td = el("td", null, "not made: needs " + (b.missing_raws.map(item).join(", ") || "no socket resource") +
+        b.opened_by.map(o => `; or ${recipe(o.recipe_id)} [${o.source}]`).join(""));
+      td.colSpan = 3 + R.sites.length; tr.append(td);
+    } else {
+      const cell = v => el("td", "r num", v > NOISE ? fmt(v, 3) : "–");
+      tr.append(cell(sum(id, "produced")), cell(sum(id, "consumed")));
+      const to = el("td", "r num"); to.append(el("b", null, fmt(sum(id, "to_bill"), 3))); tr.append(to);
+      for (const s of R.sites) tr.append(cell(s.ledger.filter(x => x.item_id === id).reduce((a, x) => a + x.to_bill, 0)));
+    }
+    tb.append(tr);
+  }
+  $("bill-note").textContent = `Bill order. Made counts every site's production; "used in parts" is what the plans consume. ` +
+    `The bill moves in proportion, so every item finishes together${R.bill.horizon_min ? ` at ${fmt(R.bill.horizon_min)} min` : ""}. Delivered wherever made (A1 P7).`;
+  const t = $("transfers"); t.replaceChildren();
+  t.append(el("div", "eyebrow", `Transfers · ${fmt(R.transfer_volume_per_min, 3)}/min moved (${R.assumptions.volume})`));
+  if (!R.transfers.length) { t.append(el("p", "small muted", "None.")); return; }
+  const ul = el("ul", "plain");
+  for (const x of R.transfers) ul.append(el("li", "num", `${x.source} → ${x.destination}: ${item(x.item_id)} ${fmt(x.rate_per_min, 3)}/min`));
+  t.append(ul);
+}
+
+function plans() {
+  const host = $("plans"); host.replaceChildren();
+  for (const s of R.sites) {
+    const box = el("div", "site");
+    box.append(el("h3", null, `${s.label} site`));
+    const gens = s.generators.map(u => `${fmt(u.count, 2)} × ${producer(u.generator_class)} on ${item(u.fuel_item_id)} (${fmt(u.mw, 0)} MW, ${fmt(u.fuel_per_min, 1)}/min)`);
+    box.append(el("p", "small", "Generators: " + (gens.join("; ") || "none")));
+    for (const p of s.pumped) box.append(el("p", "small", `Pumped ${item(p.item_id)}: ${fmt(p.rate_per_min, 1)}/min needed. Declared pumpable, not verified by world data.`));
+    const ul = el("ul", "plain");
+    for (const u of s.recipes) ul.append(el("li", null, `${recipe(u.recipe_id)} — ${fmt(u.machine_equivalents, 2)} ${producer(u.producer_class)}`));
+    box.append(ul);
+    const alone = R.alone.find(a => a.label === s.label);
+    if (alone) box.append(el("p", "small muted", `Alone: ${alone.scale == null ? alone.reason : fmt(alone.scale, 6) + "/min"}` +
+      (alone.cannot_make.length ? `; cannot make alone: ${alone.cannot_make.map(item).join(", ")}` : "")));
+    host.append(box);
+  }
+}
+
+function grid() {
+  const pw = R.power, st = $("grid-stack"), lg = $("grid-legend");
+  st.replaceChildren(); lg.replaceChildren();
+  if (!pw) { $("grid-note").textContent = "No power section in this record."; return; }
+  const total = Math.max(pw.generated_mw + pw.grid_mw, pw.lane_mw + pw.extraction_mw + pw.spare_mw) || 1;
+  for (const [v, color, t] of [[pw.lane_mw, "var(--flow)", "machines"], [pw.extraction_mw, "var(--accent)", "extractors"], [pw.spare_mw, "var(--hatch)", "spare"]]) {
+    if (v <= 0) continue;
+    const d = el("div"); d.style.width = (100 * v / total) + "%"; d.style.background = color; d.title = `${t} ${fmt(v)} MW`; st.append(d);
+  }
+  const sp = (cls, text) => { const s = el("span"); if (cls) s.append(el("i", "sw " + cls)); s.append(document.createTextNode(text)); lg.append(s); };
+  sp("drawn", `machines ${fmt(pw.lane_mw)} MW`);
+  sp("oncap", `extractors ${fmt(pw.extraction_mw)} MW drawn (nameplate ${fmt(pw.extraction_nameplate_mw || 0)})`);
+  if (pw.spare_mw) sp(null, `spare ${fmt(pw.spare_mw)} MW`);
+  sp(null, `≤ generated ${fmt(pw.generated_mw)} + standing grid ${fmt(pw.grid_mw)} MW; margin ${fmt(pw.margin_mw)} MW`);
+  const state = !pw.binding ? "not binding" : pw.shadow_price > ZERO ? "limiting" : "tight, not limiting (generators built to the draw)";
+  $("grid-note").textContent = `Grid ${state}.` + (pw.margin_text ? ` ${pw.margin_text}.` : "") +
+    ` Generators open at this tier: ${R.generators_open.map(producer).join(", ") || "none"}.`;
+}
+
+function foot() {
+  const f = $("foot"); f.replaceChildren();
+  f.append(el("span", null, `Status ${R.status}. Not assessed: ${R.not_assessed.join(", ")}.`));
+  f.append(el("span", null, `Power: ${R.assumptions.power}.`));
+  if (R.assumptions.margin) f.append(el("span", null, R.assumptions.margin + "."));
+  f.append(el("span", null, "Fill times are arithmetic on the record's rates and the storage declared above; nothing here solves."));
+}
+
+for (const id of ["ctype", "ccount"]) $(id).addEventListener("input", () => R && leftovers());
+try {
+  const s = JSON.parse(recall(STORE_STORAGE) || "null");
+  if (s) { $("ctype").value = s.t; $("ccount").value = s.n; }
+} catch (e) { /* ignore a bad saved value */ }
+const saved = recall(STORE_RECORD);
+if (saved) accept(saved, "saved record");
+</script>
+</body>
+</html>

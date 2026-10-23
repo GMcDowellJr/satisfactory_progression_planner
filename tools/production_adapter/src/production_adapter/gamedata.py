@@ -126,6 +126,11 @@ class Item:
     display_name: str
     form: str
     is_resource: bool
+    #: items.csv `cached_stack_size`: units per inventory slot as the game
+    #: docs state it (fluids carry SS_FLUID's 50000, which is not a slot of
+    #: any container). Set by the loader for every row; the default exists
+    #: only so hand-built test fixtures need not name it.
+    stack_size: int | None = None
 
 
 @dataclass(frozen=True)
@@ -341,11 +346,19 @@ def load(repo_root: str | pathlib.Path, scenario: Scenario | None = None) -> Ref
     items: dict[ItemId, Item] = {}
     resources: set[ItemId] = set()
     for r in _rows(ref / "items.csv"):
+        try:
+            stack_size = int(r["cached_stack_size"])
+        except ValueError:
+            raise ReferenceDataError(
+                f"items.csv: {r['item_id']} has cached_stack_size {r['cached_stack_size']!r}, "
+                "not an integer"
+            ) from None
         items[r["item_id"]] = Item(
             item_id=r["item_id"],
             display_name=r["display_name"],
             form=r["form"],
             is_resource=r["category"] == "resource",
+            stack_size=stack_size,
         )
         if r["category"] == "resource":
             resources.add(r["item_id"])

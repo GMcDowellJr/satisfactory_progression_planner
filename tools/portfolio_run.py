@@ -54,6 +54,15 @@ the shared grid, and per site a LEDGER of every item it touches. Display
 names ride along so a client needs no copy of the reference layer (as
 district_run's A27.3 export). LF pinned.
 
+Added 2026-10-23 (handoff 2026-10-19 18:28 action 1, "Step 1"; additive, the
+schema tag stays portfolio-plan/1): each binding cap and the grid carry
+`margin_text`, the report's own wording of the dual (shadow_text, A5), and
+`assumptions.margin` its caveat; `items` gives every mentioned item's form
+and, for solids, its stack size, so a client can turn a declared storage
+into a fill time without a copy of items.csv; `provenance` says where and
+when the record was made (null from record() unless supplied; export()
+always supplies it).
+
 The ledger exists because the portfolio solve drops each site's local
 warnings (lp_backend: "the portfolio's ledger is the transfers"), and with
 them D1's "unconsumed output is free" note. So a leftover, such as scenario
@@ -316,6 +325,23 @@ def _n(data: ReferenceData, item_id: str) -> str:
     return item.display_name if item else item_id
 
 
+def _cap_margin(b, scale: float, data: ReferenceData) -> str:
+    """A binding cap's dual as minutes to cover the bill (shadow_text.horizon).
+    The report and the record both call this, so the two cannot word it
+    differently."""
+    return shadow_text.horizon(b.shadow_price, scale, 1.0, f"+1/min {_n(data, b.item_id)}",
+                               b.shadow_price_high)
+
+
+def _grid_margin(pw, scale: float) -> str | None:
+    """The shared grid's dual in the same terms, per MW_STEP; None when the
+    grid row is not binding (no dual to read)."""
+    if not pw.binding:
+        return None
+    return shadow_text.horizon(pw.shadow_price, scale, shadow_text.MW_STEP,
+                               f"+{shadow_text.MW_STEP:g} MW")
+
+
 def report(pr: PortfolioRun, data: ReferenceData) -> str:
     r = pr.response
     out = [
@@ -361,9 +387,7 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
                 b = bound.get(c.item_id)
                 out.append(f"  {_n(data, c.item_id):18s} {draw.get(c.item_id, 0.0):9.2f} / "
                            f"{c.rate_per_min:g}" + ("" if b is None else "  BINDING ("
-                           + shadow_text.horizon(b.shadow_price, r.scale, 1.0,
-                                                 f"+1/min {_n(data, c.item_id)}", b.shadow_price_high)
-                           + ")"))
+                           + _cap_margin(b, r.scale, data) + ")"))
         sent = [t for t in r.transfers if t.source == plan.label]
         got = [t for t in r.transfers if t.destination == plan.label]
         out.append("  ships out: " + (", ".join(f"{_n(data, t.item_id)} {t.rate_per_min:.3f} -> "
@@ -398,8 +422,7 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
             + ("" if not pw.binding else "  LIMITING" if pw.shadow_price > 1e-12
                else "  tight, not limiting (shadow 0: generators built to the draw)")]
     if pw.binding and pw.shadow_price > 1e-12:
-        out.append("  " + shadow_text.horizon(pw.shadow_price, r.scale, shadow_text.MW_STEP,
-                                              f"+{shadow_text.MW_STEP:g} MW"))
+        out.append("  " + _grid_margin(pw, r.scale))
     return "\n".join(out)
 
 
@@ -438,8 +461,61 @@ def site_ledger(pr: PortfolioRun, label: str) -> tuple[dict, ...]:
     return tuple(rows.values())
 
 
-def record(pr: PortfolioRun, data: ReferenceData) -> dict:
-    """The run as one JSON-ready document (module docstring)."""
+def item_facts(data: ReferenceData, items) -> dict:
+    """Per item: form (solid / liquid / gas) and stack size, from items.csv
+    through gamedata. `stack_size` is the units per container slot and is
+    given for solids only: a fluid's SS_FLUID 50000 is no slot of any
+    storage container (fluids go to tanks, or are packaged first), so
+    carrying it would invite a fill time that means nothing. Facts, not a
+    storage choice: what storage is declared stays the client's input."""
+    return {
+        i: {"form": data.items[i].form,
+            "stack_size": data.items[i].stack_size if data.items[i].form == "solid" else None}
+        for i in items if i in data.items
+    }
+
+
+def provenance(repo: pathlib.Path = REPO) -> dict:
+    """Where and when a record was made (AGENTS.md: every figure says where
+    and when it was measured). Separate from the record's body so two runs
+    of the same inputs can be compared with this key dropped. The commit is
+    read with git where git can run; in Pyodide (no subprocess) or outside a
+    checkout it is None with the reason, never guessed."""
+    import datetime
+    import platform
+
+    import numpy
+    import scipy
+
+    out = {
+        "generated_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "python": platform.python_version(),
+        "implementation": sys.platform,
+        "numpy": numpy.__version__,
+        "scipy": scipy.__version__,
+        "commit": None,
+        "worktree_dirty": None,
+        "commit_unavailable": None,
+    }
+    try:
+        import subprocess
+
+        def git(*args: str) -> str:
+            return subprocess.run(("git", "-C", str(repo)) + args, check=True,
+                                  capture_output=True, text=True).stdout.strip()
+
+        out["commit"] = git("rev-parse", "HEAD")
+        # tracked files only: an untracked scratch file does not change what ran
+        out["worktree_dirty"] = bool(git("status", "--porcelain", "--untracked-files=no"))
+    except Exception as exc:  # no git, no subprocess (Pyodide), not a checkout
+        out["commit_unavailable"] = f"{type(exc).__name__}: {exc}".strip()[:200]
+    return out
+
+
+def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None) -> dict:
+    """The run as one JSON-ready document (module docstring). `prov` is
+    provenance() or None; None is written as null (not stated), which keeps
+    record() deterministic for tests and for native-vs-Pyodide comparison."""
     r = pr.response
     items: dict[str, None] = dict.fromkeys(pr.bill)
     recipes: dict[str, None] = {}
@@ -465,7 +541,10 @@ def record(pr: PortfolioRun, data: ReferenceData) -> dict:
             # raws it has no socket for) are kept, so the client sees the full set
             "caps": [{"item_id": c.item_id, "cap_per_min": c.rate_per_min,
                       "drawn_per_min": draw.get(c.item_id, 0.0)} for c in rec.caps],
-            "binding": [dataclasses.asdict(b) for b in plan.binding],
+            # margin_text: the report's wording of the dual (_cap_margin), so a
+            # client never re-derives it (shadow prices in plain language, A5)
+            "binding": [{**dataclasses.asdict(b), "margin_text": _cap_margin(b, r.scale, data)}
+                        for b in plan.binding],
             "recipes": [dataclasses.asdict(u) for u in plan.plan.recipes],
             "generators": [dataclasses.asdict(u) for u in plan.generators],
             "lane_mw": plan.lane_mw,
@@ -487,7 +566,9 @@ def record(pr: PortfolioRun, data: ReferenceData) -> dict:
         "generators_open": list(pr.generators_open),
         "status": site_card.CARD_STATUS,
         "not_assessed": list(NOT_ASSESSED),
-        "assumptions": {"volume": VOLUME_ASSUMPTION, "power": POWER_ASSUMPTION},
+        "assumptions": {"volume": VOLUME_ASSUMPTION, "power": POWER_ASSUMPTION,
+                        "margin": shadow_text.MARGIN_NOTE},
+        "provenance": prov,
         "bill": {
             "phases": list(pr.bill_phases), "tiers": list(pr.bill_tiers),
             "units": dict(pr.bill), "scale": r.scale, "horizon_min": r.horizon_min,
@@ -504,7 +585,9 @@ def record(pr: PortfolioRun, data: ReferenceData) -> dict:
         "sites": sites,
         "transfers": [dataclasses.asdict(t) for t in r.transfers],
         "transfer_volume_per_min": r.transfer_volume_per_min,
-        "power": None if r.power is None else dataclasses.asdict(r.power),
+        "power": None if r.power is None else {**dataclasses.asdict(r.power),
+                                               "margin_text": _grid_margin(r.power, r.scale)},
+        "items": item_facts(data, items),
         "names": {
             "items": {i: data.items[i].display_name for i in items if i in data.items},
             "recipes": {i: data.recipes[i].display_name for i in recipes if i in data.recipes},
@@ -515,7 +598,7 @@ def record(pr: PortfolioRun, data: ReferenceData) -> dict:
 
 def export(pr: PortfolioRun, data: ReferenceData, path: pathlib.Path) -> None:
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(record(pr, data), f, indent=1)
+        json.dump(record(pr, data, provenance()), f, indent=1)
         f.write("\n")
 
 
