@@ -694,7 +694,9 @@ class LpBackend:
         before stage 3 so locality is preferred over a cheaper recipe mix
         among plans of equal scale; the order is A1.2's design choice.
         Power (A3): one shared grid row over every site when `request.power`
-        is set.
+        is set. With `report_need` (site planner A11) the row is left out and
+        its terms are read from the plan instead: the need is reported, and
+        nothing is sized or bounded by power.
 
         Extraction by the draw (A4, Greg 2026-10-19): each site's
         `extraction` segments are columns e_ksj in [0, cap] (or uncapped for
@@ -749,7 +751,7 @@ class LpBackend:
         # A3: ONE shared grid row, row 0 when present: every site's own row
         # from _build_core (lanes, generators, extraction draw) side by side
         # <= grid - spare - constant extraction, counted once
-        n_pw = 1 if request.power is not None else 0
+        n_pw = 1 if request.power is not None and not request.power.report_need else 0
         a_ub = np.zeros((n_pw + len(request.bill), n), dtype=float)
         b_ub = np.zeros(n_pw + len(request.bill), dtype=float)
         if n_pw:
@@ -857,8 +859,9 @@ class LpBackend:
             drawn = any(s.extraction for s in request.sites)
             extraction = pb.extraction_mw + float(sum(s.extraction_mw for s in sites))
             margin = generated + pb.grid_mw - lane - extraction - pb.spare_mw
-            # row 0 of A_ub; its dual is in the first stage's units: scale per MW
-            dual = float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
+            # row 0 of A_ub; its dual is in the first stage's units: scale per MW.
+            # A11: no row, no dual; the margin is then minus the need
+            dual = 0.0 if pb.report_need else float(np.asarray(first.ineqlin.marginals, dtype=float)[0])
             total_pumped: dict[str, float] = {}
             for s in sites:
                 for item, rate in s.pumped:
@@ -867,11 +870,12 @@ class LpBackend:
                 lane_mw=lane, extraction_mw=extraction, grid_mw=pb.grid_mw,
                 spare_mw=pb.spare_mw, generated_mw=generated, margin_mw=margin,
                 generators=tuple(u for s in sites for u in s.generators),
-                binding=margin <= max(abs(lane), 1.0) * 1.0e-6,
+                binding=(not pb.report_need) and margin <= max(abs(lane), 1.0) * 1.0e-6,
                 shadow_price=-dual + 0.0,
                 extraction_nameplate_mw=(float(sum(s.extraction_nameplate_mw for s in sites))
                                          if drawn else None),
                 pumped=tuple(total_pumped.items()),
+                need_mw=(lane + extraction + pb.spare_mw) if pb.report_need else None,
             )
         return PortfolioResponse(
             scale=scale,

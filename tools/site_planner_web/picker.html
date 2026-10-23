@@ -7,7 +7,7 @@
 <!--
   Step 2, first half (handoff 2026-10-23 14:48 action 2): pick neighborhoods
   from a neighborhoods/1 export (tools/neighborhoods.py) as sites, and write a
-  portfolio-inputs/1 document (tools/portfolio_run.py --inputs). Running it in
+  portfolio-inputs/2 document (tools/portfolio_run.py --inputs). Running it in
   the browser (Pyodide worker) is the second half, not here yet.
 
   It picks; it does not choose. The neighborhood policy is the export's, shown
@@ -83,7 +83,7 @@ footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
   <header>
     <div class="eyebrow">Site Planner · picker</div>
     <h1>Pick sites from neighborhoods</h1>
-    <p class="small muted">Open a neighborhoods/1 export (<span class="mono">tools/neighborhoods.py --export</span>). Pick neighborhoods as sites, declare the run, and save a portfolio-inputs/1 file for <span class="mono">portfolio_run.py --inputs</span>.</p>
+    <p class="small muted">Open a neighborhoods/1 export (<span class="mono">tools/neighborhoods.py --export</span>). Pick neighborhoods as sites, declare the run, and save a portfolio-inputs/2 file for <span class="mono">portfolio_run.py --inputs</span>.</p>
   </header>
 
   <div class="loader">
@@ -172,7 +172,8 @@ footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
 "use strict";
 // Pinned by tests/test_site_planner_web.py against the Python side:
 const NB_SCHEMA = "neighborhoods/1";                    // neighborhoods.EXPORT_SCHEMA
-const INPUTS_SCHEMA = "portfolio-inputs/1";             // portfolio_run.INPUTS_SCHEMA
+const INPUTS_SCHEMA = "portfolio-inputs/2";             // portfolio_run.INPUTS_SCHEMA
+const POWER_MODES = ["grid", "report_need"];             // portfolio_run.POWER_MODES (A11)
 const GOALS = ["balanced", "resources", "power", "buildings"];  // site_card.GOALS
 const EXTRACTORS = ["Build_FrackingExtractor_C", "Build_MinerMk1_C", "Build_MinerMk2_C", "Build_MinerMk3_C", "Build_OilPump_C", "Build_WaterPump_C"];  // gamedata extraction rates
 const FLUID_ROUNDING = ["m3", "mL", null];              // scenario.FLUID_ROUNDING_VARIANTS
@@ -356,7 +357,9 @@ function overlaps() {
 const FIELDS = [
   ["tier", "Tier", "number", "int"], ["bill_phases", "Bill: Project Assembly phases (e.g. 1,2)", "text", "intlist"],
   ["bill_tiers", "Bill: milestones of tiers (e.g. 1,2)", "text", "intlist"], ["goal", "Goal (breaks ties)", GOALS, "choice"],
-  ["extraction_clock", "Extraction clock (1 = 100 %)", "number", "num"], ["grid_mw", "Standing grid, MW (0 = none)", "number", "num"],
+  ["extraction_clock", "Extraction clock (1 = 100 %)", "number", "num"],
+  ["power_mode", "Power: grid = supply limits the plan; report_need = report the MW needed and the generators", POWER_MODES, "choice"],
+  ["grid_mw", "Standing grid, MW (0 = none; must be 0 with report_need)", "number", "num"],
   ["spare_mw", "Spare held above draw, MW", "number", "num"], ["world_config_id", "World configuration", "text", "text"],
   ["recipe_input_multiplier", "Recipe input ×", "number", "num"], ["machine_power_multiplier", "Machine power ×", "number", "num"],
   ["project_assembly_requirement_multiplier", "Project Assembly ×", "number", "num"],
@@ -420,6 +423,9 @@ function build() {
     } catch (why) { problems.push(`${label}: ${why}`); l && l.classList.add("missing"); }
   }
   if (!problems.some(p => p.startsWith("Bill")) && !v.bill_phases.length && !v.bill_tiers.length) problems.push("Bill: declare phases and/or tiers");
+  // A11: portfolio_run refuses these too; said here so the form shows it before a run
+  if (v.power_mode === "report_need" && v.grid_mw !== 0) problems.push("Power: report_need reports the whole need; set the standing grid to 0");
+  if (v.power_mode === "report_need" && sites.some(s => s.pumps_water)) problems.push("Power: report_need cannot bound pumped water; untick it or use grid");
   if (!extractors.length) problems.push("Extractors: declare at least one");
   extractors.forEach((e, i) => { if (!e.source_kind || !e.extractor_class) problems.push(`Extractor ${i + 1}: kind and class`); });
   if (!sites.length) problems.push("Sites: pick at least one");
@@ -435,7 +441,7 @@ function build() {
     schema: INPUTS_SCHEMA, world_config_id: v.world_config_id, tier: v.tier, declared_recipes: v.declared_recipes,
     scenario, goal: v.goal, bill: { phases: v.bill_phases, tiers: v.bill_tiers }, extraction_clock: v.extraction_clock,
     extractors: extractors.map(e => ({ source_kind: e.source_kind, item_id: e.item_id, extractor_class: e.extractor_class })),
-    grid_mw: v.grid_mw, spare_mw: v.spare_mw,
+    power_mode: v.power_mode, grid_mw: v.grid_mw, spare_mw: v.spare_mw,
     sites: sites.map(s => ({ label: s.label, socket_ids: s.socket_ids, pumps_water: s.pumps_water, supply: s.supply })),
   } };
 }
@@ -464,7 +470,7 @@ $("infile").addEventListener("change", ev => readFile(ev.target, (text, src) => 
   if (!d || d.schema !== INPUTS_SCHEMA) { fail(`${src}: schema ${JSON.stringify(d && d.schema)}, this page writes ${INPUTS_SCHEMA}. Refused.`); return; }
   $("err").hidden = true;
   form = { tier: String(d.tier), bill_phases: d.bill.phases.join(","), bill_tiers: d.bill.tiers.join(","), goal: d.goal,
-           extraction_clock: String(d.extraction_clock), grid_mw: String(d.grid_mw), spare_mw: String(d.spare_mw),
+           extraction_clock: String(d.extraction_clock), power_mode: d.power_mode, grid_mw: String(d.grid_mw), spare_mw: String(d.spare_mw),
            world_config_id: d.world_config_id, declared_recipes: d.declared_recipes.join("; ") };
   for (const k of SCENARIO_KEYS) {
     const v = d.scenario[k];

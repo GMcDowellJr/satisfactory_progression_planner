@@ -188,12 +188,14 @@ footer { display: grid; gap: 6px; font-size: .8rem; color: var(--muted); }
 
     <section class="panel" aria-labelledby="h-grid">
       <div class="panel-head">
-        <div class="eyebrow">Shared grid (A3)</div>
+        <div class="eyebrow" id="grid-eyebrow">Shared grid (A3)</div>
         <h2 id="h-grid">Power</h2>
         <p class="small muted" id="grid-note"></p>
       </div>
       <div class="stack" id="grid-stack" aria-label="Power draw against generation"></div>
       <div class="legend" id="grid-legend"></div>
+      <p class="small" id="need-note" hidden></p>
+      <div class="tbl-wrap" id="need-wrap" hidden><table id="need"><thead></thead><tbody></tbody></table></div>
     </section>
 
     <footer id="foot"></footer>
@@ -426,7 +428,59 @@ function plans() {
   }
 }
 
+function need() {
+  // A11 (power_mode report_need): the need, and per open (generator, fuel) row what covering it takes
+  const pn = R.power_need, wrap = $("need-wrap"), note = $("need-note");
+  wrap.hidden = note.hidden = !pn;
+  if (!pn) return false;
+  $("grid-eyebrow").textContent = "Power need (A11)";
+  const st = $("grid-stack"), lg = $("grid-legend");
+  st.replaceChildren(); lg.replaceChildren();
+  const total = pn.need_mw || 1;
+  for (const [v, color, t] of [[pn.lane_mw, "var(--flow)", "machines"], [pn.extraction_mw, "var(--accent)", "extractors"], [pn.spare_mw, "var(--hatch)", "spare"]]) {
+    if (v <= 0) continue;
+    const d = el("div"); d.style.width = (100 * v / total) + "%"; d.style.background = color; d.title = `${t} ${fmt(v)} MW`; st.append(d);
+  }
+  const sp = (cls, text) => { const s = el("span"); if (cls) s.append(el("i", "sw " + cls)); s.append(document.createTextNode(text)); lg.append(s); };
+  sp("drawn", `machines ${fmt(pn.lane_mw, 2)} MW`);
+  sp("oncap", `extractors ${fmt(pn.extraction_mw, 2)} MW drawn`);
+  if (pn.spare_mw) sp(null, `spare ${fmt(pn.spare_mw, 2)} MW`);
+  sp(null, `= need ${fmt(pn.need_mw, 2)} MW`);
+  $("grid-note").textContent = "Reported, not imposed: the plan is bounded by its sites' caps, and this is the power it draws. " +
+    `Generators open at this tier: ${R.generators_open.map(producer).join(", ") || "none"}.`;
+  const thead = $("need").querySelector("thead"), tb = $("need").querySelector("tbody");
+  const hr = el("tr");
+  // one generator class (the usual early case): name it once, so the table fits a phone
+  const classes = [...new Set(pn.generators.map(g => g.generator_class))], one = classes.length === 1;
+  // with one class, units and build are the same on every row too: said once, above the table
+  // the fuel's source at this tier sits under its name, so the table is narrow enough for a phone
+  const heads = one ? [["Fuel · at this tier"], ["Feed /min", 1]]
+                    : [["Generator"], ["Fuel · at this tier"], ["Units", 1], ["Build", 1], ["Feed /min", 1]];
+  for (const [h, r] of heads) hr.append(el("th", r ? "r" : null, h));
+  thead.replaceChildren(hr); tb.replaceChildren();
+  for (const g of pn.generators) {
+    const tr = el("tr");
+    const sup = g.supplemental_per_min.map(([i, v]) => ` + ${item(i)} ${fmt(v)}`).join("");
+    if (!one) tr.append(el("td", null, producer(g.generator_class)));
+    const fuel = el("td"); fuel.style.whiteSpace = "normal";
+    fuel.append(el("div", null, item(g.fuel_item_id)), el("div", "small muted", g.source_text));
+    tr.append(fuel);
+    if (!one) tr.append(el("td", "r num", fmt(g.units, 2)), el("td", "r num", String(g.units_whole)));
+    const feed = el("td", "r num", fmt(g.fuel_per_min) + sup); feed.style.verticalAlign = "top"; tr.append(feed);
+    tb.append(tr);
+  }
+  if (!pn.generators.length) { const tr = el("tr"); const td = el("td", "muted", "No generator is open at this tier."); td.colSpan = heads.length; tr.append(td); tb.append(tr); }
+  const g0 = pn.generators[0];
+  note.textContent = (one ? `Every row: ${producer(classes[0])}, ${fmt(g0.power_mw, 0)} MW each: ` +
+    `${fmt(g0.units, 2)} units at the need, ${g0.units_whole} to build. ` : "") +
+    "Feed rates are at the need exactly; built units run below full burn. " +
+    "A fuel made in a constructor draws power of its own, which is not in the need.";
+  return true;
+}
+
 function grid() {
+  if (need()) return;
+  $("grid-eyebrow").textContent = "Shared grid (A3)";
   const pw = R.power, st = $("grid-stack"), lg = $("grid-legend");
   st.replaceChildren(); lg.replaceChildren();
   if (!pw) { $("grid-note").textContent = "No power section in this record."; return; }

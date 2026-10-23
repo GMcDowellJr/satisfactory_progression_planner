@@ -1,4 +1,5 @@
-"""tools/portfolio_run.py inputs: the portfolio-inputs/1 document.
+"""tools/portfolio_run.py inputs: the portfolio-inputs/2 document (/1 plus
+power_mode, site planner A11, Greg 2026-10-23 16:30), and the report_need run.
 
 The picker (handoff 2026-10-23 14:48, action 2) hands a run to portfolio_run
 as sites by socket id plus every other input, all declared. The CLI flags
@@ -48,17 +49,17 @@ ROCKY_A = ("BP_ResourceNode153", "BP_ResourceNode109", "BP_ResourceNode108", "BP
 MINER = [{"source_kind": "resource_node", "item_id": None, "extractor_class": "Build_MinerMk1_C"}]
 
 
-def _rocky(grid_mw: float) -> dict:
+def _rocky(grid_mw: float, power_mode: str = "grid") -> dict:
     """A starter run of district A. Tier 2, bill PA phase 1 + milestones of
     tiers 1-2 are the TEST's declarations (placeholders, not Greg's)."""
     return {
-        "schema": "portfolio-inputs/1", "world_config_id": "default_502094", "tier": 2,
+        "schema": "portfolio-inputs/2", "world_config_id": "default_502094", "tier": 2,
         "declared_recipes": [], "scenario": {
             "recipe_input_multiplier": 1.0, "machine_power_multiplier": 1.0,
             "project_assembly_requirement_multiplier": 1.0, "input_amount_floor": None,
             "fluid_rounding_unit": "mL"},
         "goal": "balanced", "bill": {"phases": [1], "tiers": [1, 2]}, "extraction_clock": 1.0,
-        "extractors": copy.deepcopy(MINER), "grid_mw": grid_mw, "spare_mw": 0.0,
+        "extractors": copy.deepcopy(MINER), "power_mode": power_mode, "grid_mw": grid_mw, "spare_mw": 0.0,
         "sites": [{"label": "rocky_start", "socket_ids": list(ROCKY_A), "pumps_water": False,
                    "supply": []}],
     }
@@ -137,9 +138,99 @@ def test_unknown_keys_and_schema_are_refused():
     with pytest.raises(portfolio_run.PortfolioRunError, match="not known \\['radius_m'\\]"):
         portfolio_run.run_inputs(doc)
     doc = _rocky(60.0)
-    doc["schema"] = "portfolio-inputs/2"
+    doc["schema"] = "portfolio-inputs/3"
     with pytest.raises(portfolio_run.PortfolioRunError, match="schema"):
         portfolio_run.run_inputs(doc)
+
+
+def test_a_portfolio_inputs_1_document_is_refused_by_name():
+    """A11 made power_mode required; a /1 file is not read as "grid" by default."""
+    doc = _rocky(60.0)
+    doc["schema"] = "portfolio-inputs/1"
+    del doc["power_mode"]
+    with pytest.raises(portfolio_run.PortfolioRunError, match="no power_mode \\(A11\\)"):
+        portfolio_run.run_inputs(doc)
+
+
+# -- report_need (site planner A11, Greg 2026-10-23 16:30) ----------------------
+
+BIOMASS = "Build_GeneratorBiomass_Automated_C"
+
+
+def test_rocky_a_reports_its_need():
+    """With the row left out, district A is bounded by its caps; its need is
+    the row's terms. Measured in the container 2026-10-23 on 99b16c8 + this
+    change: scale 0.062338/min, need 307.92 MW (lanes 258.70 + extraction
+    49.22), the same under every goal."""
+    pr, _ = portfolio_run.run_inputs(_rocky(0.0, "report_need"))
+    r, pn = pr.response, pr.power_need
+    assert r.scale == pytest.approx(0.0623377, abs=1e-6)
+    assert not r.power.binding and r.power.shadow_price == 0.0 and r.power.generators == ()
+    assert pn.need_mw == pytest.approx(pn.lane_mw + pn.extraction_mw + pn.spare_mw, rel=1e-12)
+    assert pn.need_mw == pytest.approx(307.92, abs=0.01) and r.power.need_mw == pn.need_mw
+    # tier 2 opens only the Biomass Burner: every one of its fuel rows, csv order
+    assert {g.generator_class for g in pn.generators} == {BIOMASS} and len(pn.generators) == 6
+    for g in pn.generators:
+        assert g.units == pytest.approx(pn.need_mw / 30.0) and g.units_whole == 11
+    by = {g.fuel_item_id: g for g in pn.generators}
+    assert by["Desc_Leaves_C"].fuel_per_min == pytest.approx(pn.need_mw / 30.0 * 120.0)
+    assert by["Desc_Biofuel_C"].fuel_per_min == pytest.approx(pn.need_mw / 30.0 * 4.0)
+
+
+def test_report_need_joins_each_fuel_to_its_source():
+    pr, _ = portfolio_run.run_inputs(_rocky(0.0, "report_need"))
+    src = {g.fuel_item_id: g.source for g in pr.power_need.generators}
+    assert src["Desc_Leaves_C"].made_by == () and src["Desc_Wood_C"].made_by == ()
+    assert dict((r, (h, why)) for r, h, why in src["Desc_GenericBiomass_C"].made_by) == {
+        "Recipe_Biomass_Leaves_C": (True, None), "Recipe_Biomass_Wood_C": (True, None),
+        "Recipe_Biomass_Mycelia_C": (False, portfolio_run.NOT_HELD_RESEARCH),
+        "Recipe_Biomass_AlienProtein_C": (False, portfolio_run.NOT_HELD_RESEARCH)}
+    assert src["Desc_PackagedBiofuel_C"].made_by == (
+        ("Recipe_PackagedBiofuel_C", False, portfolio_run.NOT_HELD_TIER),)
+    assert all(s.site_supply_per_min is None for s in src.values())   # no socket carries biomass
+
+
+def test_report_need_counts_the_spare():
+    doc = _rocky(0.0, "report_need")
+    doc["spare_mw"] = 5.0
+    pn = portfolio_run.run_inputs(doc)[0].power_need
+    assert pn.spare_mw == 5.0 and pn.need_mw == pytest.approx(pn.lane_mw + pn.extraction_mw + 5.0)
+
+
+def test_whole_units_are_the_ceiling_without_float_noise():
+    import types
+    rows = portfolio_run.generators_at_tier(REPO, 2)[1]
+    data = load(REPO)
+    held = portfolio_run.at_tier(REPO, 2)
+    for need, whole in ((60.0, 2), (60.0 + 3e-11, 2), (60.1, 3), (0.0, 0)):
+        pw = types.SimpleNamespace(need_mw=need, lane_mw=need, extraction_mw=0.0, spare_mw=0.0)
+        pn = portfolio_run.power_need_of(pw, rows, data, held, ())
+        assert {g.units_whole for g in pn.generators} == {whole}, need
+
+
+@pytest.mark.parametrize("change, match", [
+    (lambda d: d.update(grid_mw=60.0), "standing grid"),
+    (lambda d: d["sites"][0].update(pumps_water=True), "pumped"),
+    (lambda d: d.update(power_mode="none"), "no power mode"),
+])
+def test_report_need_refuses_what_it_cannot_bound(change, match):
+    doc = _rocky(0.0, "report_need")
+    change(doc)
+    with pytest.raises(portfolio_run.PortfolioRunError, match=match):
+        portfolio_run.run_inputs(doc)
+
+
+def test_report_need_is_in_the_record_and_report():
+    pr, scenario = portfolio_run.run_inputs(_rocky(0.0, "report_need"))
+    data = load(REPO, scenario)
+    rec = portfolio_run.record(pr, data)
+    assert rec["power_mode"] == "report_need" and rec["power_need"]["need_mw"] == pr.power_need.need_mw
+    assert rec["names"]["items"]["Desc_Leaves_C"] == "Leaves"
+    assert "Biomass (Mycelia)" in rec["names"]["recipes"].values()
+    text = portfolio_run.report(pr, data)
+    assert "power need (A11" in text and "made by no recipe" in text and "MAM research" in text
+    grid = portfolio_run.record(portfolio_run.run_inputs(_rocky(60.0))[0], data)
+    assert grid["power_mode"] == "grid" and grid["power_need"] is None
 
 
 def test_pumps_water_reaches_the_run():

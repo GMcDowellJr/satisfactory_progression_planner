@@ -27,6 +27,15 @@ root like district_run.py and site_card.py, whose site composition it reuses:
               solve. Generators open at the tier (unlocks.generators_open_at_
               tier) may be built at any site, burning its supply; machines at
               100 % clock, mean draw
+    need      site planner A11 (Greg 2026-10-23 16:30), power_mode
+              "report_need": the grid row is left out, so the plan is bounded
+              by the sites' caps alone, and its lanes + extraction + spare are
+              reported as the NEED. Then, for every (generator, fuel) row of
+              the generators open at the tier, the units that need takes and
+              each fuel's feed rate, with where the fuel comes from at this
+              tier: recipes held, recipes not held (and why), a socket supply
+              across the sites, or none. Nothing is chosen among them. A
+              standing grid or a pumping site beside it is refused (A11)
     extract   A4 (Greg, 2026-10-19): extractors charged by their DRAW on the
               grid, MW per unit = base MW / nominal rate, 100 % clock at most;
               nameplate reported beside it. Water only where a site is
@@ -64,7 +73,7 @@ when the record was made (null from record() unless supplied; export()
 always supplies it).
 
 **Inputs (`--inputs PATH`, 2026-10-23, handoff 14:48 action 2).** A
-portfolio-inputs/1 document declares the whole run: sites by socket id (as
+portfolio-inputs/2 document (/1 plus `power_mode`, A11) declares the whole run: sites by socket id (as
 the picker, tools/site_planner_web/picker.html, writes them), every other
 input, and the full Scenario. Every key is required and unknown keys are
 refused (run_inputs). The CLI flags build the same document (inputs_doc),
@@ -89,6 +98,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import math
 import pathlib
 import sys
 
@@ -155,6 +165,50 @@ class SiteRecord:
 
 
 @dataclasses.dataclass(frozen=True)
+class FuelSource:
+    """Where a generator fuel comes from at the run's tier (A11 fuel join).
+    `made_by` is every recipe that outputs it, in recipe-table order, each
+    with whether it is held and, when not, why (`not_held_reason`); an
+    empty tuple means no recipe makes it (gathered or extracted).
+    `site_supply_per_min` is the sockets' cap pooled over the sites, None
+    when no socket here carries it."""
+
+    made_by: tuple[tuple[str, bool, str | None], ...]
+    site_supply_per_min: float | None
+
+
+@dataclasses.dataclass(frozen=True)
+class GeneratorNeed:
+    """One (generator, fuel) row at the need: `units` = need / MW per unit,
+    exact; `units_whole` its ceiling (the count to build, each then below
+    full burn); feed rates at `units`, i.e. at the need exactly."""
+
+    generator_class: str
+    fuel_item_id: str
+    power_mw: float
+    units: float
+    units_whole: int
+    fuel_per_min: float
+    supplemental_per_min: tuple[tuple[str, float], ...]
+    source: FuelSource
+
+
+@dataclasses.dataclass(frozen=True)
+class PowerNeed:
+    need_mw: float
+    lane_mw: float
+    extraction_mw: float
+    spare_mw: float
+    #: every (generator, fuel) row of the classes open at the tier, in
+    #: generator_fuels.csv order; empty when no generator is open
+    generators: tuple[GeneratorNeed, ...]
+
+
+#: A11: how power enters the run
+POWER_MODES = ("grid", "report_need")
+
+
+@dataclasses.dataclass(frozen=True)
 class PortfolioRun:
     tier: int
     declared_recipes: tuple[str, ...]
@@ -174,6 +228,10 @@ class PortfolioRun:
     #: per site, the bill items it cannot reach by itself (its own caps, the
     #: held recipes): why an alone scale is 0.0 when material is the reason
     alone_blocked: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    #: A11: "grid" (the row imposed, A3) or "report_need"
+    power_mode: str = "grid"
+    #: A11: the need and the generators it takes; None in grid mode
+    power_need: PowerNeed | None = None
 
 
 def compose_bill(repo: pathlib.Path, data: ReferenceData, phases: tuple[int, ...],
@@ -216,12 +274,26 @@ def run(
     declared_recipe_names: tuple[str, ...] = (), world_config_id: str = "default_502094",
     power_statistic: PowerStatistic = PowerStatistic.MEAN, grid_mw: float = 0.0,
     spare_mw: float = 0.0, water_sites: tuple[str, ...] = (), repo: pathlib.Path = REPO,
+    power_mode: str = "grid",
 ) -> PortfolioRun:
     """`grid_mw` is standing supply from outside these sites (an existing
     grid); 0.0 means none, which is the reading of A1 P1's "existing sites are
     not in the model". `spare_mw` is a margin held above the draw.
     `water_sites` are the labels of sites declared able to pump Water (A4);
-    the world data does not say where water is, so nothing defaults it."""
+    the world data does not say where water is, so nothing defaults it.
+    `power_mode` (A11): "grid" imposes the shared row (A3); "report_need"
+    leaves it out and reports the need (module docstring). The default is
+    the behaviour every caller had before A11; an inputs document must
+    state it."""
+    if power_mode not in POWER_MODES:
+        raise PortfolioRunError(f"no power mode {power_mode!r}; known: {list(POWER_MODES)}")
+    need = power_mode == "report_need"
+    if need and grid_mw != 0.0:
+        raise PortfolioRunError("report_need reports the whole need: a standing grid beside it "
+                                "is not modelled (A11); declare grid_mw 0")
+    if need and water_sites:
+        raise PortfolioRunError(f"report_need with water pumped at {list(water_sites)}: only the grid "
+                                "row bounds a pumped raw (A4), so without it the plan is unbounded (A11)")
     if goal not in site_card.GOALS:
         raise PortfolioRunError(f"no goal {goal!r}; known: {list(site_card.GOALS)}")
     if not specs:
@@ -285,7 +357,8 @@ def run(
 
     # A4: extraction is charged by the draw through each site's segments, so
     # the constant nameplate term is 0.0
-    grid = PowerBalance(generators=generators, grid_mw=grid_mw, spare_mw=spare_mw)
+    grid = PowerBalance(generators=() if need else generators, grid_mw=grid_mw, spare_mw=spare_mw,
+                        report_need=need)
 
     backend = LpBackend(power_statistic=power_statistic)
     weights = site_card.GOALS[goal]
@@ -302,12 +375,62 @@ def run(
                              if not x.makeable))
         for r in records
     )
+    power_need = power_need_of(response.power, generators, data, held, together) if need else None
     return PortfolioRun(
         tier=tier, declared_recipes=held.declared, scenario=data.scenario, goal=goal,
         bill_phases=bill_phases, bill_tiers=bill_tiers, bill=bill, blocked=blocked,
         sites=tuple(records), response=response, alone=alone, generators_open=open_classes,
-        alone_blocked=alone_blocked,
+        alone_blocked=alone_blocked, power_mode=power_mode, power_need=power_need,
     )
+
+
+#: why a recipe is not held at the tier, from at_tier's own sets
+NOT_HELD_RESEARCH = "MAM research"
+NOT_HELD_ALTERNATE = "alternate, not declared"
+NOT_HELD_TIER = "not unlocked by this tier"
+
+
+def not_held_reason(recipe_id: str, held) -> str:
+    """`held` is the run's unlocks.TierUnlocks: a recipe outside its set is
+    research-gated, an alternate not declared, or a base recipe no schematic
+    of this tier grants."""
+    if recipe_id in held.withheld_research:
+        return NOT_HELD_RESEARCH
+    if recipe_id in held.withheld_alternates:
+        return NOT_HELD_ALTERNATE
+    return NOT_HELD_TIER
+
+
+def fuel_source(fuel: str, data: ReferenceData, held, together: tuple[ResourceCap, ...]) -> FuelSource:
+    """A11 fuel join: the recipes that output `fuel` (held or not, and why),
+    and the sockets' pooled cap of it. Reported; nothing is picked."""
+    kept = set(held.recipe_ids)
+    made_by = tuple(
+        (rid, rid in kept, None if rid in kept else not_held_reason(rid, held))
+        for rid, r in data.recipes.items() if any(i == fuel for i, _ in r.outputs)
+    )
+    caps = {c.item_id: c.rate_per_min for c in together}
+    return FuelSource(made_by, caps.get(fuel))
+
+
+def power_need_of(pw, rows, data: ReferenceData, held, together: tuple[ResourceCap, ...]) -> PowerNeed:
+    """The need (lanes + extraction + spare, the row's right-hand side the
+    solve reported) and, per open (generator, fuel) row, what covering it
+    takes. Whole units are the ceiling with a 1e-9 allowance, so a need of
+    exactly 2 x 30 MW is 2 burners, not 3."""
+    need = float(pw.need_mw)
+    gens = []
+    for g in rows:
+        units = need / g.power_mw
+        gens.append(GeneratorNeed(
+            generator_class=g.generator_class, fuel_item_id=g.fuel_item_id, power_mw=g.power_mw,
+            units=units, units_whole=math.ceil(units - 1.0e-9) if units > 1.0e-9 else 0,
+            fuel_per_min=units * g.burn_rate_per_min,
+            supplemental_per_min=tuple((i, units * r) for i, r in g.supplemental),
+            source=fuel_source(g.fuel_item_id, data, held, together),
+        ))
+    return PowerNeed(need_mw=need, lane_mw=pw.lane_mw, extraction_mw=pw.extraction_mw,
+                     spare_mw=pw.spare_mw, generators=tuple(gens))
 
 
 # -- report -------------------------------------------------------------------
@@ -420,6 +543,9 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
             for u in plan.plan.recipes))
     out += ["", f"transfer volume {r.transfer_volume_per_min:.3f}/min ({VOLUME_ASSUMPTION})"]
     pw = r.power
+    if pr.power_need is not None:
+        out += [""] + power_need_lines(pr, data)
+        return "\n".join(out)
     out += ["", "shared grid (A3): generators open at this tier: "
             + ", ".join(c.replace("Build_", "").replace("_C", "") for c in pr.generators_open),
             f"  machines {pw.lane_mw:.1f} + extractors {pw.extraction_mw:.1f} drawn"
@@ -431,6 +557,40 @@ def report(pr: PortfolioRun, data: ReferenceData) -> str:
     if pw.binding and pw.shadow_price > 1e-12:
         out.append("  " + _grid_margin(pw, r.scale))
     return "\n".join(out)
+
+
+def _source_text(src: FuelSource, data: ReferenceData) -> str:
+    parts = []
+    held = [data.recipes[r].display_name for r, h, _ in src.made_by if h]
+    later = [f"{data.recipes[r].display_name} [{why}]" for r, h, why in src.made_by if not h]
+    if held:
+        parts.append("made here by " + ", ".join(held))
+    if later:
+        parts.append("not held: " + ", ".join(later))
+    if not src.made_by:
+        parts.append("made by no recipe (gathered or extracted)")
+    if src.site_supply_per_min is not None:
+        parts.append(f"sockets here {src.site_supply_per_min:g}/min")
+    return "; ".join(parts)
+
+
+def power_need_lines(pr: PortfolioRun, data: ReferenceData) -> list[str]:
+    """The A11 report: the need, then each open (generator, fuel) row."""
+    pn = pr.power_need
+    out = [f"power need (A11, report_need: the grid row is not imposed; the plan is bounded by "
+           f"its caps): machines {pn.lane_mw:.2f} + extractors {pn.extraction_mw:.2f} drawn"
+           f" + spare {pn.spare_mw:.2f} = {pn.need_mw:.2f} MW"]
+    if not pn.generators:
+        out.append("  no generator is open at this tier")
+    for g in pn.generators:
+        sup = "".join(f", + {_n(data, i)} {v:.1f}/min" for i, v in g.supplemental_per_min)
+        out.append(f"  {g.generator_class.replace('Build_', '').replace('_C', '')} on "
+                   f"{_n(data, g.fuel_item_id)}: {g.units:.2f} units ({g.units_whole} to build, "
+                   f"{g.power_mw:g} MW each), feed {g.fuel_per_min:.1f}/min{sup}"
+                   f"  [{_source_text(g.source, data)}]")
+    out.append("  feed rates are at the need exactly; a fuel made in a constructor draws power "
+               "of its own, which is not in the need (A11)")
+    return out
 
 
 # -- record ---------------------------------------------------------------------
@@ -524,7 +684,7 @@ def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None,
     """The run as one JSON-ready document (module docstring). `prov` is
     provenance() or None; None is written as null (not stated), which keeps
     record() deterministic for tests and for native-vs-Pyodide comparison.
-    `inputs` is the portfolio-inputs/1 document that made the run, echoed
+    `inputs` is the portfolio-inputs document that made the run, echoed
     as given (null when the caller had none), so a record can be re-run."""
     r = pr.response
     items: dict[str, None] = dict.fromkeys(pr.bill)
@@ -565,6 +725,12 @@ def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None,
         })
     for b in pr.blocked:
         items.update(dict.fromkeys(b.missing_raws))
+    if pr.power_need is not None:
+        for g in pr.power_need.generators:
+            items[g.fuel_item_id] = None
+            items.update(dict.fromkeys(i for i, _ in g.supplemental_per_min))
+            recipes.update(dict.fromkeys(rid for rid, _, _ in g.source.made_by))
+            producers[g.generator_class] = None
     alone_blocked = dict(pr.alone_blocked)
     return {
         "schema": RECORD_SCHEMA,
@@ -598,6 +764,13 @@ def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None,
         "transfer_volume_per_min": r.transfer_volume_per_min,
         "power": None if r.power is None else {**dataclasses.asdict(r.power),
                                                "margin_text": _grid_margin(r.power, r.scale)},
+        # A11, additive: the mode, and in report_need the need and its generators
+        "power_mode": pr.power_mode,
+        "power_need": None if pr.power_need is None else {
+            **dataclasses.asdict(pr.power_need),
+            # source_text: the report's wording (_source_text), so a client never re-derives it
+            "generators": [{**dataclasses.asdict(g), "source_text": _source_text(g.source, data)}
+                           for g in pr.power_need.generators]},
         "items": item_facts(data, items),
         "names": {
             "items": {i: data.items[i].display_name for i in items if i in data.items},
@@ -618,11 +791,14 @@ def export(pr: PortfolioRun, data: ReferenceData, path: pathlib.Path,
 
 #: the inputs document's schema tag (handoff 2026-10-23 14:48 action 2: the
 #: picker hands a run to portfolio_run as sites by socket id)
-INPUTS_SCHEMA = "portfolio-inputs/1"
+INPUTS_SCHEMA = "portfolio-inputs/2"
+#: A11 added power_mode; a /1 document is refused by name (no default read in)
+PAST_INPUTS = {"portfolio-inputs/1": "it has no power_mode (A11); add \"power_mode\": \"grid\" to run it "
+                                     "as before, or \"report_need\", and set schema " + "portfolio-inputs/2"}
 #: every key is required: an inputs document declares the whole run, so
 #: nothing here falls back to a default the reader did not see
 INPUT_KEYS = ("schema", "world_config_id", "tier", "declared_recipes", "scenario", "goal", "bill",
-              "extraction_clock", "extractors", "grid_mw", "spare_mw", "sites")
+              "extraction_clock", "extractors", "power_mode", "grid_mw", "spare_mw", "sites")
 SITE_KEYS = ("label", "socket_ids", "pumps_water", "supply")
 EXTRACTOR_KEYS = ("source_kind", "item_id", "extractor_class")
 
@@ -637,9 +813,11 @@ def _keys(where: str, obj, want: tuple[str, ...]) -> None:
 
 
 def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> tuple[PortfolioRun, Scenario]:
-    """Run a portfolio-inputs/1 document. Its shape is checked here, every
+    """Run a portfolio-inputs/2 document. Its shape is checked here, every
     key required, unknown keys refused; its content is checked where it
     always is (run(), site_card: unknown or repeated sockets, Water, goal)."""
+    if isinstance(doc, dict) and doc.get("schema") in PAST_INPUTS:
+        raise PortfolioRunError(f"inputs schema {doc['schema']!r}: {PAST_INPUTS[doc['schema']]}")
     _keys("inputs", doc, INPUT_KEYS)
     if doc["schema"] != INPUTS_SCHEMA:
         raise PortfolioRunError(f"inputs schema {doc['schema']!r}, this reads {INPUTS_SCHEMA}")
@@ -668,7 +846,7 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> tuple[PortfolioRun, Scen
              bill_phases=tuple(doc["bill"]["phases"]), bill_tiers=tuple(doc["bill"]["tiers"]),
              declared_recipe_names=tuple(doc["declared_recipes"]),
              world_config_id=doc["world_config_id"], grid_mw=doc["grid_mw"],
-             spare_mw=doc["spare_mw"],
+             spare_mw=doc["spare_mw"], power_mode=doc["power_mode"],
              water_sites=tuple(s["label"] for s in doc["sites"] if s["pumps_water"]), repo=repo)
     return pr, scenario
 
@@ -676,8 +854,8 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> tuple[PortfolioRun, Scen
 def inputs_doc(specs: tuple[site_card.SiteSpec, ...], *, world_config_id: str, tier: int,
                declared_recipes: tuple[str, ...], scenario: Scenario, goal: str,
                bill_phases: tuple[int, ...], bill_tiers: tuple[int, ...], grid_mw: float,
-               spare_mw: float, water_sites: tuple[str, ...]) -> dict:
-    """The portfolio-inputs/1 document for a run declared by CLI flags, so
+               spare_mw: float, water_sites: tuple[str, ...], power_mode: str = "grid") -> dict:
+    """The portfolio-inputs/2 document for a run declared by CLI flags, so
     both entry points go through run_inputs and every record echoes the
     inputs that made it. A circle site (--site) is written as the socket ids
     it caught."""
@@ -689,7 +867,7 @@ def inputs_doc(specs: tuple[site_card.SiteSpec, ...], *, world_config_id: str, t
         "extraction_clock": first.extraction_clock,
         "extractors": [{"source_kind": k, "item_id": i, "extractor_class": c}
                        for (k, i), c in first.extractors],
-        "grid_mw": grid_mw, "spare_mw": spare_mw,
+        "power_mode": power_mode, "grid_mw": grid_mw, "spare_mw": spare_mw,
         "sites": [{"label": s.label, "socket_ids": list(s.socket_ids),
                    "pumps_water": s.label in water_sites,
                    "supply": [{"item_id": i, "rate_per_min": v} for i, v in s.supply]}
@@ -737,11 +915,14 @@ def main(argv=None) -> int:
     ap.add_argument("--grid-mw", type=float,
                     help="standing supply from outside these sites (default 0: none)")
     ap.add_argument("--spare-mw", type=float, help="default 0")
+    ap.add_argument("--power", choices=POWER_MODES,
+                    help="grid: the shared row imposed (A3); report_need: report the need and the "
+                         "generators it takes (A11). Default grid")
     ap.add_argument("--export", type=pathlib.Path, default=None,
                     help="write the run as one JSON record here (schema portfolio-plan/1)")
     args = ap.parse_args(argv)
     run_flags = ("site", "world", "tier", "recipe", "extractor", "clock", "recipe_multiplier",
-                 "bill_phase", "bill_tier", "goal", "supply", "water", "grid_mw", "spare_mw")
+                 "bill_phase", "bill_tier", "goal", "supply", "water", "grid_mw", "spare_mw", "power")
     if args.inputs is not None:
         given = ["--" + f.replace("_", "-") for f in run_flags if getattr(args, f) is not None]
         if given:
@@ -783,6 +964,7 @@ def main(argv=None) -> int:
             goal=args.goal or "balanced", bill_phases=tuple(args.bill_phase or ()),
             bill_tiers=tuple(args.bill_tier or ()), grid_mw=0.0 if args.grid_mw is None else args.grid_mw,
             spare_mw=0.0 if args.spare_mw is None else args.spare_mw, water_sites=tuple(water),
+            power_mode=args.power or "grid",
         )
     pr, scenario = run_inputs(doc)
     data = load(REPO, scenario)

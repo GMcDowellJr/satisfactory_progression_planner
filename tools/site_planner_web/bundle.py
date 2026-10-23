@@ -12,9 +12,10 @@ fresh interpreter, with an audit hook recording every file opened and every
 module imported under the repo:
 
     neighborhoods.export_for     (recompute, with the v0.20 policy)
-    portfolio_run.run_inputs + record   (two runs: a starter site and a
+    portfolio_run.run_inputs + record   (three runs: a starter site, a
                                  site that pumps Water at tier 6, so the
-                                 generator, Water and alternate paths load)
+                                 generator, Water and alternate paths load,
+                                 and the starter under report_need, A11)
 
 A file a code path reads only under inputs these runs do not reach would be
 missing in the browser; the worker then reports the missing path by name
@@ -39,22 +40,29 @@ POLICY = HERE / "precomputed" / "policy_v020.json"
 #: top-level repo directories a bundled file may come from
 BUNDLED_ROOTS = ("tools", "planning_data")
 
-#: the two runs traced (module docstring); a starter and a Water-pumping tier-6 site
+#: the runs traced (module docstring): a starter, a Water-pumping tier-6 site, and the
+#: starter again under report_need (A11)
 _SCENARIO = {"recipe_input_multiplier": 1.0, "machine_power_multiplier": 1.0,
              "project_assembly_requirement_multiplier": 1.0, "input_amount_floor": None,
              "fluid_rounding_unit": "mL"}
 _EXTRACTORS = [{"source_kind": "resource_node", "item_id": None, "extractor_class": "Build_MinerMk1_C"},
                {"source_kind": "resource_node", "item_id": "Desc_LiquidOil_C", "extractor_class": "Build_OilPump_C"}]
 TRACE_RUNS = (
-    {"schema": "portfolio-inputs/1", "world_config_id": "default_502094", "tier": 2, "declared_recipes": [],
+    {"schema": "portfolio-inputs/2", "world_config_id": "default_502094", "tier": 2, "declared_recipes": [],
      "scenario": _SCENARIO, "goal": "balanced", "bill": {"phases": [1], "tiers": [1, 2]},
-     "extraction_clock": 1.0, "extractors": _EXTRACTORS[:1], "grid_mw": 60.0, "spare_mw": 0.0,
+     "extraction_clock": 1.0, "extractors": _EXTRACTORS[:1], "power_mode": "grid", "grid_mw": 60.0, "spare_mw": 0.0,
      "sites": [{"label": "starter", "socket_ids": ["BP_ResourceNode103", "BP_ResourceNode106"],
                 "pumps_water": False, "supply": []}]},
-    {"schema": "portfolio-inputs/1", "world_config_id": "default_502094", "tier": 6, "declared_recipes": [],
+    {"schema": "portfolio-inputs/2", "world_config_id": "default_502094", "tier": 6, "declared_recipes": [],
      "scenario": _SCENARIO, "goal": "balanced", "bill": {"phases": [3], "tiers": [5, 6]},
-     "extraction_clock": 1.0, "extractors": _EXTRACTORS, "grid_mw": 0.0, "spare_mw": 0.0,
+     "extraction_clock": 1.0, "extractors": _EXTRACTORS, "power_mode": "grid", "grid_mw": 0.0, "spare_mw": 0.0,
      "sites": [{"label": "oil", "socket_ids": ["BP_ResourceNode98"], "pumps_water": True, "supply": []}]},
+    # A11: the report_need path (fuel join reads the unlock tables)
+    {"schema": "portfolio-inputs/2", "world_config_id": "default_502094", "tier": 2, "declared_recipes": [],
+     "scenario": _SCENARIO, "goal": "balanced", "bill": {"phases": [1], "tiers": [1, 2]},
+     "extraction_clock": 1.0, "extractors": _EXTRACTORS[:1], "power_mode": "report_need", "grid_mw": 0.0,
+     "spare_mw": 0.0, "sites": [{"label": "starter", "socket_ids": ["BP_ResourceNode103", "BP_ResourceNode106"],
+                                "pumps_water": False, "supply": []}]},
 )
 
 

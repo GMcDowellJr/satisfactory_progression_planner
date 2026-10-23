@@ -23,8 +23,8 @@ import pathlib
 import pytest
 
 from production_adapter import (
-    AllowedRecipes, ExtractionSegment, PortfolioRequest, PortfolioSite, PowerBalance, RecipeMode,
-    ResourceCap, load,
+    AllowedRecipes, DistrictRequest, DistrictTarget, ExtractionSegment, PortfolioRequest,
+    PortfolioSite, PowerBalance, RecipeMode, ResourceCap, load,
 )
 from production_adapter.gamedata import load_generators, load_logistics
 from production_adapter.lp_backend import LpBackend, PowerStatistic
@@ -160,6 +160,42 @@ def test_the_power_goal_prices_the_draw(backend, data):
 def test_requests_it_cannot_use_refuse(data, build, match):
     with pytest.raises(ValueError, match=match):
         build(data)
+
+
+# -- report_need (site planner A11): the row read, not imposed -------------------
+
+@pytest.mark.parametrize("build, match", [
+    (lambda d: PowerBalance(generators=_coal_power().generators, report_need=True), "generators are refused"),
+    (lambda d: PowerBalance(grid_mw=10.0, report_need=True), "standing grid"),
+    (lambda d: DistrictRequest((DistrictTarget(PLATE, weight=1.0),), PLATES, _caps(d, **{IRON: 60.0}),
+                               power=PowerBalance(report_need=True)), "portfolio solve only"),
+    (lambda d: PortfolioRequest(
+        (PortfolioSite("s", _caps(d, **{IRON: 60.0, WATER: None}),
+                       (_seg(IRON, 60.0, MK1), _seg(WATER, None, PUMP))),),
+        ((PLATE, 1.0),), PLATES, power=PowerBalance(report_need=True)), "unbounded"),
+])
+def test_report_need_refuses_what_it_cannot_bound(data, build, match):
+    with pytest.raises(ValueError, match=match):
+        build(data)
+
+
+def test_report_need_is_the_rows_terms_at_the_caps(data):
+    """A4's worked case without the row: 60 ore/min, all of it to Plate, so
+    the plan is bounded by the cap and the need is its lanes + draw."""
+    backend = LpBackend(power_statistic=PowerStatistic.MEAN)
+    caps, segs = _caps(data, **{IRON: 60.0}), (_seg(IRON, 60.0, MK1),)
+    r = backend.solve_portfolio(PortfolioRequest(
+        (PortfolioSite("s", caps, segs),), ((PLATE, 1.0),), PLATES,
+        power=PowerBalance(spare_mw=2.0, report_need=True)), data)
+    s = r.sites[0]
+    assert s.extraction_mw == pytest.approx(60.0 * MK1, rel=1e-6)   # the stages' 1e-9 pin slack
+    assert r.power.need_mw == pytest.approx(s.lane_mw + s.extraction_mw + 2.0, rel=1e-12)
+    assert not r.power.binding and r.power.shadow_price == 0.0
+    assert r.power.margin_mw == pytest.approx(-r.power.need_mw, rel=1e-12)
+    imposed = backend.solve_portfolio(PortfolioRequest(
+        (PortfolioSite("s", caps, segs),), ((PLATE, 1.0),), PLATES,
+        power=PowerBalance(grid_mw=r.power.need_mw)), data)
+    assert imposed.scale == pytest.approx(r.scale, rel=1e-6) and imposed.power.need_mw is None
 
 
 # -- the composer --------------------------------------------------------------

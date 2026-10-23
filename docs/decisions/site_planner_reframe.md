@@ -520,3 +520,71 @@ and the policy can still be changed and recomputed in the browser session.
   set aside. Browser recompute equals native export_for for the same policy.
 - provenance() in the browser: commit null, reason "emscripten does not
   support processes", as designed.
+
+## Amendment 11 — 2026-10-23. Power: report the need, and what covering it takes
+
+### A11.1 What raised it
+
+District A (A10's first pick) at tier 2 has no modelled power: the only
+generator open is the Biomass Burner, and no socket supplies a biomass fuel,
+so under A3's shared grid the plan scales to 0 (with a declared 60 MW grid,
+0.012147/min, still power-bound). Greg, 2026-10-23 16:21: early-game power
+comes from biomass; the tool could say how many burners, and at what rate
+each fuel must be fed, to power the factory. 16:26: we should know how much
+power is needed, then work backwards to burners and each fuel's feed rate.
+
+### A11.2 Decided by Greg, 2026-10-23 16:30 (holds until proven wrong)
+
+"Reporting need is right." Join the fuel rows (to what the tier makes
+available). Greg added that the power part of the tooling does not make sense
+to him as it stands; that is recorded here as an OPEN question about A3's
+grid mode, not as a decision to change or retire it.
+
+### A11.3 Built (Claude's reading; Greg may reverse it)
+
+Of the two shapes offered at 16:28, (a) a declared mode, not (b) `grid_mw:
+null` (which would have given null a second meaning):
+
+- `PowerBalance.report_need` (production_adapter): the portfolio solve reads
+  the row's terms from the plan but does not impose the row, so the plan is
+  bounded by the sites' caps alone; `DistrictPower.need_mw` = lanes +
+  extraction drawn + spare. Refused beside it, by name: generators (nothing
+  is sized in the solve), a standing grid (not modelled beside a need yet),
+  a pumped supply (A4: only the grid row bounds it; without the row the plan
+  is unbounded), and the district solve (the portfolio solve only). A4's
+  "segments need a grid" contract is unchanged.
+- portfolio_run `power_mode` "grid" (A3, as before) | "report_need". In
+  report_need, for every (generator, fuel) row of the classes open at the
+  tier: units = need / MW per unit, the whole count (ceiling, 1e-9
+  allowance), each fuel's feed at the need, and the fuel join: every recipe
+  that outputs it, held or not and why (MAM research, alternate not
+  declared, not unlocked by this tier), and the sockets' pooled cap. Nothing
+  is chosen among the fuels.
+- portfolio-inputs/2 = /1 + required `power_mode`; a /1 document is refused
+  by name, not read as "grid". The record (portfolio-plan/1, additive) gains
+  `power_mode` and `power_need`, with each row's `source_text`. The picker
+  form declares the mode; index.html shows the need and the fuel table.
+
+### A11.4 Measured 2026-10-23 (container; claude/picker on 80e1efa + this change)
+
+District A, tier 2, bill PA phase 1 + tiers 1-2 (the test placeholders),
+report_need: scale 0.062338/min, bounded by its caps (the same with a
+declared grid of 1 000 MW and above under grid mode); need 307.92 MW
+(machines 258.70 + extraction 49.22), the same plan under all four goals.
+Biomass Burner (30 MW): 10.26 units, 11 to build; feed at the need: Leaves
+1231.7/min, Mycelia 923.8, Wood 184.8, Biomass 102.6, Solid Biofuel 41.1,
+Packaged Liquid Biofuel 24.6. At tier 2 Biomass (Leaves), Biomass (Wood) and
+Solid Biofuel are held; Biomass (Mycelia) and (Alien Protein) are MAM
+research; Packaged Liquid Biofuel is not unlocked by the tier; Leaves, Wood
+and Mycelia are made by no recipe. Browser run (Chromium, desktop and
+iPhone 13 viewports, Pyodide 0.27.7): record equal to the native one with
+provenance nulled; cold start plus run about 7.4 to 7.6 s.
+
+### A11.5 Not covered
+
+- A fuel made in a constructor draws power of its own; that loop is not in
+  the need, and the report says so.
+- Whether a feed rate is achievable (hand-feeding 1232 Leaves/min is not) is
+  not assessed: the table says what covering the need would take.
+- A standing grid beside the need, a pumping site in report_need, and the
+  district solve (district_run, site_card) are refused, not modelled.

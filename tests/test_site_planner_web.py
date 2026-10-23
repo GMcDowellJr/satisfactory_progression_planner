@@ -73,6 +73,10 @@ def test_picker_schemas_are_the_tools():
     assert _picker("INPUTS_SCHEMA") == _module("portfolio_run").INPUTS_SCHEMA
 
 
+def test_picker_power_modes_are_the_runs():
+    assert _picker("POWER_MODES") == list(_module("portfolio_run").POWER_MODES)
+
+
 def test_picker_goals_are_site_cards():
     assert _picker("GOALS") == list(_module("site_card").GOALS)
 

@@ -254,17 +254,31 @@ class PowerBalance:
     The balance row: generated + grid >= lane MW + extraction + spare. Lane
     MW is the LP's machine-time at the chosen power statistic, which the
     scenario multiplier scales; generator MW is not scaled.
+
+        report_need     site planner A11 (Greg 2026-10-23 16:30): the row's
+                        terms are read from the plan but the row is NOT
+                        imposed, so the plan is bounded by its caps alone and
+                        the right-hand side (lane + extraction + spare) is
+                        reported as the need. Nothing is sized inside the
+                        solve, so generators and a standing grid are refused
+                        beside it; the portfolio solve reads it, the district
+                        solve refuses it
     """
 
     generators: tuple[GeneratorFuel, ...] = ()
     grid_mw: float = 0.0
     spare_mw: float = 0.0
     extraction_mw: float = 0.0
+    report_need: bool = False
 
     def __post_init__(self) -> None:
         for name in ("grid_mw", "spare_mw", "extraction_mw"):
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be non-negative")
+        if self.report_need and self.generators:
+            raise ValueError("report_need sizes nothing in the solve: generators are refused beside it (A11)")
+        if self.report_need and self.grid_mw != 0.0:
+            raise ValueError("report_need reports the whole need: a standing grid beside it is not modelled (A11)")
         seen = [(g.generator_class, g.fuel_item_id) for g in self.generators]
         if len(seen) != len(set(seen)):
             raise ValueError("duplicate (generator, fuel) pair")
@@ -297,6 +311,8 @@ class DistrictRequest:
             raise ValueError("a district solve needs at least one target")
         check_extraction("district", self.resource_caps, self.extraction)
         check_extraction_power(bool(self.extraction), self.power)
+        if self.power is not None and self.power.report_need:
+            raise ValueError("report_need is read by the portfolio solve only (A11)")
         seen = [t.item_id for t in self.targets]
         dupes = {i for i in seen if seen.count(i) > 1}
         if dupes:
@@ -384,6 +400,9 @@ class DistrictPower:
     extraction_nameplate_mw: float | None = None
     #: A4/A6: (item, rate/min) drawn from pumped (uncapped) segments
     pumped: tuple[tuple[ItemId, float], ...] = ()
+    #: A11: lane + extraction + spare when the row was reported, not imposed
+    #: (`PowerBalance.report_need`); None when the row was imposed
+    need_mw: float | None = None
 
 
 @dataclass(frozen=True)
@@ -561,6 +580,11 @@ class PortfolioRequest:
         if any(c != caps[0] for c in caps):
             raise ValueError("every site must cap the same raw resources (0.0 for none)")
         check_extraction_power(any(s.extraction for s in self.sites), self.power)
+        if self.power is not None and self.power.report_need:
+            pumped = [s.label for s in self.sites if any(e.cap_per_min is None for e in s.extraction)]
+            if pumped:
+                raise ValueError(f"report_need with a pumped supply at {pumped}: only the grid row "
+                                 "bounds a pumped raw (A4), so without it the plan is unbounded (A11)")
         both = caps[0] & set(items)
         if both:
             raise ValueError(f"item is both a bill product and a capped raw: {sorted(both)}")
