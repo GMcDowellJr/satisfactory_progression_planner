@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Site Picker</title>
+<!--
+  Step 2, first half (handoff 2026-10-23 14:48 action 2): pick neighborhoods
+  from a neighborhoods/1 export (tools/neighborhoods.py) as sites, and write a
+  portfolio-inputs/1 document (tools/portfolio_run.py --inputs). Running it in
+  the browser (Pyodide worker) is the second half, not here yet.
+
+  It picks; it does not choose. The neighborhood policy is the export's, shown
+  as loaded. Every run input is declared in the form: nothing starts filled,
+  and the export is refused, by name, until each is. A socket in two sites is
+  shown and the export refused, as portfolio_run would refuse it.
+  Map: socket points on a plain grid (game X right, game Y down, so north up),
+  no base image (the SCIM map is third party; handoff action on the base map).
+  Pinned by tests/test_site_planner_web.py: NB_SCHEMA, INPUTS_SCHEMA, GOALS,
+  EXTRACTORS, FLUID_ROUNDING, SCENARIO_KEYS.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #eceff2; --surface: #ffffff; --fg: #1a2229; --muted: #5a6773; --line: #cdd5dc;
+  --flow: #2d6a8a; --accent: #b8650f; --bind: #b03e1c; --ok: #2f7448; --dot: #8a96a1;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #66727d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #66727d; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: .01em; margin: 0; }
+h1 { font-size: 2rem; line-height: 1.05; } h2 { font-size: 1.35rem; } h3 { font-size: 1.05rem; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .small { font-size: .85rem; }
+section.panel, .loader { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.loader { border-style: dashed; }
+.error { border-left: 3px solid var(--bind); padding: 6px 10px; background: color-mix(in srgb, var(--bind) 8%, transparent); font-size: .88rem; }
+.ok { border-left: 3px solid var(--ok); padding: 6px 10px; background: color-mix(in srgb, var(--ok) 8%, transparent); font-size: .88rem; }
+button, input, select { font: inherit; font-size: .9rem; color: var(--fg); }
+button { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+button.primary { background: var(--flow); color: #fff; border-color: var(--flow); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+input[type=text], input[type=number], select { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; min-width: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.map-wrap { position: relative; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--bg); touch-action: none; }
+svg.map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; cursor: grab; }
+.map-tools { position: absolute; right: 6px; top: 6px; display: grid; gap: 4px; }
+.map-tools button { width: 34px; height: 34px; padding: 0; background: var(--surface); }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.list li { border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: grid; gap: 4px; }
+ul.list li.on { border-color: var(--flow); }
+.chip { font-family: var(--f-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; }
+.chip.bind { color: var(--bind); }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.form label { display: grid; gap: 3px; font-size: .78rem; color: var(--muted); }
+.form label.missing span::after { content: " · required"; color: var(--bind); }
+.ex-row { display: grid; grid-template-columns: 1fr 1fr 1.3fr auto; gap: 6px; }
+@media (max-width: 480px) { .ex-row { grid-template-columns: 1fr 1fr; } }
+footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Site Planner · picker</div>
+    <h1>Pick sites from neighborhoods</h1>
+    <p class="small muted">Open a neighborhoods/1 export (<span class="mono">tools/neighborhoods.py --export</span>). Pick neighborhoods as sites, declare the run, and save a portfolio-inputs/1 file for <span class="mono">portfolio_run.py --inputs</span>.</p>
+  </header>
+
+  <div class="loader">
+    <div class="row">
+      <label class="small">Neighborhoods (.json) <input id="nbfile" type="file" accept=".json,application/json"></label>
+      <label class="small">Inputs to continue (.json) <input id="infile" type="file" accept=".json,application/json"></label>
+    </div>
+    <span class="small muted">Read in this browser only. The last neighborhoods file and the picks are kept in this browser.</span>
+    <div id="err" hidden></div>
+    <div class="prov small muted mono" id="policy"></div>
+  </div>
+
+  <div id="out" hidden>
+    <section class="panel" aria-labelledby="h-map">
+      <div class="eyebrow">Sockets in the export</div>
+      <h2 id="h-map">Map</h2>
+      <div class="map-wrap">
+        <svg class="map" id="map" role="img" aria-label="Socket map"></svg>
+        <div class="map-tools">
+          <button id="zin" aria-label="Zoom in">+</button>
+          <button id="zout" aria-label="Zoom out">−</button>
+          <button id="zall" aria-label="Show all">⤢</button>
+        </div>
+      </div>
+      <div class="row">
+        <input id="find" type="text" placeholder="Socket id, e.g. BP_ResourceNode103" aria-label="Find socket" style="flex:1">
+        <button id="findgo">Find</button>
+      </div>
+      <p class="small muted">Tap a socket, or find one by id, to list the neighborhoods that contain it. Sites picked are drawn in colour; a socket in two sites is red.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="h-nb">
+      <div class="eyebrow" id="nb-eyebrow">Neighborhoods</div>
+      <h2 id="h-nb">Containing the chosen socket</h2>
+      <ul class="list" id="nblist"></ul>
+    </section>
+
+    <section class="panel" aria-labelledby="h-sites">
+      <div class="eyebrow">Sites</div>
+      <h2 id="h-sites">Picked</h2>
+      <ul class="list" id="sites"></ul>
+      <div id="overlap"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-run">
+      <div class="eyebrow">The run · every field declared</div>
+      <h2 id="h-run">Run inputs</h2>
+      <div class="form" id="form"></div>
+      <div>
+        <div class="eyebrow">Extractors · KIND [ITEM] → CLASS; the exact pair wins, then the kind</div>
+        <div id="extractors" style="display:grid;gap:6px;margin-top:6px"></div>
+        <button id="exadd" style="margin-top:6px">Add extractor</button>
+      </div>
+      <div id="check"></div>
+      <div class="row"><button class="primary" id="save" disabled>Save inputs</button></div>
+    </section>
+
+    <footer>
+      <span>Neighborhoods are candidates, not verified build sites, allocations, water supplies or connections (tools/neighborhoods.py).</span>
+      <span id="notassessed"></span>
+    </footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+// Pinned by tests/test_site_planner_web.py against the Python side:
+const NB_SCHEMA = "neighborhoods/1";                    // neighborhoods.EXPORT_SCHEMA
+const INPUTS_SCHEMA = "portfolio-inputs/1";             // portfolio_run.INPUTS_SCHEMA
+const GOALS = ["balanced", "resources", "power", "buildings"];  // site_card.GOALS
+const EXTRACTORS = ["Build_FrackingExtractor_C", "Build_MinerMk1_C", "Build_MinerMk2_C", "Build_MinerMk3_C", "Build_OilPump_C", "Build_WaterPump_C"];  // gamedata extraction rates
+const FLUID_ROUNDING = ["m3", "mL", null];              // scenario.FLUID_ROUNDING_VARIANTS
+const SCENARIO_KEYS = ["recipe_input_multiplier", "machine_power_multiplier", "project_assembly_requirement_multiplier", "input_amount_floor", "fluid_rounding_unit"];  // Scenario fields
+const STORE_NB = "sp-neighborhoods", STORE_STATE = "sp-picker";
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* unavailable */ } }
+function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function fail(msg) { const e = $("err"); e.hidden = false; e.className = "error"; e.textContent = msg; }
+
+let NB = null, byId = {}, chosen = null;
+// sites: [{label, socket_ids, pumps_water, supply, from}]  form: {key: string as typed}
+let sites = [], form = {}, extractors = [];
+const name = id => (NB && NB.names.items[id]) || id;
+
+// ---- neighborhoods file ----------------------------------------------------
+function acceptNB(text, source) {
+  let doc; try { doc = JSON.parse(text); } catch (e) { fail(`${source}: not JSON (${e.message})`); return false; }
+  if (!doc || doc.schema !== NB_SCHEMA) { fail(`${source}: schema ${JSON.stringify(doc && doc.schema)}, this page reads ${NB_SCHEMA}. Refused.`); return false; }
+  $("err").hidden = true;
+  NB = doc; byId = Object.fromEntries(doc.sockets.map(s => [s.socket_id, s]));
+  const p = doc.policy, d = p.dedupe;
+  $("policy").textContent = `Policy of this export: radius ${p.radius_m} m · min ${p.min_nodes} sockets · ` +
+    (d ? `dedupe Jaccard ${d.jaccard}, seeds within ${d.seed_distance_m} m, order ${d.order}` : "no dedupe") +
+    ` · ${p.include.length} include pairs · ${doc.neighborhoods.length} neighborhoods · world ${doc.world_config_id}`;
+  $("notassessed").textContent = "Not assessed: " + doc.not_assessed.join("; ") + ".";
+  $("out").hidden = false;
+  fit(); draw(); listNB(); renderSites();
+  return true;
+}
+async function readFile(input, then) { const f = input.files[0]; if (f) then(await f.text(), f.name); }
+$("nbfile").addEventListener("change", ev => readFile(ev.target, (t, n) => { if (acceptNB(t, n)) store(STORE_NB, t); }));
+
+// ---- map -------------------------------------------------------------------
+// svg x = game X = east_m, svg y = game Y = -north_m (north up)
+const svg = $("map"); let view = null, full = null;
+const sx = s => s.east_m, sy = s => -s.north_m;
+function fit(ids) {
+  const pts = (ids ? ids.map(i => byId[i]).filter(Boolean) : NB.sockets);
+  if (!pts.length) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of pts) { x0 = Math.min(x0, sx(s)); x1 = Math.max(x1, sx(s)); y0 = Math.min(y0, sy(s)); y1 = Math.max(y1, sy(s)); }
+  const pad = Math.max(NB.policy.radius_m, 0.05 * Math.max(x1 - x0, y1 - y0));
+  const side = Math.max(x1 - x0, y1 - y0) + 2 * pad;
+  view = { x: (x0 + x1) / 2 - side / 2, y: (y0 + y1) / 2 - side / 2, w: side };
+  if (!ids) full = { ...view };
+  svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.w}`);
+}
+const NS = "http://www.w3.org/2000/svg";
+function sv(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function siteColor(i) { return `hsl(${(205 + i * 67) % 360} 60% 45%)`; }
+function draw() {
+  svg.replaceChildren();
+  const r = view.w / 160;
+  const owner = {};
+  sites.forEach((s, i) => s.socket_ids.forEach(id => (owner[id] = owner[id] || []).push(i)));
+  if (chosen && byId[chosen]) {
+    const c = byId[chosen];
+    svg.append(sv("circle", { cx: sx(c), cy: sy(c), r: NB.policy.radius_m, fill: "none", stroke: "var(--accent)", "stroke-width": r / 3, "stroke-dasharray": `${r} ${r}` }));
+  }
+  for (const s of NB.sockets) {
+    const own = owner[s.socket_id] || [];
+    const fill = own.length > 1 ? "var(--bind)" : own.length === 1 ? siteColor(own[0]) : "var(--dot)";
+    const dot = sv("circle", { cx: sx(s), cy: sy(s), r: own.length ? r * 1.4 : r, fill, stroke: s.socket_id === chosen ? "var(--fg)" : "none", "stroke-width": r / 2 });
+    dot.dataset.id = s.socket_id;
+    const t = sv("title", {}); t.textContent = `${s.socket_id} · ${name(s.item_id)} · ${s.purity}`; dot.append(t);
+    svg.append(dot);
+  }
+}
+let drag = null;
+svg.addEventListener("pointerdown", ev => { drag = { x: ev.clientX, y: ev.clientY, v: { ...view }, moved: false }; svg.setPointerCapture(ev.pointerId); });
+svg.addEventListener("pointermove", ev => {
+  if (!drag) return;
+  const k = view.w / svg.clientWidth, dx = (ev.clientX - drag.x) * k, dy = (ev.clientY - drag.y) * k;
+  if (Math.abs(dx) + Math.abs(dy) > 2 * k) drag.moved = true;
+  view.x = drag.v.x - dx; view.y = drag.v.y - dy; svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.w}`);
+});
+svg.addEventListener("pointerup", ev => {
+  const was = drag; drag = null;
+  if (was && !was.moved && ev.target.dataset && ev.target.dataset.id) choose(ev.target.dataset.id);
+});
+function zoom(f) { const cx = view.x + view.w / 2, cy = view.y + view.w / 2; view.w *= f; view.x = cx - view.w / 2; view.y = cy - view.w / 2; svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.w}`); draw(); }
+$("zin").onclick = () => zoom(0.5); $("zout").onclick = () => zoom(2);
+$("zall").onclick = () => { view = { ...full }; svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.w}`); draw(); };
+
+// ---- neighborhoods containing a socket ---------------------------------------
+function choose(id) {
+  if (!byId[id]) { fail(`socket ${id} is not in this export (not in any neighborhood under its policy)`); return; }
+  $("err").hidden = true; chosen = id; listNB(); draw(); save();
+}
+$("findgo").onclick = () => { const id = $("find").value.trim(); if (!id) return; choose(id); if (byId[id]) { fit([id]); zoom(1); } };
+$("find").addEventListener("keydown", ev => { if (ev.key === "Enter") $("findgo").click(); });
+function counts(n) {
+  return Object.entries(n.purity_counts).map(([item, per]) => {
+    const total = Object.values(per).reduce((a, b) => a + b, 0);
+    return `${total} ${name(item)} (${Object.entries(per).map(([p, k]) => `${k} ${p}`).join(", ")})`;
+  }).join(" · ");
+}
+function listNB() {
+  const ul = $("nblist"); ul.replaceChildren();
+  if (!chosen) { $("nb-eyebrow").textContent = "Neighborhoods"; ul.append(el("li", "small muted", "Choose a socket on the map or by id.")); return; }
+  const hits = NB.neighborhoods.filter(n => n.socket_ids.includes(chosen));  // export order
+  $("nb-eyebrow").textContent = `Neighborhoods containing ${chosen} · ${hits.length} · export order`;
+  for (const n of hits) {
+    const li = el("li");
+    const head = el("div", "row");
+    head.append(el("b", "mono", n.seed_socket_id), el("span", "small muted", `${n.socket_ids.length} sockets`));
+    const used = sites.findIndex(s => s.from === n.seed_socket_id);
+    const btn = el("button", null, used >= 0 ? "Picked" : "Add as site"); btn.disabled = used >= 0;
+    btn.onclick = () => { sites.push({ label: n.seed_socket_id, socket_ids: [...n.socket_ids], pumps_water: false, supply: [], from: n.seed_socket_id }); renderSites(); listNB(); draw(); save(); };
+    head.append(btn);
+    li.append(head, el("span", "small", counts(n)));
+    ul.append(li);
+  }
+}
+
+// ---- sites -----------------------------------------------------------------
+function renderSites() {
+  const ul = $("sites"); ul.replaceChildren();
+  if (!sites.length) ul.append(el("li", "small muted", "None yet."));
+  sites.forEach((s, i) => {
+    const li = el("li", "on"); li.style.borderLeft = `4px solid ${siteColor(i)}`;
+    const head = el("div", "row");
+    const lab = el("input"); lab.type = "text"; lab.value = s.label; lab.setAttribute("aria-label", "Site label");
+    lab.oninput = () => { s.label = lab.value.trim(); check(); save(); };
+    const water = el("label", "small"); const cb = el("input"); cb.type = "checkbox"; cb.checked = s.pumps_water;
+    cb.onchange = () => { s.pumps_water = cb.checked; check(); save(); };
+    water.append(cb, document.createTextNode(" pumps Water (declared, not verified)"));
+    const rm = el("button", null, "Remove"); rm.onclick = () => { sites.splice(i, 1); renderSites(); listNB(); draw(); save(); };
+    head.append(lab, water, rm);
+    const items = {};
+    for (const id of s.socket_ids) { const k = byId[id]; const key = k ? name(k.item_id) : "not in this export"; items[key] = (items[key] || 0) + 1; }
+    li.append(head, el("span", "small", `${s.socket_ids.length} sockets${s.from ? " · neighborhood " + s.from : ""}: ` +
+      Object.entries(items).map(([k, v]) => `${v} ${k}`).join(" · ")));
+    ul.append(li);
+  });
+  check();
+}
+function overlaps() {
+  const seen = {}, twice = [];
+  sites.forEach(s => s.socket_ids.forEach(id => { if (seen[id] !== undefined && seen[id] !== s.label) twice.push([id, seen[id], s.label]); else seen[id] = s.label; }));
+  return twice;
+}
+
+// ---- run form ----------------------------------------------------------------
+const FIELDS = [
+  ["tier", "Tier", "number", "int"], ["bill_phases", "Bill: Project Assembly phases (e.g. 1,2)", "text", "intlist"],
+  ["bill_tiers", "Bill: milestones of tiers (e.g. 1,2)", "text", "intlist"], ["goal", "Goal (breaks ties)", GOALS, "choice"],
+  ["extraction_clock", "Extraction clock (1 = 100 %)", "number", "num"], ["grid_mw", "Standing grid, MW (0 = none)", "number", "num"],
+  ["spare_mw", "Spare held above draw, MW", "number", "num"], ["world_config_id", "World configuration", "text", "text"],
+  ["recipe_input_multiplier", "Recipe input ×", "number", "num"], ["machine_power_multiplier", "Machine power ×", "number", "num"],
+  ["project_assembly_requirement_multiplier", "Project Assembly ×", "number", "num"],
+  ["input_amount_floor", "Input floor (blank = none; needed below 1×)", "text", "numornull"],
+  ["fluid_rounding_unit", "Fluid rounding unit", FLUID_ROUNDING.map(v => v === null ? "none" : v), "choice"],
+  ["declared_recipes", "Declared recipes (display names, ; separated; blank = none)", "text", "names"],
+];
+// fields where blank is itself a declaration (none), so they are never "missing"
+const BLANK_OK = new Set(["input_amount_floor", "declared_recipes", "bill_phases", "bill_tiers"]);
+function buildForm() {
+  const f = $("form"); f.replaceChildren();
+  for (const [key, label, kind] of FIELDS) {
+    const l = el("label"); l.dataset.key = key; l.append(el("span", null, label));
+    let input;
+    if (Array.isArray(kind)) {
+      input = el("select"); input.append(el("option", null, "—")); input.firstChild.value = "";
+      for (const v of kind) { const o = el("option", null, v); o.value = v; input.append(o); }
+    } else { input = el("input"); input.type = kind; if (kind === "number") input.step = "any"; }
+    input.value = form[key] ?? ""; input.oninput = () => { form[key] = input.value; check(); save(); };
+    l.append(input); f.append(l);
+  }
+  renderExtractors();
+}
+function renderExtractors() {
+  const host = $("extractors"); host.replaceChildren();
+  extractors.forEach((e, i) => {
+    const r = el("div", "ex-row");
+    const kind = el("input"); kind.type = "text"; kind.placeholder = "kind, e.g. resource_node"; kind.value = e.source_kind;
+    const item = el("input"); item.type = "text"; item.placeholder = "item id (blank = any)"; item.value = e.item_id ?? "";
+    const cls = el("select"); cls.append(el("option", null, "—")); cls.firstChild.value = "";
+    for (const c of EXTRACTORS) { const o = el("option", null, c); o.value = c; cls.append(o); }
+    cls.value = e.extractor_class;
+    const rm = el("button", null, "×"); rm.setAttribute("aria-label", "Remove extractor");
+    kind.oninput = () => { e.source_kind = kind.value.trim(); check(); save(); };
+    item.oninput = () => { e.item_id = item.value.trim() || null; check(); save(); };
+    cls.onchange = () => { e.extractor_class = cls.value; check(); save(); };
+    rm.onclick = () => { extractors.splice(i, 1); renderExtractors(); check(); save(); };
+    r.append(kind, item, cls, rm); host.append(r);
+  });
+}
+$("exadd").onclick = () => { extractors.push({ source_kind: "", item_id: null, extractor_class: "" }); renderExtractors(); check(); save(); };
+
+function parse(key, kind, raw) {
+  const s = (raw ?? "").trim();
+  if (kind === "int") { if (!/^-?\d+$/.test(s)) throw "a whole number"; return +s; }
+  if (kind === "num") { if (s === "" || !isFinite(+s)) throw "a number"; return +s; }
+  if (kind === "numornull") { if (s === "") return null; if (!isFinite(+s)) throw "a number or blank"; return +s; }
+  if (kind === "intlist") { if (s === "") return []; const v = s.split(",").map(x => x.trim()); if (!v.every(x => /^\d+$/.test(x))) throw "whole numbers, comma separated"; return v.map(Number); }
+  if (kind === "names") return s === "" ? [] : s.split(";").map(x => x.trim()).filter(Boolean);
+  if (kind === "choice") { if (s === "") throw "a choice"; return key === "fluid_rounding_unit" && s === "none" ? null : s; }
+  if (s === "") throw "text"; return s;
+}
+function build() {
+  const problems = [], v = {};
+  for (const [key, label, , kind] of FIELDS) {
+    const l = $("form").querySelector(`label[data-key="${key}"]`);
+    const untouched = form[key] === undefined;
+    try {
+      if (untouched && !BLANK_OK.has(key)) throw "required";
+      v[key] = parse(key, kind, form[key]); l && l.classList.remove("missing");
+    } catch (why) { problems.push(`${label}: ${why}`); l && l.classList.add("missing"); }
+  }
+  if (!problems.some(p => p.startsWith("Bill")) && !v.bill_phases.length && !v.bill_tiers.length) problems.push("Bill: declare phases and/or tiers");
+  if (!extractors.length) problems.push("Extractors: declare at least one");
+  extractors.forEach((e, i) => { if (!e.source_kind || !e.extractor_class) problems.push(`Extractor ${i + 1}: kind and class`); });
+  if (!sites.length) problems.push("Sites: pick at least one");
+  const labels = sites.map(s => s.label);
+  if (labels.some(l => !l)) problems.push("Sites: every site needs a label");
+  const dup = labels.filter((l, i) => l && labels.indexOf(l) !== i);
+  if (dup.length) problems.push(`Sites: labels used twice: ${[...new Set(dup)].join(", ")}`);
+  const twice = overlaps();
+  if (twice.length) problems.push(`Sites share sockets (portfolio_run refuses this): ${twice.map(([id, a, b]) => `${id} in ${a} and ${b}`).join("; ")}`);
+  if (problems.length) return { problems };
+  const scenario = Object.fromEntries(SCENARIO_KEYS.map(k => [k, v[k]]));
+  return { doc: {
+    schema: INPUTS_SCHEMA, world_config_id: v.world_config_id, tier: v.tier, declared_recipes: v.declared_recipes,
+    scenario, goal: v.goal, bill: { phases: v.bill_phases, tiers: v.bill_tiers }, extraction_clock: v.extraction_clock,
+    extractors: extractors.map(e => ({ source_kind: e.source_kind, item_id: e.item_id, extractor_class: e.extractor_class })),
+    grid_mw: v.grid_mw, spare_mw: v.spare_mw,
+    sites: sites.map(s => ({ label: s.label, socket_ids: s.socket_ids, pumps_water: s.pumps_water, supply: s.supply })),
+  } };
+}
+function check() {
+  const out = $("check"); out.replaceChildren();
+  const twice = overlaps(); const ov = $("overlap"); ov.replaceChildren();
+  if (twice.length) { const d = el("div", "error"); d.textContent = `${twice.length} socket${twice.length > 1 ? "s" : ""} in two sites (red on the map): ` + twice.map(([id, a, b]) => `${id} (${a}, ${b})`).join("; "); ov.append(d); }
+  const r = build();
+  if (r.problems) {
+    const d = el("div", "error"); d.append(el("b", null, "Not ready: ")); const ul = el("ul"); ul.style.margin = "4px 0 0"; ul.style.paddingLeft = "1.1rem";
+    r.problems.forEach(p => ul.append(el("li", null, p))); d.append(ul); out.append(d); $("save").disabled = true;
+  } else { out.append(el("div", "ok", `Ready: ${sites.length} site${sites.length > 1 ? "s" : ""}, ${sites.reduce((a, s) => a + s.socket_ids.length, 0)} sockets.`)); $("save").disabled = false; }
+  return r;
+}
+$("save").onclick = () => {
+  const r = check(); if (!r.doc) return;
+  const blob = new Blob([JSON.stringify(r.doc, null, 1) + "\n"], { type: "application/json" });
+  const a = el("a"); a.href = URL.createObjectURL(blob); a.download = "portfolio_inputs.json"; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+// ---- continue from an inputs file --------------------------------------------------
+const NUMERIC = new Set(["extraction_clock", "grid_mw", "spare_mw", "recipe_input_multiplier", "machine_power_multiplier", "project_assembly_requirement_multiplier"]);
+$("infile").addEventListener("change", ev => readFile(ev.target, (text, src) => {
+  let d; try { d = JSON.parse(text); } catch (e) { fail(`${src}: not JSON`); return; }
+  if (!d || d.schema !== INPUTS_SCHEMA) { fail(`${src}: schema ${JSON.stringify(d && d.schema)}, this page writes ${INPUTS_SCHEMA}. Refused.`); return; }
+  $("err").hidden = true;
+  form = { tier: String(d.tier), bill_phases: d.bill.phases.join(","), bill_tiers: d.bill.tiers.join(","), goal: d.goal,
+           extraction_clock: String(d.extraction_clock), grid_mw: String(d.grid_mw), spare_mw: String(d.spare_mw),
+           world_config_id: d.world_config_id, declared_recipes: d.declared_recipes.join("; ") };
+  for (const k of SCENARIO_KEYS) {
+    const v = d.scenario[k];
+    form[k] = k === "fluid_rounding_unit" ? (v === null ? "none" : v) : v === null ? "" : String(v);
+  }
+  extractors = d.extractors.map(e => ({ ...e }));
+  sites = d.sites.map(s => ({ ...s, from: (NB && NB.neighborhoods.find(n => n.socket_ids.length === s.socket_ids.length && n.socket_ids.every(x => s.socket_ids.includes(x))) || {}).seed_socket_id }));
+  buildForm(); if (NB) { renderSites(); draw(); listNB(); } save();
+}));
+
+function save() { store(STORE_STATE, JSON.stringify({ sites, form, extractors, chosen })); }
+try { const s = JSON.parse(recall(STORE_STATE) || "null"); if (s) { sites = s.sites || []; form = s.form || {}; extractors = s.extractors || []; chosen = s.chosen || null; } } catch (e) { /* bad saved state */ }
+buildForm();
+const savedNB = recall(STORE_NB); if (savedNB) acceptNB(savedNB, "saved neighborhoods");
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ without the other and this fails. Rendering itself is checked in a browser
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
 import re
 import sys
@@ -53,4 +54,45 @@ def test_page_reads_no_reference_csv():
     """One loader (AGENTS.md): the page gets names, forms and stack sizes
     from the record, never from planning_data."""
     text = PAGE.read_text(encoding="utf-8")
+    assert ".csv" not in text and "planning_data" not in text
+
+
+# -- picker.html (handoff 2026-10-23 14:48 action 2, first half) ---------------------
+
+PICKER = REPO / "tools" / "site_planner_web" / "picker.html"
+
+
+def _picker(name: str):
+    found = re.findall(rf"^const {name} = ([^;]+);", PICKER.read_text(encoding="utf-8"), re.M)
+    assert len(found) == 1, f"{name}: expected one declaration, found {found}"
+    return json.loads(found[0])
+
+
+def test_picker_schemas_are_the_tools():
+    assert _picker("NB_SCHEMA") == _module("neighborhoods").EXPORT_SCHEMA
+    assert _picker("INPUTS_SCHEMA") == _module("portfolio_run").INPUTS_SCHEMA
+
+
+def test_picker_goals_are_site_cards():
+    assert _picker("GOALS") == list(_module("site_card").GOALS)
+
+
+def test_picker_extractors_are_the_rate_tables():
+    from production_adapter.gamedata import load_logistics
+
+    _, rates = load_logistics(REPO)
+    assert sorted(_picker("EXTRACTORS")) == sorted({r.extractor_class for r in rates})
+
+
+def test_picker_scenario_fields_and_fluid_rounding():
+    import dataclasses
+
+    from production_adapter import FLUID_ROUNDING_VARIANTS, Scenario
+
+    assert _picker("SCENARIO_KEYS") == [f.name for f in dataclasses.fields(Scenario)]
+    assert _picker("FLUID_ROUNDING") == list(FLUID_ROUNDING_VARIANTS)
+
+
+def test_picker_reads_no_world_files():
+    text = PICKER.read_text(encoding="utf-8")
     assert ".csv" not in text and "planning_data" not in text

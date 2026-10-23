@@ -63,6 +63,13 @@ into a fill time without a copy of items.csv; `provenance` says where and
 when the record was made (null from record() unless supplied; export()
 always supplies it).
 
+**Inputs (`--inputs PATH`, 2026-10-23, handoff 14:48 action 2).** A
+portfolio-inputs/1 document declares the whole run: sites by socket id (as
+the picker, tools/site_planner_web/picker.html, writes them), every other
+input, and the full Scenario. Every key is required and unknown keys are
+refused (run_inputs). The CLI flags build the same document (inputs_doc),
+so there is one path into run(), and the record's `inputs` echoes it.
+
 The ledger exists because the portfolio solve drops each site's local
 warnings (lp_backend: "the portfolio's ledger is the transfers"), and with
 them D1's "unconsumed output is free" note. So a leftover, such as scenario
@@ -512,10 +519,13 @@ def provenance(repo: pathlib.Path = REPO) -> dict:
     return out
 
 
-def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None) -> dict:
+def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None,
+           inputs: dict | None = None) -> dict:
     """The run as one JSON-ready document (module docstring). `prov` is
     provenance() or None; None is written as null (not stated), which keeps
-    record() deterministic for tests and for native-vs-Pyodide comparison."""
+    record() deterministic for tests and for native-vs-Pyodide comparison.
+    `inputs` is the portfolio-inputs/1 document that made the run, echoed
+    as given (null when the caller had none), so a record can be re-run."""
     r = pr.response
     items: dict[str, None] = dict.fromkeys(pr.bill)
     recipes: dict[str, None] = {}
@@ -569,6 +579,7 @@ def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None) -> d
         "assumptions": {"volume": VOLUME_ASSUMPTION, "power": POWER_ASSUMPTION,
                         "margin": shadow_text.MARGIN_NOTE},
         "provenance": prov,
+        "inputs": inputs,
         "bill": {
             "phases": list(pr.bill_phases), "tiers": list(pr.bill_tiers),
             "units": dict(pr.bill), "scale": r.scale, "horizon_min": r.horizon_min,
@@ -596,10 +607,94 @@ def record(pr: PortfolioRun, data: ReferenceData, prov: dict | None = None) -> d
     }
 
 
-def export(pr: PortfolioRun, data: ReferenceData, path: pathlib.Path) -> None:
+def export(pr: PortfolioRun, data: ReferenceData, path: pathlib.Path,
+           inputs: dict | None = None) -> None:
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(record(pr, data, provenance()), f, indent=1)
+        json.dump(record(pr, data, provenance(), inputs), f, indent=1)
         f.write("\n")
+
+
+# -- inputs -----------------------------------------------------------------------
+
+#: the inputs document's schema tag (handoff 2026-10-23 14:48 action 2: the
+#: picker hands a run to portfolio_run as sites by socket id)
+INPUTS_SCHEMA = "portfolio-inputs/1"
+#: every key is required: an inputs document declares the whole run, so
+#: nothing here falls back to a default the reader did not see
+INPUT_KEYS = ("schema", "world_config_id", "tier", "declared_recipes", "scenario", "goal", "bill",
+              "extraction_clock", "extractors", "grid_mw", "spare_mw", "sites")
+SITE_KEYS = ("label", "socket_ids", "pumps_water", "supply")
+EXTRACTOR_KEYS = ("source_kind", "item_id", "extractor_class")
+
+
+def _keys(where: str, obj, want: tuple[str, ...]) -> None:
+    if not isinstance(obj, dict):
+        raise PortfolioRunError(f"{where}: expected an object, got {type(obj).__name__}")
+    missing = [k for k in want if k not in obj]
+    extra = [k for k in obj if k not in want]
+    if missing or extra:
+        raise PortfolioRunError(f"{where}: missing {missing}, not known {extra}")
+
+
+def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> tuple[PortfolioRun, Scenario]:
+    """Run a portfolio-inputs/1 document. Its shape is checked here, every
+    key required, unknown keys refused; its content is checked where it
+    always is (run(), site_card: unknown or repeated sockets, Water, goal)."""
+    _keys("inputs", doc, INPUT_KEYS)
+    if doc["schema"] != INPUTS_SCHEMA:
+        raise PortfolioRunError(f"inputs schema {doc['schema']!r}, this reads {INPUTS_SCHEMA}")
+    _keys("inputs.bill", doc["bill"], ("phases", "tiers"))
+    scenario_keys = tuple(f.name for f in dataclasses.fields(Scenario))
+    _keys("inputs.scenario", doc["scenario"], scenario_keys)
+    if not isinstance(doc["extractors"], list) or not isinstance(doc["sites"], list):
+        raise PortfolioRunError("inputs: extractors and sites are lists")
+    for n, e in enumerate(doc["extractors"]):
+        _keys(f"inputs.extractors[{n}]", e, EXTRACTOR_KEYS)
+    for n, s in enumerate(doc["sites"]):
+        _keys(f"inputs.sites[{n}]", s, SITE_KEYS)
+    if not doc["bill"]["phases"] and not doc["bill"]["tiers"]:
+        raise PortfolioRunError("inputs.bill: declare phases and/or tiers")
+    extractors = tuple(((e["source_kind"], e["item_id"]), e["extractor_class"]) for e in doc["extractors"])
+    specs = tuple(
+        site_card.SiteSpec(
+            label=s["label"], socket_ids=tuple(s["socket_ids"]), extractors=extractors,
+            extraction_clock=doc["extraction_clock"],
+            supply=tuple((x["item_id"], x["rate_per_min"]) for x in s["supply"]),
+        )
+        for s in doc["sites"]
+    )
+    scenario = Scenario(**doc["scenario"])
+    pr = run(specs, tier=doc["tier"], scenario=scenario, goal=doc["goal"],
+             bill_phases=tuple(doc["bill"]["phases"]), bill_tiers=tuple(doc["bill"]["tiers"]),
+             declared_recipe_names=tuple(doc["declared_recipes"]),
+             world_config_id=doc["world_config_id"], grid_mw=doc["grid_mw"],
+             spare_mw=doc["spare_mw"],
+             water_sites=tuple(s["label"] for s in doc["sites"] if s["pumps_water"]), repo=repo)
+    return pr, scenario
+
+
+def inputs_doc(specs: tuple[site_card.SiteSpec, ...], *, world_config_id: str, tier: int,
+               declared_recipes: tuple[str, ...], scenario: Scenario, goal: str,
+               bill_phases: tuple[int, ...], bill_tiers: tuple[int, ...], grid_mw: float,
+               spare_mw: float, water_sites: tuple[str, ...]) -> dict:
+    """The portfolio-inputs/1 document for a run declared by CLI flags, so
+    both entry points go through run_inputs and every record echoes the
+    inputs that made it. A circle site (--site) is written as the socket ids
+    it caught."""
+    first = specs[0]
+    return {
+        "schema": INPUTS_SCHEMA, "world_config_id": world_config_id, "tier": tier,
+        "declared_recipes": list(declared_recipes), "scenario": dataclasses.asdict(scenario),
+        "goal": goal, "bill": {"phases": list(bill_phases), "tiers": list(bill_tiers)},
+        "extraction_clock": first.extraction_clock,
+        "extractors": [{"source_kind": k, "item_id": i, "extractor_class": c}
+                       for (k, i), c in first.extractors],
+        "grid_mw": grid_mw, "spare_mw": spare_mw,
+        "sites": [{"label": s.label, "socket_ids": list(s.socket_ids),
+                   "pumps_water": s.label in water_sites,
+                   "supply": [{"item_id": i, "rate_per_min": v} for i, v in s.supply]}
+                  for s in specs],
+    }
 
 
 def _site_arg(text: str) -> tuple[str, float, float, float]:
@@ -620,53 +715,75 @@ def _supply_arg(text: str) -> tuple[str, str, float]:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--site", action="append", type=_site_arg, required=True,
+    ap.add_argument("--inputs", type=pathlib.Path, default=None,
+                    help=f"run a {INPUTS_SCHEMA} JSON document instead of the flags below "
+                         "(the picker writes one); mixing it with them is refused")
+    ap.add_argument("--site", action="append", type=_site_arg,
                     help="LABEL:EAST_M,NORTH_M,RADIUS_M (repeat per site)")
-    ap.add_argument("--world", default="default_502094")
-    ap.add_argument("--tier", type=int, required=True)
-    ap.add_argument("--recipe", action="append", default=[], help="declared recipe display name")
-    ap.add_argument("--extractor", action="append", type=site_card._extractor_arg, required=True)
-    ap.add_argument("--clock", type=float, required=True)
-    ap.add_argument("--recipe-multiplier", type=float, required=True)
-    ap.add_argument("--bill-phase", action="append", type=int, default=[])
-    ap.add_argument("--bill-tier", action="append", type=int, default=[])
-    ap.add_argument("--goal", default="balanced", choices=tuple(site_card.GOALS))
-    ap.add_argument("--supply", action="append", type=_supply_arg, default=[],
+    ap.add_argument("--world")
+    ap.add_argument("--tier", type=int)
+    ap.add_argument("--recipe", action="append", help="declared recipe display name")
+    ap.add_argument("--extractor", action="append", type=site_card._extractor_arg)
+    ap.add_argument("--clock", type=float)
+    ap.add_argument("--recipe-multiplier", type=float)
+    ap.add_argument("--bill-phase", action="append", type=int)
+    ap.add_argument("--bill-tier", action="append", type=int)
+    ap.add_argument("--goal", choices=tuple(site_card.GOALS), help="default balanced")
+    ap.add_argument("--supply", action="append", type=_supply_arg,
                     help="LABEL:ITEM=RATE declared supply at a site no socket carries; "
                          "not Water (use --water)")
-    ap.add_argument("--water", action="append", default=[],
+    ap.add_argument("--water", action="append",
                     help="LABEL of a site able to pump Water, charged as Water Extractors (A4)")
-    ap.add_argument("--grid-mw", type=float, default=0.0,
+    ap.add_argument("--grid-mw", type=float,
                     help="standing supply from outside these sites (default 0: none)")
-    ap.add_argument("--spare-mw", type=float, default=0.0)
+    ap.add_argument("--spare-mw", type=float, help="default 0")
     ap.add_argument("--export", type=pathlib.Path, default=None,
                     help="write the run as one JSON record here (schema portfolio-plan/1)")
     args = ap.parse_args(argv)
-    if not args.bill_phase and not args.bill_tier:
-        ap.error("declare the bill: --bill-phase and/or --bill-tier")
-    sockets = site_card.load_sockets(REPO, args.world)
-    specs = tuple(
-        site_card.SiteSpec(
-            label=label,
-            socket_ids=site_card.sockets_within(sockets, east, north, radius),
-            extractors=tuple(args.extractor), extraction_clock=args.clock,
-            supply=tuple((item, rate) for site, item, rate in args.supply if site == label),
+    run_flags = ("site", "world", "tier", "recipe", "extractor", "clock", "recipe_multiplier",
+                 "bill_phase", "bill_tier", "goal", "supply", "water", "grid_mw", "spare_mw")
+    if args.inputs is not None:
+        given = ["--" + f.replace("_", "-") for f in run_flags if getattr(args, f) is not None]
+        if given:
+            ap.error(f"--inputs declares the whole run; also given: {given}")
+        with open(args.inputs, encoding="utf-8") as f:
+            doc = json.load(f)
+    else:
+        missing = ["--" + f.replace("_", "-") for f in ("site", "tier", "extractor", "clock",
+                                                         "recipe_multiplier")
+                   if getattr(args, f) is None]
+        if missing:
+            ap.error(f"required without --inputs: {missing}")
+        if not args.bill_phase and not args.bill_tier:
+            ap.error("declare the bill: --bill-phase and/or --bill-tier")
+        world = args.world or "default_502094"
+        supply, water = args.supply or [], args.water or []
+        sockets = site_card.load_sockets(REPO, world)
+        specs = tuple(
+            site_card.SiteSpec(
+                label=label,
+                socket_ids=site_card.sockets_within(sockets, east, north, radius),
+                extractors=tuple(args.extractor), extraction_clock=args.clock,
+                supply=tuple((item, rate) for site, item, rate in supply if site == label),
+            )
+            for label, east, north, radius in args.site
         )
-        for label, east, north, radius in args.site
-    )
-    labels = [label for label, _, _, _ in args.site]
-    stray = [site for site, _, _ in args.supply if site not in labels]
-    if stray:
-        ap.error(f"--supply names sites that are not declared: {stray}")
-    scenario = Scenario(recipe_input_multiplier=args.recipe_multiplier)
-    pr = run(specs, tier=args.tier, scenario=scenario, goal=args.goal,
-             bill_phases=tuple(args.bill_phase), bill_tiers=tuple(args.bill_tier),
-             declared_recipe_names=tuple(args.recipe), world_config_id=args.world,
-             grid_mw=args.grid_mw, spare_mw=args.spare_mw, water_sites=tuple(args.water))
+        labels = [label for label, _, _, _ in args.site]
+        stray = [site for site, _, _ in supply if site not in labels]
+        if stray:
+            ap.error(f"--supply names sites that are not declared: {stray}")
+        doc = inputs_doc(
+            specs, world_config_id=world, tier=args.tier, declared_recipes=tuple(args.recipe or ()),
+            scenario=Scenario(recipe_input_multiplier=args.recipe_multiplier),
+            goal=args.goal or "balanced", bill_phases=tuple(args.bill_phase or ()),
+            bill_tiers=tuple(args.bill_tier or ()), grid_mw=0.0 if args.grid_mw is None else args.grid_mw,
+            spare_mw=0.0 if args.spare_mw is None else args.spare_mw, water_sites=tuple(water),
+        )
+    pr, scenario = run_inputs(doc)
     data = load(REPO, scenario)
     print(report(pr, data))
     if args.export:
-        export(pr, data, args.export)
+        export(pr, data, args.export, inputs=doc)
         print(f"\nexported: {args.export}")
     return 0
 
