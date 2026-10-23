@@ -746,8 +746,13 @@ def main(argv=None) -> int:
         given = ["--" + f.replace("_", "-") for f in run_flags if getattr(args, f) is not None]
         if given:
             ap.error(f"--inputs declares the whole run; also given: {given}")
-        with open(args.inputs, encoding="utf-8") as f:
-            doc = json.load(f)
+        try:
+            with open(args.inputs, encoding="utf-8") as f:
+                doc = json.load(f)
+        except FileNotFoundError:
+            ap.error(f"--inputs: no file at {args.inputs} (a shell variable left unexpanded?)")
+        except json.JSONDecodeError as exc:
+            ap.error(f"--inputs: {args.inputs} is not JSON ({exc})")
     else:
         missing = ["--" + f.replace("_", "-") for f in ("site", "tier", "extractor", "clock",
                                                          "recipe_multiplier")

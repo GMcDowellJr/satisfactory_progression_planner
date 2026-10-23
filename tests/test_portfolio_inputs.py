@@ -173,6 +173,18 @@ def test_cli_refuses_inputs_mixed_with_flags(tmp_path, capsys):
     assert "--grid-mw" in capsys.readouterr().err
 
 
+def test_cli_refuses_a_missing_or_broken_inputs_file(tmp_path, capsys):
+    """Greg, 2026-10-23 15:19: an unexpanded $HOME gave a traceback."""
+    with pytest.raises(SystemExit):
+        portfolio_run.main(["--inputs", "$HOME\\Downloads\\portfolio_inputs.json"])
+    assert "no file at $HOME" in capsys.readouterr().err
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8", newline="\n")
+    with pytest.raises(SystemExit):
+        portfolio_run.main(["--inputs", str(bad)])
+    assert "is not JSON" in capsys.readouterr().err
+
+
 def test_cli_without_inputs_still_requires_the_flags(capsys):
     with pytest.raises(SystemExit):
         portfolio_run.main(["--tier", "2", "--bill-tier", "1"])

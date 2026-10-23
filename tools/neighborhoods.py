@@ -240,6 +240,48 @@ def export_doc(neighborhoods: tuple[Neighborhood, ...], policy: Policy, sockets,
     }
 
 
+POLICY_KEYS = ("include", "radius_m", "min_nodes", "dedupe")
+
+
+def policy_from_doc(doc: dict) -> Policy:
+    """A Policy from the shape an export's `policy` block has, so an export
+    carries a policy that can be re-run as given (the picker's recompute,
+    the precomputed exports' regeneration). Every key required; unknown
+    keys refused."""
+    def keys(where, obj, want):
+        if not isinstance(obj, dict):
+            raise NeighborhoodError(f"{where}: expected an object")
+        missing, extra = [k for k in want if k not in obj], [k for k in obj if k not in want]
+        if missing or extra:
+            raise NeighborhoodError(f"{where}: missing {missing}, not known {extra}")
+    keys("policy", doc, POLICY_KEYS)
+    for n, p in enumerate(doc["include"]):
+        keys(f"policy.include[{n}]", p, ("source_kind", "item_id"))
+    d = doc["dedupe"]
+    if d is not None:
+        keys("policy.dedupe", d, ("jaccard", "seed_distance_m", "order"))
+    return Policy(
+        include=tuple((p["source_kind"], p["item_id"]) for p in doc["include"]),
+        radius_m=doc["radius_m"], min_nodes=doc["min_nodes"],
+        dedupe=None if d is None else Dedupe(d["jaccard"], d["seed_distance_m"], d["order"]),
+    )
+
+
+def export_for(policy_doc: dict, world_config_id: str, repo: pathlib.Path = REPO) -> dict:
+    """The neighborhoods/1 document for a policy document: what the CLI's
+    --export writes and what the picker's in-browser recompute returns."""
+    policy = policy_from_doc(policy_doc)
+    sockets = site_card.load_sockets(repo, world_config_id)
+    weights = purity_weights(repo) if policy.dedupe is not None else None
+    return export_doc(discover(sockets, policy, weights), policy, sockets, world_config_id, load(repo))
+
+
+def write_export(doc: dict, path: pathlib.Path) -> None:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(doc, f, indent=1)
+        f.write("\n")
+
+
 def _include_arg(text: str) -> tuple[str, str | None]:
     kind, sep, item = text.partition(":")
     if not kind:
@@ -250,30 +292,50 @@ def _include_arg(text: str) -> tuple[str, str | None]:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--world", default="default_502094")
-    ap.add_argument("--radius", type=float, required=True, help="metres, horizontal")
-    ap.add_argument("--min-nodes", type=int, required=True)
-    ap.add_argument("--include", action="append", type=_include_arg, required=True,
+    ap.add_argument("--policy", type=pathlib.Path,
+                    help="a policy JSON (an export's `policy` block) instead of the flags below; "
+                         "mixing it with them is refused")
+    ap.add_argument("--radius", type=float, help="metres, horizontal")
+    ap.add_argument("--min-nodes", type=int)
+    ap.add_argument("--include", action="append", type=_include_arg,
                     help="KIND or KIND:ITEM_ID (repeat); e.g. resource_node:Desc_OreIron_C")
     ap.add_argument("--dedupe-jaccard", type=float)
     ap.add_argument("--dedupe-seed-m", type=float)
     ap.add_argument("--dedupe-order", choices=tuple(ORDERS))
     ap.add_argument("--export", type=pathlib.Path)
     args = ap.parse_args(argv)
-    parts = (args.dedupe_jaccard, args.dedupe_seed_m, args.dedupe_order)
-    if any(p is not None for p in parts) and not all(p is not None for p in parts):
-        ap.error("dedupe is all three of --dedupe-jaccard, --dedupe-seed-m, --dedupe-order, or none")
-    dedupe = Dedupe(*parts) if parts[0] is not None else None
-    policy = Policy(tuple(args.include), args.radius, args.min_nodes, dedupe)
-    sockets = site_card.load_sockets(REPO, args.world)
-    weights = purity_weights(REPO) if dedupe is not None else None
-    found = discover(sockets, policy, weights)
-    print(f"{len(found)} neighborhoods, {len({s for n in found for s in n.socket_ids})} distinct sockets"
-          + ("" if dedupe is None else f"; dedupe {dataclasses.asdict(dedupe)}"))
+    flags = (args.radius, args.min_nodes, args.include, args.dedupe_jaccard, args.dedupe_seed_m,
+             args.dedupe_order)
+    if args.policy is not None:
+        if any(f is not None for f in flags):
+            ap.error("--policy declares the whole policy; drop --radius/--min-nodes/--include/--dedupe-*")
+        try:
+            with open(args.policy, encoding="utf-8") as f:
+                policy_doc = json.load(f)
+        except FileNotFoundError:
+            ap.error(f"--policy: no file at {args.policy}")
+        except json.JSONDecodeError as exc:
+            ap.error(f"--policy: {args.policy} is not JSON ({exc})")
+    else:
+        missing = [n for n, v in (("--radius", args.radius), ("--min-nodes", args.min_nodes),
+                                  ("--include", args.include)) if v is None]
+        if missing:
+            ap.error(f"required without --policy: {missing}")
+        parts = (args.dedupe_jaccard, args.dedupe_seed_m, args.dedupe_order)
+        if any(p is not None for p in parts) and not all(p is not None for p in parts):
+            ap.error("dedupe is all three of --dedupe-jaccard, --dedupe-seed-m, --dedupe-order, or none")
+        policy_doc = {
+            "include": [{"source_kind": k, "item_id": i} for k, i in args.include],
+            "radius_m": args.radius, "min_nodes": args.min_nodes,
+            "dedupe": None if parts[0] is None else
+            {"jaccard": parts[0], "seed_distance_m": parts[1], "order": parts[2]},
+        }
+    doc = export_for(policy_doc, args.world)
+    found = doc["neighborhoods"]
+    print(f"{len(found)} neighborhoods, {len({s for n in found for s in n['socket_ids']})} distinct sockets"
+          + ("" if policy_doc["dedupe"] is None else f"; dedupe {policy_doc['dedupe']}"))
     if args.export:
-        doc = export_doc(found, policy, sockets, args.world, load(REPO))
-        with open(args.export, "w", encoding="utf-8", newline="\n") as f:
-            json.dump(doc, f, indent=1)
-            f.write("\n")
+        write_export(doc, args.export)
         print(f"exported: {args.export}")
     return 0
 

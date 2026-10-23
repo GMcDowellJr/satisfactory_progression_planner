@@ -479,3 +479,44 @@ the 276 never reached it), its RC### ids (they number the walk, so they
 change with the policy; a neighborhood is named by its seed socket), and its
 purity-equivalent totals in the output (counts by purity are reported; a
 weighted sum is an opinion outside the order that uses it).
+
+## Amendment 10 — 2026-10-23. The picker: precomputed starting points, recompute and run in the browser
+
+### A10.1 What raised it
+
+Greg, 2026-10-23 14:58: work on the map picker, with the Rocky Desert
+starting area as the first pick. Asked at 15:34 whether neighborhoods change
+only with the world: they change with the declared policy, the world's
+resource assignments (per configuration) and the game build; given those,
+they are deterministic (A9.2's test reproduces the same 276 in order). So a
+phone need not compute them, but it could.
+
+### A10.2 Decided by Greg, 2026-10-23 15:36 (holds until proven wrong)
+
+"Both": precomputed neighborhood exports are the picker's starting point,
+and the policy can still be changed and recomputed in the browser session.
+
+### A10.3 Built, and how it squares with "declared, never defaulted"
+
+- The starting export is shown as what it is (its source and its whole
+  policy on screen), and editing starts from it, not from a constant. The
+  RUN inputs stay undeclared until filled: nothing in the run form is
+  prefilled. So the default is a visible starting point, not a hidden
+  choice. v0.20's policy is the only precomputed one so far.
+- The shipped export is derived data; a test regenerates it from its policy
+  file and compares byte for byte. The worker loads exactly the repo files a
+  native trace of its own runs opens or imports (bundle_files.json, 42
+  files); a test re-traces it.
+- portfolio-inputs/1 (sites by socket id, every input required) is the one
+  document both the CLI and the browser run.
+
+### A10.4 Measured 2026-10-23 (container; Chromium, iPhone 13 viewport; served over http)
+
+- Cold start (Pyodide 0.27.7 + numpy + scipy + 42 repo files): about 7.0 to
+  7.4 s; then a run of Rocky Desert district A 0.17 to 0.24 s, a v0.20-policy
+  recompute without fracking cores about 0.24 s (277 neighborhoods).
+- Browser record (Python 3.12.7, scipy 1.14.1) and native export (Python
+  3.13.17, scipy 1.18.1) of the same inputs: byte-identical with provenance
+  set aside. Browser recompute equals native export_for for the same policy.
+- provenance() in the browser: commit null, reason "emscripten does not
+  support processes", as designed.

@@ -1,0 +1,67 @@
+{
+ "include": [
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_OreIron_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_Stone_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_Coal_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_OreCopper_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_LiquidOil_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_SAM_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_OreGold_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_RawQuartz_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_OreBauxite_C"
+  },
+  {
+   "source_kind": "resource_node",
+   "item_id": "Desc_Sulfur_C"
+  },
+  {
+   "source_kind": "fracking_satellite",
+   "item_id": "Desc_LiquidOil_C"
+  },
+  {
+   "source_kind": "fracking_satellite",
+   "item_id": "Desc_NitrogenGas_C"
+  },
+  {
+   "source_kind": "fracking_core",
+   "item_id": "Desc_LiquidOil_C"
+  },
+  {
+   "source_kind": "fracking_core",
+   "item_id": "Desc_NitrogenGas_C"
+  }
+ ],
+ "radius_m": 350.0,
+ "min_nodes": 2,
+ "dedupe": {
+  "jaccard": 0.78,
+  "seed_distance_m": 175.0,
+  "order": "most_types_first"
+ }
+}

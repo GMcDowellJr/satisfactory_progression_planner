@@ -96,3 +96,41 @@ def test_picker_scenario_fields_and_fluid_rounding():
 def test_picker_reads_no_world_files():
     text = PICKER.read_text(encoding="utf-8")
     assert ".csv" not in text and "planning_data" not in text
+
+
+# -- in-browser runtime (Greg 2026-10-23 15:36: precomputed defaults + recompute, A10) ---
+
+WEB = REPO / "tools" / "site_planner_web"
+
+
+def test_picker_orders_are_neighborhoods():
+    assert _picker("ORDERS") == list(_module("neighborhoods").ORDERS)
+
+
+def test_precomputed_export_regenerates_byte_for_byte(tmp_path):
+    """The shipped default is derived data: from its policy file, today's
+    code and world must reproduce it exactly, or it is stale."""
+    nb = _module("neighborhoods")
+    default = _picker("DEFAULT_EXPORT")
+    shipped = WEB / default["path"]
+    policy = json.loads((WEB / "precomputed" / "policy_v020.json").read_text(encoding="utf-8"))
+    out = tmp_path / "nb.json"
+    nb.write_export(nb.export_for(policy, "default_502094", REPO), out)
+    assert out.read_bytes() == shipped.read_bytes()
+    assert json.loads(shipped.read_text(encoding="utf-8"))["policy"] == policy
+
+
+def test_bundle_list_matches_a_fresh_trace():
+    import subprocess
+
+    r = subprocess.run([sys.executable, str(WEB / "bundle.py"), "--check"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    files = json.loads((WEB / "bundle_files.json").read_text(encoding="utf-8"))
+    assert all(f.split("/")[0] in ("tools", "planning_data") for f in files)
+    assert "planning_data/game/reference/recipes.csv" in files and "tools/portfolio_run.py" in files
+
+
+def test_worker_pins_pyodide_0_27_7():
+    """Greg 2026-10-19 18:23: Pyodide from the CDN, pinned, as measured."""
+    text = (WEB / "worker.js").read_text(encoding="utf-8")
+    assert re.findall(r"pyodide/v([\d.]+)/", text) == ["0.27.7"]

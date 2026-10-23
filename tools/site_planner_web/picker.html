@@ -91,6 +91,24 @@ footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
     <span class="small muted">Read in this browser only. The last neighborhoods file and the picks are kept in this browser.</span>
     <div id="err" hidden></div>
     <div class="prov small muted mono" id="policy"></div>
+    <details id="poled">
+      <summary class="small">Change the policy and recompute in this browser</summary>
+      <div style="display:grid;gap:10px;margin-top:8px">
+        <div class="form">
+          <label><span>Radius, m</span><input id="p-radius" type="number" step="any"></label>
+          <label><span>Min sockets</span><input id="p-min" type="number" step="1"></label>
+          <label><span>Dedupe</span><select id="p-dedupe"><option value="">—</option><option value="none">none</option><option value="on">on</option></select></label>
+          <label><span>Dedupe Jaccard</span><input id="p-jac" type="number" step="any"></label>
+          <label><span>Dedupe seed distance, m</span><input id="p-seed" type="number" step="any"></label>
+          <label><span>Dedupe order</span><select id="p-order"></select></label>
+        </div>
+        <div class="eyebrow">Sockets that count (kind · item · how many in this world)</div>
+        <div id="p-pairs" class="small muted">Loads with Python (first use takes a few seconds).</div>
+        <div class="row"><button id="p-load">Load socket types</button><button class="primary" id="p-go">Recompute</button></div>
+        <div id="p-msg"></div>
+      </div>
+    </details>
+    <div class="small muted mono" id="pystatus">Python: not started</div>
   </div>
 
   <div id="out" hidden>
@@ -135,7 +153,8 @@ footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
         <button id="exadd" style="margin-top:6px">Add extractor</button>
       </div>
       <div id="check"></div>
-      <div class="row"><button class="primary" id="save" disabled>Save inputs</button></div>
+      <div class="row"><button class="primary" id="save" disabled>Save inputs</button><button class="primary" id="runpy" disabled>Run in browser</button></div>
+      <div id="runout"></div>
     </section>
 
     <footer>
@@ -154,7 +173,10 @@ const GOALS = ["balanced", "resources", "power", "buildings"];  // site_card.GOA
 const EXTRACTORS = ["Build_FrackingExtractor_C", "Build_MinerMk1_C", "Build_MinerMk2_C", "Build_MinerMk3_C", "Build_OilPump_C", "Build_WaterPump_C"];  // gamedata extraction rates
 const FLUID_ROUNDING = ["m3", "mL", null];              // scenario.FLUID_ROUNDING_VARIANTS
 const SCENARIO_KEYS = ["recipe_input_multiplier", "machine_power_multiplier", "project_assembly_requirement_multiplier", "input_amount_floor", "fluid_rounding_unit"];  // Scenario fields
-const STORE_NB = "sp-neighborhoods", STORE_STATE = "sp-picker";
+const ORDERS = ["most_types_first", "seed_id"];         // neighborhoods.ORDERS
+// precomputed exports shipped beside this page: the starting point (Greg 2026-10-23 15:36, A10)
+const DEFAULT_EXPORT = { "path": "precomputed/neighborhoods_v020.json", "label": "precomputed, v0.20 policy" };
+const STORE_NB = "sp-neighborhoods", STORE_STATE = "sp-picker", STORE_RECORD = "sp-record";
 
 const $ = id => document.getElementById(id);
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -174,7 +196,7 @@ function acceptNB(text, source) {
   $("err").hidden = true;
   NB = doc; byId = Object.fromEntries(doc.sockets.map(s => [s.socket_id, s]));
   const p = doc.policy, d = p.dedupe;
-  $("policy").textContent = `Policy of this export: radius ${p.radius_m} m · min ${p.min_nodes} sockets · ` +
+  $("policy").textContent = `Source: ${source}. Policy: radius ${p.radius_m} m · min ${p.min_nodes} sockets · ` +
     (d ? `dedupe Jaccard ${d.jaccard}, seeds within ${d.seed_distance_m} m, order ${d.order}` : "no dedupe") +
     ` · ${p.include.length} include pairs · ${doc.neighborhoods.length} neighborhoods · world ${doc.world_config_id}`;
   $("notassessed").textContent = "Not assessed: " + doc.not_assessed.join("; ") + ".";
@@ -183,7 +205,8 @@ function acceptNB(text, source) {
   return true;
 }
 async function readFile(input, then) { const f = input.files[0]; if (f) then(await f.text(), f.name); }
-$("nbfile").addEventListener("change", ev => readFile(ev.target, (t, n) => { if (acceptNB(t, n)) store(STORE_NB, t); }));
+function keepNB(text, source) { if (acceptNB(text, source)) store(STORE_NB, JSON.stringify({ source, text })); }
+$("nbfile").addEventListener("change", ev => readFile(ev.target, (t, n) => keepNB(t, `file ${n}`)));
 
 // ---- map -------------------------------------------------------------------
 // svg x = game X = east_m, svg y = game Y = -north_m (north up)
@@ -390,8 +413,8 @@ function check() {
   const r = build();
   if (r.problems) {
     const d = el("div", "error"); d.append(el("b", null, "Not ready: ")); const ul = el("ul"); ul.style.margin = "4px 0 0"; ul.style.paddingLeft = "1.1rem";
-    r.problems.forEach(p => ul.append(el("li", null, p))); d.append(ul); out.append(d); $("save").disabled = true;
-  } else { out.append(el("div", "ok", `Ready: ${sites.length} site${sites.length > 1 ? "s" : ""}, ${sites.reduce((a, s) => a + s.socket_ids.length, 0)} sockets.`)); $("save").disabled = false; }
+    r.problems.forEach(p => ul.append(el("li", null, p))); d.append(ul); out.append(d); $("save").disabled = true; $("runpy").disabled = true;
+  } else { out.append(el("div", "ok", `Ready: ${sites.length} site${sites.length > 1 ? "s" : ""}, ${sites.reduce((a, s) => a + s.socket_ids.length, 0)} sockets.`)); $("save").disabled = false; $("runpy").disabled = false; }
   return r;
 }
 $("save").onclick = () => {
@@ -419,10 +442,102 @@ $("infile").addEventListener("change", ev => readFile(ev.target, (text, src) => 
   buildForm(); if (NB) { renderSites(); draw(); listNB(); } save();
 }));
 
+// ---- Python in the browser (worker.js) ----------------------------------------------
+let worker = null, seq = 0; const pending = {};
+function py(op, arg) {
+  if (!worker) {
+    try { worker = new Worker("worker.js"); }
+    catch (e) { return Promise.reject(new Error(`no worker (${e.message}); serve the repo over http`)); }
+    worker.onmessage = ev => {
+      const m = ev.data;
+      if (m.status) { $("pystatus").textContent = "Python: " + m.status; return; }
+      const p = pending[m.id]; if (!p) return; delete pending[m.id];
+      m.ok ? p.resolve(m) : p.reject(new Error(m.error));
+    };
+    worker.onerror = ev => { $("pystatus").textContent = "Python: failed to start (" + (ev.message || "worker error") + ")"; };
+  }
+  const id = ++seq;
+  return new Promise((resolve, reject) => { pending[id] = { resolve, reject }; worker.postMessage({ id, op, arg }); });
+}
+
+// policy editor: starts from the loaded export's policy (the one in view), never from a constant
+for (const o of ORDERS) { const e = el("option", null, o); e.value = o; $("p-order").append(e); }
+let pairs = null;  // [{source_kind, item_id, count, name}] from the world, via Python
+function fillEditor() {
+  if (!NB) return;
+  const p = NB.policy, d = p.dedupe;
+  $("p-radius").value = p.radius_m; $("p-min").value = p.min_nodes;
+  $("p-dedupe").value = d ? "on" : "none";
+  $("p-jac").value = d ? d.jaccard : ""; $("p-seed").value = d ? d.seed_distance_m : ""; $("p-order").value = d ? d.order : "";
+  if (pairs) renderPairs();
+}
+function renderPairs() {
+  const host = $("p-pairs"); host.replaceChildren(); host.className = "form";
+  const on = new Set(NB.policy.include.map(x => `${x.source_kind}|${x.item_id}`));
+  for (const x of pairs) {
+    const l = el("label"); l.style.flexDirection = "row";
+    const cb = el("input"); cb.type = "checkbox"; cb.dataset.kind = x.source_kind; cb.dataset.item = x.item_id ?? "";
+    cb.checked = on.has(`${x.source_kind}|${x.item_id}`);
+    l.append(cb, el("span", null, ` ${x.source_kind} · ${x.name || x.item_id || "(no item)"} · ${x.count}`));
+    host.append(l);
+  }
+}
+$("poled").addEventListener("toggle", () => { if ($("poled").open) fillEditor(); });
+$("p-load").onclick = async () => {
+  $("p-msg").replaceChildren(el("span", "small muted", "Starting Python…"));
+  try { pairs = (await py("pairs", NB ? NB.world_config_id : "default_502094")).result; renderPairs(); $("p-msg").replaceChildren(); }
+  catch (e) { $("p-msg").replaceChildren(el("div", "error", e.message)); }
+};
+$("p-go").onclick = async () => {
+  const msg = $("p-msg"), num = id => $(id).value.trim() === "" ? NaN : +$(id).value;
+  const problems = [];
+  if (!pairs) problems.push("load the socket types first");
+  const include = pairs ? [...$("p-pairs").querySelectorAll("input:checked")].map(cb => ({ source_kind: cb.dataset.kind, item_id: cb.dataset.item || null })) : [];
+  if (pairs && !include.length) problems.push("tick at least one socket type");
+  if (!isFinite(num("p-radius"))) problems.push("radius"); if (!Number.isInteger(num("p-min"))) problems.push("min sockets (whole number)");
+  const dd = $("p-dedupe").value;
+  if (!dd) problems.push("dedupe: none or on");
+  if (dd === "on" && (!isFinite(num("p-jac")) || !isFinite(num("p-seed")) || !$("p-order").value)) problems.push("dedupe: Jaccard, seed distance and order");
+  if (problems.length) { msg.replaceChildren(el("div", "error", "Not ready: " + problems.join("; "))); return; }
+  const policy = { include, radius_m: num("p-radius"), min_nodes: num("p-min"),
+                   dedupe: dd === "on" ? { jaccard: num("p-jac"), seed_distance_m: num("p-seed"), order: $("p-order").value } : null };
+  msg.replaceChildren(el("span", "small muted", "Recomputing…"));
+  try {
+    const r = await py("neighborhoods", { policy, world_config_id: NB.world_config_id });
+    keepNB(JSON.stringify(r.result), `recomputed in this browser (${r.ms} ms)`);
+    msg.replaceChildren(el("div", "ok", `${r.result.neighborhoods.length} neighborhoods. Sites already picked keep their sockets.`));
+  } catch (e) { msg.replaceChildren(el("div", "error", e.message)); }
+};
+
+// run the declared inputs here; the record goes where index.html looks for it
+$("runpy").onclick = async () => {
+  const r = check(); if (!r.doc) return;
+  const out = $("runout"); out.replaceChildren(el("span", "small muted", "Running…"));
+  $("runpy").disabled = true;
+  try {
+    const res = await py("run", r.doc), text = res.result.text, rec = JSON.parse(text);
+    store(STORE_RECORD, text);
+    const d = el("div", "ok");
+    d.append(el("b", null, `Bill scale ${rec.bill.scale.toFixed(6)}/min`),
+      document.createTextNode(rec.bill.horizon_min ? ` · whole bill in ${rec.bill.horizon_min.toFixed(1)} min` : " · no horizon (scale 0)"),
+      document.createTextNode(` · solved in ${res.ms} ms. `));
+    const a = el("a", null, "Open the record"); a.href = "index.html"; d.append(a);
+    const dl = el("a", null, " · save it"); dl.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    dl.download = "portfolio_record.json"; d.append(dl);
+    out.replaceChildren(d);
+  } catch (e) { out.replaceChildren(el("div", "error", e.message)); }
+  check();
+};
+
 function save() { store(STORE_STATE, JSON.stringify({ sites, form, extractors, chosen })); }
 try { const s = JSON.parse(recall(STORE_STATE) || "null"); if (s) { sites = s.sites || []; form = s.form || {}; extractors = s.extractors || []; chosen = s.chosen || null; } } catch (e) { /* bad saved state */ }
 buildForm();
-const savedNB = recall(STORE_NB); if (savedNB) acceptNB(savedNB, "saved neighborhoods");
+let savedNB = null; try { savedNB = JSON.parse(recall(STORE_NB) || "null"); } catch (e) { savedNB = null; }
+if (savedNB && savedNB.text) acceptNB(savedNB.text, savedNB.source + " (kept in this browser)");
+else fetch(DEFAULT_EXPORT.path).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+  .then(text => keepNB(text, DEFAULT_EXPORT.label))
+  .catch(e => fail(`The precomputed neighborhoods could not be fetched (${e.message}). Serve the repo over http ` +
+    `(from the repo root: python -m http.server, then open /tools/site_planner_web/picker.html), or open a file above.`));
 </script>
 </body>
 </html>
