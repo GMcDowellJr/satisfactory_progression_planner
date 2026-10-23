@@ -24,7 +24,7 @@
 <style>
 :root {
   --bg: #eceff2; --surface: #ffffff; --fg: #1a2229; --muted: #5a6773; --line: #cdd5dc;
-  --flow: #2d6a8a; --accent: #b8650f; --bind: #b03e1c; --ok: #2f7448; --dot: #8a96a1;
+  --flow: #2d6a8a; --accent: #b8650f; --bind: #b03e1c; --ok: #2f7448; --dot: #2e3a45; --sea: #c9d6e0;
   --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --f-body: "IBM Plex Sans", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -32,10 +32,10 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
-  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #66727d; color-scheme: dark } }
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #d5dde3; --sea: #1b2731; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
-  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #66727d; color-scheme: dark }
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #d5dde3; --sea: #1b2731; color-scheme: dark }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
 .wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 48px;
@@ -60,6 +60,9 @@ input[type=text], input[type=number], select { background: var(--bg); border: 1p
 .row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
 .map-wrap { position: relative; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--bg); touch-action: none; }
 svg.map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; cursor: grab; }
+svg.map .basemap { pointer-events: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) svg.map image.basemap { filter: brightness(.55); } }
+:root[data-theme="dark"] svg.map image.basemap { filter: brightness(.55); }
 .map-tools { position: absolute; right: 6px; top: 6px; display: grid; gap: 4px; }
 .map-tools button { width: 34px; height: 34px; padding: 0; background: var(--surface); }
 ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -127,6 +130,7 @@ footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
         <input id="find" type="text" placeholder="Socket id, e.g. BP_ResourceNode103" aria-label="Find socket" style="flex:1">
         <button id="findgo">Find</button>
       </div>
+      <p class="small muted" id="basenote"></p>
       <p class="small muted">Tap a socket, or find one by id, to list the neighborhoods that contain it. Sites picked are drawn in colour; a socket in two sites is red.</p>
     </section>
 
@@ -176,6 +180,10 @@ const SCENARIO_KEYS = ["recipe_input_multiplier", "machine_power_multiplier", "p
 const ORDERS = ["most_types_first", "seed_id"];         // neighborhoods.ORDERS
 // precomputed exports shipped beside this page: the starting point (Greg 2026-10-23 15:36, A10)
 const DEFAULT_EXPORT = { "path": "precomputed/neighborhoods_v020.json", "label": "precomputed, v0.20 policy" };
+// base maps by world_config_id (tools/site_planner_web/basemap.py, Greg 2026-10-23 16:21): a world not
+// listed here is drawn on the plain grid, and the page says so; nothing is matched by guess.
+const BASEMAPS = { "default_502094": "precomputed/basemap_502094.json" };
+let BASE = {};  // world_config_id -> sidecar (+ href), once fetched
 const STORE_NB = "sp-neighborhoods", STORE_STATE = "sp-picker", STORE_RECORD = "sp-record";
 
 const $ = id => document.getElementById(id);
@@ -201,7 +209,7 @@ function acceptNB(text, source) {
     ` · ${p.include.length} include pairs · ${doc.neighborhoods.length} neighborhoods · world ${doc.world_config_id}`;
   $("notassessed").textContent = "Not assessed: " + doc.not_assessed.join("; ") + ".";
   $("out").hidden = false;
-  fit(); draw(); listNB(); renderSites();
+  fit(); loadBase(); listNB(); renderSites();
   return true;
 }
 async function readFile(input, then) { const f = input.files[0]; if (f) then(await f.text(), f.name); }
@@ -226,8 +234,32 @@ function fit(ids) {
 const NS = "http://www.w3.org/2000/svg";
 function sv(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 function siteColor(i) { return `hsl(${(205 + i * 67) % 360} 60% 45%)`; }
+function drawBase() {
+  const note = $("basenote");
+  if (!NB) return;
+  const w = NB.world_config_id, b = BASE[w];
+  if (!BASEMAPS[w]) { note.textContent = `No base map for world ${w}: sockets on a plain grid.`; return; }
+  if (!b) { note.textContent = "Base map loading…"; return; }
+  if (b.error) { note.textContent = `Base map for ${w} not loaded (${b.error}): sockets on a plain grid.`; return; }
+  const at = { x: b.x_m, y: b.y_m, width: b.width_m, height: b.height_m };
+  svg.append(sv("rect", { ...at, fill: "var(--sea)", class: "basemap" }));
+  svg.append(sv("image", { ...at, href: b.href, preserveAspectRatio: "none", class: "basemap" }));
+  note.textContent = `Terrain: ${b.source} (game data, ${b.pixel_m} m per pixel). Water and no-data are left as sea, ` +
+    "so the two cave-mouth blobs read as sea too.";
+}
+function loadBase() {
+  const w = NB && NB.world_config_id, path = w && BASEMAPS[w];
+  if (!path || BASE[w]) { draw(); return; }
+  BASE[w] = null;
+  fetch(path).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(b => { if (b.schema !== "basemap/1") throw new Error(`schema ${JSON.stringify(b.schema)}`);
+                 BASE[w] = { ...b, href: path.replace(/[^/]*$/, "") + b.image }; })
+    .catch(e => { BASE[w] = { error: e.message }; })
+    .finally(draw);
+}
 function draw() {
   svg.replaceChildren();
+  drawBase();
   const r = view.w / 160;
   const owner = {};
   sites.forEach((s, i) => s.socket_ids.forEach(id => (owner[id] = owner[id] || []).push(i)));

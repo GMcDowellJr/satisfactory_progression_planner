@@ -10,7 +10,10 @@ browser (Pyodide 0.27.7 from the CDN). Decisions: reframe record
                    a file from `portfolio_run.py --export`)
     worker.js      Pyodide: neighborhoods recompute and portfolio runs
     precomputed/   precomputed neighborhood exports, the picker's starting
-                   point (v0.20 policy: policy_v020.json -> neighborhoods_v020.json)
+                   point (v0.20 policy: policy_v020.json -> neighborhoods_v020.json),
+                   and the picker's base map (basemap_502094.png + .json)
+    basemap.py     cuts the base map from the terrain raster in
+                   planning_data/world/spatial/heightmap_build_502094
     bundle.py      traces the repo files the worker needs -> bundle_files.json
 
 ## Run locally
@@ -27,7 +30,8 @@ runs take a fraction of a second.
 
 ## Keep the derived files in step
 
-Both are checked by `tests/test_site_planner_web.py`:
+All three are checked by `tests/test_site_planner_web.py`:
 
     uv run python tools/neighborhoods.py --policy tools/site_planner_web/precomputed/policy_v020.json --export tools/site_planner_web/precomputed/neighborhoods_v020.json
     uv run python tools/site_planner_web/bundle.py --write
+    uv run python tools/site_planner_web/basemap.py --write

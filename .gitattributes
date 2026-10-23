@@ -19,4 +19,5 @@ planning_data/manifest.csv        -text
 
 # Binary rasters and the UTF-16 game Docs snapshot. Never converted.
 *.z                               binary
+*.png                             binary
 planning_data/game/source_snapshots/**/*.json  -text

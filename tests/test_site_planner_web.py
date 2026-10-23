@@ -134,3 +134,41 @@ def test_worker_pins_pyodide_0_27_7():
     """Greg 2026-10-19 18:23: Pyodide from the CDN, pinned, as measured."""
     text = (WEB / "worker.js").read_text(encoding="utf-8")
     assert re.findall(r"pyodide/v([\d.]+)/", text) == ["0.27.7"]
+
+
+# -- base map (Greg 2026-10-23 16:21: a small image from the kept terrain raster) ---
+
+def _basemap():
+    spec = importlib.util.spec_from_file_location("site_planner_basemap", WEB / "basemap.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_basemap_regenerates():
+    """The shipped PNG and sidecar are derived data. Pixels are compared with
+    basemap.same (alpha exact, grey within one step), not bytes: zlib output
+    and the hillshade's last ulp may differ between platforms."""
+    bm = _basemap()
+    px, side = bm.render()
+    shipped = WEB / "precomputed" / side["image"]
+    assert bm.same(bm.png_pixels(shipped.read_bytes()), px)
+    sidecar = WEB / "precomputed" / f"basemap_{bm.BUILD}.json"
+    assert json.loads(sidecar.read_text(encoding="utf-8")) == side
+
+
+def test_basemap_placement_is_meta_georeference():
+    """The image is placed from meta.json's grid, not fitted: a pixel is the
+    vertex at its centre, so the edge is half a pixel outside it."""
+    bm = _basemap()
+    _, side = bm.render()
+    g = json.loads((bm._raster(bm.BUILD) / "meta.json").read_text(encoding="utf-8"))["grid"]
+    px = bm.STRIDE * g["spacing_cm"] / 100.0
+    assert side["x_m"] == g["x0_cm"] / 100.0 - px / 2 and side["y_m"] == g["y0_cm"] / 100.0 - px / 2
+    assert side["width_px"] == -(-g["width"] // bm.STRIDE) and side["width_m"] == side["width_px"] * px
+
+
+def test_picker_basemaps_exist():
+    for world, path in _picker("BASEMAPS").items():
+        side = json.loads((WEB / path).read_text(encoding="utf-8"))
+        assert side["schema"] == "basemap/1" and (WEB / path).with_name(side["image"]).is_file(), world

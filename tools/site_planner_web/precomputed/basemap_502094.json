@@ -1,0 +1,17 @@
+{
+  "schema": "basemap/1",
+  "image": "basemap_502094.png",
+  "source": "planning_data/world/spatial/heightmap_build_502094",
+  "generator": "tools/site_planner_web/basemap.py",
+  "stride_vertices": 7,
+  "pixel_m": 7.0,
+  "levels": 32,
+  "frame": "x = game X = east_m; y = game Y = -north_m (metres)",
+  "x_m": -3250.5,
+  "y_m": -3753.5,
+  "width_m": 7504.0,
+  "height_m": 7504.0,
+  "width_px": 1072,
+  "height_px": 1072,
+  "transparent": "water (waterq 1 and 2) and no-data (incl. two cave-mouth blobs, a known defect)"
+}
