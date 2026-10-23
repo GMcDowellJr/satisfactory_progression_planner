@@ -245,7 +245,8 @@ function draw() {
   }
 }
 let drag = null;
-svg.addEventListener("pointerdown", ev => { drag = { x: ev.clientX, y: ev.clientY, v: { ...view }, moved: false }; svg.setPointerCapture(ev.pointerId); });
+// The id is read here, before setPointerCapture: once captured, pointerup targets the <svg>, not the dot.
+svg.addEventListener("pointerdown", ev => { drag = { x: ev.clientX, y: ev.clientY, v: { ...view }, moved: false, id: (ev.target.dataset && ev.target.dataset.id) || null }; svg.setPointerCapture(ev.pointerId); });
 svg.addEventListener("pointermove", ev => {
   if (!drag) return;
   const k = view.w / svg.clientWidth, dx = (ev.clientX - drag.x) * k, dy = (ev.clientY - drag.y) * k;
@@ -254,7 +255,7 @@ svg.addEventListener("pointermove", ev => {
 });
 svg.addEventListener("pointerup", ev => {
   const was = drag; drag = null;
-  if (was && !was.moved && ev.target.dataset && ev.target.dataset.id) choose(ev.target.dataset.id);
+  if (was && !was.moved && was.id) choose(was.id);
 });
 function zoom(f) { const cx = view.x + view.w / 2, cy = view.y + view.w / 2; view.w *= f; view.x = cx - view.w / 2; view.y = cy - view.w / 2; svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.w}`); draw(); }
 $("zin").onclick = () => zoom(0.5); $("zout").onclick = () => zoom(2);
