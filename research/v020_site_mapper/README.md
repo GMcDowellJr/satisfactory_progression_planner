@@ -5,6 +5,10 @@ into any tool and not covered by a decision. Handoff 2026-10-19 18:28,
 action 2 proposes bringing neighborhoods into the repo as a world-analysis
 tool; until Greg picks that up, this is the source to start from.
 
+2026-10-23: carried into `tools/neighborhoods.py` with its policy declared
+(docs/decisions/site_planner_reframe.md, Amendment 9). This copy stays as
+the provenance its test regenerates.
+
 ## Source
 
 From `site_logistics_opportunity_mapper_consolidated_v0_20_auto_multisite.zip`

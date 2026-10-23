@@ -429,3 +429,53 @@ proposal and no more. Until it lands the tools keep their present wording.
    formula). Measures the problem; changes no plan.
 
 These combine: 3 alongside 1 or 2 is likely either way.
+
+## Amendment 9 — 2026-10-23. Resource neighborhoods: the policy is declared
+
+### A9.1 What raised it
+
+Handoff 2026-10-19 18:28 action 2: bring v0.20's resource neighborhoods
+(research/v020_site_mapper/resource_clusters.py) into the repo as a
+world-analysis tool, its radius, dedupe threshold and minimum node count as
+declared inputs, tested by regenerating its 276. Porting it showed the 276
+also rest on choices that list did not name: the order in which candidates
+are walked before dedupe (dedupe is order-dependent, so the order decides
+which of two near-duplicates exists), a second dedupe gate (seeds within
+radius / 2), and which sockets count at all (the script's INCLUDE).
+
+### A9.2 Measured 2026-10-23 (container, py3.13, master d029aa7), not derived
+
+Over site_card.load_sockets (default_502094), with site_card.sockets_within
+as the radius test, v0.20's settings regenerate all 276 neighborhoods (522
+distinct sockets): same socket sets, same order. Changing one choice at a
+time, the number of the 276 kept as identical sets:
+
+- order by seed id instead of v0.20's "most types first": 249 (275 found)
+- dedupe by Jaccard only, no seed gate: 238 (248 found)
+- Jaccard 0.6: 237; radius 300: 86; radius 400: 60; min nodes 3: 263
+- fracking cores excluded: 250; uranium included: 265
+
+v0.20's INCLUDE leaves out uranium (5 nodes), Water wells (63 fracking
+sockets) and geysers (31), and keeps fracking cores.
+
+### A9.3 Decided by Greg, 2026-10-23 (holds until proven wrong)
+
+- Dedupe is optional and, when used, wholly declared: Jaccard threshold,
+  seed distance and a NAMED order, all three or none (half refused).
+- Which sockets count is a declared list of (source_kind, item_id) pairs,
+  (kind, any item) allowed; nothing is included by default.
+
+### A9.4 Built (tools/neighborhoods.py), and not carried, said so
+
+Radius and minimum node count are required. Orders: "most_types_first"
+(v0.20's: most distinct items, most sockets, most purity-weighted sockets,
+seed id) and "seed_id". Purity weights are extraction_rates.csv's
+multipliers, refused if a purity carries two. Without dedupe every
+candidate is reported, in socket file order. The export (neighborhoods/1)
+carries the policy, the sockets it uses and display names.
+
+Not carried: v0.20's candidate cap (1000; a cap truncates by the order, and
+the 276 never reached it), its RC### ids (they number the walk, so they
+change with the policy; a neighborhood is named by its seed socket), and its
+purity-equivalent totals in the output (counts by purity are reported; a
+weighted sum is an opinion outside the order that uses it).
