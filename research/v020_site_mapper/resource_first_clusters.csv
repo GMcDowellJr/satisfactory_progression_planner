@@ -1,0 +1,277 @@
+id,game_x_m,game_y_m,node_count,resource_family_count,description,seed_socket_id
+RC001,1415.68,2309.07,17,6,coal: 4; copper: 1; iron: 3; limestone: 1; nitrogen_gas: 7; sam: 1,BP_ResourceNode96_886
+RC002,1558.68,2483.94,15,6,coal: 4; copper: 1; iron: 1; limestone: 1; nitrogen_gas: 7; sam: 1,BP_ResourceNode499
+RC003,1249.33,52.26,13,6,caterium: 1; coal: 4; copper: 3; iron: 3; limestone: 1; sulfur: 1,BP_ResourceNode517
+RC004,1362.9,-209.24,12,6,caterium: 1; coal: 4; copper: 2; iron: 3; limestone: 1; sam: 1,BP_ResourceNode449
+RC005,5.72,2838.02,12,6,coal: 1; copper: 1; iron: 4; limestone: 4; sam: 1; sulfur: 1,BP_ResourceNode543
+RC006,-1732.49,-1121.73,10,6,caterium: 1; copper: 1; iron: 3; limestone: 2; raw_quartz: 2; sam: 1,BP_ResourceNode132_5908
+RC007,1645.18,2383.18,10,6,coal: 4; copper: 1; crude_oil: 2; iron: 1; limestone: 1; sam: 1,BP_ResourceNode95_579
+RC008,-716.73,1065.11,8,6,coal: 3; copper: 1; iron: 1; limestone: 1; sam: 1; sulfur: 1,BP_ResourceNode562
+RC009,2334.47,-2479.35,8,6,caterium: 1; coal: 2; copper: 1; iron: 1; limestone: 2; sulfur: 1,BP_ResourceNode202
+RC010,2958.96,-2728.76,8,6,coal: 2; copper: 1; iron: 1; limestone: 1; raw_quartz: 2; sam: 1,BP_ResourceNode186
+RC011,2877.68,-2748.86,8,6,coal: 2; copper: 1; iron: 1; limestone: 1; raw_quartz: 2; sam: 1,BP_ResourceNode215
+RC012,2189.26,-2553.39,7,6,caterium: 1; coal: 2; copper: 1; iron: 1; limestone: 1; sulfur: 1,BP_ResourceNode621
+RC013,2728.32,-2618.66,7,6,coal: 2; copper: 1; iron: 1; limestone: 1; sam: 1; sulfur: 1,BP_ResourceNode241_UAID_40B076DF2F7947D301_1723440520
+RC014,2124.92,1380.87,20,5,coal: 5; iron: 4; nitrogen_gas: 9; sam: 1; sulfur: 1,BP_FrackingSatellite10
+RC015,2334.33,1456.03,18,5,coal: 3; iron: 4; nitrogen_gas: 9; sam: 1; sulfur: 1,BP_ResourceNode563_UAID_40B076DF2F79B9E101_1570060334
+RC016,2148.94,1167.56,18,5,bauxite: 2; coal: 2; iron: 4; nitrogen_gas: 9; sam: 1,BP_ResourceNode573_UAID_40B076DF2F7983E001_1088885785
+RC017,903.76,807.14,17,5,bauxite: 3; caterium: 1; copper: 1; nitrogen_gas: 11; sam: 1,BP_ResourceNode574
+RC018,-831.34,2757.62,16,5,caterium: 1; coal: 1; copper: 2; iron: 9; limestone: 3,BP_ResourceNode493
+RC019,-552.88,1290.03,15,5,coal: 5; copper: 1; iron: 6; limestone: 2; sam: 1,BP_ResourceNode561
+RC020,-559.51,2715.65,15,5,coal: 1; copper: 3; iron: 6; limestone: 4; sam: 1,BP_ResourceNode534
+RC021,695.52,-1003.69,14,5,caterium: 1; copper: 1; iron: 6; limestone: 5; raw_quartz: 1,BP_ResourceNode440
+RC022,1283.1,2567.59,14,5,coal: 4; copper: 1; limestone: 1; nitrogen_gas: 7; sam: 1,BP_FrackingCore_8
+RC023,-413.01,2885.58,14,5,coal: 1; copper: 2; iron: 6; limestone: 4; sam: 1,BP_ResourceNode553
+RC024,-759.77,1305.76,13,5,coal: 4; copper: 1; iron: 5; limestone: 2; sam: 1,BP_ResourceNode503
+RC025,-525.87,2646.47,13,5,coal: 1; copper: 2; iron: 5; limestone: 4; sam: 1,BP_ResourceNode511
+RC026,-1821.83,-1423.67,12,5,copper: 1; iron: 3; limestone: 4; raw_quartz: 3; sam: 1,BP_ResourceNode135
+RC027,2254.3,-69.49,12,5,caterium: 3; iron: 5; limestone: 1; raw_quartz: 2; sam: 1,BP_ResourceNode69_UAID_A036BCACDEB0A7A601_1261875850
+RC028,-89.97,2935.12,12,5,coal: 1; copper: 2; iron: 4; limestone: 4; sam: 1,BP_ResourceNode558
+RC029,-660.77,2968.71,12,5,caterium: 1; coal: 1; copper: 3; iron: 4; limestone: 3,BP_ResourceNode587
+RC030,-501.02,2844.78,12,5,coal: 1; copper: 3; iron: 4; limestone: 3; sam: 1,BP_ResourceNode592
+RC031,1141.8,-170.0,11,5,caterium: 1; coal: 4; iron: 3; limestone: 2; sulfur: 1,BP_ResourceNode169_UAID_40B076DF2F7939DE01_2083925623
+RC032,3625.94,-1357.7,11,5,coal: 3; copper: 2; iron: 3; limestone: 2; sulfur: 1,BP_ResourceNode617
+RC033,-1650.02,-1332.78,11,5,copper: 1; iron: 3; limestone: 3; raw_quartz: 3; sam: 1,BP_ResourceNode113
+RC034,-1907.87,-1176.9,11,5,copper: 1; iron: 3; limestone: 4; raw_quartz: 2; sam: 1,BP_ResourceNode128_5242
+RC035,2118.43,-188.2,11,5,caterium: 3; iron: 3; limestone: 1; raw_quartz: 3; sam: 1,BP_ResourceNode142_UAID_40B076DF2F79E8DD01_2087440367
+RC036,1499.37,46.86,10,5,coal: 2; copper: 3; iron: 2; limestone: 2; sam: 1,BP_ResourceNode515
+RC037,3681.28,-1391.51,10,5,coal: 3; copper: 2; iron: 2; limestone: 2; sulfur: 1,BP_ResourceNode618
+RC038,-2061.73,-1416.89,10,5,iron: 4; limestone: 2; raw_quartz: 2; sam: 1; sulfur: 1,BP_ResourceNode166
+RC039,-784.19,1291.74,10,5,coal: 4; copper: 1; iron: 2; limestone: 2; sam: 1,BP_ResourceNode504
+RC040,-1457.81,-319.69,9,5,bauxite: 1; coal: 1; copper: 1; iron: 3; limestone: 3,BP_ResourceNode119
+RC041,3485.26,-1237.51,9,5,coal: 3; copper: 2; iron: 2; limestone: 1; sulfur: 1,BP_ResourceNode210
+RC042,1099.89,1967.59,9,5,copper: 1; iron: 3; limestone: 1; sam: 1; sulfur: 3,BP_ResourceNode133_6963
+RC043,-1643.81,648.41,8,5,bauxite: 1; caterium: 1; coal: 3; limestone: 2; sam: 1,BP_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081
+RC044,-1533.87,822.52,8,5,caterium: 1; coal: 2; copper: 2; limestone: 2; sam: 1,BP_ResourceNode176_UAID_40B076DF2F793BDF01_1694110039
+RC045,2410.91,-2397.88,8,5,caterium: 1; coal: 3; copper: 1; iron: 1; limestone: 2,BP_ResourceNode36
+RC046,330.25,0.69,7,5,bauxite: 1; coal: 1; crude_oil: 3; limestone: 1; sam: 1,BP_ResourceNode602
+RC047,913.05,2202.17,7,5,copper: 1; limestone: 1; raw_quartz: 1; sam: 1; sulfur: 3,BP_ResourceNode71_UAID_40B076DF2F7925DB01_1453678949
+RC048,3654.36,-800.82,7,5,coal: 2; copper: 1; iron: 1; limestone: 2; sulfur: 1,BP_ResourceNode612
+RC049,-1505.75,-0.23,6,5,bauxite: 1; copper: 1; iron: 2; limestone: 1; sam: 1,BP_ResourceNode597
+RC050,2099.27,1629.75,17,4,coal: 3; iron: 4; nitrogen_gas: 9; sulfur: 1,BP_ResourceNode573_UAID_40B076DF2F796FE101_1569477308
+RC051,1938.69,1165.85,17,4,bauxite: 2; coal: 4; nitrogen_gas: 9; sam: 2,BP_ResourceNode573_UAID_40B076DF2F7984E001_1384492965
+RC052,-240.66,2698.58,17,4,copper: 2; iron: 8; limestone: 6; sam: 1,BP_ResourceNode172
+RC053,-2656.94,-1625.71,16,4,coal: 4; copper: 1; limestone: 3; nitrogen_gas: 8,BP_ResourceNode573_UAID_40B076DF2F79ACE101_1257410031
+RC054,2423.1,1527.79,14,4,coal: 2; iron: 4; nitrogen_gas: 7; sulfur: 1,BP_ResourceNode71_UAID_40B076DF2F7923DB01_2085455593
+RC055,-212.65,2831.48,14,4,copper: 2; iron: 7; limestone: 4; sam: 1,BP_ResourceNode547
+RC056,-949.05,2626.78,14,4,caterium: 1; copper: 2; iron: 8; limestone: 3,BP_ResourceNode488
+RC057,3489.08,-1633.5,13,4,coal: 3; copper: 4; iron: 5; limestone: 1,BP_ResourceNode227
+RC058,841.99,-863.94,12,4,caterium: 1; copper: 1; iron: 6; limestone: 4,BP_ResourceNode435_26
+RC059,-1596.16,1128.58,12,4,caterium: 1; copper: 2; nitrogen_gas: 8; sam: 1,BP_ResourceNode83_UAID_40B076DF2F79FBE101_1618730935
+RC060,3304.33,-1424.0,11,4,coal: 1; copper: 2; iron: 6; limestone: 2,BP_ResourceNode204_0
+RC061,3554.62,-1498.08,11,4,coal: 3; copper: 2; iron: 4; limestone: 2,BP_ResourceNode213
+RC062,2457.0,300.65,11,4,bauxite: 3; copper: 1; iron: 5; limestone: 2,BP_ResourceNode66
+RC063,2640.52,1122.81,11,4,caterium: 1; crude_oil: 7; iron: 2; limestone: 1,BP_FrackingSatellite46
+RC064,2703.17,-2115.97,11,4,coal: 1; copper: 2; iron: 6; limestone: 2,BP_ResourceNode192_0
+RC065,-365.0,2438.94,11,4,copper: 1; iron: 5; limestone: 4; sam: 1,BP_ResourceNode494
+RC066,2377.25,-230.06,10,4,caterium: 3; iron: 5; limestone: 1; sam: 1,BP_ResourceNode524_UAID_40B076DF2F798ADF01_1172524943
+RC067,-648.43,-77.38,10,4,bauxite: 1; coal: 1; crude_oil: 7; sam: 1,BP_ResourceNode601
+RC068,3803.66,-1094.96,10,4,coal: 6; iron: 1; limestone: 2; sulfur: 1,BP_ResourceNode613
+RC069,1771.98,-865.17,10,4,copper: 1; crude_oil: 4; iron: 2; limestone: 3,BP_ResourceNode37_178
+RC070,-893.79,1367.63,10,4,coal: 4; copper: 1; iron: 3; limestone: 2,BP_ResourceNode559
+RC071,-422.73,1321.51,10,4,coal: 1; iron: 6; limestone: 2; sam: 1,BP_ResourceNode536
+RC072,2849.86,1118.94,10,4,caterium: 1; crude_oil: 7; iron: 1; limestone: 1,BP_ResourceNode564
+RC073,-1334.45,-352.4,9,4,coal: 3; copper: 1; iron: 2; limestone: 3,BP_ResourceNode118_4340
+RC074,1529.62,-240.54,9,4,coal: 4; copper: 2; limestone: 2; sam: 1,BP_ResourceNode43_UAID_40B076DF2F793ED901_1532454233
+RC075,-2500.8,-1263.63,9,4,coal: 2; copper: 1; iron: 4; limestone: 2,BP_ResourceNode160
+RC076,-2669.04,-1333.55,9,4,coal: 4; copper: 1; iron: 2; limestone: 2,BP_ResourceNode131
+RC077,1679.04,-1163.73,9,4,copper: 1; crude_oil: 4; iron: 2; limestone: 2,BP_ResourceNode38_902
+RC078,-449.22,3022.74,9,4,coal: 1; copper: 2; iron: 4; limestone: 2,BP_ResourceNode545
+RC079,-1667.31,-265.66,8,4,bauxite: 1; copper: 1; iron: 3; limestone: 3,BP_ResourceNode115
+RC080,3428.06,-1147.28,8,4,coal: 2; copper: 1; iron: 3; limestone: 2,BP_ResourceNode216
+RC081,2602.99,562.28,8,4,bauxite: 3; copper: 2; iron: 2; limestone: 1,BP_ResourceNode479
+RC082,807.3,2048.12,8,4,limestone: 1; raw_quartz: 3; sam: 1; sulfur: 3,BP_ResourceNode172_UAID_40B076DF2F79DFD901_1471130569
+RC083,160.92,2641.53,8,4,coal: 1; iron: 2; limestone: 4; sulfur: 1,BP_ResourceNode550
+RC084,2484.81,-1461.6,8,4,caterium: 1; copper: 1; iron: 5; limestone: 1,BP_ResourceNode12_91
+RC085,3777.38,-2542.26,8,4,coal: 3; copper: 1; iron: 2; limestone: 2,BP_ResourceNode236
+RC086,-1676.03,1795.57,7,4,copper: 1; iron: 3; limestone: 2; sulfur: 1,BP_ResourceNode80
+RC087,1664.52,78.04,7,4,copper: 3; limestone: 1; raw_quartz: 2; sam: 1,BP_ResourceNode516
+RC088,-1780.99,-1652.42,7,4,copper: 1; limestone: 2; raw_quartz: 3; sam: 1,BP_ResourceNode110
+RC089,3723.74,-1534.21,7,4,coal: 3; copper: 2; iron: 1; limestone: 1,BP_ResourceNode209
+RC090,1038.46,-948.54,7,4,caterium: 1; iron: 2; limestone: 3; sulfur: 1,BP_ResourceNode487_UAID_40B076DF2F7934DF01_1597642799
+RC091,-1484.3,563.1,7,4,bauxite: 1; caterium: 1; coal: 3; limestone: 2,BP_ResourceNode573_UAID_40B076DF2F7972E101_1083579843
+RC092,3435.19,-834.7,7,4,coal: 2; copper: 2; iron: 1; limestone: 2,BP_ResourceNode46_2284
+RC093,-996.04,-1468.23,7,4,coal: 4; copper: 1; iron: 1; limestone: 1,BP_ResourceNode122
+RC094,-1077.39,-1306.4,7,4,coal: 4; copper: 1; iron: 1; limestone: 1,BP_ResourceNode5_381
+RC095,1774.78,1299.05,7,4,coal: 4; limestone: 1; nitrogen_gas: 1; sam: 1,BP_ResourceNode573_UAID_40B076DF2F7981E001_1464253430
+RC096,2715.14,-2465.11,7,4,coal: 2; copper: 2; iron: 2; sam: 1,BP_ResourceNode615
+RC097,1191.49,713.21,7,4,bauxite: 4; caterium: 1; coal: 1; sam: 1,BP_ResourceNode101_UAID_40B076DF2F79E6D901_1551800812
+RC098,502.6,-1571.53,7,4,copper: 1; crude_oil: 1; limestone: 3; raw_quartz: 2,BP_ResourceNode464
+RC099,4003.79,-2629.28,7,4,coal: 3; copper: 1; iron: 2; limestone: 1,BP_ResourceNode498
+RC100,-1450.44,1659.65,6,4,copper: 1; iron: 3; limestone: 1; sulfur: 1,BP_ResourceNode71_UAID_40B076DF2F797CDB01_1695622247
+RC101,3808.14,-1698.68,6,4,coal: 1; copper: 2; iron: 2; limestone: 1,BP_ResourceNode235
+RC102,920.73,31.64,6,4,caterium: 1; iron: 2; limestone: 2; sulfur: 1,BP_ResourceNode467
+RC103,638.23,83.77,6,4,coal: 1; crude_oil: 3; limestone: 1; sulfur: 1,BP_ResourceNode42_1294
+RC104,346.55,2843.03,6,4,coal: 1; iron: 1; limestone: 3; sulfur: 1,BP_ResourceNode177
+RC105,1305.51,1795.29,6,4,caterium: 1; copper: 1; iron: 3; limestone: 1,BP_ResourceNode75_6425
+RC106,-1818.14,890.77,6,4,caterium: 1; copper: 2; limestone: 2; sam: 1,BP_ResourceNode519_UAID_40B076DF2F79D3D901_1586151453
+RC107,2255.04,557.73,5,4,bauxite: 1; copper: 1; iron: 2; limestone: 1,BP_ResourceNode179
+RC108,-1078.65,601.91,5,4,coal: 1; limestone: 1; raw_quartz: 2; sulfur: 1,BP_ResourceNode521
+RC109,3853.03,-1899.28,5,4,caterium: 1; copper: 1; iron: 1; limestone: 2,BP_ResourceNode220
+RC110,-1013.82,915.79,5,4,copper: 1; limestone: 1; raw_quartz: 2; sulfur: 1,BP_ResourceNode71_736
+RC111,1073.68,-432.39,5,4,caterium: 1; coal: 2; iron: 1; limestone: 1,BP_ResourceNode41_1099
+RC112,-961.01,1637.53,5,4,coal: 2; copper: 1; iron: 1; limestone: 1,BP_ResourceNode126_6409
+RC113,154.6,-8.04,5,4,bauxite: 1; coal: 1; crude_oil: 2; sam: 1,BP_ResourceNode47_3066
+RC114,1861.64,770.7,5,4,bauxite: 2; coal: 1; limestone: 1; sam: 1,BP_ResourceNode178
+RC115,3559.98,-663.87,5,4,coal: 2; copper: 1; iron: 1; limestone: 1,BP_ResourceNode197
+RC116,2465.02,-2770.0,4,4,caterium: 1; copper: 1; sam: 1; sulfur: 1,BP_ResourceNode624
+RC117,-625.37,2280.43,15,3,copper: 1; iron: 10; limestone: 4,BP_ResourceNode555
+RC118,-419.28,2069.08,14,3,copper: 2; iron: 9; limestone: 3,BP_ResourceNode538
+RC119,849.79,1045.25,13,3,caterium: 1; copper: 1; nitrogen_gas: 11,BP_FrackingCore6
+RC120,-2667.12,-513.18,13,3,copper: 3; iron: 6; limestone: 4,BP_ResourceNode112
+RC121,3294.1,-1860.14,13,3,copper: 3; iron: 7; limestone: 3,BP_ResourceNode212
+RC122,-2513.95,-1870.71,12,3,coal: 2; limestone: 2; nitrogen_gas: 8,BP_FrackingCore4
+RC123,-2803.06,-1813.63,12,3,coal: 2; limestone: 2; nitrogen_gas: 8,BP_ResourceNode20_3137
+RC124,2839.69,-1215.98,12,3,copper: 3; iron: 8; limestone: 1,BP_ResourceNode200
+RC125,2655.01,-1782.06,12,3,copper: 3; iron: 7; limestone: 2,BP_ResourceNode49
+RC126,-589.19,1958.93,12,3,copper: 1; iron: 8; limestone: 3,BP_ResourceNode579
+RC127,-490.77,2317.08,12,3,copper: 1; iron: 7; limestone: 4,BP_ResourceNode496
+RC128,-1105.22,2497.22,12,3,caterium: 1; iron: 8; limestone: 3,BP_ResourceNode556
+RC129,591.13,-715.02,11,3,copper: 1; iron: 6; limestone: 4,BP_ResourceNode430
+RC130,-2670.51,-243.87,11,3,copper: 2; iron: 6; limestone: 3,BP_ResourceNode103
+RC131,2977.1,-1079.96,11,3,copper: 3; iron: 6; limestone: 2,BP_ResourceNode141
+RC132,2642.4,-1628.99,11,3,copper: 2; iron: 7; limestone: 2,BP_ResourceNode173
+RC133,-556.93,1943.7,11,3,copper: 1; iron: 6; limestone: 4,BP_ResourceNode577
+RC134,2445.91,-1909.03,11,3,copper: 3; iron: 4; limestone: 4,BP_ResourceNode182
+RC135,-593.22,145.95,10,3,bauxite: 1; coal: 2; crude_oil: 7,BP_ResourceNode485
+RC136,3112.3,-1287.05,10,3,copper: 2; iron: 7; limestone: 1,BP_ResourceNode184
+RC137,3194.64,-1580.98,10,3,copper: 1; iron: 8; limestone: 1,BP_ResourceNode203
+RC138,2775.91,-941.19,10,3,copper: 3; iron: 5; limestone: 2,BP_ResourceNode195
+RC139,2782.66,-2107.72,10,3,copper: 2; iron: 7; limestone: 1,BP_ResourceNode217
+RC140,2566.12,-1979.79,10,3,copper: 2; iron: 5; limestone: 3,BP_ResourceNode35
+RC141,2766.74,-1951.0,10,3,copper: 2; iron: 7; limestone: 1,BP_ResourceNode223
+RC142,3598.85,-2004.69,10,3,copper: 3; iron: 3; limestone: 4,BP_ResourceNode224
+RC143,3393.0,-1833.54,10,3,copper: 3; iron: 4; limestone: 3,BP_ResourceNode206
+RC144,3269.47,-2095.86,10,3,copper: 3; iron: 5; limestone: 2,BP_ResourceNode214
+RC145,-268.98,-1454.69,9,3,copper: 2; iron: 4; limestone: 3,BP_ResourceNode_C_UAID_A036BCACDEB0A6A601_2086848673
+RC146,-401.8,-79.12,9,3,bauxite: 1; coal: 1; crude_oil: 7,BP_FrackingCore9
+RC147,2458.6,-2189.34,9,3,copper: 2; iron: 3; limestone: 4,BP_ResourceNode97_1
+RC148,-536.15,1603.76,9,3,iron: 6; limestone: 2; sam: 1,BP_ResourceNode571
+RC149,3086.52,-1006.58,9,3,copper: 3; iron: 3; limestone: 3,BP_ResourceNode189
+RC150,3145.98,-1967.73,9,3,copper: 2; iron: 6; limestone: 1,BP_ResourceNode222
+RC151,-287.03,1982.1,9,3,copper: 2; iron: 6; limestone: 1,BP_ResourceNode593
+RC152,-448.69,-1394.8,8,3,copper: 2; iron: 4; limestone: 2,BP_ResourceNode453
+RC153,580.31,823.05,8,3,caterium: 1; copper: 1; nitrogen_gas: 6,BP_ResourceNode547_UAID_40B076DF2F79AEE101_1979010387
+RC154,1939.8,-54.68,8,3,caterium: 3; limestone: 2; raw_quartz: 3,BP_ResourceNode474_UAID_40B076DF2F798DDF01_1645035472
+RC155,1966.68,-139.56,8,3,caterium: 3; limestone: 2; raw_quartz: 3,BP_ResourceNode474_UAID_40B076DF2F7983DF01_2128950703
+RC156,1900.98,-172.81,8,3,caterium: 3; limestone: 2; raw_quartz: 3,BP_ResourceNode474_UAID_40B076DF2F798EDF01_2134364650
+RC157,2973.98,-964.37,8,3,copper: 3; iron: 2; limestone: 3,BP_ResourceNode194
+RC158,751.15,-1230.03,8,3,iron: 1; limestone: 5; raw_quartz: 2,BP_ResourceNode60_984
+RC159,667.57,-1506.77,8,3,copper: 1; limestone: 5; raw_quartz: 2,BP_ResourceNode464_UAID_40B076DF2F790FE201_1577140465
+RC160,402.51,-1446.91,8,3,copper: 1; limestone: 5; raw_quartz: 2,BP_ResourceNode464_UAID_40B076DF2F7915E201_1334543513
+RC161,201.44,-1698.47,8,3,copper: 1; crude_oil: 3; limestone: 4,BP_ResourceNode_C_UAID_40B076DF2F794DE201_1841969367
+RC162,1583.14,-650.03,8,3,crude_oil: 4; limestone: 3; sulfur: 1,BP_ResourceNode139_909
+RC163,1619.29,1037.77,8,3,coal: 5; limestone: 2; sam: 1,BP_ResourceNode101_1893
+RC164,2373.55,-1649.36,8,3,copper: 2; iron: 4; limestone: 2,BP_ResourceNode181
+RC165,-1524.9,-457.87,7,3,copper: 1; iron: 3; limestone: 3,BP_ResourceNode114
+RC166,-1132.16,-441.45,7,3,coal: 3; limestone: 3; sam: 1,BP_ResourceNode_700
+RC167,-1410.72,396.62,7,3,coal: 4; limestone: 2; sam: 1,BP_ResourceNode606
+RC168,1538.54,841.63,7,3,coal: 3; limestone: 2; sam: 2,BP_ResourceNode573_UAID_40B076DF2F795EE801_1339162695
+RC169,1096.19,1557.98,7,3,caterium: 1; copper: 2; iron: 4,BP_ResourceNode134_8590
+RC170,3117.99,-2153.43,7,3,copper: 2; iron: 4; limestone: 1,BP_ResourceNode221
+RC171,299.91,-1868.5,7,3,copper: 1; crude_oil: 5; limestone: 1,BP_ResourceNode25_98
+RC172,1577.38,148.78,6,3,copper: 3; iron: 2; limestone: 1,BP_ResourceNode514
+RC173,-1567.29,2021.6,6,3,copper: 1; iron: 3; limestone: 2,BP_ResourceNode84
+RC174,2427.57,879.33,6,3,crude_oil: 3; iron: 2; sam: 1,BP_ResourceNode565_8
+RC175,1332.76,1978.57,6,3,copper: 1; iron: 3; limestone: 2,BP_ResourceNode73_6071
+RC176,927.25,1633.06,6,3,caterium: 1; copper: 1; iron: 4,BP_ResourceNode149
+RC177,3830.46,-925.49,6,3,coal: 4; limestone: 1; sulfur: 1,BP_ResourceNode193
+RC178,1060.48,504.79,6,3,bauxite: 4; caterium: 1; sam: 1,BP_ResourceNode633
+RC179,895.93,626.39,6,3,bauxite: 4; caterium: 1; sam: 1,BP_ResourceNode636
+RC180,1556.0,1131.12,6,3,coal: 3; limestone: 2; sam: 1,BP_ResourceNode573_UAID_40B076DF2F7980E001_1705275252
+RC181,207.76,-1349.7,6,3,copper: 1; limestone: 4; raw_quartz: 1,BP_ResourceNode59_755
+RC182,2193.95,371.89,5,3,copper: 1; iron: 3; limestone: 1,BP_ResourceNode65_1865
+RC183,3911.18,-2087.03,5,3,caterium: 1; iron: 1; limestone: 3,BP_ResourceNode225
+RC184,-64.49,-1204.83,5,3,caterium: 1; copper: 2; limestone: 2,BP_ResourceNode443
+RC185,525.89,-88.59,5,3,coal: 1; crude_oil: 3; limestone: 1,BP_ResourceNode459
+RC186,2822.84,633.27,5,3,bauxite: 3; copper: 1; limestone: 1,BP_ResourceNode91_785
+RC187,621.11,2076.27,5,3,raw_quartz: 3; sam: 1; sulfur: 1,BP_ResourceNode136_UAID_40B076DF2F7975DF01_1617269241
+RC188,1759.81,-401.56,5,3,limestone: 2; raw_quartz: 2; sam: 1,BP_ResourceNode138_590
+RC189,1990.07,891.73,5,3,bauxite: 2; coal: 2; limestone: 1,BP_ResourceNode480
+RC190,2263.2,-2007.02,5,3,copper: 1; iron: 1; limestone: 3,BP_ResourceNode77
+RC191,-589.96,-2245.75,5,3,crude_oil: 1; iron: 3; sam: 1,BP_ResourceNode462_UAID_40B076DF2F7902E201_1630060169
+RC192,152.4,-1585.79,5,3,copper: 1; crude_oil: 1; limestone: 3,BP_ResourceNode464_UAID_40B076DF2F790EE201_1850696287
+RC193,-904.74,672.6,4,3,limestone: 1; raw_quartz: 2; sulfur: 1,BP_ResourceNode520
+RC194,-1773.67,449.99,4,3,bauxite: 1; coal: 1; limestone: 2,BP_ResourceNode596
+RC195,4047.88,-1139.61,4,3,coal: 2; limestone: 1; sulfur: 1,BP_ResourceNode594
+RC196,1628.99,654.14,4,3,coal: 2; limestone: 1; sam: 1,BP_ResourceNode101_UAID_40B076DF2F79E7D901_2125168992
+RC197,3056.6,-3013.06,4,3,copper: 1; limestone: 1; raw_quartz: 2,BP_ResourceNode231
+RC198,1282.96,-759.42,4,3,caterium: 1; limestone: 2; sulfur: 1,BP_ResourceNode461
+RC199,1350.05,1231.75,4,3,coal: 1; limestone: 2; sam: 1,BP_ResourceNode589_UAID_40B076DF2F79B1E101_1767545917
+RC200,4065.64,-2068.1,3,3,caterium: 1; iron: 1; limestone: 1,BP_ResourceNode240
+RC201,-609.61,961.96,3,3,coal: 1; copper: 1; limestone: 1,BP_ResourceNode599
+RC202,-1633.54,-1920.97,3,3,caterium: 1; copper: 1; limestone: 1,BP_ResourceNode162_5199
+RC203,25.71,98.34,3,3,bauxite: 1; coal: 1; sam: 1,BP_ResourceNode486
+RC204,1213.22,-882.95,3,3,caterium: 1; limestone: 1; sulfur: 1,BP_ResourceNode465
+RC205,-128.15,-1046.42,3,3,caterium: 1; limestone: 1; sulfur: 1,BP_ResourceNode487
+RC206,-1436.12,207.28,3,3,bauxite: 1; coal: 1; sam: 1,BP_ResourceNode607
+RC207,2826.89,-1793.05,13,2,copper: 3; iron: 10,BP_ResourceNode219
+RC208,2737.3,-1481.73,12,2,copper: 1; iron: 11,BP_ResourceNode207
+RC209,-1438.96,1221.97,10,2,copper: 2; nitrogen_gas: 8,BP_FrackingCore5
+RC210,2987.34,-1992.93,10,2,copper: 3; iron: 7,BP_ResourceNode218
+RC211,2668.81,-1207.15,9,2,copper: 2; iron: 7,BP_ResourceNode199
+RC212,-2274.11,-1188.62,8,2,iron: 4; limestone: 4,BP_ResourceNode174
+RC213,3048.4,-1729.08,8,2,copper: 1; iron: 7,BP_ResourceNode238
+RC214,2458.62,43.79,8,2,iron: 7; limestone: 1,BP_ResourceNode567
+RC215,550.42,-1306.41,8,2,limestone: 6; raw_quartz: 2,BP_ResourceNode57_UAID_40B076DF2F7935DF01_1413169977
+RC216,1851.24,2144.42,7,2,crude_oil: 6; iron: 1,BP_ResourceNode151
+RC217,1821.16,1883.97,7,2,coal: 1; crude_oil: 6,BP_ResourceNode154
+RC218,1808.2,1411.95,7,2,coal: 3; nitrogen_gas: 4,BP_ResourceNode573_UAID_40B076DF2F7984E001_1664435967
+RC219,265.98,-1939.84,7,2,copper: 1; crude_oil: 6,BP_ResourceNode14_609
+RC220,-944.77,2282.43,7,2,iron: 3; limestone: 4,BP_ResourceNode557
+RC221,-800.89,2047.46,7,2,iron: 4; limestone: 3,BP_ResourceNode575
+RC222,2991.22,-855.12,6,2,copper: 3; limestone: 3,BP_ResourceNode191
+RC223,-357.26,-2095.21,6,2,crude_oil: 3; iron: 3,BP_ResourceNode28_101
+RC224,-649.63,-2011.69,6,2,crude_oil: 3; iron: 3,BP_ResourceNode462_UAID_40B076DF2F7907E201_1624182051
+RC225,-1136.16,-504.5,5,2,coal: 3; limestone: 2,BP_ResourceNode129
+RC226,-2216.97,-1047.36,5,2,iron: 3; limestone: 2,BP_ResourceNode163
+RC227,3116.23,-698.11,5,2,copper: 1; limestone: 4,BP_ResourceNode190
+RC228,-2813.46,-720.0,5,2,copper: 3; limestone: 2,BP_ResourceNode156
+RC229,571.44,-1913.0,5,2,crude_oil: 4; limestone: 1,BP_ResourceNode23_96
+RC230,153.57,-1976.72,5,2,copper: 1; crude_oil: 4,BP_ResourceNode24_97
+RC231,1511.31,753.11,5,2,coal: 2; sam: 3,BP_ResourceNode573_UAID_40B076DF2F797DE001_1807610722
+RC232,-436.12,-1903.16,5,2,crude_oil: 3; iron: 2,BP_ResourceNode16
+RC233,-2313.9,-895.3,4,2,iron: 2; limestone: 2,BP_ResourceNode144_1644
+RC234,2060.03,1812.37,4,2,coal: 2; crude_oil: 2,BP_ResourceNode573_UAID_40B076DF2F796BE101_1963012602
+RC235,-808.7,-324.19,4,2,coal: 3; sam: 1,BP_ResourceNode43_UAID_40B076DF2F7936D401_1733397541
+RC236,808.32,2424.78,4,2,copper: 1; sulfur: 3,BP_ResourceNode547_UAID_40B076DF2F79ADE101_1836911209
+RC237,2552.5,-916.6,4,2,copper: 1; iron: 3,BP_ResourceNode196
+RC238,3707.13,-2219.71,4,2,iron: 1; limestone: 3,BP_ResourceNode228
+RC239,71.72,1552.32,4,2,copper: 3; limestone: 1,BP_ResourceNode505
+RC240,924.95,-1327.49,4,2,limestone: 3; raw_quartz: 1,BP_ResourceNode464_UAID_40B076DF2F7914E201_2026233335
+RC241,-1949.06,-257.8,3,2,iron: 2; limestone: 1,BP_ResourceNode145_1749
+RC242,-1077.94,318.55,3,2,coal: 2; limestone: 1,BP_ResourceNode605
+RC243,-2273.31,-1582.78,3,2,limestone: 2; sulfur: 1,BP_ResourceNode62
+RC244,3255.49,-2645.0,3,2,coal: 2; limestone: 1,BP_ResourceNode623
+RC245,-2130.23,-1700.21,3,2,limestone: 2; sulfur: 1,BP_ResourceNode71_UAID_40B076DF2F79B9DB01_1490254983
+RC246,-537.82,330.03,3,2,bauxite: 1; coal: 2,BP_ResourceNode609
+RC247,83.48,704.32,3,2,bauxite: 2; coal: 1,BP_ResourceNode604
+RC248,1881.83,-2474.68,3,2,coal: 2; sulfur: 1,BP_ResourceNode71_UAID_40B076DF2F7912DC01_2042985647
+RC249,-299.26,396.93,3,2,bauxite: 1; coal: 2,BP_ResourceNode600
+RC250,2243.08,-1287.42,3,2,caterium: 1; iron: 2,BP_ResourceNode142
+RC251,-398.9,-935.79,3,2,caterium: 1; sulfur: 2,BP_ResourceNode510
+RC252,-56.34,442.74,3,2,bauxite: 1; coal: 2,BP_ResourceNode566
+RC253,-1784.91,-797.88,2,2,caterium: 1; limestone: 1,BP_ResourceNode121_4877
+RC254,-52.93,920.75,2,2,bauxite: 1; coal: 1,BP_ResourceNode568
+RC255,-1315.74,2272.53,2,2,caterium: 1; limestone: 1,BP_ResourceNode70_3132
+RC256,-1354.68,-1746.82,2,2,caterium: 1; copper: 1,BP_ResourceNode121_UAID_40B076DF2F7938DF01_2097772508
+RC257,394.78,521.2,2,2,bauxite: 1; coal: 1,BP_ResourceNode529
+RC258,576.23,454.63,2,2,bauxite: 1; coal: 1,BP_ResourceNode603
+RC259,-466.45,-2529.47,2,2,iron: 1; sam: 1,BP_ResourceNode43_UAID_40B076DF2F7932D901_1711042113
+RC260,2965.0,132.54,2,2,copper: 1; sulfur: 1,BP_ResourceNode582
+RC261,2974.99,-73.12,2,2,copper: 1; sulfur: 1,BP_ResourceNode92
+RC262,953.46,-1684.42,2,2,copper: 1; limestone: 1,BP_ResourceNode_C_UAID_40B076DF2F794FE201_2126930721
+RC263,-2615.72,747.05,11,1,crude_oil: 11,BP_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789
+RC264,-2450.49,905.88,11,1,crude_oil: 11,BP_ResourceNode87
+RC265,2975.76,-1501.86,10,1,iron: 10,BP_ResourceNode239
+RC266,-2324.69,628.38,10,1,crude_oil: 10,BP_ResourceNode88
+RC267,2236.18,-3115.03,8,1,nitrogen_gas: 8,BP_FrackingCore3
+RC268,1697.17,2033.86,6,1,crude_oil: 6,BP_ResourceNode98
+RC269,524.71,-2014.65,5,1,crude_oil: 5,BP_ResourceNode29_102
+RC270,121.63,-2253.48,4,1,crude_oil: 4,BP_ResourceNode27_100
+RC271,444.96,-2289.5,3,1,crude_oil: 3,BP_ResourceNode26_99
+RC272,1484.78,-1938.69,3,1,crude_oil: 3,BP_ResourceNode30_103
+RC273,1477.69,-2129.12,3,1,crude_oil: 3,BP_ResourceNode31_104
+RC274,3304.71,-2646.58,2,1,coal: 2,BP_ResourceNode614
+RC275,379.26,1209.39,2,1,raw_quartz: 2,BP_ResourceNode136
+RC276,-411.22,-726.31,2,1,sulfur: 2,BP_ResourceNode170_363
