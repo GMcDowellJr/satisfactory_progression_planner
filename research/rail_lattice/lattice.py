@@ -71,6 +71,14 @@ TIGHT = sorted({round((v / 3.6) ** 2 / P['a_lat'], 1) for v in SPEEDS} | {46.0},
 # cells, adding short straights), so it did not measure the terrain.
 RADIUS_SETS = {f'R{round(r)}': (TIGHT, r) for r in TIGHT if r > 100}
 RADIUS_SETS['any'] = (TIGHT, 0.0)
+
+# Foundation-step profile (Greg, 2026-10-24): a curve blueprint turns 5deg from one 8 m foundation
+# to the next, so chained it is one fixed radius, 4 / sin(2.5deg) = 91.7 m, everywhere including
+# the hubs. Moves are whole foundations: 1, 2, 6 or 12 straight, or one foundation rotated 5deg.
+R_BP5 = 4.0 / math.sin(math.radians(2.5))
+PROFILES = {
+    'bp5': dict(straights_m=[8.0, 16.0, 48.0, 96.0], min_arc_m=8.0, sets={'BP5': ([R_BP5], 0.0)}),
+}
 NH = int(round(360 / P['heading_step_deg']))
 
 
@@ -263,12 +271,18 @@ if __name__ == '__main__':
     ap.add_argument('--key-m', type=float, help='closed-set cell size, m (sensitivity runs)')
     ap.add_argument('--margin-m', type=float, help='search box margin, m (sensitivity runs)')
     ap.add_argument('--key-off-m', type=float, help='shift of the closed-set grid, m')
+    ap.add_argument('--profile', choices=sorted(PROFILES), help='move set and radius sets to use instead of the sweep')
     ap.add_argument('--out', default='lattice.json')
     a = ap.parse_args()
     if a.key_m:
         P['key_m'] = a.key_m
     if a.margin_m:
         P['box_margin_m'] = a.margin_m
+    if a.profile:
+        pr = PROFILES[a.profile]
+        P['straights_m'] = pr['straights_m']; P['min_arc_m'] = pr['min_arc_m']
+        RADIUS_SETS.clear(); RADIUS_SETS.update(pr['sets'])
+        P['profile'] = a.profile
     if a.key_off_m:
         P['key_off_m'] = a.key_off_m
     main(links=[tuple(s.split('-')) for s in a.links] or None, sets=a.sets.split(',') if a.sets else None, out=a.out)

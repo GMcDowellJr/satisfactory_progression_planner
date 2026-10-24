@@ -90,6 +90,27 @@ What changed on the way, all measured the same day:
   181 m) and stand up to 75 m over gullies the 8 m means smooth. Known
   defect, documented in lattice.py; next step is a 1 m deck check.
 
+5 degrees per foundation (lattice.py --profile bp5; Greg, 2026-10-24: a
+curve blueprint turns 5 degrees from one 8 m foundation to the next, so the
+radius is fixed at 4 / sin(2.5 deg) = 91.7 m, 34 km/h at a = 1.0, with no
+other radius anywhere, hubs included). Moves: 1, 2, 6, 12 straight
+foundations or one rotated 5 degrees. Minutes, best of two 4 m runs:
+
+    link    BP5    (4 m runs)    2 m check (offset 0 / 1 m)
+    S2-C2   0.62   0.62 / 0.62
+    C1-C2   2.83   2.83 / 2.84
+    C1-C3   3.06   3.06 / 3.08
+    C3-W3   2.65   2.65 / 2.65
+    C1-S1   2.31   2.31 / 2.53   2.27 / 2.22  (margin 1100 m)
+    W2-W1   2.14   3.33 / 2.14   2.13 / 2.14  (margin 1100 m)
+    W1-S1   3.93   3.97 / 3.93
+    total   17.5 min, 21.1 km; 'any' 14.4 min, 19.5 km
+
+All seven links route at 5 degrees per foundation, where no blueprint family
+gentler than 201 m does. The 92 m radius assumes rail follows each
+foundation; one rail segment spanning several rotated foundations is a
+gentler curve, not modelled yet.
+
 Throughput: about 100-115 k states/s (Numba, one core); 'any' runs take
 30-120 s at 4 m. Memory, not speed, bounds resolution: a 2 m full sweep
 needs 5-8 GB per link with dense arrays.
