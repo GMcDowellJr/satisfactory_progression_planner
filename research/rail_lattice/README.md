@@ -138,6 +138,31 @@ Grade is the binding rule: it forces the detours, and the detours are what
 make the 92 m curves expensive. lattice.py takes --max-grade and
 --max-pillar-m for these runs.
 
+In-game measurements (Greg, 2026-10-24) and what they fit:
+
+    4:8 ramp           rail cannot be placed on it.
+    freehand 90 deg    one rail from a straight on the edge of an 8x8
+                       foundation grid (tangent length 64 m assumed): the
+                       rail crosses the third diagonal foundation 1-1.5 m
+                       along its edge from the near corner, so the midpoint
+                       is 23.3-23.7 m from the corner (a circle: 26.5 m).
+                       Fits a cubic Bezier with handles 0.64 x the tangent
+                       length: radius 106-113 m at the ends, 48-50 m in the
+                       middle (25 km/h at a = 1.0), plan length ~103 m.
+                       That exceeds the 100 m segment limit, so the tangent
+                       length is probably a little under 64 m; unresolved.
+                       Circles are possible but players force them by
+                       setting tangents (roundabouts).
+    6x6 climb          curved in plan, one end raised 22 m before "too
+                       steep". Same Bezier ratio: ~77 m long, 28.5%
+                       average. Matches the wiki's flat-ended 28 / 94.5 m
+                       (29.6% average); with both ends level a cubic ease
+                       peaks at 1.5x the average (43-44%), which matches the
+                       wiki's 1:2.25 beam figure. Hypothesis, not confirmed:
+                       the game limits the steepest local grade (~44%), and
+                       a rail with level ends can therefore average ~30%.
+                       The search's 25% per-move cap is below this.
+
 Throughput: about 100-115 k states/s (Numba, one core); 'any' runs take
 30-120 s at 4 m. Memory, not speed, bounds resolution: a 2 m full sweep
 needs 5-8 GB per link with dense arrays.
