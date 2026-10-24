@@ -132,7 +132,13 @@ def derive(field: TerrainField, policy: dict) -> CorridorResult:
     cpol=policy["corridor"]
     if not edges.empty:
         edges["corridor_class"]=np.where(edges.p10_clearance_m<=float(cpol["chokepoint_half_width_m"]),"chokepoint",np.where(edges.median_clearance_m<=float(cpol["maximum_constrained_half_width_m"]),"constrained","open"))
-        edges=edges[edges.length_m>=float(cpol["minimum_branch_length_m"])].reset_index(drop=True)
+        # minimum_branch_length_m prunes BRANCHES (spurs: an edge with a
+        # skeleton endpoint, degree <= 1). Junction-to-junction links are kept
+        # at any length; pruning them disconnected the graph (2026-10-24:
+        # 965 components, largest 10 nodes, on build 502094 corridors_v1).
+        deg_by_id=nodes.set_index("node_id")["degree"]
+        spur=(edges.from_node.map(deg_by_id)<=1)|(edges.to_node.map(deg_by_id)<=1)
+        edges=edges[~spur|(edges.length_m>=float(cpol["minimum_branch_length_m"]))].reset_index(drop=True)
         referenced=set(edges.from_node).union(edges.to_node)
         nodes=nodes[nodes.node_id.isin(referenced)].copy().reset_index(drop=True)
         if not nodes.empty:
