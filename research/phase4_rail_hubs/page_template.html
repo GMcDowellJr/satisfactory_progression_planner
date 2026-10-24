@@ -1,0 +1,191 @@
+<title>Phase 4 Rail Hubs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: schematic rail map over the heightmap; detail sheet below; signage-style type */
+:root{
+  --bg:#eef0ee; --panel:#ffffff; --fg:#1c2421; --muted:#5d6a65; --line:#cfd6d2; --water:#b9d3dc;
+  --rail:#1c2421; --rail-halo:#ffffff; --gr:#d23c6a; --net:#0b5d8f;
+  --al:#5b7fa6; --oil:#8a5a2b; --n2:#1f9bb0; --el:#c08a12; --bulk:#b0452c; --sam:#7a4bb5;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Barlow",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a18; --panel:#1d2522; --fg:#e4ebe7; --muted:#9aa8a2; --line:#33403b; --water:#20343c;
+  --rail:#f2f5f3; --rail-halo:#141a18; --gr:#ff7aa2; --net:#6cc4ff; --al:#86a8cf; --oil:#c48a50; --n2:#4cc3d6; --el:#e2b23a; --bulk:#e0705a; --sam:#a983e0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a18; --panel:#1d2522; --fg:#e4ebe7; --muted:#9aa8a2; --line:#33403b; --water:#20343c;
+  --rail:#f2f5f3; --rail-halo:#141a18; --gr:#ff7aa2; --net:#6cc4ff; --al:#86a8cf; --oil:#c48a50; --n2:#4cc3d6; --el:#e2b23a; --bulk:#e0705a; --sam:#a983e0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px;display:grid;gap:14px}
+h1{font-family:var(--display);font-weight:700;font-size:1.9rem;letter-spacing:.01em;margin:0;text-wrap:balance;line-height:1.05}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.92rem}
+.bar{display:flex;flex-wrap:wrap;gap:6px}
+.bar button{font:600 .82rem var(--display);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:6px 10px;border-radius:4px;cursor:pointer}
+.bar button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.bar button:focus-visible{outline:2px solid var(--n2);outline-offset:2px}
+.mapbox{background:var(--water);border:1px solid var(--line);border-radius:6px;overflow:hidden;max-width:100%}
+svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:50%;display:inline-block;border:1.5px solid var(--rail-halo);box-shadow:0 0 0 1px var(--fg)}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:10px;min-width:0}
+.sheet h2{font-family:var(--display);font-size:1.4rem;margin:0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.code{font:700 .95rem var(--mono);background:var(--fg);color:var(--bg);padding:1px 7px;border-radius:3px}
+.tier{font:600 .75rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 .78rem var(--display);letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;color:#fff}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+th{font:600 .72rem var(--display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;border-bottom:1px solid var(--line);padding:4px 8px 4px 0;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:5px 8px 5px 0;vertical-align:top}
+td.m{font-family:var(--mono);font-size:.78rem}
+.notes{font-size:.86rem;color:var(--muted);display:grid;gap:6px}
+.notes b{color:var(--fg);font-weight:600}
+.links{display:grid;gap:4px;font-size:.86rem}
+.links div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding:3px 0;font-variant-numeric:tabular-nums}
+.hublabel{font:700 118px var(--display);paint-order:stroke;stroke:var(--rail-halo);stroke-width:30px;fill:var(--rail);cursor:pointer}
+.hub{cursor:pointer}
+.lk{cursor:pointer}
+.links div{cursor:pointer}
+.links div.on{background:color-mix(in srgb,var(--n2) 14%,transparent)}
+.prof{width:100%;height:auto;display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;font-variant-numeric:tabular-nums}
+.stats div{border-left:2px solid var(--line);padding-left:8px}
+.stats b{display:block;font:600 1.15rem var(--display)}
+.stats span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+code{font-family:var(--mono);font-size:.85em}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Phase 4 rail hubs</h1>
+    <p class="sub">Candidate hubs from the repo's 276 resource neighborhoods (v0.20 policy, build 502094), joined by ground corridors from <code>corridor_tool</code> (corridors_v1, 16 m step). The network is a minimum spanning tree on corridor length. Tap a hub or a link.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="Map view">
+    <button id="v-core" aria-pressed="true">Core</button>
+    <button id="v-all" aria-pressed="false">Whole map</button>
+    <button id="n-2" aria-pressed="true">2:8 network</button>
+    <button id="n-4" aria-pressed="false">4:8 network</button>
+    <button id="t-reach" aria-pressed="true">Reach</button>
+    <button id="t-slope" aria-pressed="false">Slope</button>
+    <button id="t-rail" aria-pressed="false">Corridors</button>
+    <button id="t-cand" aria-pressed="true">Site picks</button>
+    <button id="t-gr" aria-pressed="false">Rail tool</button>
+    <button id="t-nb" aria-pressed="false">All neighborhoods</button>
+  </div>
+
+  <div class="mapbox"><svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Satisfactory world map with candidate hubs and rail links"></svg></div>
+
+  <div class="legend" id="legend"></div>
+
+  <section class="sheet" id="sheet" aria-live="polite"></section>
+
+  <section class="sheet">
+    <h2>Ramp-class network <span class="tier">no bridges except marked spans</span></h2>
+    <div class="links" id="netlist"></div>
+    <div class="legend" id="lg-reach"><span><i class="sw" style="background:rgb(40,170,90)"></i>Track reaches C1 at 1:8</span><span><i class="sw" style="background:rgb(240,180,30)"></i>needs 2:8</span><span><i class="sw" style="background:rgb(220,70,60)"></i>needs 4:8</span><span><i class="sw" style="background:rgb(30,90,200)"></i>Island: needs a bridge at any slope</span><span>Uncoloured land: not connected to C1 at 4:8 (fragments under 0.25 km²), or water</span></div>
+    <div class="legend" id="lg-slope" hidden><span><i class="sw" style="background:rgb(40,170,90)"></i>Ground ≤ 1:8 (12.5%)</span><span><i class="sw" style="background:rgb(240,180,30)"></i>≤ 2:8 (25%)</span><span><i class="sw" style="background:rgb(220,70,60)"></i>≤ 4:8 (50%)</span><span><i class="sw" style="background:rgb(90,40,120)"></i>steeper than 4:8</span><span>Steepest direction per 8 m cell; track running across the slope is gentler</span></div>
+  </section>
+
+  <section class="sheet">
+    <h2>Corridor links <span class="tier">ground corridor · ground-level rail at a 30% limit</span></h2>
+    <div class="links" id="links"></div>
+  </section>
+
+  <section class="sheet notes">
+    <div><b>What drives the screen.</b> Default recipes for the four Phase 4 parts expand to iron, copper, crude oil, coal, limestone, water, caterium, bauxite, raw quartz and nitrogen gas. Sulfur and uranium do not appear in that chain; uranium matters only if you go nuclear for power. Phase 5 adds SAM.</div>
+    <div><b>Roles.</b> Aluminum: bauxite within 400 m of mapped water, plus quartz and coal nearby. Oil: crude nodes or fracking. Nitrogen: gas wells. Electronics: caterium and quartz together. Bulk: iron, copper and coal together. SAM: SAM nodes. Top six per role, spaced at least 800 m apart, then grouped into hubs within 750 m.</div>
+    <div><b>Weights are opinion.</b> Purity counts as impure 0.5, normal 1, pure 2, and a fracking satellite counts like a node. The role scores are a ranking I chose for this screen, not a repo policy.</div>
+    <div><b>Reading the grades.</b> Two repo sources disagree on rail grade: the route tool's rail profile blocks at 8%, while <code>route_constraints.csv</code> cites 28 m of rise per 94.5 m (about 30%) for a flat-ended segment. Both are shown. Most links spend half their length above 8%, so ground-following track is not realistic; expect foundations or pillars, with the corridor as the alignment to follow.</div>
+    <div><b>Rail mode.</b> The route tool's rail profile (8% hard grade) finds no ground route on any link, and 15% clears only S2–C2. At 30% (the <code>route_constraints.csv</code> figure, declared for this run and not committed) seven links return a route, but only S2–C2 passes the tool's own 5 m validation; the rest keep 14–104 m of steeper-than-30% spots, and C1–S2 and S1–W1 have no route even with bridges allowed. Searches were cropped to 1,200 m around each link.</div>
+    <div><b>Player guidance (r/SatisfactoryGame, about 2 years old).</b> Two-metre foundation ramps are the safe slope (2 m per 8 m foundation, 25%); 4 m ramps make trains struggle; keep to 4 cars per engine on those slopes. At 25%, every link's net rise fits in 4–36% of its corridor length, so the corridors carry ramped track. Foundations are needed mainly where the ground itself is steeper than 25%.</div>
+    <div><b>Ramp classes.</b> The map is cut into 8 m cells (one foundation), each the mean of the 1 m heightfield. Track may step to any of 8 neighbours if the rise is within 1 m, 2 m or 4 m per 8 m (12.5%, 25%, 50%). Water deeper than 3 m or of unknown depth blocks. No cuts or tunnels. The shaded reach shows which ground connects to C1 at each class.</div>
+    <div><b>Spans.</b> Where a class leaves a hub cut off, a span is a straight deck at that class's grade between the two areas, kept only if the ground never rises more than 2 m above the deck. Ranked by length plus twice the tallest pillar; spans cost 1.5× their length in routing.</div>
+    <div><b>Limits.</b> Paths can turn at every cell, so they ignore rail turn radius; real track will be longer, and tight zigzags may not be buildable. Spans are only searched to join cut-off areas, not as shortcuts.</div>
+    <div><b>Not assessed.</b> Rail curvature, bridging cost, buildable platform at the hub, socket exclusivity, and whether a link crosses water. Elevations are of the seed sockets, not the ground between them. Water comes from the basemap's transparent pixels, which include two known cave-mouth defects.</div>
+  </section>
+</div>
+
+<script>
+const D=/*DATA*/null;
+const ROLE={aluminum:["Aluminum","--al"],oil:["Oil","--oil"],nitrogen:["Nitrogen","--n2"],electronics:["Caterium/Quartz","--el"],bulk:["Iron/Copper/Coal","--bulk"],sam:["SAM","--sam"]};
+const RES={iron:"Iron",copper:"Copper",coal:"Coal",lime:"Limestone",cat:"Caterium",quartz:"Quartz",baux:"Bauxite",oil:"Oil",n2:"N₂",sam:"SAM",sulf:"Sulfur"};
+const NS="http://www.w3.org/2000/svg", svg=document.getElementById('map');
+const X=e=>e, Y=n=>-n;
+const el=(t,a,p)=>{const x=document.createElementNS(NS,t);for(const k in a)x.setAttribute(k,a[k]);(p||svg).appendChild(x);return x};
+const css=v=>`var(${v})`;
+const K=Object.fromEntries(D.hubs.map(h=>[h.key,h]));
+
+el('image',{href:D.img,x:D.bm.x,y:D.bm.y,width:D.bm.w,height:D.bm.h,preserveAspectRatio:'none'});
+const gReach=el('g',{}), gNet=el('g',{}), gNb=el('g',{}), gRail=el('g',{}), gGr=el('g',{}), gCand=el('g',{}), gHub=el('g',{});
+D.others.forEach(o=>el('circle',{cx:X(o.e),cy:Y(o.n),r:22,fill:css('--fg'),'fill-opacity':.35},gNb));
+D.routes.forEach((r,i)=>{const pts=r.pts.map(p=>X(p[0])+','+Y(p[1])).join(' ');
+  el('polyline',{points:pts,fill:'none',stroke:css('--rail-halo'),'stroke-width':70,'stroke-linejoin':'round','stroke-linecap':'round'},gRail);
+  const l=el('polyline',{points:pts,class:'lk',fill:'none',stroke:css('--rail'),'stroke-width':r.tier==='core'?38:24,'stroke-linejoin':'round','stroke-linecap':'round','stroke-dasharray':r.tier==='core'?'none':(r.tier==='loop'?'30 50':'90 55')},gRail);
+  l.addEventListener('click',()=>showLink(i));});
+D.routes.forEach((r,i)=>{if(!r.rail)return;const pts=r.rail.pts.map(p=>X(p[0])+','+Y(p[1])).join(' ');
+  const l=el('polyline',{points:pts,class:'lk',fill:'none',stroke:css('--gr'),'stroke-width':22,'stroke-linejoin':'round','stroke-linecap':'round','stroke-opacity':.9},gGr);l.addEventListener('click',()=>showLink(i));});
+D.hubs.forEach(h=>h.members.forEach(m=>el('circle',{cx:X(m.e),cy:Y(m.n),r:46,fill:css(ROLE[m.role][1]),stroke:css('--rail-halo'),'stroke-width':14},gCand)));
+D.hubs.forEach(h=>{const g=el('g',{class:'hub',tabindex:0,role:'button','aria-label':`Hub ${h.key} ${h.name}`},gHub);
+  el('circle',{cx:X(h.e),cy:Y(h.n),r:h.tier==='core'?110:80,fill:css('--rail-halo'),stroke:css('--rail'),'stroke-width':h.tier==='core'?34:22},g);
+  const t=el('text',{x:X(h.e)+(h.tier==='core'?140:110),y:Y(h.n)+40,class:'hublabel'},g);t.textContent=h.key;
+  g.addEventListener('click',()=>show(h.key));g.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();show(h.key)}});});
+
+const VIEWS={all:[D.bm.x,D.bm.y,D.bm.w,D.bm.h],core:[-3100,-1500,6100,4100]};
+function setView(v){svg.setAttribute('viewBox',VIEWS[v].join(' '));document.getElementById('v-core').setAttribute('aria-pressed',v==='core');document.getElementById('v-all').setAttribute('aria-pressed',v==='all');}
+function tog(id,g){const b=document.getElementById(id);const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);g.style.display=on?'':'none';}
+document.getElementById('v-core').onclick=()=>setView('core');
+document.getElementById('v-all').onclick=()=>setView('all');
+document.getElementById('t-rail').onclick=()=>tog('t-rail',gRail);
+document.getElementById('t-cand').onclick=()=>tog('t-cand',gCand);
+document.getElementById('t-gr').onclick=()=>tog('t-gr',gGr);
+document.getElementById('t-nb').onclick=()=>tog('t-nb',gNb);
+gNb.style.display='none'; gRail.style.display='none'; gGr.style.display='none'; setView('core');
+const IMG=h=>({href:h,x:D.slope.x,y:D.slope.y,width:D.slope.size,height:D.slope.size,preserveAspectRatio:'none',style:'image-rendering:pixelated'});
+el('image',IMG(D.slope.img),gReach); el('image',IMG(D.slope.island_img),gReach);
+const gSlope=el('g',{}); el('image',IMG(D.slope.grad_img),gSlope); svg.insertBefore(gSlope,gNet); gSlope.style.display='none';
+function layer(which){const r=which==='reach';gReach.style.display=r?'':'none';gSlope.style.display=r?'none':'';
+  document.getElementById('t-reach').setAttribute('aria-pressed',r);document.getElementById('t-slope').setAttribute('aria-pressed',!r);
+  document.getElementById('lg-reach').hidden=!r;document.getElementById('lg-slope').hidden=r;}
+let NETC='2:8';
+function drawNet(){gNet.innerHTML='';D.slope.net[NETC].links.forEach(l=>{const pts=l.pts.map(p=>X(p[0])+','+Y(p[1])).join(' ');
+  el('polyline',{points:pts,fill:'none',stroke:css('--rail-halo'),'stroke-width':64,'stroke-linejoin':'round','stroke-linecap':'round'},gNet);
+  el('polyline',{points:pts,fill:'none',stroke:css('--net'),'stroke-width':30,'stroke-linejoin':'round','stroke-linecap':'round'},gNet);
+  l.spans.forEach(s=>{el('line',{x1:X(s.from_core[0]),y1:Y(s.from_core[1]),x2:X(s.to[0]),y2:Y(s.to[1]),stroke:css('--gr'),'stroke-width':60,'stroke-linecap':'round'},gNet);el('circle',{cx:X(s.to[0]),cy:Y(s.to[1]),r:70,fill:'none',stroke:css('--gr'),'stroke-width':18},gNet);});});
+  document.getElementById('n-2').setAttribute('aria-pressed',NETC==='2:8');document.getElementById('n-4').setAttribute('aria-pressed',NETC==='4:8');
+  const N=D.slope.net[NETC];document.getElementById('netlist').innerHTML=N.links.map(l=>`<div><span><b>${l.a} – ${l.b}</b>${l.spans.length?' · '+l.spans.map(s=>`span ${s.span_m} m, ${s.max_pillar_m} m high`).join('; '):''}</span><span>${l.km.toFixed(2)} km · ${l.zmin}…${l.zmax} m</span></div>`).join('')+`<div><span><b>Total</b></span><span>${N.links.reduce((a,l)=>a+l.km,0).toFixed(1)} km</span></div>`;}
+document.getElementById('n-2').onclick=()=>{NETC='2:8';drawNet()};document.getElementById('n-4').onclick=()=>{NETC='4:8';drawNet()};
+document.getElementById('t-reach').onclick=()=>layer('reach');document.getElementById('t-slope').onclick=()=>layer('slope');
+drawNet();
+
+document.getElementById('legend').innerHTML=Object.values(ROLE).map(([n,v])=>`<span><i class="sw" style="background:var(${v})"></i>${n}</span>`).join('')+
+ `<span><svg width="34" height="10" style="width:34px"><line x1="2" y1="5" x2="32" y2="5" stroke="var(--gr)" stroke-width="4"/></svg>Ground rail (30% limit)</span><span><svg width="34" height="10" style="width:34px"><line x1="2" y1="5" x2="32" y2="5" stroke="var(--rail)" stroke-width="4"/></svg>Core corridor</span><span><svg width="34" height="10" style="width:34px"><line x1="2" y1="5" x2="32" y2="5" stroke="var(--rail)" stroke-width="3" stroke-dasharray="7 4"/></svg>Extension</span>`;
+
+const fmt=w=>Object.entries(w).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${RES[k]||k} ${v}`).join(' · ');
+function show(k){const h=K[k];
+  const chips=h.roles.map(r=>`<span class="chip" style="background:var(${ROLE[r][1]})">${ROLE[r][0]}</span>`).join('');
+  const rows=h.members.map(m=>`<tr><td><span class="chip" style="background:var(${ROLE[m.role][1]})">${ROLE[m.role][0]}</span></td><td>#${m.rank}</td><td>${fmt(m.w)}</td><td>${m.wd} m</td><td>${m.elev} m</td><td class="m">${m.id.replace(/_UAID.*$/,'…')}<br>E ${m.e} · N ${m.n}</td></tr>`).join('');
+  document.getElementById('sheet').innerHTML=`<h2><span class="code">${h.key}</span>${h.name}<span class="tier">${h.tier==='core'?'Core hub':'Extension'} · E ${h.e} N ${h.n} · seed elev ${h.elev_rng[0]}…${h.elev_rng[1]} m</span></h2><div class="chips">${chips}</div>
+  <div class="tbl"><table><thead><tr><th>Role</th><th>Rank</th><th>Weighted nodes in 350 m</th><th>To water</th><th>Elev</th><th>Seed socket</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+show('C1');
+const LT={core:'core',loop:'optional loop',ext:'extension'};
+function railBox(r){if(!r.rail)return `<div class="notes"><div><b>Ground-level rail: no route.</b> None found at a 30% grade limit, even with bridges allowed. Plan this link elevated.</div></div>`;
+  const x=r.rail;return `<div class="stats"><div><span>Ground rail</span><b>${x.km.toFixed(2)} km</b></div><div><span>Valid at 30%</span><b>${x.valid?'Yes':'No'}</b></div><div><span>Steeper than 30%</span><b>${x.over30_m} m</b></div><div><span>Max 5 m grade</span><b>${x.max_grade}%</b></div><div><span>Deep-water points</span><b>${x.deep_pts}</b></div><div><span>Bridges</span><b>${x.bridge==='allow'?'Needed':'None'}</b></div></div>`;}
+document.getElementById('links').innerHTML=D.routes.map((r,i)=>`<div data-i="${i}" tabindex="0"><span><b>${r.a} – ${r.b}</b> ${LT[r.tier]}</span><span>${r.route_km.toFixed(2)} km corridor · ramp ${r.ramp.pct}% · ${r.rail?(r.rail.valid?`<b>rail ok</b> ${r.rail.km.toFixed(2)} km`:`rail ${r.rail.km.toFixed(2)} km, ${r.rail.over30_m} m too steep`):'<b>no ground rail</b>'}</span></div>`).join('');
+document.querySelectorAll('#links div').forEach(d=>{d.onclick=()=>showLink(+d.dataset.i);d.onkeydown=ev=>{if(ev.key==='Enter')showLink(+d.dataset.i)}});
+function showLink(i){const r=D.routes[i];
+  document.querySelectorAll('#links div').forEach(d=>d.classList.toggle('on',+d.dataset.i===i));
+  const P=r.prof,W=600,Hh=150,pad=34,sx=P[P.length-1][0]||1,zmin=Math.min(...P.map(p=>p[1])),zmax=Math.max(...P.map(p=>p[1])),zr=(zmax-zmin)||1;
+  const px=s=>pad+(W-pad-8)*s/sx, py=z=>Hh-20-(Hh-34)*(z-zmin)/zr;
+  const line=P.map(p=>px(p[0]).toFixed(1)+','+py(p[1]).toFixed(1)).join(' ');
+  const area=`${px(0)},${Hh-20} ${line} ${px(sx)},${Hh-20}`;
+  const prof=`<svg class="prof" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Ground elevation along ${r.a} to ${r.b}">
+   <line x1="${pad}" y1="${py(zmax)}" x2="${W-8}" y2="${py(zmax)}" stroke="var(--line)"/><line x1="${pad}" y1="${py(zmin)}" x2="${W-8}" y2="${py(zmin)}" stroke="var(--line)"/>
+   <polygon points="${area}" fill="var(--n2)" fill-opacity=".15"/><polyline points="${line}" fill="none" stroke="var(--fg)" stroke-width="1.6"/>
+   <text x="${pad-4}" y="${py(zmax)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${zmax}</text><text x="${pad-4}" y="${py(zmin)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${zmin}</text>
+   <text x="${pad}" y="${Hh-4}" font-size="11" fill="var(--muted)">${r.a}</text><text x="${W-8}" y="${Hh-4}" text-anchor="end" font-size="11" fill="var(--muted)">${r.b} · ${(sx/1000).toFixed(2)} km</text></svg>`;
+  document.getElementById('sheet').innerHTML=`<h2><span class="code">${r.a}–${r.b}</span>${LT[r.tier]}<span class="tier">ground elevation, m</span></h2>${prof}
+  <div class="stats"><div><span>Corridor</span><b>${r.route_km.toFixed(2)} km</b></div><div><span>Direct</span><b>${r.straight_km.toFixed(2)} km</b></div><div><span>Climb / descent</span><b>${r.climb} / ${r.descent} m</b></div><div><span>Over 8%</span><b>${r.pct_over8}%</b></div><div><span>Over 30%</span><b>${r.pct_over30}%</b></div><div><span>Chokepoint edges</span><b>${r.chokepoints} of ${r.edges}</b></div><div><span>Min clearance (p10)</span><b>${r.min_p10_clear} m</b></div><div><span>Snap to graph</span><b>${r.snap[0]} / ${r.snap[1]} m</b></div></div>${railBox(r)}<div class="stats"><div><span>Net rise</span><b>${r.ramp.dz} m</b></div><div><span>Ramp at 2 m/foundation</span><b>${r.ramp.ramp_m} m</b></div><div><span>Share of corridor</span><b>${r.ramp.pct}%</b></div><div><span>Ground over 25%</span><b>${r.ramp.steep25}%</b></div></div>`;
+  document.getElementById('sheet').scrollIntoView({block:'nearest',behavior:'smooth'});}
+</script>
