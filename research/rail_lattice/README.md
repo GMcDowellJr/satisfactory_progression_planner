@@ -111,6 +111,29 @@ gentler than 201 m does. The 92 m radius assumes rail follows each
 foundation; one rail segment spanning several rotated foundations is a
 gentler curve, not modelled yet.
 
+What limits the routes (measured 2026-10-24, same container; one 4 m run
+each unless noted, so single figures carry the pruning noise above):
+
+    time split, BP5 network 17.5 min: straight-line distance at 120 km/h
+    5.9, detour 4.7, curve speed 5.0, climbing 1.1, viaduct penalty 0.8.
+
+    relaxing one rule at a time (C1-C2, C1-C3, W1-S1 at R1111/R625/R278):
+      deck cap 16 -> 100 m   unlocks C1-C3 and W1-S1 at 278 m only
+      grade 25 -> 50%        C1-C2 routes even at 1111 m: 1.7 km, 1.75 min
+                             (BP5 at 25%: 3.6 km, 2.83 min); W1-S1 at 625 m
+      both                   C1-C3 at 278 m: 2.0 km, 2.04 min
+      C1-C3 never routed at 1111 m (C3 sits in a pocket).
+    50% is beyond every wiki figure: a sensitivity test, not a proposal.
+
+    BP5 at the wiki's grade figures (train power unchanged):
+      25%  17.5 min  21.1 km   (best of two runs)
+      30%  15.8 min  19.7 km   (foundation-ended, 1:3.375)
+      37%  14.6 min  18.3 km   (ramp-ended, 1:2.7)
+
+Grade is the binding rule: it forces the detours, and the detours are what
+make the 92 m curves expensive. lattice.py takes --max-grade and
+--max-pillar-m for these runs.
+
 Throughput: about 100-115 k states/s (Numba, one core); 'any' runs take
 30-120 s at 4 m. Memory, not speed, bounds resolution: a 2 m full sweep
 needs 5-8 GB per link with dense arrays.

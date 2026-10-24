@@ -272,6 +272,8 @@ if __name__ == '__main__':
     ap.add_argument('--margin-m', type=float, help='search box margin, m (sensitivity runs)')
     ap.add_argument('--key-off-m', type=float, help='shift of the closed-set grid, m')
     ap.add_argument('--profile', choices=sorted(PROFILES), help='move set and radius sets to use instead of the sweep')
+    ap.add_argument('--max-grade', type=float, help='override max grade (sensitivity runs)')
+    ap.add_argument('--max-pillar-m', type=float, help='override deck height cap (sensitivity runs)')
     ap.add_argument('--out', default='lattice.json')
     a = ap.parse_args()
     if a.key_m:
@@ -283,6 +285,10 @@ if __name__ == '__main__':
         P['straights_m'] = pr['straights_m']; P['min_arc_m'] = pr['min_arc_m']
         RADIUS_SETS.clear(); RADIUS_SETS.update(pr['sets'])
         P['profile'] = a.profile
+    if a.max_grade:
+        P['max_grade'] = a.max_grade
+    if a.max_pillar_m:
+        P['max_pillar_m'] = a.max_pillar_m
     if a.key_off_m:
         P['key_off_m'] = a.key_off_m
     main(links=[tuple(s.split('-')) for s in a.links] or None, sets=a.sets.split(',') if a.sets else None, out=a.out)
