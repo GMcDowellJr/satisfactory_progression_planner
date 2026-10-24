@@ -1,0 +1,95 @@
+[
+ {
+  "key": "C1",
+  "name": "South-central",
+  "tier": "core",
+  "east_m": 1359,
+  "north_m": -698,
+  "roles": [
+   "aluminum",
+   "bulk",
+   "nitrogen",
+   "sam"
+  ]
+ },
+ {
+  "key": "C2",
+  "name": "East",
+  "tier": "core",
+  "east_m": 2277,
+  "north_m": -14,
+  "roles": [
+   "aluminum",
+   "electronics",
+   "sam"
+  ]
+ },
+ {
+  "key": "C3",
+  "name": "Central",
+  "tier": "core",
+  "east_m": -207,
+  "north_m": -193,
+  "roles": [
+   "aluminum",
+   "oil"
+  ]
+ },
+ {
+  "key": "W1",
+  "name": "West-south",
+  "tier": "ext",
+  "east_m": -1378,
+  "north_m": -1048,
+  "roles": [
+   "aluminum",
+   "bulk",
+   "nitrogen"
+  ]
+ },
+ {
+  "key": "W2",
+  "name": "West coast",
+  "tier": "ext",
+  "east_m": -2616,
+  "north_m": -747,
+  "roles": [
+   "oil"
+  ]
+ },
+ {
+  "key": "W3",
+  "name": "Northwest",
+  "tier": "ext",
+  "east_m": -1732,
+  "north_m": 1122,
+  "roles": [
+   "electronics",
+   "sam"
+  ]
+ },
+ {
+  "key": "S1",
+  "name": "Far south",
+  "tier": "ext",
+  "east_m": 1372,
+  "north_m": -2203,
+  "roles": [
+   "bulk",
+   "nitrogen",
+   "oil",
+   "sam"
+  ]
+ },
+ {
+  "key": "S2",
+  "name": "Southeast",
+  "tier": "ext",
+  "east_m": 2395,
+  "north_m": -1145,
+  "roles": [
+   "nitrogen",
+   "oil"
+  ]
+ }
+]
