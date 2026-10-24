@@ -151,6 +151,8 @@ In-game measurements (Greg, 2026-10-24) and what they fit:
                        middle (25 km/h at a = 1.0), plan length ~103 m.
                        That exceeds the 100 m segment limit, so the tangent
                        length is probably a little under 64 m; unresolved.
+                       Greg is unsure the measurement was taken at the
+                       exact corner, so treat the 0.64 ratio as rough.
                        Circles are possible but players force them by
                        setting tangents (roundabouts).
     6x6 climb          curved in plan, one end raised 22 m before "too
