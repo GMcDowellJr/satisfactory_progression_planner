@@ -108,9 +108,12 @@ foundations or one rotated 5 degrees. Minutes, best of two 4 m runs:
     total   17.5 min, 21.1 km; 'any' 14.4 min, 19.5 km
 
 All seven links route at 5 degrees per foundation, where no blueprint family
-gentler than 201 m does. The 92 m radius assumes rail follows each
-foundation; one rail segment spanning several rotated foundations is a
-gentler curve, not modelled yet.
+gentler than 201 m does. The radius is set by the foundations, not the rail
+(Greg, 2026-10-24): each foundation turns 5 degrees from the last and the
+rail is attached to them, so a rail spanning 2 or 20 foundations follows
+the same 92 m circle. The 12 m minimum rail length limits how rails are cut
+along the foundation chain, not the alignment; the search's 8 m moves are
+foundation placements, not rail pieces.
 
 What limits the routes (measured 2026-10-24, same container; one 4 m run
 each unless noted, so single figures carry the pruning noise above):
