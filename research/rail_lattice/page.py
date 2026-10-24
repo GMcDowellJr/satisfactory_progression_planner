@@ -1,17 +1,31 @@
-"""Build the 'Rail Curve Sweep' page from lattice.json (research prototype).
+"""Build the 'Rail Curve Sweep' page: the whole hub network in one view (research prototype).
 
-Inputs: research/rail_lattice/out/lattice.json, research/rail_slope_reach/out/network.json
-(2:8 grid paths, for comparison), research/rail_slope_reach/hubs.json, and the site
-planner basemap. Output: research/rail_lattice/out/rail-curve-sweep.html (gitignored).
+Inputs
+  research/rail_lattice/out/sweep_off0.json, sweep_off2.json   lattice sweeps (lattice.py)
+  research/rail_slope_reach/out/*                              ramp-class reach, 2:8 and 4:8
+                                                               grid networks (network.py)
+  research/phase4_rail_hubs/out/phase4-rail-hubs.html          the Phase 4 page (build.py, or
+                                                               the published artifact saved
+                                                               there): corridors, rail-tool
+                                                               routes, site picks, neighborhoods
+  tools/site_planner_web/precomputed/basemap_502094.*          basemap
+Output: research/rail_lattice/out/rail-curve-sweep.html (gitignored).
+
+The reach and slope rasters are redrawn here in one ink/brown ramp so they no longer share
+colours with the speed scale (Greg, 2026-10-24: the reach colours were unclear). Reach shows
+1:8 and 2:8 only; 4:8 is dropped (wiki: a 4 m ramp cannot carry rail).
 """
-import base64, json, math
+import base64, io, json, math, re
 from pathlib import Path
+
+import numpy as np
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 OUT = HERE / 'out'
 PRE = REPO / 'tools/site_planner_web/precomputed'
 RS = REPO / 'research/rail_slope_reach'
+P4 = REPO / 'research/phase4_rail_hubs/out/phase4-rail-hubs.html'
 
 
 def thin(pts, step=24.0):
@@ -31,6 +45,44 @@ def speed(m, P, v_max, k_pow):
     vc = v_max if m['R'] == 0 else min(v_max, math.sqrt(P['a_lat'] * m['R']))
     vu = min(vc, k_pow / (abs(m['grade']) + P['c_roll']))
     return round(vc * 3.6), round(vu * 3.6)
+
+
+def png(img):
+    from PIL import Image
+    b = io.BytesIO(); Image.fromarray(img, 'RGBA').save(b, 'PNG', optimize=True)
+    return 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
+
+
+def rasters():
+    """Reach (first class that joins a cell to C1's component, 1:8 or 2:8), islands (land of
+    0.25 km2 or more not joined at 2:8), and steepest-direction slope, as ink/brown PNGs."""
+    R = json.loads((RS / 'out/slope_reach.json').read_text(encoding='utf-8')); n = R['n']; B = R['grid_m']
+    reach = np.load(RS / 'out/reach.npy'); Z = np.load(RS / 'out/Z.npy'); BL = np.load(RS / 'out/blocked.npy')
+    lab2 = np.load(RS / 'out/lab_2.npy').reshape(n, n)
+    img = np.zeros((n, n, 4), np.uint8)
+    img[reach == 1] = (28, 36, 33, 165); img[reach == 2] = (28, 36, 33, 80)
+    core = R['classes']['2:8']['snaps']['C1']['comp']; sizes = np.bincount(lab2.ravel())
+    img[(~BL) & (lab2 != core) & (sizes[lab2] * B * B >= 0.25e6)] = (91, 127, 166, 140)
+    gy, gx = np.gradient(Z, B, B); g = np.hypot(gx, gy); land = ~BL & np.isfinite(g)
+    gimg = np.zeros((n, n, 4), np.uint8)
+    gimg[land & (g > .125) & (g <= .25)] = (138, 90, 43, 90); gimg[land & (g > .25)] = (110, 62, 24, 190)
+    return dict(reach=png(img), slope=png(gimg), x=R['east0'] - B / 2, y=-R['north0'] - B / 2, size=n * B)
+
+
+def earlier():
+    """Layers from the Phase 4 page and the ramp-class networks, for comparison."""
+    s = P4.read_text(encoding='utf-8')
+    P = json.loads(re.search(r'const D=(\{.*?\});\n', s, re.S).group(1))
+    net = json.loads((RS / 'out/network.json').read_text(encoding='utf-8'))
+    return dict(
+        corridors=[dict(a=r['a'], b=r['b'], km=r['route_km'], pts=r['pts']) for r in P['routes']],
+        railtool=[dict(a=r['a'], b=r['b'], km=r['rail']['km'], valid=r['rail']['valid'], pts=r['rail']['pts'])
+                  for r in P['routes'] if r.get('rail')],
+        picks=[dict(role=m['role'], e=m['e'], n=m['n']) for h in P['hubs'] for m in h['members']],
+        nbhd=[[o['e'], o['n']] for o in P['others']],
+        grid={c: [dict(a=l['a'], b=l['b'], km=l['km'], pts=l['pts'],
+                       spans=[dict(f=sp['from_core'], t=sp['to'], m=sp['span_m'], h=sp['max_pillar_m']) for sp in l['spans']])
+                  for l in net[c]['links']] for c in ('2:8', '4:8')})
 
 
 def main():
@@ -71,6 +123,7 @@ def main():
     D = dict(policy=P, k_power=k_pow, sets={k: v['mainline_min'] for k, v in sets.items()},
              radii=sets['any']['radii'], hubs=L['hubs'], names={h['key']: h['name'] for h in hubs},
              links=links, bm=dict(x=bm['x_m'], y=bm['y_m'], w=bm['width_m'], h=bm['height_m']),
+             ras=rasters(), prev=earlier(),
              img='data:image/png;base64,' + base64.b64encode((PRE / bm['image']).read_bytes()).decode())
     html = (HERE / 'page_template.html').read_text(encoding='utf-8').replace('/*DATA*/null', json.dumps(D, separators=(',', ':')))
     (OUT / 'rail-curve-sweep.html').write_text(html, encoding='utf-8', newline='\n')
