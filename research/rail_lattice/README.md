@@ -42,8 +42,9 @@ Numba is a research-only dependency (`--with`), not added to the dev group.
 ## Declared assumptions (constants in POLICY; carried into a tool, each becomes a declared input)
 
     grade        max 25% (2:8). 4:8 dropped: the wiki says a 4 m ramp
-                 cannot carry rail; its listed maxima are about 30-44%
-                 depending on supports. Conservative until verified in game.
+                 cannot carry rail, confirmed in game by Greg 2026-10-24.
+                 The wiki's other maxima (about 30-44% depending on
+                 supports) are not yet verified; 25% stays until they are.
     curves       v = sqrt(a * R), a = 1.0 m/s2 unbalanced lateral
                  acceleration (no superelevation in game; upper end of
                  real-world cant-deficiency practice). 120 km/h needs
