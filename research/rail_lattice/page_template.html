@@ -1,0 +1,173 @@
+<title>Rail Curve Sweep</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same family as the Phase 4 Rail Hubs page; a radius-by-link grid on top, map and speed strip below */
+:root{
+  --bg:#eef0ee; --panel:#ffffff; --fg:#1c2421; --muted:#5d6a65; --line:#cfd6d2; --water:#b9d3dc;
+  --halo:#ffffff; --grid:#5d6a65;
+  --v4:#0b5d8f; --v3:#4f9a4a; --v2:#d99a16; --v1:#c23b52;
+  --tight:#c23b52; --ok:#0b5d8f;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Barlow",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a18; --panel:#1d2522; --fg:#e4ebe7; --muted:#9aa8a2; --line:#33403b; --water:#20343c;
+  --halo:#141a18; --grid:#9aa8a2; --v4:#6cc4ff; --v3:#7fcf77; --v2:#f0b84a; --v1:#ff7a8e; --tight:#ff7a8e; --ok:#6cc4ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a18; --panel:#1d2522; --fg:#e4ebe7; --muted:#9aa8a2; --line:#33403b; --water:#20343c;
+  --halo:#141a18; --grid:#9aa8a2; --v4:#6cc4ff; --v3:#7fcf77; --v2:#f0b84a; --v1:#ff7a8e; --tight:#ff7a8e; --ok:#6cc4ff; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px;display:grid;gap:14px}
+h1{font-family:var(--display);font-weight:700;font-size:1.9rem;margin:0;line-height:1.05;text-wrap:balance}
+h2{font-family:var(--display);font-size:1.3rem;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.92rem;max-width:68ch}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:10px;min-width:0}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+th{font:600 .72rem var(--display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:right;border-bottom:1px solid var(--line);padding:4px 6px;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{border-bottom:1px solid var(--line);padding:0;text-align:right;white-space:nowrap}
+td button{all:unset;display:block;padding:6px;cursor:pointer;width:100%;box-sizing:border-box;text-align:right}
+td button:focus-visible{outline:2px solid var(--ok);outline-offset:-2px}
+td.none{color:var(--muted);padding:6px}
+td .best{font-weight:700;color:var(--ok)}
+tr.on td{background:color-mix(in srgb,var(--ok) 10%,transparent)}
+td.sel button{box-shadow:inset 0 -3px 0 var(--fg)}
+td.lk{font-weight:600;padding:6px}
+.mapbox{background:var(--water);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;font-variant-numeric:tabular-nums}
+.stats div{border-left:2px solid var(--line);padding-left:8px}
+.stats b{display:block;font:600 1.15rem var(--display)}
+.stats span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.notes{font-size:.86rem;color:var(--muted);display:grid;gap:6px;max-width:75ch}
+.notes b{color:var(--fg);font-weight:600}
+.spots{display:grid;gap:4px;font-size:.86rem}
+.spots div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding:3px 0;font-variant-numeric:tabular-nums}
+code{font-family:var(--mono);font-size:.85em}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Rail curve sweep</h1>
+    <p class="sub">Each link of the 2:8 hub network routed with 5° heading steps. Each column sets the tightest curve allowed on the main line, so a line built from a few curve blueprints of that radius or gentler. Times use real-world curve and climb rules. Pick a cell to see that route.</p>
+  </header>
+
+  <section class="sheet">
+    <h2>Minutes per link by tightest main-line curve</h2>
+    <div class="tbl"><table id="grid"></table></div>
+    <div class="legend"><span>Column heading: radius and the speed it allows</span><span><b style="color:var(--ok)">Bold</b> gentlest limit that routes</span><span>— no route found</span><span>* the two search runs disagree by more than 5%</span></div>
+  </section>
+
+  <div class="mapbox"><svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the selected rail route coloured by speed limit"></svg></div>
+  <div class="legend" id="legend"></div>
+
+  <section class="sheet" id="sheet" aria-live="polite"></section>
+
+  <section class="sheet notes" id="notes"></section>
+</div>
+
+<script>
+const D=/*DATA*/null;
+const NS="http://www.w3.org/2000/svg",svg=document.getElementById('map');
+const el=(t,a,p)=>{const x=document.createElementNS(NS,t);for(const k in a)x.setAttribute(k,a[k]);(p||svg).appendChild(x);return x};
+const X=e=>e,Y=n=>-n;
+const SETS=Object.keys(D.sets);
+const kmh=r=>r===0?null:Math.round(Math.sqrt(D.policy.a_lat*r)*3.6);
+const vcol=v=>v>=110?'--v4':v>=80?'--v3':v>=50?'--v2':'--v1';
+let cur={i:Math.max(0,D.links.findIndex(l=>l.a==='C1'&&l.b==='C2')),s:null};
+
+function bestSet(l){let b=null;for(const s of SETS){if(s==='any')continue;const r=l.runs[s];if(r&&r.found){b=s;break}}return b}
+function renderGrid(){
+  const head=`<tr><th>Link</th><th>2:8 grid</th>${SETS.map(s=>s==='any'?'<th>Any radius</th>':`<th>${Math.round(D.sets[s])} m<br>${kmh(D.sets[s])} km/h</th>`).join('')}</tr>`;
+  const rows=D.links.map((l,i)=>{const b=bestSet(l);
+    return `<tr class="${i===cur.i?'on':''}"><td class="lk">${l.a}–${l.b}</td><td class="none">${l.grid_km!=null?l.grid_km.toFixed(2)+' km':'—'}</td>${SETS.map(s=>{const r=l.runs[s];
+      if(!r||!r.found)return `<td class="none">—</td>`;
+      const sel=(i===cur.i&&s===cur.s)?' sel':'';
+      return `<td class="${sel}"><button data-i="${i}" data-s="${s}" aria-label="${l.a} to ${l.b}, ${s}"><span class="${s===b?'best':''}">${r.minutes.toFixed(2)}${r.unstable?'*':''}</span><br><small>${r.km.toFixed(2)} km</small></button></td>`}).join('')}</tr>`}).join('');
+  const t=document.getElementById('grid');t.innerHTML=head+rows;
+  t.querySelectorAll('button').forEach(b=>b.onclick=()=>{cur={i:+b.dataset.i,s:b.dataset.s};draw()});
+}
+
+el('image',{href:D.img,x:D.bm.x,y:D.bm.y,width:D.bm.w,height:D.bm.h,preserveAspectRatio:'none'});
+const gGrid=el('g',{}),gRoute=el('g',{}),gSpot=el('g',{}),gHub=el('g',{});
+
+function polyline(pts,attr,g){return el('polyline',Object.assign({points:pts.map(p=>X(p[0])+','+Y(p[1])).join(' '),fill:'none','stroke-linejoin':'round','stroke-linecap':'round'},attr),g)}
+
+function spotsFor(l,s){
+  // Moves on the selected route whose radius is tighter than the best single main-line radius, outside the hub throats.
+  const b=bestSet(l),r=l.runs[s];if(!r||!r.found)return[];
+  const lim=b?D.sets[b]:Infinity,A=D.hubs[l.a],B=D.hubs[l.b],ap=D.policy.approach_m;
+  const out=[];let d=0;
+  r.moves.forEach(m=>{const p=m.pts[Math.floor(m.pts.length/2)];
+    const near=Math.min(Math.hypot(p[0]-A[0],p[1]-A[1]),Math.hypot(p[0]-B[0],p[1]-B[1]))<=ap;
+    if(m.R>0&&m.R<lim)out.push({p,R:m.R,v:m.vc,d:Math.round(d+m.L/2),near});d+=m.L});
+  return out;
+}
+
+function draw(){
+  const l=D.links[cur.i];if(!cur.s)cur.s=bestSet(l)||'any';
+  if(!l.runs[cur.s]||!l.runs[cur.s].found)cur.s='any';
+  renderGrid();
+  [gGrid,gRoute,gSpot,gHub].forEach(g=>g.innerHTML='');
+  if(l.grid_pts.length)polyline(l.grid_pts,{stroke:'var(--grid)','stroke-width':14,'stroke-dasharray':'40 40','stroke-opacity':.8},gGrid);
+  const r=l.runs[cur.s];
+  r.moves.forEach(m=>polyline(m.pts,{stroke:'var(--halo)','stroke-width':40},gRoute));
+  r.moves.forEach(m=>polyline(m.pts,{stroke:`var(${vcol(m.vu)})`,'stroke-width':22},gRoute));
+  const sp=spotsFor(l,cur.s);
+  sp.forEach(s=>el('circle',{cx:X(s.p[0]),cy:Y(s.p[1]),r:s.near?40:60,fill:'none',stroke:'var(--fg)','stroke-width':12,'stroke-dasharray':s.near?'10 12':'none'},gSpot));
+  [l.a,l.b].forEach(k=>{const h=D.hubs[k];el('circle',{cx:X(h[0]),cy:Y(h[1]),r:D.policy.approach_m,fill:'var(--fg)','fill-opacity':.06,stroke:'var(--fg)','stroke-width':6,'stroke-dasharray':'20 16'},gHub);
+    el('circle',{cx:X(h[0]),cy:Y(h[1]),r:60,fill:'var(--halo)',stroke:'var(--fg)','stroke-width':20},gHub);
+    const t=el('text',{x:X(h[0])+90,y:Y(h[1])+34,'font-family':'Barlow Condensed,Arial Narrow,sans-serif','font-weight':700,'font-size':110,fill:'var(--fg)',stroke:'var(--halo)','stroke-width':24,'paint-order':'stroke'},gHub);t.textContent=k;});
+  // viewBox: fit link with margin
+  const xs=[],ys=[];r.moves.forEach(m=>m.pts.forEach(p=>{xs.push(X(p[0]));ys.push(Y(p[1]))}));l.grid_pts.forEach(p=>{xs.push(X(p[0]));ys.push(Y(p[1]))});
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pad=Math.max(400,0.15*Math.max(x1-x0,y1-y0));
+  let w=x1-x0+2*pad,h=y1-y0+2*pad;if(h<w*0.75){const d=(w*0.75-h)/2;h=w*0.75;svg.setAttribute('viewBox',[x0-pad,y0-pad-d,w,h].join(' '))}else svg.setAttribute('viewBox',[x0-pad,y0-pad,w,h].join(' '));
+  sheet(l,r,sp);
+}
+
+function strip(r){
+  // Speed limit along the route (uphill direction shown solid, the curve limit dashed), km/h vs metres.
+  const W=640,H=150,pl=36,pr=8,pt=10,pb=22,tot=r.moves.reduce((a,m)=>a+m.L,0)||1,vmax=D.policy.v_max_kmh;
+  const sx=s=>pl+(W-pl-pr)*s/tot,sy=v=>pt+(H-pt-pb)*(1-v/vmax);
+  let s=0,up='',cv='';r.moves.forEach(m=>{up+=`${sx(s).toFixed(1)},${sy(m.vu).toFixed(1)} ${sx(s+m.L).toFixed(1)},${sy(m.vu).toFixed(1)} `;cv+=`${sx(s).toFixed(1)},${sy(m.vc).toFixed(1)} ${sx(s+m.L).toFixed(1)},${sy(m.vc).toFixed(1)} `;s+=m.L});
+  const ticks=[0,40,80,120].map(v=>`<line x1="${pl}" x2="${W-pr}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)"/><text x="${pl-4}" y="${sy(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Speed limit along the route"><rect x="0" y="0" width="${W}" height="${H}" fill="none"/>${ticks}
+   <polyline points="${cv}" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 3"/>
+   <polyline points="${up}" fill="none" stroke="var(--fg)" stroke-width="1.8"/>
+   <text x="${pl}" y="${H-5}" font-size="11" fill="var(--muted)">0</text><text x="${W-pr}" y="${H-5}" text-anchor="end" font-size="11" fill="var(--muted)">${(tot/1000).toFixed(2)} km · km/h limit (solid uphill, dashed curve only)</text></svg>`;
+}
+
+function sheet(l,r,sp){
+  const b=bestSet(l),any=l.runs.any;
+  const label=cur.s==='any'?'any radius':`${Math.round(D.sets[cur.s])} m main line`;
+  const gain=(b&&any&&any.found)?(l.runs[b].minutes-any.minutes):null;
+  const main=sp.filter(s=>!s.near);
+  document.getElementById('sheet').innerHTML=`<h2>${l.a}–${l.b} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${label}</small></h2>
+  <div class="stats"><div><span>Length</span><b>${r.km.toFixed(2)} km</b></div><div><span>Time</span><b>${r.minutes.toFixed(2)} min</b></div>
+  <div><span>Gentlest limit that routes</span><b>${b?Math.round(D.sets[b])+' m':'none'}</b></div>
+  <div><span>Any radius saves</span><b>${gain!=null?gain.toFixed(2)+' min':'—'}</b></div>
+  <div><span>Over 12.5% grade</span><b>${r.steep_m} m</b></div><div><span>Viaduct over 4 m</span><b>${r.viaduct_m} m</b></div></div>
+  <div class="spots"><div><span><b>Curves by radius</b></span><span>${Object.entries(r.curves).sort((a,b)=>b[0]-a[0]).map(([R,n])=>`${R} m ×${n}`).join(' · ')||'none'}</span></div>${r.unstable?`<div><span>Search runs disagree</span><span>${r.alt_minutes.map(m=>m==null?'no route':m.toFixed(2)+' min').join(' vs ')}</span></div>`:''}</div>
+  ${strip(r)}
+  <div class="spots">${main.length?`<div><span><b>Tighter than ${b?Math.round(D.sets[b])+' m':'every listed limit'} on the main line</b></span><span>${main.length} curve${main.length>1?'s':''}</span></div>`+main.map(s=>`<div><span>${(s.d/1000).toFixed(2)} km from ${l.a}</span><span>${Math.round(s.R)} m radius · ${s.v} km/h</span></div>`).join(''):`<div><span>No main-line curve on this route is tighter than the gentlest limit that routes.</span><span></span></div>`}</div>`;
+}
+
+document.getElementById('legend').innerHTML=[['--v4','110–120 km/h'],['--v3','80–110'],['--v2','50–80'],['--v1','under 50']].map(([c,t])=>`<span><svg width="30" height="10" style="width:30px"><line x1="2" y1="5" x2="28" y2="5" stroke="var(${c})" stroke-width="5"/></svg>${t}</span>`).join('')+
+ `<span><svg width="30" height="10" style="width:30px"><line x1="2" y1="5" x2="28" y2="5" stroke="var(--grid)" stroke-width="3" stroke-dasharray="5 4"/></svg>2:8 grid path</span><span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.6"/></svg>Curve tighter than the gentlest limit that routes</span><span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="2 2"/></svg>Same, inside a hub throat (${D.policy.approach_m} m)</span>`;
+
+const P=D.policy;
+document.getElementById('notes').innerHTML=`
+<div><b>Track model.</b> Headings in ${P.heading_step_deg}° steps. Moves are straights of ${P.straights_m.join(', ')} m and arcs turning the fewest 5° steps that give at least ${P.min_arc_m} m. Each move is one constant-grade deck between the ground at its ends: at most ${P.max_grade*100}% (2:8; the 4:8 class is dropped because the wiki says a 4 m ramp cannot carry rail), never more than ${P.cut_tol_m} m under the ground, never over deep or unknown water. A deck more than ${P.viaduct_m} m above ground costs ${P.viaduct_cost}× its time.</div>
+<div><b>Speed rules (real-world, declared).</b> Curves: v = √(a·R) with a = ${P.a_lat} m/s², since the game has no superelevation. Full speed (${P.v_max_kmh} km/h) needs ${Math.round(D.sets.R1111)} m, which is one 5° step per ${Math.round(D.sets.R1111*Math.PI/36)} m, close to the 100 m segment limit. Climbs: power-limited, v = K / (grade + ${P.c_roll}), with K set so the train holds ${P.v_climb_floor_kmh} km/h on a ${P.max_grade*100}% grade (the wiki's uphill floor). Downhill is limited only by the curve. Time is the average of both directions.</div>
+<div><b>Tightest curve on the main line.</b> Each column allows straights plus arcs of that radius or gentler, from ${D.radii.map(r=>Math.round(r)).join(', ')} m. Within ${P.approach_m} m of a hub any radius is allowed (the throat, shaded on the map), because some hubs sit in pockets no large radius can leave. "Any radius" allows every radius everywhere and is the lower bound. A run with exactly one radius was tried first; whether it found a route flipped with search detail, so it did not measure the terrain.</div>
+<div><b>Checked against the 1 m ground.</b> The search compares each deck with 8 m cell means. Rechecked against the raw 1 m heightfield, routes cut more than 2 m into the ground on 27–367 m of their length and stand up to 75 m above narrow gullies the means smooth out. Treat lengths and times as optimistic until the search checks decks at 1 m.</div>
+<div><b>Vertical curves.</b> Not modelled. Grade changes at every move here because each move follows the ground; a built line would hold a grade for longer, so a real-world vertical-curve limit computed on these profiles would only measure that artefact.</div>
+<div><b>Search.</b> Hybrid A*: one pose kept per ${P.key_m} m cell and heading. Each case ran twice with that grid shifted by half a cell; both results are real routes, the faster is shown, and * marks a disagreement over 5%. "No route" means neither run found one, not that none exists.</div>
+<div><b>Deck.</b> At most ${P.max_pillar_m} m above the ground (the tallest span accepted in the earlier ramp-class session); without a cap the search built 200 m viaducts.</div>
+<div><b>Limits.</b> No acceleration or braking between limits, no transition spirals, no station layout. Hubs and the link list come from the Phase 4 screen and are opinion, not repo policy.</div>`;
+
+draw();
+</script>
