@@ -16,8 +16,12 @@ be conservative on grade until verified (4:8 dropped).
                        the ground at its ends. Cost = travel time, both
                        directions averaged. One run per main-line minimum
                        radius (R1111 ... R124) plus 'any'.
-    page.py            Builds out/rail-curve-sweep.html from two sweeps whose
-                       closed-set grids are offset by half a cell.
+    page.py            Builds out/rail-curve-sweep.html: all links on one
+                       map, from two sweeps whose closed-set grids are offset
+                       by half a cell, with earlier work as overlays (reach
+                       and slope rasters redrawn in ink/brown; 2:8 and 4:8
+                       grid paths; corridors, rail tool, site picks and
+                       neighborhoods read from the Phase 4 page).
     page_template.html The page with its data slot empty.
     links.json         The 2:8 ramp-class network's seven links.
 
@@ -26,7 +30,12 @@ Run from the repo root (needs `research/rail_slope_reach` run first, and
 
     uv run --with numba python research/rail_lattice/lattice.py --out sweep_off0.json
     uv run --with numba python research/rail_lattice/lattice.py --key-off-m 2 --out sweep_off2.json
-    uv run python research/rail_lattice/page.py
+    uv run --with pillow python research/rail_lattice/page.py
+
+page.py also reads research/phase4_rail_hubs/out/phase4-rail-hubs.html (from
+build.py there, or the published Phase 4 artifact saved to that path). Note:
+that page's prose says the rail tool returned seven routes at 30%; its data
+holds six, and this page counts from the data.
 
 Numba is a research-only dependency (`--with`), not added to the dev group.
 
