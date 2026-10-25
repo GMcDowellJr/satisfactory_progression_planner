@@ -458,9 +458,50 @@ def search_deck(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, 
 
 
 @njit(cache=True)
+def hheap_grow(HF, HK):
+    F2 = np.empty(2 * len(HF), np.float64); K2 = np.empty(2 * len(HK), np.int32)
+    F2[:len(HF)] = HF; K2[:len(HK)] = HK
+    return F2, K2
+
+
+@njit(cache=True)
+def hpush(HF, HK, n, f, k):
+    """Binary min-heap on (f, key), the order heapq gives (float, int) tuples."""
+    i = n
+    while i > 0:
+        p = (i - 1) >> 1
+        if HF[p] > f or (HF[p] == f and HK[p] > k):
+            HF[i] = HF[p]; HK[i] = HK[p]; i = p
+        else:
+            break
+    HF[i] = f; HK[i] = k
+    return n + 1
+
+
+@njit(cache=True)
+def hpop(HF, HK, n):
+    f = HF[0]; k = HK[0]; n -= 1
+    lf = HF[n]; lk = HK[n]; i = 0
+    while True:
+        c = 2 * i + 1
+        if c >= n:
+            break
+        if c + 1 < n and (HF[c + 1] < HF[c] or (HF[c + 1] == HF[c] and HK[c + 1] < HK[c])):
+            c += 1
+        if HF[c] < lf or (HF[c] == lf and HK[c] < lk):
+            HF[i] = HF[c]; HK[i] = HK[c]; i = c
+        else:
+            break
+    if n > 0:
+        HF[i] = lf; HK[i] = lk
+    return f, k, n
+
+
+@njit(cache=True)
 def hslot(KEYS, mask, key):
     """Open addressing, linear probing: the slot holding key, or the empty slot where it goes."""
-    h = ((key ^ (key >> 29)) * np.int64(-7046029254386353131)) & mask
+    k = np.int64(key)
+    h = ((k ^ (k >> 29)) * np.int64(-7046029254386353131)) & mask
     while KEYS[h] != -1 and KEYS[h] != key:
         h = (h + 1) & mask
     return h
@@ -469,7 +510,7 @@ def hslot(KEYS, mask, key):
 @njit(cache=True)
 def hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE):
     cap = 2 * len(KEYS); mask = cap - 1
-    K2 = np.full(cap, -1, np.int64); G2 = np.full(cap, np.inf, np.float32); P2 = np.full(cap, -1, np.int64)
+    K2 = np.full(cap, -1, np.int32); G2 = np.full(cap, np.inf, np.float32); P2 = np.full(cap, -1, np.int32)
     X2 = np.zeros(cap, np.float32); Y2 = np.zeros(cap, np.float32); Z2 = np.zeros(cap, np.float32)
     M2 = np.full(cap, -1, np.int16); D2 = np.zeros(cap, np.bool_)
     for i in range(len(KEYS)):
@@ -486,15 +527,17 @@ def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ
     """search_deck with the closed set in a hash table holding only touched states (the dense arrays
     cost 27 B per box state; at 5 deg ~13% of the box is touched, at 1 deg the dense box is ~10 GB).
     Keys are search_deck's state indices and the heap orders on them the same way, so results
-    must be identical to search_deck: that is the regression gate. PAR holds parent keys."""
+    must be identical to search_deck: that is the regression gate. PAR holds parent keys.
+    Memory (2026-10-24: 4.07 GB at 17.6 M states with int64 records, half-load doubling and a
+    list heap): int32 keys and parents (route_deck refuses boxes of 2^31 states or more), doubling
+    at 3/4 load, and an array heap ordered on (f, key) exactly as heapq orders the tuples."""
     cap = 1 << 20; mask = cap - 1; used = 0
-    KEYS = np.full(cap, -1, np.int64); G = np.full(cap, np.inf, np.float32); PAR = np.full(cap, -1, np.int64)
+    KEYS = np.full(cap, -1, np.int32); G = np.full(cap, np.inf, np.float32); PAR = np.full(cap, -1, np.int32)
     X = np.zeros(cap, np.float32); Y = np.zeros(cap, np.float32); ZD = np.zeros(cap, np.float32)
     MV = np.full(cap, -1, np.int16); DONE = np.zeros(cap, np.bool_)
     HI = np.zeros(MAXS); LO = np.zeros(MAXS); G0 = np.zeros(MAXS); CZ = np.zeros(3)
     ns = len(straights)
-    heap = [(0.0, np.int64(0))]
-    heap.pop()
+    HF = np.empty(1 << 20, np.float64); HK = np.empty(1 << 20, np.int32); hn = 0
     for k in range(len(SX)):
         cs = int((KN0 - SY[k]) / KB) - r0; cc = int((SX[k] - KE0) / KB) - c0
         if cs < 0 or cc < 0 or cs >= nr or cc >= nc:
@@ -502,7 +545,7 @@ def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ
         hzn = max(0.0, math.hypot(gx - SX[k], gy - SY[k]) - gR) / vmax
         for h in range(nh):
             s = np.int64((cs * nc + cc) * nh + h)
-            if 2 * (used + 1) > cap:
+            if 4 * (used + 1) > 3 * cap:
                 KEYS, G, PAR, X, Y, ZD, MV, DONE = hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE); cap *= 2; mask = cap - 1
             q = hslot(KEYS, mask, s)
             if KEYS[q] == s and G[q] == 0.0:
@@ -510,11 +553,13 @@ def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ
             if KEYS[q] == -1:
                 used += 1
             KEYS[q] = s; G[q] = 0.0; X[q] = SX[k]; Y[q] = SY[k]; ZD[q] = SZ[k]
-            heap.append((hzn, s))
-    heapq.heapify(heap)
+            if hn == len(HF):
+                HF, HK = hheap_grow(HF, HK)
+            hn = hpush(HF, HK, hn, hzn, s)
     exp = 0
-    while len(heap) > 0:
-        f, s = heapq.heappop(heap)
+    while hn > 0:
+        f, s32, hn = hpop(HF, HK, hn)
+        s = np.int64(s32)
         qs = hslot(KEYS, mask, s)
         if DONE[qs]:
             continue
@@ -570,12 +615,14 @@ def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ
                 g1 = gs + t
                 if KEYS[q1] != s1 or g1 < G[q1]:
                     if KEYS[q1] == -1:
-                        if 2 * (used + 1) > cap:
+                        if 4 * (used + 1) > 3 * cap:
                             KEYS, G, PAR, X, Y, ZD, MV, DONE = hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE)
                             cap *= 2; mask = cap - 1; q1 = hslot(KEYS, mask, s1)
                         used += 1
                     KEYS[q1] = s1; G[q1] = g1; PAR[q1] = s; X[q1] = x1; Y[q1] = y1; ZD[q1] = z1; MV[q1] = i * 3 + e
-                    heapq.heappush(heap, (g1 + max(0.0, math.hypot(gx - x1, gy - y1) - gR) / vmax, s1))
+                    if hn == len(HF):
+                        HF, HK = hheap_grow(HF, HK)
+                    hn = hpush(HF, HK, hn, g1 + max(0.0, math.hypot(gx - x1, gy - y1) - gR) / vmax, s1)
     return np.int64(-1), exp, KEYS, mask, G, PAR, X, Y, ZD, MV
 
 
@@ -611,6 +658,8 @@ def route_deck(T, BL, E0, N0, B, a, b):
     r0 = max(0, int((KN0 - (max(ys) + m)) / KB)); r1 = min(nk, int((KN0 - (min(ys) - m)) / KB) + 1)
     c0 = max(0, int((min(xs) - m - KE0) / KB)); c1 = min(nk, int((max(xs) + m - KE0) / KB) + 1)
     SX, SY, SZ = zone_seeds(T, BL, E0, N0, B, KB, a, D['hub_zone_m'])
+    if D['hashed'] and (r1 - r0) * (c1 - c0) * nh >= 2 ** 31:
+        raise ValueError('search box too large for int32 state keys')
     t0 = time.time()
     args = (T, BL, E0, N0, float(B), float(KB), KE0, KN0, r0, c0, r1 - r0, c1 - c0, nh, SX, SY, SZ,
             float(b[0]), float(b[1]), D['hub_zone_m'], np.array(D['straights_m']), AR, AD, AL, hstep,
