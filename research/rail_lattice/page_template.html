@@ -113,6 +113,9 @@ code{font-family:var(--mono);font-size:.85em}
     <h2>Height price frontier (kit 1·2·4·10°, lid 32 m)</h2>
     <p class="sub">Each stretch of track costs its time × (1 + height above ground ÷ H₀). Small H₀ hugs the ground and detours; large H₀ climbs and straightens. Pick where the extra minutes stop being worth the lower deck.</p>
     <div class="tbl"><table id="frontier"></table></div>
+    <div id="lidwrap" hidden><h2>Ceiling sweep (kit 1·2·4·10°, H₀ 8 m)</h2>
+    <p class="sub">The ceiling is a hard limit on the deck's height over the lowest ground beneath it. Every 32 m run touched it somewhere; a higher ceiling shows what those spots cost.</p>
+    <div class="tbl"><table id="lids"></table></div></div>
   </section>
 
   <section class="sheet">
@@ -295,6 +298,7 @@ function frontier(){
   const sec=document.getElementById('frontier-s');if(!D.deck)return;
   const ks=Object.keys(D.deck).filter(k=>D.deck[k].group==='h0').sort((a,b)=>(D.deck[a].h0??1e12)-(D.deck[b].h0??1e12));
   if(!ks.length)return;sec.hidden=false;
+  const lk=Object.keys(D.deck).filter(k=>D.deck[k].group==='lid'||(k==='K8'&&Object.values(D.deck).some(d=>d.group==='lid'))).sort((a,b)=>D.deck[a].lid-D.deck[b].lid);
   const agg=k=>{const rs=D.links.map(l=>l.runs[k]),ok=rs.filter(r=>r&&r.found),km=ok.reduce((a,r)=>a+r.km,0);
     return {n:ok.length,pend:rs.filter(r=>r&&r.pending).length,km,mn:ok.reduce((a,r)=>a+r.minutes,0),hm:ok.reduce((a,r)=>a+r.h_mean*r.km,0)/Math.max(km,1e-9),o8:ok.reduce((a,r)=>a+r.km_over_8m,0),hx:Math.max(0,...ok.map(r=>r.h_max))}};
   const head='<tr><th>H₀</th><th>Links</th><th>Travel time</th><th>Track</th><th>Mean height</th><th>Over 8 m up</th><th>Highest deck</th></tr>';
@@ -302,6 +306,11 @@ function frontier(){
     return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.h0==null?'free':d.h0+' m'}</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
   const t=document.getElementById('frontier');t.innerHTML=head+rows;
   t.querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.lim=b.dataset.s;draw()});
+  if(lk.length){document.getElementById('lidwrap').hidden=false;
+    const lrows=lk.map(k=>{const a=agg(k),d=D.deck[k],c=k===ST.lim?'cur':'';
+      return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.lid} m</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
+    const t2=document.getElementById('lids');t2.innerHTML=head.replace('<th>H₀</th>','<th>Ceiling</th>')+lrows;
+    t2.querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.lim=b.dataset.s;draw()});}
 }
 
 /* ---------- static text ---------- */
@@ -321,7 +330,7 @@ document.getElementById('notes').innerHTML=`
 ${D.sets.BP5?`<div><b>5° per foundation.</b> Your blueprint: each 8 m foundation turns 5° from the last, so every curve is the same ${Math.round(D.sets.BP5)} m radius (${kmh(D.sets.BP5)} km/h), including at the hubs. Moves place whole foundations: 1, 2, 6 or 12 straight, or one rotated 5°. Ran twice at ${P.key_m} m like the rest; the two links where the runs differed (C1–S1, W2–W1) were rerun at 2 m and agree with the shown figure within 4%. The foundations set the radius: rail attached to them follows the same circle whether one rail spans 2 foundations or 20, and the 12 m minimum rail length only limits how the rail is cut along them.</div>`:''}
 <div><b>Tightest curve.</b> Each limit allows straights plus arcs of that radius or gentler from ${D.radii.map(r=>Math.round(r)).join(', ')} m. Within ${P.approach_m} m of a hub any radius is allowed, because C1 and C3 sit in pockets no large radius can leave. "Any" is the lower bound.</div>
 <div><b>Search.</b> Hybrid A*: one pose per ${P.key_m} m cell and heading; every case ran twice with that grid shifted by half a cell, the faster route is shown, * marks a disagreement over 5%. "No route" means neither run found one, not that none exists.</div>
-${D.deck?`<div><b>Deck search (${Object.keys(D.deck).length} runs).</b> Deck height is carried along the route instead of touching the ground at every joint. Curves are flat, one foundation turned by a kit angle (radius 4 / sin(N/2)); straights of 1, 2, 6 or 12 foundations climb or fall within ${P.max_grade*100}%. No ground may rise above the deck anywhere under an 8 m foundation footprint (1 m heightfield); the deck may stand at most ${Object.values(D.deck)[0].lid} m over the lowest ground beneath it. Height is priced, not capped: each stretch costs its time × (1 + height ÷ H₀). A hub is its neighbourhood: a ${D.zone_m} m zone, entered anywhere, arriving at most 4 m up. Braking and acceleration at ${Object.values(D.deck)[0].acc} m/s²; minutes are a speed-profile travel time (both directions, free ends), because braking from 120 to 24 km/h takes about 1.8 km, longer than most links. The search itself optimises a per-move speed-change charge, which over-rewards stepping through angles (3, 4, … 10° on successive foundations). Every deck route is rechecked against the 1 m heightfield: no clipping, lid, grade and flat curves hold. The output is a guide to direction and shape, adjusted in game.</div>`:''}
+${D.deck?`<div><b>Deck search (${Object.keys(D.deck).length} runs).</b> Deck height is carried along the route instead of touching the ground at every joint. Curves are flat, one foundation turned by a kit angle (radius 4 / sin(N/2)); straights of 1, 2, 6 or 12 foundations climb or fall within ${P.max_grade*100}%. No ground may rise above the deck anywhere under an 8 m foundation footprint (1 m heightfield); the deck may stand at most a ceiling height (32 m unless the run says otherwise) over the lowest ground beneath it. Height is priced, not capped: each stretch costs its time × (1 + height ÷ H₀). A hub is its neighbourhood: a ${D.zone_m} m zone, entered anywhere, arriving at most 4 m up. Braking and acceleration at ${Object.values(D.deck)[0].acc} m/s²; minutes are a speed-profile travel time (both directions, free ends), because braking from 120 to 24 km/h takes about 1.8 km, longer than most links. The search itself optimises a per-move speed-change charge, which over-rewards stepping through angles (3, 4, … 10° on successive foundations). Every deck route is rechecked against the 1 m heightfield: no clipping, lid, grade and flat curves hold. The output is a guide to direction and shape, adjusted in game.</div>`:''}
 <div><b>Checked against the 1 m ground (ground-following columns).</b> Decks are checked against 8 m cell means. Rechecked at 1 m, routes cut more than 2 m into the ground on 27–367 m each and stand up to 75 m over narrow gullies. Treat lengths and times as optimistic until the search checks decks at 1 m.</div>
 <div><b>Not modelled.</b> Vertical curves (moves follow the ground, so grade changes every move), acceleration and braking, transition spirals, station layout.</div>`;
 
