@@ -710,10 +710,39 @@ def route_deck(T, BL, E0, N0, B, a, b):
     return dict(found=True, expanded=int(exp), stored=stored, seeds=len(SX), secs=round(secs, 1), moves=moves, km=round(km, 3),
                 minutes=round(sum(m_['t'] + m_['t_speed_change'] for m_ in moves) / 60, 2),
                 min_speed_change=round(sum(m_['t_speed_change'] for m_ in moves) / 60, 2),
+                minutes_profile=profile_minutes(moves),
                 h_mean=round(sum(m_['h_mean'] * m_['L'] for m_ in moves) / max(km * 1000, 1e-9), 2),
                 h_max=round(max(m_['h_max'] for m_ in moves), 2),
                 km_over_8m=round(sum(m_['L'] for m_ in moves if m_['h_mean'] > 8) / 1000, 3),
                 turns={str(k): sum(1 for m_ in moves if abs(m_['turn_deg']) == round(k)) for k in kit})
+
+
+def profile_minutes(moves, acc=None):
+    """Travel time of a found route from a speed profile, both directions averaged (reporting only;
+    the search's own cost stays the per-move charge). Every 1 m: limit = min(vmax, curve sqrt(a R),
+    climb K / (grade + c_roll) uphill); forward pass at acc, backward pass at acc (braking), so the
+    train never exceeds what it can reach or stop from. Ends free: the train enters and leaves the
+    link at the line limit there (zone edges are not stations). Added 2026-10-24 because braking
+    120 -> 24 km/h at 0.3 m/s2 takes ~1.8 km, longer than most links, so the per-move charge's
+    'reaches each limit' assumption fails and its minutes are not travel times."""
+    acc = acc or DECK['acc_mps2']
+    lim = []; gr = []
+    for m in moves:
+        n = max(1, int(round(m['L'])))
+        v = V_MAX if m['R'] == 0 else min(V_MAX, math.sqrt(P['a_lat'] * m['R']))
+        lim += [v] * n; gr += [m['grade']] * n
+    ds = sum(m['L'] for m in moves) / len(lim)
+
+    def one_way(lim, gr):
+        L = np.array([min(v, K_POWER / (g + P['c_roll'])) if g > 0 else v for v, g in zip(lim, gr)])
+        v = L.copy()
+        for i in range(1, len(v)):
+            v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * acc * ds))
+        for i in range(len(v) - 2, -1, -1):
+            v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * acc * ds))
+        return float(np.sum(ds / v))
+    t = 0.5 * (one_way(lim, gr) + one_way(lim[::-1], [-g for g in gr[::-1]]))
+    return round(t / 60, 2)
 
 
 def main_deck(links=None, out='deck.json'):
