@@ -10,10 +10,15 @@ Hybrid-A* on the 8 m ramp-class grid from research/rail_slope_reach:
              radius and gentler); tighter radii only within APPROACH_M of
              either hub (throat)
   track      each move is one constant-grade deck between the ground at its two
-             ends; rejected if |grade| > MAX_GRADE, if the ground rises more
-             than CUT_TOL_M above the deck anywhere, if the deck stands more
-             than MAX_PILLAR_M above the ground, or if it crosses a blocked
-             cell (no data, deep or unknown water)
+             ends (1 m heightfield, nearest vertex on the centreline);
+             rejected if |grade| > MAX_GRADE, if the ground anywhere under the
+             deck's footprint (a strip 2 x FOOT_HALF_M wide: one foundation)
+             rises more than CUT_TOL_M above the deck, if the deck stands more
+             than MAX_PILLAR_M above the lowest ground under the footprint, or
+             if it crosses a blocked 8 m cell (no data, deep or unknown water).
+             The footprint is checked every 1 m against disc max/min rasters
+             (radius FOOT_HALF_M): a strip is the union of discs centred on
+             its centreline.
   cost       travel time, both directions averaged (uphill one way is
              downhill the other); a move whose deck is more than
              VIADUCT_M above ground costs VIADUCT_COST x its time
@@ -30,9 +35,12 @@ Real-world rail rules used for speed (declared assumptions, not game data):
 
 Not modelled: acceleration/braking between speed limits, vertical-curve
 (grade-change) speed limits, transition spirals, station layout, water
-crossings. Known defect (2026-10-24): decks are checked against 8 m cell
-means; rechecked at 1 m, routes cut >2 m into the ground on 27-367 m each
-and stand up to 75 m over narrow gullies. Check decks at 1 m before use.
+crossings. Fixed defect (2026-10-24, branch claude/rail-deck): decks were
+checked against bilinear 8 m cell means, so routes cut >2 m into the ground on
+27-367 m each and stood up to 75 m over narrow gullies; the check now reads
+the 1 m heightfield through footprint rasters (above). The 8 m blocked-cell
+lookup also rounded to the nearest cell index where the cell containing the
+point is the floor (a half-cell, 4 m, offset); fixed in the same change.
 """
 import heapq, json, math, sys, time
 from pathlib import Path
@@ -47,6 +55,7 @@ POLICY = dict(
     heading_step_deg=5.0,
     max_grade=0.25,            # 2:8; 4:8 dropped (wiki: a 4 m ramp cannot carry rail)
     cut_tol_m=2.0,
+    foot_half_m=4.0,           # deck footprint half-width: one 8 m foundation
     viaduct_m=4.0, viaduct_cost=1.5,
     max_pillar_m=16.0,         # deck height cap; the tallest span accepted in the 2026-10-24 session
     straights_m=[4.0, 8.0, 16.0, 48.0, 96.0],  # short ones let a pose adjust; real straights run any length
@@ -80,16 +89,32 @@ PROFILES = {
     'bp5': dict(straights_m=[8.0, 16.0, 48.0, 96.0], min_arc_m=8.0, sets={'BP5': ([R_BP5], 0.0)}),
 }
 NH = int(round(360 / P['heading_step_deg']))
+HM = Path('planning_data/world/spatial/heightmap_build_502094')   # repo-root relative, as slope_reach.py
+NODATA = -32768
 
 
-@njit(cache=True)
-def bil(Z, r, c):
-    n0, n1 = Z.shape
-    if r < 0 or c < 0 or r > n0 - 1.001 or c > n1 - 1.001:
-        return np.nan
-    i = int(r); j = int(c); fr = r - i; fc = c - j
-    return (Z[i, j] * (1 - fr) * (1 - fc) + Z[i + 1, j] * fr * (1 - fc)
-            + Z[i, j + 1] * (1 - fr) * fc + Z[i + 1, j + 1] * fr * fc)
+def terrain_1m():
+    """(3, H, W) int16 decimetres: [0] 1 m heightfield, [1] max and [2] min over a disc of radius
+    FOOT_HALF_M around each vertex (no-data ignored; NODATA where the disc holds none). Cached in
+    out/ keyed by the radius; the heightfield is local data (gitignored), never committed."""
+    # Samples read the nearest vertex, up to sqrt(0.5) m from the true point, so the disc is widened by
+    # that much: it then always covers the true footprint (conservative by at most 0.71 m).
+    rad = P['foot_half_m'] + (math.sqrt(0.5) if P['foot_half_m'] > 0 else 0.0)
+    cache = OUT / f'terrain_1m_r{rad:.3f}.npy'
+    if cache.exists():
+        return np.load(cache)
+    from scipy import ndimage
+    sys.path.insert(0, 'tools/corridor_tool/src')
+    from corridor_tool.field import decode_i16
+    meta = json.load(open(HM / 'meta.json')); H, W = meta['grid']['height'], meta['grid']['width']
+    h = decode_i16(HM / 'height.i16.z', H, W)
+    k = int(math.floor(rad)); yy, xx = np.mgrid[-k:k + 1, -k:k + 1]; disc = (xx * xx + yy * yy) <= rad * rad
+    hi = ndimage.maximum_filter(h, footprint=disc, mode='constant', cval=NODATA)
+    lo = ndimage.minimum_filter(np.where(h == NODATA, np.int16(32767), h), footprint=disc, mode='constant', cval=32767)
+    lo[lo == 32767] = NODATA
+    T = np.stack([h, hi, lo]).astype(np.int16)
+    np.save(cache, T)
+    return T
 
 
 @njit(cache=True)
@@ -103,11 +128,23 @@ def move(x, y, th, R, d, L):
 
 
 @njit(cache=True)
-def check(Z, BL, E0, N0, B, x, y, th, R, d, L, maxg, cut, maxpil):
-    """Returns (ok, grade signed, pillar max)."""
-    m = int(math.ceil(L / 8.0))
+def z1m(T, k, E0, N0, x, y):
+    """Layer k of terrain_1m at the nearest vertex (meta.json: vertex-aligned), metres; nan if none."""
+    r = int(round(N0 - y)); c = int(round(x - E0))
+    if r < 0 or c < 0 or r >= T.shape[1] or c >= T.shape[2]:
+        return np.nan
+    v = T[k, r, c]
+    if v == NODATA:
+        return np.nan
+    return v / 10.0
+
+
+@njit(cache=True)
+def check(T, BL, E0, N0, B, x, y, th, R, d, L, maxg, cut, maxpil):
+    """Returns (ok, grade signed, pillar max). T from terrain_1m; BL the 8 m blocked raster."""
+    m = int(math.ceil(L))
     x1, y1, _ = move(x, y, th, R, d, L)
-    z0 = bil(Z, (N0 - y) / B, (x - E0) / B); z1 = bil(Z, (N0 - y1) / B, (x1 - E0) / B)
+    z0 = z1m(T, 0, E0, N0, x, y); z1 = z1m(T, 0, E0, N0, x1, y1)
     if not (z0 == z0 and z1 == z1):
         return False, 0.0, 0.0
     g = (z1 - z0) / L
@@ -120,18 +157,17 @@ def check(Z, BL, E0, N0, B, x, y, th, R, d, L, maxg, cut, maxpil):
             xi, yi, _ = move(x, y, th, 0.0, 0.0, L * f)
         else:
             xi, yi, _ = move(x, y, th, R, d * f, 0.0)
-        r = (N0 - yi) / B; c = (xi - E0) / B
-        ri = int(round(r)); ci = int(round(c))
+        ri = int(math.floor((N0 - yi) / B)); ci = int(math.floor((xi - E0) / B))
         if ri < 0 or ci < 0 or ri >= BL.shape[0] or ci >= BL.shape[1] or BL[ri, ci]:
             return False, 0.0, 0.0
-        zg = bil(Z, r, c)
-        if not (zg == zg):
+        hi = z1m(T, 1, E0, N0, xi, yi); lo = z1m(T, 2, E0, N0, xi, yi)
+        if not (hi == hi and lo == lo):
             return False, 0.0, 0.0
         deck = z0 + (z1 - z0) * f
-        if zg > deck + cut:
+        if hi > deck + cut:
             return False, 0.0, 0.0
-        if deck - zg > pil:
-            pil = deck - zg
+        if deck - lo > pil:
+            pil = deck - lo
             if pil > maxpil:
                 return False, 0.0, 0.0
     return True, g, pil
@@ -208,7 +244,7 @@ def search(Z, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, sx, sy, gx, gy, g
 
 
 def route(Z, BL, E0, N0, B, a, b, radii, rmain):
-    m = P['box_margin_m']; KB = P['key_m']; nk = int(Z.shape[0] * B / KB) + 1
+    m = P['box_margin_m']; KB = P['key_m']; nk = int(BL.shape[0] * B / KB) + 1
     KE0 = E0 - KB - P['key_off_m']; KN0 = N0 + KB + P['key_off_m']   # key grid, one cell of slack
     xs = [a[0], b[0]]; ys = [a[1], b[1]]
     r0 = max(0, int((KN0 - (max(ys) + m)) / KB)); r1 = min(nk, int((KN0 - (min(ys) - m)) / KB) + 1)
@@ -236,7 +272,7 @@ def route(Z, BL, E0, N0, B, a, b, radii, rmain):
         k = max(2, int(math.ceil(ML[i] / 8)) + 1)
         for f in np.linspace(0, 1, k):
             xi, yi, _ = move(x, y, th, MR[i], MD[i] * f, ML[i] * f) if MR[i] > 0 else move(x, y, th, 0.0, 0.0, ML[i] * f)
-            pts.append([round(xi, 1), round(yi, 1)])
+            pts.append([round(xi, 3), round(yi, 3)])   # mm: a 1 m recheck must read the vertices the search read
         t = tcost(ML[i], g, MR[i], V_MAX, P['a_lat'], K_POWER, P['c_roll'], pil, P['viaduct_m'], P['viaduct_cost'])
         moves.append(dict(R=round(float(MR[i]), 1), turn_deg=round(math.degrees(MD[i])), L=round(float(ML[i]), 1),
                           grade=round(float(g), 4), pillar=round(float(pil), 1), t=round(float(t), 2), pts=pts))
@@ -248,7 +284,7 @@ def route(Z, BL, E0, N0, B, a, b, radii, rmain):
 
 def main(links=None, sets=None, out='lattice.json'):
     R = json.load(open(RS / 'slope_reach.json')); n = R['n']; B = R['grid_m']; E0, N0 = R['east0'], R['north0']
-    Z = np.load(RS / 'Z.npy').astype(np.float64); BL = np.load(RS / 'blocked.npy')
+    Z = terrain_1m(); BL = np.load(RS / 'blocked.npy')
     snaps = R['classes']['2:8']['snaps']
     pos = {k: (E0 + (v['node'] % n) * B, N0 - (v['node'] // n) * B) for k, v in snaps.items()}
     links = links or json.load(open(HERE / 'links.json'))
@@ -274,6 +310,8 @@ if __name__ == '__main__':
     ap.add_argument('--profile', choices=sorted(PROFILES), help='move set and radius sets to use instead of the sweep')
     ap.add_argument('--max-grade', type=float, help='override max grade (sensitivity runs)')
     ap.add_argument('--max-pillar-m', type=float, help='override deck height cap (sensitivity runs)')
+    ap.add_argument('--foot-half-m', type=float, help='override deck footprint half-width, m (sensitivity runs; 0 = centreline only)')
+    ap.add_argument('--cut-tol-m', type=float, help='override cut tolerance, m (sensitivity runs)')
     ap.add_argument('--out', default='lattice.json')
     a = ap.parse_args()
     if a.key_m:
@@ -291,4 +329,8 @@ if __name__ == '__main__':
         P['max_pillar_m'] = a.max_pillar_m
     if a.key_off_m:
         P['key_off_m'] = a.key_off_m
+    if a.foot_half_m is not None:
+        P['foot_half_m'] = a.foot_half_m
+    if a.cut_tol_m is not None:
+        P['cut_tol_m'] = a.cut_tol_m
     main(links=[tuple(s.split('-')) for s in a.links] or None, sets=a.sets.split(',') if a.sets else None, out=a.out)
