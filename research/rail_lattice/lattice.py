@@ -282,6 +282,248 @@ def route(Z, BL, E0, N0, B, a, b, radii, rmain):
                 end_gap_m=round(math.hypot(end[0] - b[0], end[1] - b[1]), 1))
 
 
+# ------------------------------------------------------------------------------------------------
+# Deck-height search with a curve kit and hub zones (Greg, 2026-10-24, 18:30-19:25):
+#   curves flat, only straights climb (curve BPs can rise in game; flat is the choice for now);
+#   grade 25% (manual placement is imprecise); deck height carried in the state (option A: a curve
+#   holds it, a straight climbs or falls within the grade); curve angles a kit, any angle anywhere;
+#   no clipping: no ground above the deck under the footprint; height above ground is priced, not
+#   capped: each move costs time x (1 + mean height / H0), H0 swept as a frontier; a hard lid
+#   (default 32 m, swept coarse then fine) on the deck's height over the lowest ground beneath it;
+#   a hub is its neighbourhood: a disc of HUB_ZONE_M (neighborhoods_v020 policy radius_m, 350 m)
+#   around the hub; routes may start or end anywhere in it, arriving at most ARRIVE_MAX_M up.
+#   The output is a guide to direction and shape, adjusted in game, not a placement plan.
+# Lossy pruning: one state per (key cell, heading); of two arrivals at different deck heights the
+# first closed wins (as x, y already are). Height bins in the key need the hashed closed set.
+DECK = dict(
+    kit_deg=[5.0],
+    straights_m=[8.0, 16.0, 48.0, 96.0],   # whole foundations: 1, 2, 6, 12
+    clearance_m=0.0,           # ground may not rise above deck - clearance under the footprint
+    lid_m=32.0,                # hard: deck height over the lowest ground under the footprint
+    h0_m=8.0,                  # height at which a stretch counts double its time
+    hub_zone_m=350.0,          # neighbourhood radius (neighborhoods_v020.json policy radius_m)
+    arrive_max_m=4.0,          # deck height over the centreline ground where a route meets a hub zone
+    split_min_m=0.5,           # straight end heights closer than this are one option
+)
+MAXS = 128                     # samples per move at 1 m: longest straight is 96 m
+
+
+def kit_arcs(kit_deg):
+    """One foundation rotated N deg: radius 4 / sin(N/2) (8 m foundation, rail attached), arc R*N."""
+    R = np.array([4.0 / math.sin(math.radians(n) / 2) for n in kit_deg])
+    D = np.array([math.radians(n) for n in kit_deg])
+    return R, D, R * D
+
+
+@njit(cache=True)
+def sample_move(T, BL, E0, N0, B, x, y, th, R, d, L, HI, LO, G0):
+    """Fill HI/LO (footprint max/min) and G0 (centreline ground) every 1 m along a move; returns
+    the sample count - 1, or -1 if any sample is blocked, outside the map or has no data."""
+    m = int(math.ceil(L))
+    for i in range(m + 1):
+        f = i / m
+        if R == 0.0:
+            xi, yi, _ = move(x, y, th, 0.0, 0.0, L * f)
+        else:
+            xi, yi, _ = move(x, y, th, R, d * f, 0.0)
+        ri = int(math.floor((N0 - yi) / B)); ci = int(math.floor((xi - E0) / B))
+        if ri < 0 or ci < 0 or ri >= BL.shape[0] or ci >= BL.shape[1] or BL[ri, ci]:
+            return -1
+        hi = z1m(T, 1, E0, N0, xi, yi); lo = z1m(T, 2, E0, N0, xi, yi); g0 = z1m(T, 0, E0, N0, xi, yi)
+        if not (hi == hi and lo == lo and g0 == g0):
+            return -1
+        HI[i] = hi; LO[i] = lo; G0[i] = g0
+    return m
+
+
+@njit(cache=True)
+def deck_eval(m, z0, z1, HI, LO, G0, clr, lid):
+    """(ok, mean height over centreline ground) for a straight deck z0 -> z1 over the samples."""
+    s = 0.0
+    for i in range(m + 1):
+        deck = z0 + (z1 - z0) * i / m
+        if HI[i] > deck - clr + 1e-6 or deck - LO[i] > lid:
+            return False, 0.0
+        s += deck - G0[i]
+    return True, s / (m + 1)
+
+
+@njit(cache=True)
+def search_deck(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, gx, gy, gR,
+                straights, AR, AD, AL, hstep, maxg, clr, lid, arrive, split, h0, vmax, alat, kpow, croll):
+    NS = nr * nc * nh
+    G = np.full(NS, np.inf, np.float32)
+    PAR = np.full(NS, -1, np.int64)
+    X = np.zeros(NS, np.float32); Y = np.zeros(NS, np.float32); ZD = np.zeros(NS, np.float32)
+    MV = np.full(NS, -1, np.int16)
+    DONE = np.zeros(NS, np.bool_)
+    HI = np.zeros(MAXS); LO = np.zeros(MAXS); G0 = np.zeros(MAXS); CZ = np.zeros(3)
+    ns = len(straights)
+    heap = [(0.0, np.int64(0))]
+    heap.pop()
+    for k in range(len(SX)):
+        cs = int((KN0 - SY[k]) / KB) - r0; cc = int((SX[k] - KE0) / KB) - c0
+        if cs < 0 or cc < 0 or cs >= nr or cc >= nc:
+            continue
+        hzn = max(0.0, math.hypot(gx - SX[k], gy - SY[k]) - gR) / vmax
+        for h in range(nh):
+            s = (cs * nc + cc) * nh + h
+            if G[s] == 0.0:
+                continue
+            G[s] = 0.0; X[s] = SX[k]; Y[s] = SY[k]; ZD[s] = SZ[k]
+            heap.append((hzn, np.int64(s)))
+    heapq.heapify(heap)
+    exp = 0
+    while len(heap) > 0:
+        f, s = heapq.heappop(heap)
+        if DONE[s]:
+            continue
+        DONE[s] = True; exp += 1
+        x = X[s]; y = Y[s]; z = ZD[s]; th = (s % nh) * hstep
+        if math.hypot(gx - x, gy - y) <= gR:
+            g0 = z1m(T, 0, E0, N0, x, y)
+            if g0 == g0 and z - g0 <= arrive:
+                return s, exp, G, PAR, X, Y, ZD, MV
+        for i in range(ns + 2 * len(AR)):
+            if i < ns:
+                R = 0.0; d = 0.0; L = straights[i]
+            else:
+                j = (i - ns) // 2; R = AR[j]; d = AD[j] * (1.0 if (i - ns) % 2 == 0 else -1.0); L = AL[j]
+            m = sample_move(T, BL, E0, N0, B, x, y, th, R, d, L, HI, LO, G0)
+            if m < 0:
+                continue
+            # end-height options: straights lowest unclipped / level / full climb; curves level
+            c = CZ; nc_ = 0
+            if R > 0.0:
+                c[0] = z; nc_ = 1
+            else:
+                lo_b = z - maxg * L; hi_b = z + maxg * L; req = lo_b
+                for q in range(1, m + 1):
+                    fq = q / m
+                    need = z + (HI[q] + clr - z) / fq
+                    if need > req:
+                        req = need
+                if req > hi_b + 1e-9:
+                    continue
+                c[0] = req; nc_ = 1
+                if z - req > split:
+                    c[nc_] = z; nc_ += 1
+                if hi_b - max(req, z) > split:
+                    c[nc_] = hi_b; nc_ += 1
+            x1, y1, t1 = move(x, y, th, R, d, L)
+            h1 = int(round(t1 / hstep)) % nh
+            rr = int((KN0 - y1) / KB) - r0; c1 = int((x1 - KE0) / KB) - c0
+            if rr < 0 or c1 < 0 or rr >= nr or c1 >= nc:
+                continue
+            s1 = (rr * nc + c1) * nh + h1
+            if DONE[s1]:
+                continue
+            for e in range(nc_):
+                z1 = c[e]
+                ok, hm = deck_eval(m, z, z1, HI, LO, G0, clr, lid)
+                if not ok:
+                    continue
+                g = (z1 - z) / L
+                t = tcost(L, g, R, vmax, alat, kpow, croll, 0.0, 1e9, 1.0) * (1.0 + max(hm, 0.0) / h0)
+                g1 = G[s] + t
+                if g1 < G[s1]:
+                    G[s1] = g1; PAR[s1] = s; X[s1] = x1; Y[s1] = y1; ZD[s1] = z1; MV[s1] = i * 3 + e
+                    heapq.heappush(heap, (g1 + max(0.0, math.hypot(gx - x1, gy - y1) - gR) / vmax, np.int64(s1)))
+    return np.int64(-1), exp, G, PAR, X, Y, ZD, MV
+
+
+def zone_seeds(T, BL, E0, N0, B, KB, hub, R):
+    """One seed per key cell centre within R of the hub: deck at the highest ground under the
+    footprint there (no clipping), skipping blocked or no-data cells."""
+    xs, ys, zs = [], [], []
+    n = int(R // KB)
+    for i in range(-n, n + 1):
+        for j in range(-n, n + 1):
+            x = hub[0] + j * KB; y = hub[1] + i * KB
+            if math.hypot(x - hub[0], y - hub[1]) > R:
+                continue
+            ri = int((N0 - y) // B); ci = int((x - E0) // B)
+            if ri < 0 or ci < 0 or ri >= BL.shape[0] or ci >= BL.shape[1] or BL[ri, ci]:
+                continue
+            hi = z1m(T, 1, E0, N0, x, y)
+            if hi == hi:
+                xs.append(x); ys.append(y); zs.append(hi + DECK['clearance_m'])
+    return np.array(xs), np.array(ys), np.array(zs)
+
+
+def route_deck(T, BL, E0, N0, B, a, b):
+    D = DECK
+    kit = D['kit_deg']; step = math.gcd(*[int(round(k)) for k in kit]) if all(float(k).is_integer() for k in kit) else None
+    if step is None:
+        raise ValueError(f'kit angles must be whole degrees for a common heading step: {kit}')
+    nh = 360 // step; hstep = math.radians(step)
+    AR, AD, AL = kit_arcs(kit)
+    m = P['box_margin_m']; KB = P['key_m']; nk = int(BL.shape[0] * B / KB) + 1
+    KE0 = E0 - KB - P['key_off_m']; KN0 = N0 + KB + P['key_off_m']
+    xs = [a[0], b[0]]; ys = [a[1], b[1]]
+    r0 = max(0, int((KN0 - (max(ys) + m)) / KB)); r1 = min(nk, int((KN0 - (min(ys) - m)) / KB) + 1)
+    c0 = max(0, int((min(xs) - m - KE0) / KB)); c1 = min(nk, int((max(xs) + m - KE0) / KB) + 1)
+    SX, SY, SZ = zone_seeds(T, BL, E0, N0, B, KB, a, D['hub_zone_m'])
+    t0 = time.time()
+    s, exp, G, PAR, X, Y, ZD, MV = search_deck(
+        T, BL, E0, N0, float(B), float(KB), KE0, KN0, r0, c0, r1 - r0, c1 - c0, nh, SX, SY, SZ,
+        float(b[0]), float(b[1]), D['hub_zone_m'], np.array(D['straights_m']), AR, AD, AL, hstep,
+        P['max_grade'], D['clearance_m'], D['lid_m'], D['arrive_max_m'], D['split_min_m'], D['h0_m'],
+        V_MAX, P['a_lat'], K_POWER, P['c_roll'])
+    secs = time.time() - t0
+    if s < 0:
+        return dict(found=False, expanded=int(exp), seeds=len(SX), secs=round(secs, 1))
+    chain = []
+    while s >= 0:
+        chain.append(int(s)); s = PAR[s]
+    chain = chain[::-1]
+    ns = len(D['straights_m'])
+    HI = np.zeros(MAXS); LO = np.zeros(MAXS); G0 = np.zeros(MAXS)
+    moves = []
+    for p, q in zip(chain, chain[1:]):
+        code = int(MV[q]); i = code // 3
+        if i < ns:
+            R = 0.0; d = 0.0; L = D['straights_m'][i]; ang = 0
+        else:
+            j = (i - ns) // 2; sg = 1.0 if (i - ns) % 2 == 0 else -1.0
+            R = float(AR[j]); d = float(AD[j]) * sg; L = float(AL[j]); ang = round(sg * kit[j])
+        th = (p % nh) * hstep; x, y = float(X[p]), float(Y[p]); z0, z1 = float(ZD[p]), float(ZD[q])
+        mm = sample_move(T, BL, E0, N0, float(B), x, y, th, R, d, L, HI, LO, G0)
+        ok, hm = deck_eval(mm, z0, z1, HI, LO, G0, D['clearance_m'], D['lid_m'])
+        g = (z1 - z0) / L
+        t = tcost(L, g, R, V_MAX, P['a_lat'], K_POWER, P['c_roll'], 0.0, 1e9, 1.0)
+        hmax = max(z0 + (z1 - z0) * k / mm - LO[k] for k in range(mm + 1))
+        pts = []
+        for f in np.linspace(0, 1, max(2, int(math.ceil(L / 8)) + 1)):
+            xi, yi, _ = move(x, y, th, R, d * f, 0.0) if R > 0 else move(x, y, th, 0.0, 0.0, L * f)
+            pts.append([round(xi, 3), round(yi, 3)])
+        moves.append(dict(R=round(R, 1), turn_deg=ang, L=round(L, 3), z0=round(z0, 3), z1=round(z1, 3),
+                          grade=round(g, 4), h_mean=round(hm, 2), h_max=round(hmax, 2), t=round(t, 2),
+                          t_priced=round(t * (1 + max(hm, 0) / D['h0_m']), 2), ok=bool(ok), pts=pts))
+    km = sum(m_['L'] for m_ in moves) / 1000
+    return dict(found=True, expanded=int(exp), seeds=len(SX), secs=round(secs, 1), moves=moves, km=round(km, 3),
+                minutes=round(sum(m_['t'] for m_ in moves) / 60, 2),
+                h_mean=round(sum(m_['h_mean'] * m_['L'] for m_ in moves) / max(km * 1000, 1e-9), 2),
+                h_max=round(max(m_['h_max'] for m_ in moves), 2),
+                km_over_8m=round(sum(m_['L'] for m_ in moves if m_['h_mean'] > 8) / 1000, 3),
+                turns={str(k): sum(1 for m_ in moves if abs(m_['turn_deg']) == round(k)) for k in kit})
+
+
+def main_deck(links=None, out='deck.json'):
+    R = json.load(open(RS / 'slope_reach.json')); B = R['grid_m']; E0, N0 = R['east0'], R['north0']
+    T = terrain_1m(); BL = np.load(RS / 'blocked.npy')
+    hubs = {h['key']: (h['east_m'], h['north_m']) for h in json.load(open(RS.parent / 'hubs.json'))}
+    links = links or json.load(open(HERE / 'links.json'))
+    res = dict(policy=P, deck=DECK, k_power=round(K_POWER, 3), hubs=hubs, links={})
+    for a, b in links:
+        r = route_deck(T, BL, E0, N0, B, hubs[a], hubs[b])
+        res['links'][f'{a}-{b}'] = r
+        print(f'{a}-{b}: ' + (f"{r['km']} km {r['minutes']} min, mean {r['h_mean']} m up, max {r['h_max']} m, "
+                              f"turns {r['turns']}" if r['found'] else 'NO ROUTE')
+              + f" ({r['expanded']} states, {r['seeds']} seeds, {r['secs']} s)", flush=True)
+    json.dump(res, open(OUT / out, 'w', newline='\n'))
+
+
 def main(links=None, sets=None, out='lattice.json'):
     R = json.load(open(RS / 'slope_reach.json')); n = R['n']; B = R['grid_m']; E0, N0 = R['east0'], R['north0']
     Z = terrain_1m(); BL = np.load(RS / 'blocked.npy')
@@ -312,8 +554,28 @@ if __name__ == '__main__':
     ap.add_argument('--max-pillar-m', type=float, help='override deck height cap (sensitivity runs)')
     ap.add_argument('--foot-half-m', type=float, help='override deck footprint half-width, m (sensitivity runs; 0 = centreline only)')
     ap.add_argument('--cut-tol-m', type=float, help='override cut tolerance, m (sensitivity runs)')
+    ap.add_argument('--deck', action='store_true', help='deck-height search with a curve kit and hub zones (DECK)')
+    ap.add_argument('--kit', help='deck: curve angles per foundation, deg, comma list (default 5)')
+    ap.add_argument('--h0-m', type=float, help='deck: height at which a stretch counts double its time, m')
+    ap.add_argument('--lid-m', type=float, help='deck: hard lid on deck height over the lowest ground, m')
+    ap.add_argument('--hub-zone-m', type=float, help='deck: hub zone radius, m')
     ap.add_argument('--out', default='lattice.json')
     a = ap.parse_args()
+    if a.deck:
+        if a.kit:
+            DECK['kit_deg'] = [float(v) for v in a.kit.split(',')]
+        if a.h0_m:
+            DECK['h0_m'] = a.h0_m
+        if a.lid_m:
+            DECK['lid_m'] = a.lid_m
+        if a.hub_zone_m:
+            DECK['hub_zone_m'] = a.hub_zone_m
+        if a.key_m:
+            P['key_m'] = a.key_m
+        if a.key_off_m:
+            P['key_off_m'] = a.key_off_m
+        main_deck(links=[tuple(s.split('-')) for s in a.links] or None, out=a.out)
+        sys.exit(0)
     if a.key_m:
         P['key_m'] = a.key_m
     if a.margin_m:
