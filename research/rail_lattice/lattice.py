@@ -305,6 +305,8 @@ DECK = dict(
     arrive_max_m=4.0,          # deck height over the centreline ground where a route meets a hub zone
     split_min_m=0.5,           # straight end heights closer than this are one option
     hashed=True,               # closed set in a hash table (search_deck_h); --dense for search_deck
+    acc_mps2=0.3,              # braking = acceleration rate for speed changes at curves (Greg, 2026-10-24:
+                               # "the specific values are less important than [a] common model used")
 )
 MAXS = 128                     # samples per move at 1 m: longest straight is 96 m
 
@@ -350,8 +352,28 @@ def deck_eval(m, z0, z1, HI, LO, G0, clr, lid):
 
 
 @njit(cache=True)
+def vlim(code, ns, AR, vmax, alat):
+    """Speed limit of the move that led into a state: curve limit sqrt(a R), else vmax (seeds: -1)."""
+    if code < 0 or code // 3 < ns:
+        return vmax
+    return min(vmax, math.sqrt(alat * AR[(code // 3 - ns) // 2]))
+
+
+@njit(cache=True)
+def tpen(v1, v2, acc):
+    """Time lost changing speed between two limits at rate acc, beyond what the moves already charge
+    at their own limits: (vhi - vlo)^2 / (2 acc vhi). The same for braking and accelerating, so it
+    agrees with the both-directions average. Assumes the train reaches each limit (long enough
+    moves between changes): overstated where curves sit close together. Climb slowdowns excluded."""
+    hi = max(v1, v2); lo = min(v1, v2)
+    if hi - lo < 1e-9:
+        return 0.0
+    return (hi - lo) * (hi - lo) / (2.0 * acc * hi)
+
+
+@njit(cache=True)
 def search_deck(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, gx, gy, gR,
-                straights, AR, AD, AL, hstep, maxg, clr, lid, arrive, split, h0, vmax, alat, kpow, croll):
+                straights, AR, AD, AL, hstep, maxg, clr, lid, arrive, split, h0, vmax, alat, kpow, croll, acc):
     NS = nr * nc * nh
     G = np.full(NS, np.inf, np.float32)
     PAR = np.full(NS, -1, np.int64)
@@ -381,6 +403,7 @@ def search_deck(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, 
             continue
         DONE[s] = True; exp += 1
         x = X[s]; y = Y[s]; z = ZD[s]; th = (s % nh) * hstep
+        vp = vlim(MV[s], ns, AR, vmax, alat)
         if math.hypot(gx - x, gy - y) <= gR:
             g0 = z1m(T, 0, E0, N0, x, y)
             if g0 == g0 and z - g0 <= arrive:
@@ -425,7 +448,8 @@ def search_deck(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, 
                 if not ok:
                     continue
                 g = (z1 - z) / L
-                t = tcost(L, g, R, vmax, alat, kpow, croll, 0.0, 1e9, 1.0) * (1.0 + max(hm, 0.0) / h0)
+                t = (tcost(L, g, R, vmax, alat, kpow, croll, 0.0, 1e9, 1.0) * (1.0 + max(hm, 0.0) / h0)
+                     + tpen(vp, vlim(i * 3, ns, AR, vmax, alat), acc))
                 g1 = G[s] + t
                 if g1 < G[s1]:
                     G[s1] = g1; PAR[s1] = s; X[s1] = x1; Y[s1] = y1; ZD[s1] = z1; MV[s1] = i * 3 + e
@@ -458,7 +482,7 @@ def hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE):
 
 @njit(cache=True)
 def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, gx, gy, gR,
-                  straights, AR, AD, AL, hstep, maxg, clr, lid, arrive, split, h0, vmax, alat, kpow, croll):
+                  straights, AR, AD, AL, hstep, maxg, clr, lid, arrive, split, h0, vmax, alat, kpow, croll, acc):
     """search_deck with the closed set in a hash table holding only touched states (the dense arrays
     cost 27 B per box state; at 5 deg ~13% of the box is touched, at 1 deg the dense box is ~10 GB).
     Keys are search_deck's state indices and the heap orders on them the same way, so results
@@ -496,6 +520,7 @@ def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ
             continue
         DONE[qs] = True; exp += 1
         x = X[qs]; y = Y[qs]; z = ZD[qs]; gs = G[qs]; th = (s % nh) * hstep
+        vp = vlim(MV[qs], ns, AR, vmax, alat)
         if math.hypot(gx - x, gy - y) <= gR:
             g0 = z1m(T, 0, E0, N0, x, y)
             if g0 == g0 and z - g0 <= arrive:
@@ -540,7 +565,8 @@ def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ
                 if not ok:
                     continue
                 g = (z1 - z) / L
-                t = tcost(L, g, R, vmax, alat, kpow, croll, 0.0, 1e9, 1.0) * (1.0 + max(hm, 0.0) / h0)
+                t = (tcost(L, g, R, vmax, alat, kpow, croll, 0.0, 1e9, 1.0) * (1.0 + max(hm, 0.0) / h0)
+                     + tpen(vp, vlim(i * 3, ns, AR, vmax, alat), acc))
                 g1 = gs + t
                 if KEYS[q1] != s1 or g1 < G[q1]:
                     if KEYS[q1] == -1:
@@ -589,7 +615,7 @@ def route_deck(T, BL, E0, N0, B, a, b):
     args = (T, BL, E0, N0, float(B), float(KB), KE0, KN0, r0, c0, r1 - r0, c1 - c0, nh, SX, SY, SZ,
             float(b[0]), float(b[1]), D['hub_zone_m'], np.array(D['straights_m']), AR, AD, AL, hstep,
             P['max_grade'], D['clearance_m'], D['lid_m'], D['arrive_max_m'], D['split_min_m'], D['h0_m'],
-            V_MAX, P['a_lat'], K_POWER, P['c_roll'])
+            V_MAX, P['a_lat'], K_POWER, P['c_roll'], D['acc_mps2'])
     if D['hashed']:
         s, exp, KEYS, mask, G, PAR, X, Y, ZD, MV = search_deck_h(*args)
         stored = int((KEYS != -1).sum())
@@ -621,6 +647,7 @@ def route_deck(T, BL, E0, N0, B, a, b):
         ok, hm = deck_eval(mm, z0, z1, HI, LO, G0, D['clearance_m'], D['lid_m'])
         g = (z1 - z0) / L
         t = tcost(L, g, R, V_MAX, P['a_lat'], K_POWER, P['c_roll'], 0.0, 1e9, 1.0)
+        pen = tpen(vlim(int(MV[sl[p]]), ns, AR, V_MAX, P['a_lat']), vlim(code, ns, AR, V_MAX, P['a_lat']), D['acc_mps2'])
         hmax = max(z0 + (z1 - z0) * k / mm - LO[k] for k in range(mm + 1))
         pts = []
         for f in np.linspace(0, 1, max(2, int(math.ceil(L / 8)) + 1)):
@@ -628,10 +655,12 @@ def route_deck(T, BL, E0, N0, B, a, b):
             pts.append([round(xi, 3), round(yi, 3)])
         moves.append(dict(R=round(R, 1), turn_deg=ang, L=round(L, 3), z0=round(z0, 3), z1=round(z1, 3),
                           grade=round(g, 4), h_mean=round(hm, 2), h_max=round(hmax, 2), t=round(t, 2),
-                          t_priced=round(t * (1 + max(hm, 0) / D['h0_m']), 2), ok=bool(ok), pts=pts))
+                          t_speed_change=round(pen, 2),
+                          t_priced=round(t * (1 + max(hm, 0) / D['h0_m']) + pen, 2), ok=bool(ok), pts=pts))
     km = sum(m_['L'] for m_ in moves) / 1000
     return dict(found=True, expanded=int(exp), stored=stored, seeds=len(SX), secs=round(secs, 1), moves=moves, km=round(km, 3),
-                minutes=round(sum(m_['t'] for m_ in moves) / 60, 2),
+                minutes=round(sum(m_['t'] + m_['t_speed_change'] for m_ in moves) / 60, 2),
+                min_speed_change=round(sum(m_['t_speed_change'] for m_ in moves) / 60, 2),
                 h_mean=round(sum(m_['h_mean'] * m_['L'] for m_ in moves) / max(km * 1000, 1e-9), 2),
                 h_max=round(max(m_['h_max'] for m_ in moves), 2),
                 km_over_8m=round(sum(m_['L'] for m_ in moves if m_['h_mean'] > 8) / 1000, 3),
@@ -689,6 +718,7 @@ if __name__ == '__main__':
     ap.add_argument('--lid-m', type=float, help='deck: hard lid on deck height over the lowest ground, m')
     ap.add_argument('--hub-zone-m', type=float, help='deck: hub zone radius, m')
     ap.add_argument('--dense', action='store_true', help='deck: dense closed-set arrays (regression reference)')
+    ap.add_argument('--acc', type=float, help='deck: braking = acceleration rate at curve speed changes, m/s2')
     ap.add_argument('--out', default='lattice.json')
     a = ap.parse_args()
     if a.deck:
@@ -702,6 +732,8 @@ if __name__ == '__main__':
             DECK['hub_zone_m'] = a.hub_zone_m
         if a.dense:
             DECK['hashed'] = False
+        if a.acc:
+            DECK['acc_mps2'] = a.acc
         if a.key_m:
             P['key_m'] = a.key_m
         if a.key_off_m:
