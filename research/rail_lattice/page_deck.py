@@ -53,17 +53,26 @@ def load_run(pattern):
     return out
 
 
-def main():
+def main(only=None, out='rail-curve-sweep.html', title=None):
+    """only: deck run keys to keep (drops the ground-following sets and other runs) for a focused
+    page; title replaces the page title and heading."""
     base = (OUT / 'rail-curve-sweep-v4.html').read_text(encoding='utf-8')
     D = json.loads(re.search(r'const D=(\{.*?\});\n', base, re.S).group(1))
     P = D['policy']; v_max = P['v_max_kmh'] / 3.6; k_pow = D['k_power']
     deck = {}; zone = None
-    for key, (name, sub, title, group, h0, pattern) in RUNS.items():
+    if only:
+        for k in [k for k in D['sets'] if k not in only]:
+            del D['sets'][k]
+        for l in D['links']:
+            l['runs'] = {}
+    for key, (name, sub, rtitle, group, h0, pattern) in RUNS.items():
+        if only and key not in only:
+            continue
         got = load_run(pattern)
         if not got:
             continue
         meta = next(iter(got.values()))[1]['deck']; zone = meta['hub_zone_m']
-        deck[key] = dict(name=name, sub=sub, title=title, group=group, h0=h0, kit=meta['kit_deg'], lid=meta['lid_m'],
+        deck[key] = dict(name=name, sub=sub, title=rtitle, group=group, h0=h0, kit=meta['kit_deg'], lid=meta['lid_m'],
                          acc=meta['acc_mps2'], done=len(got))
         D['sets'][key] = 0
         for l in D['links']:
@@ -93,9 +102,23 @@ def main():
         # deck entries first after the radius limits, so the page opens on the newest work
         D['deck'] = deck; D['zone_m'] = zone
     html = (HERE / 'page_template.html').read_text(encoding='utf-8').replace('/*DATA*/null', json.dumps(D, separators=(',', ':')))
-    (OUT / 'rail-curve-sweep.html').write_text(html, encoding='utf-8', newline='\n')
-    print('wrote', OUT / 'rail-curve-sweep.html', len(html) // 1024, 'KB;', {k: v['done'] for k, v in deck.items()})
+    if title:
+        html = html.replace('<title>Rail Curve Sweep</title>', f'<title>{title}</title>', 1).replace(
+            '<h1>Rail curve sweep</h1>', f'<h1>{title}</h1>', 1)
+        html = re.sub(r'(<h1>.*?</h1>\s*<p class="sub">).*?(</p>)', lambda m: m.group(1) + (
+            'All seven hub links from the deck search with the adopted curve kit (1, 2, 4 and 10° per '
+            'foundation). Switch between H₀ 4 and 8 m, and colour the routes by speed limit, by up / '
+            'down / level, or by curve angle. A guide to direction and shape, adjusted in game.') + m.group(2),
+            html, count=1, flags=re.S)
+    (OUT / out).write_text(html, encoding='utf-8', newline='\n')
+    print('wrote', OUT / out, len(html) // 1024, 'KB;', {k: v['done'] for k, v in deck.items()})
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--only', help='comma list of deck run keys for a focused page, e.g. K4,K8')
+    ap.add_argument('--out', default='rail-curve-sweep.html')
+    ap.add_argument('--title', help='page title and heading for a focused page')
+    a = ap.parse_args()
+    main(only=a.only.split(',') if a.only else None, out=a.out, title=a.title)

@@ -8,14 +8,18 @@
   --bg:#eef0ee; --panel:#ffffff; --fg:#1c2421; --muted:#5d6a65; --line:#cfd6d2; --water:#b9d3dc; --halo:#ffffff;
   --v4:#0b5d8f; --v3:#2a9d8f; --v2:#d9930f; --v1:#c23b52;
   --corr:#7a4bb5; --ok:#0b5d8f; --sel:#1c2421;
+  --up:#c2652a; --dn:#2f6db3; --lv:#7d8a84;
+  --k0:#9aa5a0; --k1:#2a9d8f; --k2:#d9930f; --k4:#7a4bb5; --k10:#c23b52; --kx:#1c2421;
   --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Barlow",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#141a18; --panel:#1d2522; --fg:#e4ebe7; --muted:#9aa8a2; --line:#33403b; --water:#20343c; --halo:#141a18;
-  --v4:#6cc4ff; --v3:#5fd3c3; --v2:#f0b84a; --v1:#ff7a8e; --corr:#b996f0; --ok:#6cc4ff; --sel:#e4ebe7; color-scheme:dark}}
+  --v4:#6cc4ff; --v3:#5fd3c3; --v2:#f0b84a; --v1:#ff7a8e; --corr:#b996f0; --ok:#6cc4ff; --sel:#e4ebe7;
+  --up:#f09a5c; --dn:#6fa8ef; --lv:#8e9a95; --k0:#6b7772; --k1:#5fd3c3; --k2:#f0b84a; --k4:#b996f0; --k10:#ff7a8e; --kx:#e4ebe7; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#141a18; --panel:#1d2522; --fg:#e4ebe7; --muted:#9aa8a2; --line:#33403b; --water:#20343c; --halo:#141a18;
-  --v4:#6cc4ff; --v3:#5fd3c3; --v2:#f0b84a; --v1:#ff7a8e; --corr:#b996f0; --ok:#6cc4ff; --sel:#e4ebe7; color-scheme:dark}
+  --v4:#6cc4ff; --v3:#5fd3c3; --v2:#f0b84a; --v1:#ff7a8e; --corr:#b996f0; --ok:#6cc4ff; --sel:#e4ebe7;
+  --up:#f09a5c; --dn:#6fa8ef; --lv:#8e9a95; --k0:#6b7772; --k1:#5fd3c3; --k2:#f0b84a; --k4:#b996f0; --k10:#ff7a8e; --kx:#e4ebe7; color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px;display:grid;gap:12px}
 h1{font-family:var(--display);font-weight:700;font-size:1.9rem;margin:0;line-height:1.05;text-wrap:balance}
@@ -35,6 +39,8 @@ h2{font-family:var(--display);font-size:1.25rem;margin:0;text-wrap:balance}
 svg{display:block;width:100%;height:auto}
 .side{display:grid;gap:12px;min-width:0}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:grid;gap:9px;min-width:0}
+[hidden]{display:none!important}
+.sheet>*{min-width:0}  /* grid items may shrink; wide tables scroll inside .tbl */
 .legend{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:.82rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw{width:12px;height:12px;border-radius:2px;display:inline-block}
@@ -83,6 +89,7 @@ code{font-family:var(--mono);font-size:.85em}
   <div class="ctl">
     <div class="row" id="limits" role="group" aria-label="Tightest main-line curve"><span class="lab">Ground-following</span></div>
     <div class="row" id="decks" role="group" aria-label="Deck-search runs" hidden><span class="lab">Deck search</span></div>
+    <div class="row" id="colour" role="group" aria-label="Colour routes by"><span class="lab">Colour by</span></div>
     <div class="row" id="ground" role="group" aria-label="Ground layer"><span class="lab">Ground</span></div>
     <div class="row" id="prev" role="group" aria-label="Earlier work"><span class="lab">Earlier work</span></div>
   </div>
@@ -102,6 +109,12 @@ code{font-family:var(--mono);font-size:.85em}
   </div>
 
   <section class="sheet" id="sheet" aria-live="polite"></section>
+
+  <section class="sheet" id="kit-s" hidden>
+    <h2 id="kit-h">Kit usage</h2>
+    <p class="sub">Foundations placed at each curve angle per link, and straight track. Each curve foundation turns its angle from the last; a run of n foundations at N° turns n × N°.</p>
+    <div class="tbl"><table id="kit"></table></div>
+  </section>
 
   <section class="sheet">
     <h2>Minutes per link by run</h2>
@@ -137,10 +150,14 @@ const kmh=r=>r===0?null:Math.round(Math.sqrt(P.a_lat*r)*3.6);
 const NAME=s=>DK(s)?D.deck[s].name:s==='any'?'Any':s==='BP5'?'5° / foundation':Math.round(D.sets[s])+' m';
 const SUB=s=>DK(s)?D.deck[s].sub:s==='any'?'lower bound':s==='BP5'?`${Math.round(D.sets[s])} m · ${kmh(D.sets[s])} km/h`:kmh(D.sets[s])+' km/h';
 const vcol=v=>v>=110?'--v4':v>=80?'--v3':v>=50?'--v2':'--v1';
+const LEVEL=0.01;  /* |grade| at or under 1% counts as level */
+const ANG=m=>m.R>0&&m.R>=4?Math.round(2*Math.asin(4/m.R)*180/Math.PI):0;
+const KCOL={0:'--k0',1:'--k1',2:'--k2',4:'--k4',10:'--k10'};
+const mcol=m=>ST.colour==='grade'?(m.g>LEVEL?'--up':m.g<-LEVEL?'--dn':'--lv'):ST.colour==='angle'?(m.R===0?'--k0':(KCOL[ANG(m)]||'--kx')):vcol(m.vu);
 const key=l=>l.a+'–'+l.b;
 const PAIR=(a,b)=>[a,b].sort().join('|');
 const ROLE={aluminum:'#5b7fa6',oil:'#8a5a2b',nitrogen:'#1f9bb0',electronics:'#c08a12',bulk:'#b0452c',sam:'#7a4bb5'};
-const ST={lim:D.deck?(D.deck.DALL?'DALL':Object.keys(D.deck)[0]):D.sets.BP5?'BP5':'any',ground:'none',sel:Math.max(0,D.links.findIndex(l=>l.a==='C1'&&l.b==='C2')),on:{g2:true,g4:false,corr:false,rt:false,picks:false,nb:false}};
+const ST={lim:D.deck?(D.deck.DALL?'DALL':Object.keys(D.deck)[0]):D.sets.BP5?'BP5':'any',ground:'none',colour:'speed',sel:Math.max(0,D.links.findIndex(l=>l.a==='C1'&&l.b==='C2')),on:{g2:true,g4:false,corr:false,rt:false,picks:false,nb:false}};
 
 function bestSet(l){for(const s of SETS){if(!/^R\d/.test(s))continue;const r=l.runs[s];if(r&&r.found)return s}return null}
 function run(l){return l.runs[ST.lim]}
@@ -179,6 +196,8 @@ Object.entries(D.hubs).forEach(([k,h])=>{
 function btn(parent,label,small,pressed,on){const b=document.createElement('button');b.type='button';b.innerHTML=label+(small?`<small>${small}</small>`:'');b.setAttribute('aria-pressed',pressed);b.onclick=on;parent.appendChild(b);return b}
 const LB={};SETS.forEach(s=>LB[s]=btn(document.getElementById(DK(s)?'decks':'limits'),NAME(s),SUB(s),s===ST.lim,()=>{ST.lim=s;draw()}));
 if(D.deck)document.getElementById('decks').hidden=false;
+if(!SETS.some(s=>!DK(s)))document.getElementById('limits').hidden=true;
+const CB={};[['speed','Speed limit'],['grade','Up / down / level'],['angle','Curve angle']].forEach(([k,t])=>CB[k]=btn(document.getElementById('colour'),t,'',k===ST.colour,()=>{ST.colour=k;draw()}));
 const GB={};[['none','None'],['reach','Reach from C1'],['slope','Slope']].forEach(([k,t])=>GB[k]=btn(document.getElementById('ground'),t,'',k===ST.ground,()=>{ST.ground=k;draw()}));
 const PB={};[['g2','2:8 grid path'],['g4','4:8 grid path'],['corr','Corridors'],['rt','Rail tool 30%'],['picks','Site picks'],['nb','Neighborhoods']].forEach(([k,t])=>PB[k]=btn(document.getElementById('prev'),t,'',ST.on[k],()=>{ST.on[k]=!ST.on[k];draw()}));
 
@@ -195,6 +214,7 @@ function spotsFor(l,r){
 function draw(){
   SETS.forEach(s=>LB[s].setAttribute('aria-pressed',s===ST.lim));
   Object.keys(GB).forEach(k=>GB[k].setAttribute('aria-pressed',k===ST.ground));
+  Object.keys(CB).forEach(k=>CB[k].setAttribute('aria-pressed',k===ST.colour));
   Object.keys(PB).forEach(k=>{PB[k].setAttribute('aria-pressed',ST.on[k]);G[k].style.display=ST.on[k]?'':'none'});
   gReach.style.display=ST.ground==='reach'?'':'none';gSlope.style.display=ST.ground==='slope'?'':'none';
   G.zone.style.display=DK(ST.lim)?'':'none';gThroat.style.display=DK(ST.lim)?'none':'';
@@ -206,14 +226,18 @@ function draw(){
       el('line',{x1:X(A[0]),y1:Y(A[1]),x2:X(B[0]),y2:Y(B[1]),stroke:'var(--v1)','stroke-width':sel?18:12,'stroke-dasharray':'8 40','stroke-linecap':'round'},g);
       const t=el('text',{x:(X(A[0])+X(B[0]))/2,y:(Y(A[1])+Y(B[1]))/2,'text-anchor':'middle','font-family':'Barlow Condensed,Arial Narrow,sans-serif','font-weight':700,'font-size':84,fill:'var(--v1)',stroke:'var(--halo)','stroke-width':18,'paint-order':'stroke'},g);t.textContent='no route';return}
     r.moves.forEach(m=>pl(m.pts,{stroke:sel?'var(--sel)':'var(--halo)','stroke-width':sel?50:38},g));
-    r.moves.forEach(m=>pl(m.pts,{stroke:`var(${vcol(m.vu)})`,'stroke-width':sel?26:20},g));
+    r.moves.forEach(m=>pl(m.pts,{stroke:`var(${mcol(m)})`,'stroke-width':sel?26:20},g));
     spotsFor(l,r).forEach(s=>el('circle',{cx:X(s.p[0]),cy:Y(s.p[1]),r:s.near?36:56,fill:'none',stroke:'var(--fg)','stroke-width':s.near?8:13,'stroke-dasharray':s.near?'9 11':'none'},G.spot));});
-  legend();totals();table();sheet();frontier();
+  legend();totals();table();sheet();frontier();kit();
 }
 
 function legend(){
   const ln=(c,w,d)=>`<svg width="30" height="10" style="width:30px"><line x1="2" y1="5" x2="28" y2="5" stroke="${c}" stroke-width="${w}" ${d?`stroke-dasharray="${d}"`:''}/></svg>`;
-  let h=[['--v4','110–120 km/h'],['--v3','80–110'],['--v2','50–80'],['--v1','under 50']].map(([c,t])=>`<span>${ln(`var(${c})`,5)}${t}</span>`).join('');
+  const LG={speed:[['--v4','110–120 km/h'],['--v3','80–110'],['--v2','50–80'],['--v1','under 50']],
+    grade:[['--up','Up (over 1%)'],['--lv','Level (within 1%)'],['--dn','Down (over 1%)']],
+    angle:[['--k0','Straight'],['--k1','1° / foundation'],['--k2','2°'],['--k4','4°'],['--k10','10°'],['--kx','Other radius']]};
+  let h=LG[ST.colour].map(([c,t])=>`<span>${ln(`var(${c})`,5)}${t}</span>`).join('');
+  if(ST.colour==='grade')h+=`<span>Up/down in the direction of travel, first hub to second (e.g. ${key(D.links[0])})</span>`;
   h+=`${DK(ST.lim)?`<span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="var(--fg)" fill-opacity=".1" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="3 2"/></svg>Hub zone (${D.zone_m} m): a route may start or end anywhere in it</span>`:`<span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.8"/></svg>${ST.lim==='any'?'Curve tighter than the link’s gentlest workable limit':'Curve tighter than the limit'}</span><span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.1" stroke-dasharray="2 2"/></svg>Same, in a hub throat (${P.approach_m} m, dashed ring)</span>`}`;
   if(ST.on.g2)h+=`<span>${ln('var(--fg)',3,'7 5')}2:8 grid path, bar = span</span>`;
   if(ST.on.g4)h+=`<span>${ln('var(--fg)',3,'1 5')}4:8 grid path</span>`;
@@ -296,6 +320,25 @@ function hstrip(r){
    <text x="${W-pr}" y="${H-5}" text-anchor="end" font-size="11" fill="var(--muted)">m above ground (solid mean over centreline, dashed over lowest ground under the deck)</text></svg>`;
 }
 
+function kit(){
+  const sec=document.getElementById('kit-s');
+  if(!DK(ST.lim)){sec.hidden=true;return}
+  sec.hidden=false;document.getElementById('kit-h').textContent='Kit usage · '+D.deck[ST.lim].title;
+  const angs=D.deck[ST.lim].kit.map(a=>Math.round(a));
+  const head=`<tr><th>Link</th><th>Straight</th>${angs.map(a=>`<th><span class="sw" style="background:var(${KCOL[a]||'--kx'});vertical-align:-1px"></span> ${a}°</th>`).join('')}<th>Curve foundations</th><th>Total turned</th><th>Up</th><th>Level</th><th>Down</th></tr>`;
+  const tot={st:0,n:Object.fromEntries(angs.map(a=>[a,0])),up:0,lv:0,dn:0};
+  const rows=D.links.map((l,i)=>{const r=l.runs[ST.lim];
+    if(!r||!r.found)return `<tr><td class="lkc">${key(l)}</td><td class="none" colspan="${angs.length+6}">${r&&r.pending?'running…':r&&r.failed?'not computed':'no route'}</td></tr>`;
+    let st=0,up=0,lv=0,dn=0;const n=Object.fromEntries(angs.map(a=>[a,0]));
+    r.moves.forEach(m=>{if(m.R===0)st+=m.L;else{const a=ANG(m);n[a]=(n[a]||0)+1}
+      if(m.g>LEVEL)up+=m.L;else if(m.g<-LEVEL)dn+=m.L;else lv+=m.L});
+    tot.st+=st;tot.up+=up;tot.lv+=lv;tot.dn+=dn;angs.forEach(a=>tot.n[a]+=n[a]);
+    const cf=angs.reduce((s,a)=>s+n[a],0),turned=angs.reduce((s,a)=>s+a*n[a],0);
+    return `<tr class="${i===ST.sel?'on':''}"><td class="lkc">${key(l)}</td><td class="none">${(st/1000).toFixed(2)} km</td>${angs.map(a=>`<td class="none">${n[a]||'·'}</td>`).join('')}<td class="none">${cf}</td><td class="none">${turned}°</td><td class="none">${(up/1000).toFixed(2)} km</td><td class="none">${(lv/1000).toFixed(2)} km</td><td class="none">${(dn/1000).toFixed(2)} km</td></tr>`}).join('');
+  const cf=angs.reduce((s,a)=>s+tot.n[a],0),turned=angs.reduce((s,a)=>s+a*tot.n[a],0);
+  document.getElementById('kit').innerHTML=head+rows+`<tr><td class="lkc">All links</td><td class="none"><b>${(tot.st/1000).toFixed(2)} km</b></td>${angs.map(a=>`<td class="none"><b>${tot.n[a]}</b></td>`).join('')}<td class="none"><b>${cf}</b></td><td class="none"><b>${turned}°</b></td><td class="none"><b>${(tot.up/1000).toFixed(2)} km</b></td><td class="none"><b>${(tot.lv/1000).toFixed(2)} km</b></td><td class="none"><b>${(tot.dn/1000).toFixed(2)} km</b></td></tr>`;
+}
+
 function frontier(){
   const sec=document.getElementById('frontier-s');if(!D.deck)return;
   const ks=Object.keys(D.deck).filter(k=>D.deck[k].group==='h0').sort((a,b)=>(D.deck[a].h0??1e12)-(D.deck[b].h0??1e12));
@@ -316,9 +359,10 @@ function frontier(){
 }
 
 /* ---------- static text ---------- */
+const GF=SETS.some(s=>!DK(s));  /* page carries ground-following runs */
 const c28=D.prev.grid['2:8'].reduce((a,l)=>a+l.km,0),c48=D.prev.grid['4:8'].reduce((a,l)=>a+l.km,0),cc=D.prev.corridors.reduce((a,l)=>a+l.km,0);
 document.getElementById('flow').innerHTML=[
- ['Site picks → hubs','Eight hubs from the Phase 4 role screen (opinion weights, not repo policy). Their snapped cells are the end points of every route here.'],
+ ['Site picks → hubs',`Eight hubs from the Phase 4 role screen (opinion weights, not repo policy). ${GF?'Their snapped cells are the end points of every ground-following route; deck runs use a '+(D.zone_m||350)+' m zone around each.':'Deck runs start and end anywhere in a '+(D.zone_m||350)+' m zone around each.'}`],
  ['Corridors → nothing',`The ground-corridor network (${cc.toFixed(1)} km over ${D.prev.corridors.length} links) is shown for comparison only. It ignores grade, so it was not used as an alignment.`],
  ['Rail tool 30% → grade check',`The route tool's rail mode at 30% returned ${D.prev.railtool.length} routes, ${D.prev.railtool.filter(r=>r.valid).length} passing its own 5 m check. Here the limit is 25%, below both the tool's 30% and the wiki's figures.`],
  ['2:8 reach → link list',`The 2:8 ramp-class spanning tree (${c28.toFixed(1)} km) picked which seven pairs are routed. Its 8 m grid and water rules are reused unchanged.`],
@@ -327,13 +371,13 @@ document.getElementById('flow').innerHTML=[
 ].map(([a,b])=>`<div><b>${a}</b><span>${b}</span></div>`).join('');
 
 document.getElementById('notes').innerHTML=`
-<div><b>Track model.</b> Headings in ${P.heading_step_deg}° steps. Moves are straights of ${P.straights_m.join(', ')} m and arcs turning the fewest 5° steps that give at least ${P.min_arc_m} m. Each move is one constant-grade deck between the ground at its ends: at most ${P.max_grade*100}%, at most ${P.cut_tol_m} m under the ground, at most ${P.max_pillar_m} m above it, never over deep or unknown water. A deck more than ${P.viaduct_m} m above ground costs ${P.viaduct_cost}× its time.</div>
-<div><b>Speed rules (real-world, declared).</b> Curves: v = √(a·R), a = ${P.a_lat} m/s², no superelevation. Full speed (${P.v_max_kmh} km/h) needs ${Math.round(D.sets.R1111)} m, one 5° step per ${Math.round(D.sets.R1111*Math.PI/36)} m. Climbs: power-limited, v = K / (grade + ${P.c_roll}), K set so a train holds ${P.v_climb_floor_kmh} km/h on ${P.max_grade*100}% (the wiki's uphill floor). Downhill limited only by curves. Time averages both directions.</div>
+${GF?`<div><b>Track model.</b> Headings in ${P.heading_step_deg}° steps. Moves are straights of ${P.straights_m.join(', ')} m and arcs turning the fewest 5° steps that give at least ${P.min_arc_m} m. Each move is one constant-grade deck between the ground at its ends: at most ${P.max_grade*100}%, at most ${P.cut_tol_m} m under the ground, at most ${P.max_pillar_m} m above it, never over deep or unknown water. A deck more than ${P.viaduct_m} m above ground costs ${P.viaduct_cost}× its time.</div>`:''}
+<div><b>Speed rules (real-world, declared).</b> Curves: v = √(a·R), a = ${P.a_lat} m/s², no superelevation. Full speed (${P.v_max_kmh} km/h) needs ${Math.round((P.v_max_kmh/3.6)**2/P.a_lat)} m radius; the gentlest kit angle, 1° per foundation, is 458 m (77 km/h). Climbs: power-limited, v = K / (grade + ${P.c_roll}), K set so a train holds ${P.v_climb_floor_kmh} km/h on ${P.max_grade*100}% (the wiki's uphill floor). Downhill limited only by curves. Time averages both directions.</div>
 ${D.sets.BP5?`<div><b>5° per foundation.</b> Your blueprint: each 8 m foundation turns 5° from the last, so every curve is the same ${Math.round(D.sets.BP5)} m radius (${kmh(D.sets.BP5)} km/h), including at the hubs. Moves place whole foundations: 1, 2, 6 or 12 straight, or one rotated 5°. Ran twice at ${P.key_m} m like the rest; the two links where the runs differed (C1–S1, W2–W1) were rerun at 2 m and agree with the shown figure within 4%. The foundations set the radius: rail attached to them follows the same circle whether one rail spans 2 foundations or 20, and the 12 m minimum rail length only limits how the rail is cut along them.</div>`:''}
-<div><b>Tightest curve.</b> Each limit allows straights plus arcs of that radius or gentler from ${D.radii.map(r=>Math.round(r)).join(', ')} m. Within ${P.approach_m} m of a hub any radius is allowed, because C1 and C3 sit in pockets no large radius can leave. "Any" is the lower bound.</div>
-<div><b>Search.</b> Hybrid A*: one pose per ${P.key_m} m cell and heading; every case ran twice with that grid shifted by half a cell, the faster route is shown, * marks a disagreement over 5%. "No route" means neither run found one, not that none exists.</div>
+${GF?`<div><b>Tightest curve.</b> Each limit allows straights plus arcs of that radius or gentler from ${D.radii.map(r=>Math.round(r)).join(', ')} m. Within ${P.approach_m} m of a hub any radius is allowed, because C1 and C3 sit in pockets no large radius can leave. "Any" is the lower bound.</div>
+<div><b>Search.</b> Hybrid A*: one pose per ${P.key_m} m cell and heading; every case ran twice with that grid shifted by half a cell, the faster route is shown, * marks a disagreement over 5%. "No route" means neither run found one, not that none exists.</div>`:''}
 ${D.deck?`<div><b>Deck search (${Object.keys(D.deck).length} runs).</b> Deck height is carried along the route instead of touching the ground at every joint. Curves are flat, one foundation turned by a kit angle (radius 4 / sin(N/2)); straights of 1, 2, 6 or 12 foundations climb or fall within ${P.max_grade*100}%. No ground may rise above the deck anywhere under an 8 m foundation footprint (1 m heightfield); the deck may stand at most a ceiling height (32 m unless the run says otherwise) over the lowest ground beneath it. Height is priced, not capped: each stretch costs its time × (1 + height ÷ H₀). A hub is its neighbourhood: a ${D.zone_m} m zone, entered anywhere, arriving at most 4 m up. Braking and acceleration at ${Object.values(D.deck)[0].acc} m/s²; minutes are a speed-profile travel time (both directions, free ends), because braking from 120 to 24 km/h takes about 1.8 km, longer than most links. The search itself optimises a per-move speed-change charge, which over-rewards stepping through angles (3, 4, … 10° on successive foundations). Every deck route is rechecked against the 1 m heightfield: no clipping, lid, grade and flat curves hold. The output is a guide to direction and shape, adjusted in game.</div>`:''}
-<div><b>Checked against the 1 m ground (ground-following columns).</b> Decks are checked against 8 m cell means. Rechecked at 1 m, routes cut more than 2 m into the ground on 27–367 m each and stand up to 75 m over narrow gullies. Treat lengths and times as optimistic until the search checks decks at 1 m.</div>
+${GF?`<div><b>Checked against the 1 m ground (ground-following columns).</b> Decks are checked against 8 m cell means. Rechecked at 1 m, routes cut more than 2 m into the ground on 27–367 m each and stand up to 75 m over narrow gullies. Treat lengths and times as optimistic until the search checks decks at 1 m.</div>`:''}
 <div><b>Not modelled.</b> Vertical curves (moves follow the ground, so grade changes every move), acceleration and braking, transition spirals, station layout.</div>`;
 
 draw();
