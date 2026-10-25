@@ -32,6 +32,9 @@ RUNS = {
     'K4':   ('Kit 1·2·4·10', 'H₀ 4 m', 'Deck search, kit 1·2·4·10°, H₀ 4 m', 'h0', 4, 'k1-2-4-10_h4_l32_{link}.json'),
     'K16':  ('Kit 1·2·4·10', 'H₀ 16 m', 'Deck search, kit 1·2·4·10°, H₀ 16 m', 'h0', 16, 'k1-2-4-10_h16_l32_{link}.json'),
     'KINF': ('Kit 1·2·4·10', 'height free', 'Deck search, kit 1·2·4·10°, height unpriced', 'h0', None, 'k1-2-4-10_h1e9_l32_{link}.json'),
+    # ceiling sweep at the adopted H0 (Greg, 2026-10-25: H0 8 m, kit 1-2-4-10); K8 is its lid-32 point
+    'L64':  ('Kit 1·2·4·10', 'H₀ 8 · lid 64', 'Deck search, kit 1·2·4·10°, H₀ 8 m, lid 64 m', 'lid', 8, 'k1-2-4-10_h8_l64_{link}.json'),
+    'L128': ('Kit 1·2·4·10', 'H₀ 8 · lid 128', 'Deck search, kit 1·2·4·10°, H₀ 8 m, lid 128 m', 'lid', 8, 'k1-2-4-10_h8_l128_{link}.json'),
 }
 
 
