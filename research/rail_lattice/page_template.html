@@ -77,11 +77,12 @@ code{font-family:var(--mono);font-size:.85em}
 <div class="wrap">
   <header>
     <h1>Rail curve sweep</h1>
-    <p class="sub">All seven hub links routed at once with 5° headings. Pick the tightest curve the main line may use (a blueprint family of that radius or gentler) and the map redraws every link, coloured by speed limit. Turn on earlier layers to see what each one fed into this.</p>
+    <p class="sub">All seven hub links routed at once. Pick a run: a curve limit from the ground-following search, or a deck-search run (deck height carried, flat curves from a blueprint kit, hubs as neighbourhood zones). The map redraws every link, coloured by speed limit. Turn on earlier layers to see what each one fed into this.</p>
   </header>
 
   <div class="ctl">
-    <div class="row" id="limits" role="group" aria-label="Tightest main-line curve"><span class="lab">Tightest curve</span></div>
+    <div class="row" id="limits" role="group" aria-label="Tightest main-line curve"><span class="lab">Ground-following</span></div>
+    <div class="row" id="decks" role="group" aria-label="Deck-search runs" hidden><span class="lab">Deck search</span></div>
     <div class="row" id="ground" role="group" aria-label="Ground layer"><span class="lab">Ground</span></div>
     <div class="row" id="prev" role="group" aria-label="Earlier work"><span class="lab">Earlier work</span></div>
   </div>
@@ -103,9 +104,15 @@ code{font-family:var(--mono);font-size:.85em}
   <section class="sheet" id="sheet" aria-live="polite"></section>
 
   <section class="sheet">
-    <h2>Minutes per link by tightest main-line curve</h2>
+    <h2>Minutes per link by run</h2>
     <div class="tbl"><table id="grid"></table></div>
-    <div class="legend"><span><b class="best">Bold</b> gentlest limit that routes</span><span>— no route found</span><span>* the two search runs differ by more than 5%</span><span>Grid columns: length of the earlier 8 m ramp-class path, no curves</span></div>
+    <div class="legend"><span><b class="best">Bold</b> gentlest limit that routes</span><span>— no route found</span><span>* the two search runs differ by more than 5%</span><span>Grid columns: length of the earlier 8 m ramp-class path, no curves</span><span>Deck columns: speed-profile travel time, zone edge to zone edge; not comparable with the ground-following columns</span><span>… still running</span></div>
+  </section>
+
+  <section class="sheet" id="frontier-s" hidden>
+    <h2>Height price frontier (kit 1·2·4·10°, lid 32 m)</h2>
+    <p class="sub">Each stretch of track costs its time × (1 + height above ground ÷ H₀). Small H₀ hugs the ground and detours; large H₀ climbs and straightens. Pick where the extra minutes stop being worth the lower deck.</p>
+    <div class="tbl"><table id="frontier"></table></div>
   </section>
 
   <section class="sheet">
@@ -122,16 +129,17 @@ const NS="http://www.w3.org/2000/svg",svg=document.getElementById('map');
 const el=(t,a,p)=>{const x=document.createElementNS(NS,t);for(const k in a)x.setAttribute(k,a[k]);(p||svg).appendChild(x);return x};
 const X=e=>e,Y=n=>-n,P=D.policy;
 const SETS=Object.keys(D.sets);
+const DK=s=>!!(D.deck&&D.deck[s]);
 const kmh=r=>r===0?null:Math.round(Math.sqrt(P.a_lat*r)*3.6);
-const NAME=s=>s==='any'?'Any':s==='BP5'?'5° / foundation':Math.round(D.sets[s])+' m';
-const SUB=s=>s==='any'?'lower bound':s==='BP5'?`${Math.round(D.sets[s])} m · ${kmh(D.sets[s])} km/h`:kmh(D.sets[s])+' km/h';
+const NAME=s=>DK(s)?D.deck[s].name:s==='any'?'Any':s==='BP5'?'5° / foundation':Math.round(D.sets[s])+' m';
+const SUB=s=>DK(s)?D.deck[s].sub:s==='any'?'lower bound':s==='BP5'?`${Math.round(D.sets[s])} m · ${kmh(D.sets[s])} km/h`:kmh(D.sets[s])+' km/h';
 const vcol=v=>v>=110?'--v4':v>=80?'--v3':v>=50?'--v2':'--v1';
 const key=l=>l.a+'–'+l.b;
 const PAIR=(a,b)=>[a,b].sort().join('|');
 const ROLE={aluminum:'#5b7fa6',oil:'#8a5a2b',nitrogen:'#1f9bb0',electronics:'#c08a12',bulk:'#b0452c',sam:'#7a4bb5'};
-const ST={lim:D.sets.BP5?'BP5':'any',ground:'none',sel:Math.max(0,D.links.findIndex(l=>l.a==='C1'&&l.b==='C2')),on:{g2:true,g4:false,corr:false,rt:false,picks:false,nb:false}};
+const ST={lim:D.deck?(D.deck.DALL?'DALL':Object.keys(D.deck)[0]):D.sets.BP5?'BP5':'any',ground:'none',sel:Math.max(0,D.links.findIndex(l=>l.a==='C1'&&l.b==='C2')),on:{g2:true,g4:false,corr:false,rt:false,picks:false,nb:false}};
 
-function bestSet(l){for(const s of SETS){if(s==='any'||s==='BP5')continue;const r=l.runs[s];if(r&&r.found)return s}return null}
+function bestSet(l){for(const s of SETS){if(!/^R\d/.test(s))continue;const r=l.runs[s];if(r&&r.found)return s}return null}
 function run(l){return l.runs[ST.lim]}
 
 /* ---------- static layers ---------- */
@@ -139,7 +147,7 @@ el('image',{href:D.img,x:D.bm.x,y:D.bm.y,width:D.bm.w,height:D.bm.h,preserveAspe
 const RA=D.ras,IM=h=>({href:h,x:RA.x,y:RA.y,width:RA.size,height:RA.size,preserveAspectRatio:'none',style:'image-rendering:pixelated'});
 const gReach=el('g',{});el('image',IM(RA.reach),gReach);
 const gSlope=el('g',{});el('image',IM(RA.slope),gSlope);
-const G={};['nb','picks','corr','rt','g4','g2','route','spot','hub'].forEach(k=>G[k]=el('g',{}));
+const G={};['nb','picks','corr','rt','g4','g2','zone','route','spot','hub'].forEach(k=>G[k]=el('g',{}));
 const pl=(pts,attr,g)=>el('polyline',Object.assign({points:pts.map(p=>X(p[0])+','+Y(p[1])).join(' '),fill:'none','stroke-linejoin':'round','stroke-linecap':'round'},attr),g);
 
 D.prev.nbhd.forEach(p=>el('circle',{cx:X(p[0]),cy:Y(p[1]),r:22,fill:'var(--fg)','fill-opacity':.35},G.nb));
@@ -150,8 +158,10 @@ D.prev.railtool.forEach(c=>pl(c.pts,{stroke:'var(--corr)','stroke-width':16,'str
   pl(l.pts,{stroke:'var(--fg)','stroke-width':12,'stroke-dasharray':d,'stroke-opacity':.85},g);
   l.spans.forEach(s=>el('line',{x1:X(s.f[0]),y1:Y(s.f[1]),x2:X(s.t[0]),y2:Y(s.t[1]),stroke:'var(--fg)','stroke-width':44,'stroke-linecap':'round'},g));}));
 
+const gThroat=el('g',{},G.hub);
 Object.entries(D.hubs).forEach(([k,h])=>{
-  el('circle',{cx:X(h[0]),cy:Y(h[1]),r:P.approach_m,fill:'var(--fg)','fill-opacity':.05,stroke:'var(--fg)','stroke-opacity':.5,'stroke-width':6,'stroke-dasharray':'18 16'},G.hub);
+  el('circle',{cx:X(h[0]),cy:Y(h[1]),r:P.approach_m,fill:'var(--fg)','fill-opacity':.05,stroke:'var(--fg)','stroke-opacity':.5,'stroke-width':6,'stroke-dasharray':'18 16'},gThroat);
+  if(D.zone_m)el('circle',{cx:X(h[0]),cy:Y(h[1]),r:D.zone_m,fill:'var(--fg)','fill-opacity':.06,stroke:'var(--fg)','stroke-opacity':.55,'stroke-width':8,'stroke-dasharray':'30 20'},G.zone);
   el('circle',{cx:X(h[0]),cy:Y(h[1]),r:70,fill:'var(--halo)',stroke:'var(--fg)','stroke-width':22},G.hub);
   const t=el('text',{x:X(h[0])+100,y:Y(h[1])+38,'font-family':'Barlow Condensed,Arial Narrow,sans-serif','font-weight':700,'font-size':120,fill:'var(--fg)',stroke:'var(--halo)','stroke-width':26,'paint-order':'stroke'},G.hub);t.textContent=k;});
 
@@ -164,13 +174,14 @@ Object.entries(D.hubs).forEach(([k,h])=>{
 
 /* ---------- controls ---------- */
 function btn(parent,label,small,pressed,on){const b=document.createElement('button');b.type='button';b.innerHTML=label+(small?`<small>${small}</small>`:'');b.setAttribute('aria-pressed',pressed);b.onclick=on;parent.appendChild(b);return b}
-const LB={};SETS.forEach(s=>LB[s]=btn(document.getElementById('limits'),NAME(s),SUB(s),s===ST.lim,()=>{ST.lim=s;draw()}));
+const LB={};SETS.forEach(s=>LB[s]=btn(document.getElementById(DK(s)?'decks':'limits'),NAME(s),SUB(s),s===ST.lim,()=>{ST.lim=s;draw()}));
+if(D.deck)document.getElementById('decks').hidden=false;
 const GB={};[['none','None'],['reach','Reach from C1'],['slope','Slope']].forEach(([k,t])=>GB[k]=btn(document.getElementById('ground'),t,'',k===ST.ground,()=>{ST.ground=k;draw()}));
 const PB={};[['g2','2:8 grid path'],['g4','4:8 grid path'],['corr','Corridors'],['rt','Rail tool 30%'],['picks','Site picks'],['nb','Neighborhoods']].forEach(([k,t])=>PB[k]=btn(document.getElementById('prev'),t,'',ST.on[k],()=>{ST.on[k]=!ST.on[k];draw()}));
 
 /* ---------- drawing ---------- */
 function spotsFor(l,r){
-  const b=bestSet(l);if(!r||!r.found)return[];
+  const b=bestSet(l);if(!r||!r.found||DK(ST.lim))return[];
   const lim=ST.lim==='any'?(b?D.sets[b]:Infinity):D.sets[ST.lim],A=D.hubs[l.a],B=D.hubs[l.b];
   const out=[];let d=0;
   r.moves.forEach(m=>{const p=m.pts[Math.floor(m.pts.length/2)];
@@ -183,22 +194,24 @@ function draw(){
   Object.keys(GB).forEach(k=>GB[k].setAttribute('aria-pressed',k===ST.ground));
   Object.keys(PB).forEach(k=>{PB[k].setAttribute('aria-pressed',ST.on[k]);G[k].style.display=ST.on[k]?'':'none'});
   gReach.style.display=ST.ground==='reach'?'':'none';gSlope.style.display=ST.ground==='slope'?'':'none';
+  G.zone.style.display=DK(ST.lim)?'':'none';gThroat.style.display=DK(ST.lim)?'none':'';
   G.route.innerHTML='';G.spot.innerHTML='';
   D.links.forEach((l,i)=>{const r=run(l),sel=i===ST.sel,g=el('g',{style:'cursor:pointer',opacity:sel?1:.8},G.route);
     g.addEventListener('click',()=>{ST.sel=i;draw()});
+    if(r&&r.pending)return;
     if(!r||!r.found){const A=D.hubs[l.a],B=D.hubs[l.b];
       el('line',{x1:X(A[0]),y1:Y(A[1]),x2:X(B[0]),y2:Y(B[1]),stroke:'var(--v1)','stroke-width':sel?18:12,'stroke-dasharray':'8 40','stroke-linecap':'round'},g);
       const t=el('text',{x:(X(A[0])+X(B[0]))/2,y:(Y(A[1])+Y(B[1]))/2,'text-anchor':'middle','font-family':'Barlow Condensed,Arial Narrow,sans-serif','font-weight':700,'font-size':84,fill:'var(--v1)',stroke:'var(--halo)','stroke-width':18,'paint-order':'stroke'},g);t.textContent='no route';return}
     r.moves.forEach(m=>pl(m.pts,{stroke:sel?'var(--sel)':'var(--halo)','stroke-width':sel?50:38},g));
     r.moves.forEach(m=>pl(m.pts,{stroke:`var(${vcol(m.vu)})`,'stroke-width':sel?26:20},g));
     spotsFor(l,r).forEach(s=>el('circle',{cx:X(s.p[0]),cy:Y(s.p[1]),r:s.near?36:56,fill:'none',stroke:'var(--fg)','stroke-width':s.near?8:13,'stroke-dasharray':s.near?'9 11':'none'},G.spot));});
-  legend();totals();table();sheet();
+  legend();totals();table();sheet();frontier();
 }
 
 function legend(){
   const ln=(c,w,d)=>`<svg width="30" height="10" style="width:30px"><line x1="2" y1="5" x2="28" y2="5" stroke="${c}" stroke-width="${w}" ${d?`stroke-dasharray="${d}"`:''}/></svg>`;
   let h=[['--v4','110–120 km/h'],['--v3','80–110'],['--v2','50–80'],['--v1','under 50']].map(([c,t])=>`<span>${ln(`var(${c})`,5)}${t}</span>`).join('');
-  h+=`<span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.8"/></svg>${ST.lim==='any'?'Curve tighter than the link’s gentlest workable limit':'Curve tighter than the limit'}</span><span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.1" stroke-dasharray="2 2"/></svg>Same, in a hub throat (${P.approach_m} m, dashed ring)</span>`;
+  h+=`${DK(ST.lim)?`<span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="var(--fg)" fill-opacity=".1" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="3 2"/></svg>Hub zone (${D.zone_m} m): a route may start or end anywhere in it</span>`:`<span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.8"/></svg>${ST.lim==='any'?'Curve tighter than the link’s gentlest workable limit':'Curve tighter than the limit'}</span><span><svg width="14" height="14" style="width:14px"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--fg)" stroke-width="1.1" stroke-dasharray="2 2"/></svg>Same, in a hub throat (${P.approach_m} m, dashed ring)</span>`}`;
   if(ST.on.g2)h+=`<span>${ln('var(--fg)',3,'7 5')}2:8 grid path, bar = span</span>`;
   if(ST.on.g4)h+=`<span>${ln('var(--fg)',3,'1 5')}4:8 grid path</span>`;
   if(ST.on.corr)h+=`<span>${ln('var(--corr)',5)}Corridor</span>`;
@@ -215,11 +228,11 @@ function totals(){
   const km=ok.reduce((a,r)=>a+r.km,0),mn=ok.reduce((a,r)=>a+r.minutes,0);
   const tight=D.links.reduce((a,l)=>a+spotsFor(l,run(l)).filter(s=>!s.near).length,0);
   const g2=D.prev.grid['2:8'].reduce((a,l)=>a+l.km,0);
-  document.getElementById('tot-h').textContent=ST.lim==='any'?'Network, any radius':ST.lim==='BP5'?'Network, 5° per foundation only':`Network, curves ${Math.round(D.sets[ST.lim])} m or gentler`;
+  document.getElementById('tot-h').textContent=DK(ST.lim)?D.deck[ST.lim].title:ST.lim==='any'?'Network, any radius':ST.lim==='BP5'?'Network, 5° per foundation only':`Network, curves ${Math.round(D.sets[ST.lim])} m or gentler`;
   document.getElementById('tot').innerHTML=`<div><span>Links routed</span><b>${ok.length} of ${rs.length}</b></div><div><span>Track</span><b>${km.toFixed(1)} km</b></div>
-   <div><span>Run time, all links</span><b>${mn.toFixed(1)} min</b></div><div><span>2:8 grid, for scale</span><b>${g2.toFixed(1)} km</b></div>
+   <div><span>${DK(ST.lim)?'Travel time (speed profile)':'Run time, all links'}</span><b>${mn.toFixed(1)} min</b></div>${DK(ST.lim)?`<div><span>Mean height over ground</span><b>${(ok.reduce((a,r)=>a+r.h_mean*r.km,0)/Math.max(km,1e-9)).toFixed(1)} m</b></div><div><span>Track over 8 m up</span><b>${ok.reduce((a,r)=>a+r.km_over_8m,0).toFixed(2)} km</b></div><div><span>Highest deck</span><b>${Math.max(0,...ok.map(r=>r.h_max)).toFixed(0)} m</b></div>${rs.some(r=>r&&r.pending)?`<div><span>Still running</span><b>${rs.filter(r=>r&&r.pending).length} links</b></div>`:''}`:`<div><span>2:8 grid, for scale</span><b>${g2.toFixed(1)} km</b></div>`}
    ${ST.lim==='any'?`<div><span>Main-line curves tighter than each link’s best limit</span><b>${tight}</b></div>`:''}`;
-  document.getElementById('lk').innerHTML=D.links.map((l,i)=>{const r=run(l);return `<button type="button" class="${i===ST.sel?'on':''}" data-i="${i}"><span><b>${key(l)}</b></span>${r&&r.found?`<span>${r.km.toFixed(2)} km · ${r.minutes.toFixed(2)} min</span>`:'<span class="no">no route</span>'}</button>`}).join('');
+  document.getElementById('lk').innerHTML=D.links.map((l,i)=>{const r=run(l);return `<button type="button" class="${i===ST.sel?'on':''}" data-i="${i}"><span><b>${key(l)}</b></span>${r&&r.found?`<span>${r.km.toFixed(2)} km · ${r.minutes.toFixed(2)} min</span>`:r&&r.pending?'<span class="no">running…</span>':'<span class="no">no route</span>'}</button>`}).join('');
   document.querySelectorAll('#lk button').forEach(b=>b.onclick=()=>{ST.sel=+b.dataset.i;draw()});
 }
 
@@ -228,6 +241,7 @@ function table(){
   const g4=Object.fromEntries(D.prev.grid['4:8'].map(l=>[PAIR(l.a,l.b),l.km]));
   const rows=D.links.map((l,i)=>{const b=bestSet(l);
     return `<tr class="${i===ST.sel?'on':''}"><td class="lkc">${key(l)}</td><td class="none">${l.grid_km!=null?l.grid_km.toFixed(2)+' km':'—'}</td><td class="none">${g4[PAIR(l.a,l.b)]!=null?g4[PAIR(l.a,l.b)].toFixed(2)+' km':'not a link'}</td>${SETS.map(s=>{const r=l.runs[s],c=s===ST.lim?'cur':'';
+      if(r&&r.pending)return `<td class="none ${c}">…</td>`;
       if(!r||!r.found)return `<td class="none ${c}">—</td>`;
       return `<td class="${c}"><button type="button" data-i="${i}" data-s="${s}"><span class="${s===b?'best':''}">${r.minutes.toFixed(2)}${r.unstable?'*':''}</span></button></td>`}).join('')}</tr>`}).join('');
   const tr=SETS.map(s=>{const rs=D.links.map(l=>l.runs[s]),all=rs.every(r=>r&&r.found);return `<td class="none ${s===ST.lim?'cur':''}"><b>${all?rs.reduce((a,r)=>a+r.minutes,0).toFixed(1):rs.filter(r=>r&&r.found).length+'/'+rs.length}</b></td>`}).join('');
@@ -247,23 +261,47 @@ function strip(r){
 
 function sheet(){
   const l=D.links[ST.sel],r=run(l),b=bestSet(l),any=l.runs.any,el2=document.getElementById('sheet');
-  const lab=ST.lim==='any'?'any radius':ST.lim==='BP5'?'5° per foundation only':`curves ${Math.round(D.sets[ST.lim])} m or gentler`;
+  const lab=DK(ST.lim)?D.deck[ST.lim].title:ST.lim==='any'?'any radius':ST.lim==='BP5'?'5° per foundation only':`curves ${Math.round(D.sets[ST.lim])} m or gentler`;
   const cor=D.prev.corridors.find(c=>PAIR(c.a,c.b)===PAIR(l.a,l.b)),rt=D.prev.railtool.find(c=>PAIR(c.a,c.b)===PAIR(l.a,l.b));
   const before=`<div class="spots"><div><span><b>Earlier work on this pair</b></span><span></span></div>
     <div><span>2:8 grid path (8 m cells, no curves)</span><span>${l.grid_km!=null?l.grid_km.toFixed(2)+' km':'—'}</span></div>
     <div><span>Corridor (ground graph)</span><span>${cor?cor.km.toFixed(2)+' km':'not a corridor link'}</span></div>
     <div><span>Rail tool at 30%</span><span>${rt?rt.km.toFixed(2)+' km, '+(rt.valid?'valid':'fails 5 m check'):'no ground route'}</span></div></div>`;
+  if(r&&r.pending){el2.innerHTML=`<h2>${key(l)} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${lab}</small></h2><p class="sub">This link is still running.</p>${before}`;return}
   if(!r||!r.found){el2.innerHTML=`<h2>${key(l)} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${lab}</small></h2><p class="sub">No route found with main-line curves this gentle. The gentlest limit that routes is ${b?Math.round(D.sets[b])+' m ('+kmh(D.sets[b])+' km/h)':'none in the list'}.</p>${before}`;return}
   const sp=spotsFor(l,r).filter(s=>!s.near);
   const gain=(b&&any&&any.found)?(l.runs[b].minutes-any.minutes):null;
   el2.innerHTML=`<h2>${key(l)} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${lab}</small></h2>
   <div class="stats"><div><span>Length</span><b>${r.km.toFixed(2)} km</b></div><div><span>Time</span><b>${r.minutes.toFixed(2)} min</b></div>
-  <div><span>Gentlest limit that routes</span><b>${b?Math.round(D.sets[b])+' m':'none'}</b></div><div><span>Any radius saves</span><b>${gain!=null?gain.toFixed(2)+' min':'—'}</b></div>
-  <div><span>Over 12.5% grade</span><b>${r.steep_m} m</b></div><div><span>Viaduct over 4 m</span><b>${r.viaduct_m} m</b></div></div>
-  <div class="spots"><div><span><b>Curves by radius</b></span><span>${Object.entries(r.curves).sort((a,c)=>c[0]-a[0]).map(([R,n])=>`${R} m ×${n}`).join(' · ')||'none'}</span></div>${r.unstable?`<div><span>Search runs disagree</span><span>${r.alt_minutes.map(m=>m==null?'no route':m.toFixed(2)+' min').join(' vs ')}</span></div>`:''}</div>
-  ${strip(r)}
+  ${DK(ST.lim)?`<div><span>Braking + accelerating (search's charge)</span><b>${r.speed_change!=null?r.speed_change.toFixed(2)+' min':'—'}</b></div><div><span>Mean height</span><b>${r.h_mean.toFixed(1)} m</b></div><div><span>Highest deck</span><b>${r.h_max.toFixed(0)} m</b></div>`:`<div><span>Gentlest limit that routes</span><b>${b?Math.round(D.sets[b])+' m':'none'}</b></div><div><span>Any radius saves</span><b>${gain!=null?gain.toFixed(2)+' min':'—'}</b></div>`}
+  <div><span>Over 12.5% grade</span><b>${r.steep_m} m</b></div><div><span>${DK(ST.lim)?'Deck over 4 m up':'Viaduct over 4 m'}</span><b>${r.viaduct_m} m</b></div></div>
+  <div class="spots"><div><span><b>${DK(ST.lim)?'Curve foundations by radius':'Curves by radius'}</b></span><span>${Object.entries(r.curves).sort((a,c)=>c[0]-a[0]).map(([R,n])=>`${DK(ST.lim)?Math.round(2*Math.asin(4/R)*180/Math.PI)+'° '+R+' m':R+' m'} ×${n}`).join(' · ')||'none'}</span></div>${r.unstable?`<div><span>Search runs disagree</span><span>${r.alt_minutes.map(m=>m==null?'no route':m.toFixed(2)+' min').join(' vs ')}</span></div>`:''}</div>
+  ${strip(r)}${DK(ST.lim)?hstrip(r):''}
   ${ST.lim==='any'?`<div class="spots">${sp.length?`<div><span><b>Main-line curves tighter than ${b?Math.round(D.sets[b])+' m':'every listed limit'}</b></span><span>${sp.length}</span></div>`+sp.map(s=>`<div><span>${(s.d/1000).toFixed(2)} km from ${l.a}</span><span>${Math.round(s.R)} m · ${s.v} km/h</span></div>`).join(''):`<div><span>No main-line curve here is tighter than the gentlest workable limit.</span><span></span></div>`}</div>`:''}
   ${before}`;
+}
+
+function hstrip(r){
+  const W=640,H=110,pl0=34,pr=8,pt=10,pb=22,tot=r.moves.reduce((a,m)=>a+m.L,0)||1,hm=Math.max(8,...r.moves.map(m=>m.pil));
+  const sx=s=>pl0+(W-pl0-pr)*s/tot,sy=v=>pt+(H-pt-pb)*(1-v/hm);
+  let s=0,mean='',mx='';r.moves.forEach(m=>{mean+=`${sx(s).toFixed(1)},${sy(Math.max(0,m.h)).toFixed(1)} ${sx(s+m.L).toFixed(1)},${sy(Math.max(0,m.h)).toFixed(1)} `;mx+=`${sx(s).toFixed(1)},${sy(m.pil).toFixed(1)} ${sx(s+m.L).toFixed(1)},${sy(m.pil).toFixed(1)} `;s+=m.L});
+  const ticks=[0,hm/2,hm].map(v=>`<line x1="${pl0}" x2="${W-pr}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)"/><text x="${pl0-4}" y="${sy(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(v)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Deck height above ground along the route">${ticks}
+   <polyline points="${mx}" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 3"/><polyline points="${mean}" fill="none" stroke="var(--fg)" stroke-width="1.8"/>
+   <text x="${W-pr}" y="${H-5}" text-anchor="end" font-size="11" fill="var(--muted)">m above ground (solid mean over centreline, dashed over lowest ground under the deck)</text></svg>`;
+}
+
+function frontier(){
+  const sec=document.getElementById('frontier-s');if(!D.deck)return;
+  const ks=Object.keys(D.deck).filter(k=>D.deck[k].group==='h0').sort((a,b)=>(D.deck[a].h0??1e12)-(D.deck[b].h0??1e12));
+  if(!ks.length)return;sec.hidden=false;
+  const agg=k=>{const rs=D.links.map(l=>l.runs[k]),ok=rs.filter(r=>r&&r.found),km=ok.reduce((a,r)=>a+r.km,0);
+    return {n:ok.length,pend:rs.filter(r=>r&&r.pending).length,km,mn:ok.reduce((a,r)=>a+r.minutes,0),hm:ok.reduce((a,r)=>a+r.h_mean*r.km,0)/Math.max(km,1e-9),o8:ok.reduce((a,r)=>a+r.km_over_8m,0),hx:Math.max(0,...ok.map(r=>r.h_max))}};
+  const head='<tr><th>H₀</th><th>Links</th><th>Travel time</th><th>Track</th><th>Mean height</th><th>Over 8 m up</th><th>Highest deck</th></tr>';
+  const rows=ks.map(k=>{const a=agg(k),d=D.deck[k],c=k===ST.lim?'cur':'';
+    return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.h0==null?'free':d.h0+' m'}</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
+  const t=document.getElementById('frontier');t.innerHTML=head+rows;
+  t.querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.lim=b.dataset.s;draw()});
 }
 
 /* ---------- static text ---------- */
@@ -283,7 +321,8 @@ document.getElementById('notes').innerHTML=`
 ${D.sets.BP5?`<div><b>5° per foundation.</b> Your blueprint: each 8 m foundation turns 5° from the last, so every curve is the same ${Math.round(D.sets.BP5)} m radius (${kmh(D.sets.BP5)} km/h), including at the hubs. Moves place whole foundations: 1, 2, 6 or 12 straight, or one rotated 5°. Ran twice at ${P.key_m} m like the rest; the two links where the runs differed (C1–S1, W2–W1) were rerun at 2 m and agree with the shown figure within 4%. The foundations set the radius: rail attached to them follows the same circle whether one rail spans 2 foundations or 20, and the 12 m minimum rail length only limits how the rail is cut along them.</div>`:''}
 <div><b>Tightest curve.</b> Each limit allows straights plus arcs of that radius or gentler from ${D.radii.map(r=>Math.round(r)).join(', ')} m. Within ${P.approach_m} m of a hub any radius is allowed, because C1 and C3 sit in pockets no large radius can leave. "Any" is the lower bound.</div>
 <div><b>Search.</b> Hybrid A*: one pose per ${P.key_m} m cell and heading; every case ran twice with that grid shifted by half a cell, the faster route is shown, * marks a disagreement over 5%. "No route" means neither run found one, not that none exists.</div>
-<div><b>Checked against the 1 m ground.</b> Decks are checked against 8 m cell means. Rechecked at 1 m, routes cut more than 2 m into the ground on 27–367 m each and stand up to 75 m over narrow gullies. Treat lengths and times as optimistic until the search checks decks at 1 m.</div>
+${D.deck?`<div><b>Deck search (${Object.keys(D.deck).length} runs).</b> Deck height is carried along the route instead of touching the ground at every joint. Curves are flat, one foundation turned by a kit angle (radius 4 / sin(N/2)); straights of 1, 2, 6 or 12 foundations climb or fall within ${P.max_grade*100}%. No ground may rise above the deck anywhere under an 8 m foundation footprint (1 m heightfield); the deck may stand at most ${Object.values(D.deck)[0].lid} m over the lowest ground beneath it. Height is priced, not capped: each stretch costs its time × (1 + height ÷ H₀). A hub is its neighbourhood: a ${D.zone_m} m zone, entered anywhere, arriving at most 4 m up. Braking and acceleration at ${Object.values(D.deck)[0].acc} m/s²; minutes are a speed-profile travel time (both directions, free ends), because braking from 120 to 24 km/h takes about 1.8 km, longer than most links. The search itself optimises a per-move speed-change charge, which over-rewards stepping through angles (3, 4, … 10° on successive foundations). Every deck route is rechecked against the 1 m heightfield: no clipping, lid, grade and flat curves hold. The output is a guide to direction and shape, adjusted in game.</div>`:''}
+<div><b>Checked against the 1 m ground (ground-following columns).</b> Decks are checked against 8 m cell means. Rechecked at 1 m, routes cut more than 2 m into the ground on 27–367 m each and stand up to 75 m over narrow gullies. Treat lengths and times as optimistic until the search checks decks at 1 m.</div>
 <div><b>Not modelled.</b> Vertical curves (moves follow the ground, so grade changes every move), acceleration and braking, transition spirals, station layout.</div>`;
 
 draw();
