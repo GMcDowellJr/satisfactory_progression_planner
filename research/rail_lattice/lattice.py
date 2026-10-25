@@ -304,6 +304,7 @@ DECK = dict(
     hub_zone_m=350.0,          # neighbourhood radius (neighborhoods_v020.json policy radius_m)
     arrive_max_m=4.0,          # deck height over the centreline ground where a route meets a hub zone
     split_min_m=0.5,           # straight end heights closer than this are one option
+    hashed=True,               # closed set in a hash table (search_deck_h); --dense for search_deck
 )
 MAXS = 128                     # samples per move at 1 m: longest straight is 96 m
 
@@ -432,6 +433,126 @@ def search_deck(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, 
     return np.int64(-1), exp, G, PAR, X, Y, ZD, MV
 
 
+@njit(cache=True)
+def hslot(KEYS, mask, key):
+    """Open addressing, linear probing: the slot holding key, or the empty slot where it goes."""
+    h = ((key ^ (key >> 29)) * np.int64(-7046029254386353131)) & mask
+    while KEYS[h] != -1 and KEYS[h] != key:
+        h = (h + 1) & mask
+    return h
+
+
+@njit(cache=True)
+def hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE):
+    cap = 2 * len(KEYS); mask = cap - 1
+    K2 = np.full(cap, -1, np.int64); G2 = np.full(cap, np.inf, np.float32); P2 = np.full(cap, -1, np.int64)
+    X2 = np.zeros(cap, np.float32); Y2 = np.zeros(cap, np.float32); Z2 = np.zeros(cap, np.float32)
+    M2 = np.full(cap, -1, np.int16); D2 = np.zeros(cap, np.bool_)
+    for i in range(len(KEYS)):
+        if KEYS[i] != -1:
+            h = hslot(K2, mask, KEYS[i])
+            K2[h] = KEYS[i]; G2[h] = G[i]; P2[h] = PAR[i]; X2[h] = X[i]; Y2[h] = Y[i]; Z2[h] = ZD[i]
+            M2[h] = MV[i]; D2[h] = DONE[i]
+    return K2, G2, P2, X2, Y2, Z2, M2, D2
+
+
+@njit(cache=True)
+def search_deck_h(T, BL, E0, N0, B, KB, KE0, KN0, r0, c0, nr, nc, nh, SX, SY, SZ, gx, gy, gR,
+                  straights, AR, AD, AL, hstep, maxg, clr, lid, arrive, split, h0, vmax, alat, kpow, croll):
+    """search_deck with the closed set in a hash table holding only touched states (the dense arrays
+    cost 27 B per box state; at 5 deg ~13% of the box is touched, at 1 deg the dense box is ~10 GB).
+    Keys are search_deck's state indices and the heap orders on them the same way, so results
+    must be identical to search_deck: that is the regression gate. PAR holds parent keys."""
+    cap = 1 << 20; mask = cap - 1; used = 0
+    KEYS = np.full(cap, -1, np.int64); G = np.full(cap, np.inf, np.float32); PAR = np.full(cap, -1, np.int64)
+    X = np.zeros(cap, np.float32); Y = np.zeros(cap, np.float32); ZD = np.zeros(cap, np.float32)
+    MV = np.full(cap, -1, np.int16); DONE = np.zeros(cap, np.bool_)
+    HI = np.zeros(MAXS); LO = np.zeros(MAXS); G0 = np.zeros(MAXS); CZ = np.zeros(3)
+    ns = len(straights)
+    heap = [(0.0, np.int64(0))]
+    heap.pop()
+    for k in range(len(SX)):
+        cs = int((KN0 - SY[k]) / KB) - r0; cc = int((SX[k] - KE0) / KB) - c0
+        if cs < 0 or cc < 0 or cs >= nr or cc >= nc:
+            continue
+        hzn = max(0.0, math.hypot(gx - SX[k], gy - SY[k]) - gR) / vmax
+        for h in range(nh):
+            s = np.int64((cs * nc + cc) * nh + h)
+            if 2 * (used + 1) > cap:
+                KEYS, G, PAR, X, Y, ZD, MV, DONE = hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE); cap *= 2; mask = cap - 1
+            q = hslot(KEYS, mask, s)
+            if KEYS[q] == s and G[q] == 0.0:
+                continue
+            if KEYS[q] == -1:
+                used += 1
+            KEYS[q] = s; G[q] = 0.0; X[q] = SX[k]; Y[q] = SY[k]; ZD[q] = SZ[k]
+            heap.append((hzn, s))
+    heapq.heapify(heap)
+    exp = 0
+    while len(heap) > 0:
+        f, s = heapq.heappop(heap)
+        qs = hslot(KEYS, mask, s)
+        if DONE[qs]:
+            continue
+        DONE[qs] = True; exp += 1
+        x = X[qs]; y = Y[qs]; z = ZD[qs]; gs = G[qs]; th = (s % nh) * hstep
+        if math.hypot(gx - x, gy - y) <= gR:
+            g0 = z1m(T, 0, E0, N0, x, y)
+            if g0 == g0 and z - g0 <= arrive:
+                return s, exp, KEYS, mask, G, PAR, X, Y, ZD, MV
+        for i in range(ns + 2 * len(AR)):
+            if i < ns:
+                R = 0.0; d = 0.0; L = straights[i]
+            else:
+                j = (i - ns) // 2; R = AR[j]; d = AD[j] * (1.0 if (i - ns) % 2 == 0 else -1.0); L = AL[j]
+            m = sample_move(T, BL, E0, N0, B, x, y, th, R, d, L, HI, LO, G0)
+            if m < 0:
+                continue
+            c = CZ; nc_ = 0
+            if R > 0.0:
+                c[0] = z; nc_ = 1
+            else:
+                lo_b = z - maxg * L; hi_b = z + maxg * L; req = lo_b
+                for q in range(1, m + 1):
+                    fq = q / m
+                    need = z + (HI[q] + clr - z) / fq
+                    if need > req:
+                        req = need
+                if req > hi_b + 1e-9:
+                    continue
+                c[0] = req; nc_ = 1
+                if z - req > split:
+                    c[nc_] = z; nc_ += 1
+                if hi_b - max(req, z) > split:
+                    c[nc_] = hi_b; nc_ += 1
+            x1, y1, t1 = move(x, y, th, R, d, L)
+            h1 = int(round(t1 / hstep)) % nh
+            rr = int((KN0 - y1) / KB) - r0; c1 = int((x1 - KE0) / KB) - c0
+            if rr < 0 or c1 < 0 or rr >= nr or c1 >= nc:
+                continue
+            s1 = np.int64((rr * nc + c1) * nh + h1)
+            q1 = hslot(KEYS, mask, s1)
+            if KEYS[q1] == s1 and DONE[q1]:
+                continue
+            for e in range(nc_):
+                z1 = c[e]
+                ok, hm = deck_eval(m, z, z1, HI, LO, G0, clr, lid)
+                if not ok:
+                    continue
+                g = (z1 - z) / L
+                t = tcost(L, g, R, vmax, alat, kpow, croll, 0.0, 1e9, 1.0) * (1.0 + max(hm, 0.0) / h0)
+                g1 = gs + t
+                if KEYS[q1] != s1 or g1 < G[q1]:
+                    if KEYS[q1] == -1:
+                        if 2 * (used + 1) > cap:
+                            KEYS, G, PAR, X, Y, ZD, MV, DONE = hgrow(KEYS, G, PAR, X, Y, ZD, MV, DONE)
+                            cap *= 2; mask = cap - 1; q1 = hslot(KEYS, mask, s1)
+                        used += 1
+                    KEYS[q1] = s1; G[q1] = g1; PAR[q1] = s; X[q1] = x1; Y[q1] = y1; ZD[q1] = z1; MV[q1] = i * 3 + e
+                    heapq.heappush(heap, (g1 + max(0.0, math.hypot(gx - x1, gy - y1) - gR) / vmax, s1))
+    return np.int64(-1), exp, KEYS, mask, G, PAR, X, Y, ZD, MV
+
+
 def zone_seeds(T, BL, E0, N0, B, KB, hub, R):
     """One seed per key cell centre within R of the hub: deck at the highest ground under the
     footprint there (no clipping), skipping blocked or no-data cells."""
@@ -465,29 +586,37 @@ def route_deck(T, BL, E0, N0, B, a, b):
     c0 = max(0, int((min(xs) - m - KE0) / KB)); c1 = min(nk, int((max(xs) + m - KE0) / KB) + 1)
     SX, SY, SZ = zone_seeds(T, BL, E0, N0, B, KB, a, D['hub_zone_m'])
     t0 = time.time()
-    s, exp, G, PAR, X, Y, ZD, MV = search_deck(
-        T, BL, E0, N0, float(B), float(KB), KE0, KN0, r0, c0, r1 - r0, c1 - c0, nh, SX, SY, SZ,
-        float(b[0]), float(b[1]), D['hub_zone_m'], np.array(D['straights_m']), AR, AD, AL, hstep,
-        P['max_grade'], D['clearance_m'], D['lid_m'], D['arrive_max_m'], D['split_min_m'], D['h0_m'],
-        V_MAX, P['a_lat'], K_POWER, P['c_roll'])
+    args = (T, BL, E0, N0, float(B), float(KB), KE0, KN0, r0, c0, r1 - r0, c1 - c0, nh, SX, SY, SZ,
+            float(b[0]), float(b[1]), D['hub_zone_m'], np.array(D['straights_m']), AR, AD, AL, hstep,
+            P['max_grade'], D['clearance_m'], D['lid_m'], D['arrive_max_m'], D['split_min_m'], D['h0_m'],
+            V_MAX, P['a_lat'], K_POWER, P['c_roll'])
+    if D['hashed']:
+        s, exp, KEYS, mask, G, PAR, X, Y, ZD, MV = search_deck_h(*args)
+        stored = int((KEYS != -1).sum())
+        slot = lambda k: hslot(KEYS, mask, np.int64(k))
+    else:
+        s, exp, G, PAR, X, Y, ZD, MV = search_deck(*args)
+        stored = int(np.isfinite(G).sum())
+        slot = lambda k: k
     secs = time.time() - t0
     if s < 0:
-        return dict(found=False, expanded=int(exp), seeds=len(SX), secs=round(secs, 1))
+        return dict(found=False, expanded=int(exp), stored=stored, seeds=len(SX), secs=round(secs, 1))
     chain = []
     while s >= 0:
-        chain.append(int(s)); s = PAR[s]
+        chain.append(int(s)); s = PAR[slot(s)]
     chain = chain[::-1]
+    sl = {k: slot(k) for k in chain}
     ns = len(D['straights_m'])
     HI = np.zeros(MAXS); LO = np.zeros(MAXS); G0 = np.zeros(MAXS)
     moves = []
     for p, q in zip(chain, chain[1:]):
-        code = int(MV[q]); i = code // 3
+        code = int(MV[sl[q]]); i = code // 3
         if i < ns:
             R = 0.0; d = 0.0; L = D['straights_m'][i]; ang = 0
         else:
             j = (i - ns) // 2; sg = 1.0 if (i - ns) % 2 == 0 else -1.0
             R = float(AR[j]); d = float(AD[j]) * sg; L = float(AL[j]); ang = round(sg * kit[j])
-        th = (p % nh) * hstep; x, y = float(X[p]), float(Y[p]); z0, z1 = float(ZD[p]), float(ZD[q])
+        th = (p % nh) * hstep; x, y = float(X[sl[p]]), float(Y[sl[p]]); z0, z1 = float(ZD[sl[p]]), float(ZD[sl[q]])
         mm = sample_move(T, BL, E0, N0, float(B), x, y, th, R, d, L, HI, LO, G0)
         ok, hm = deck_eval(mm, z0, z1, HI, LO, G0, D['clearance_m'], D['lid_m'])
         g = (z1 - z0) / L
@@ -501,7 +630,7 @@ def route_deck(T, BL, E0, N0, B, a, b):
                           grade=round(g, 4), h_mean=round(hm, 2), h_max=round(hmax, 2), t=round(t, 2),
                           t_priced=round(t * (1 + max(hm, 0) / D['h0_m']), 2), ok=bool(ok), pts=pts))
     km = sum(m_['L'] for m_ in moves) / 1000
-    return dict(found=True, expanded=int(exp), seeds=len(SX), secs=round(secs, 1), moves=moves, km=round(km, 3),
+    return dict(found=True, expanded=int(exp), stored=stored, seeds=len(SX), secs=round(secs, 1), moves=moves, km=round(km, 3),
                 minutes=round(sum(m_['t'] for m_ in moves) / 60, 2),
                 h_mean=round(sum(m_['h_mean'] * m_['L'] for m_ in moves) / max(km * 1000, 1e-9), 2),
                 h_max=round(max(m_['h_max'] for m_ in moves), 2),
@@ -559,6 +688,7 @@ if __name__ == '__main__':
     ap.add_argument('--h0-m', type=float, help='deck: height at which a stretch counts double its time, m')
     ap.add_argument('--lid-m', type=float, help='deck: hard lid on deck height over the lowest ground, m')
     ap.add_argument('--hub-zone-m', type=float, help='deck: hub zone radius, m')
+    ap.add_argument('--dense', action='store_true', help='deck: dense closed-set arrays (regression reference)')
     ap.add_argument('--out', default='lattice.json')
     a = ap.parse_args()
     if a.deck:
@@ -570,6 +700,8 @@ if __name__ == '__main__':
             DECK['lid_m'] = a.lid_m
         if a.hub_zone_m:
             DECK['hub_zone_m'] = a.hub_zone_m
+        if a.dense:
+            DECK['hashed'] = False
         if a.key_m:
             P['key_m'] = a.key_m
         if a.key_off_m:
