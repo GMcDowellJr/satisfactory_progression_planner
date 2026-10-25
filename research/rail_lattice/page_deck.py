@@ -37,6 +37,10 @@ RUNS = {
     'L128': ('Kit 1·2·4·10', 'H₀ 8 · lid 128', 'Deck search, kit 1·2·4·10°, H₀ 8 m, lid 128 m', 'lid', 8, 'k1-2-4-10_h8_l128_{link}.json'),
 }
 
+# (run, link) -> reason a link has no output: shown as that reason, not as still running
+FAILED = {('L64', 'C1-C3'): 'out of memory (7 GB container: ~100 M states)',
+          ('L128', 'C1-C3'): 'not run: out of memory at lid 64'}
+
 
 def load_run(pattern):
     out = {}
@@ -65,7 +69,8 @@ def main():
         for l in D['links']:
             lk = f"{l['a']}-{l['b']}"
             if lk not in got:
-                l['runs'][key] = dict(found=False, pending=True); continue
+                l['runs'][key] = (dict(found=False, failed=FAILED[(key, lk)]) if (key, lk) in FAILED
+                                  else dict(found=False, pending=True)); continue
             r = got[lk][0]
             if not r['found']:
                 l['runs'][key] = dict(found=False); continue

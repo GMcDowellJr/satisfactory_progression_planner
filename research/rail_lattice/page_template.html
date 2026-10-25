@@ -106,7 +106,7 @@ code{font-family:var(--mono);font-size:.85em}
   <section class="sheet">
     <h2>Minutes per link by run</h2>
     <div class="tbl"><table id="grid"></table></div>
-    <div class="legend"><span><b class="best">Bold</b> gentlest limit that routes</span><span>— no route found</span><span>* the two search runs differ by more than 5%</span><span>Grid columns: length of the earlier 8 m ramp-class path, no curves</span><span>Deck columns: speed-profile travel time, zone edge to zone edge; not comparable with the ground-following columns</span><span>… still running</span></div>
+    <div class="legend"><span><b class="best">Bold</b> gentlest limit that routes</span><span>— no route found</span><span>* the two search runs differ by more than 5%</span><span>Grid columns: length of the earlier 8 m ramp-class path, no curves</span><span>Deck columns: speed-profile travel time, zone edge to zone edge; not comparable with the ground-following columns</span><span>… still running</span><span>n/c not computed (hover for why)</span></div>
   </section>
 
   <section class="sheet" id="frontier-s" hidden>
@@ -114,7 +114,7 @@ code{font-family:var(--mono);font-size:.85em}
     <p class="sub">Each stretch of track costs its time × (1 + height above ground ÷ H₀). Small H₀ hugs the ground and detours; large H₀ climbs and straightens. Pick where the extra minutes stop being worth the lower deck.</p>
     <div class="tbl"><table id="frontier"></table></div>
     <div id="lidwrap" hidden><h2>Ceiling sweep (kit 1·2·4·10°, H₀ 8 m)</h2>
-    <p class="sub">The ceiling is a hard limit on the deck's height over the lowest ground beneath it. Every 32 m run touched it somewhere; a higher ceiling shows what those spots cost.</p>
+    <p class="sub">The ceiling is a hard limit on the deck's height over the lowest ground beneath it. Every 32 m run touched it somewhere; a higher ceiling shows what those spots cost. Totals cover the links each row computed: where a row shows n/c, compare link by link in the minutes table above, not the totals. On the six links computed at 64 m: 10.21 min vs 10.23 at 32 m.</p>
     <div class="tbl"><table id="lids"></table></div></div>
   </section>
 
@@ -201,7 +201,7 @@ function draw(){
   G.route.innerHTML='';G.spot.innerHTML='';
   D.links.forEach((l,i)=>{const r=run(l),sel=i===ST.sel,g=el('g',{style:'cursor:pointer',opacity:sel?1:.8},G.route);
     g.addEventListener('click',()=>{ST.sel=i;draw()});
-    if(r&&r.pending)return;
+    if(r&&(r.pending||r.failed))return;
     if(!r||!r.found){const A=D.hubs[l.a],B=D.hubs[l.b];
       el('line',{x1:X(A[0]),y1:Y(A[1]),x2:X(B[0]),y2:Y(B[1]),stroke:'var(--v1)','stroke-width':sel?18:12,'stroke-dasharray':'8 40','stroke-linecap':'round'},g);
       const t=el('text',{x:(X(A[0])+X(B[0]))/2,y:(Y(A[1])+Y(B[1]))/2,'text-anchor':'middle','font-family':'Barlow Condensed,Arial Narrow,sans-serif','font-weight':700,'font-size':84,fill:'var(--v1)',stroke:'var(--halo)','stroke-width':18,'paint-order':'stroke'},g);t.textContent='no route';return}
@@ -235,7 +235,7 @@ function totals(){
   document.getElementById('tot').innerHTML=`<div><span>Links routed</span><b>${ok.length} of ${rs.length}</b></div><div><span>Track</span><b>${km.toFixed(1)} km</b></div>
    <div><span>${DK(ST.lim)?'Travel time (speed profile)':'Run time, all links'}</span><b>${mn.toFixed(1)} min</b></div>${DK(ST.lim)?`<div><span>Mean height over ground</span><b>${(ok.reduce((a,r)=>a+r.h_mean*r.km,0)/Math.max(km,1e-9)).toFixed(1)} m</b></div><div><span>Track over 8 m up</span><b>${ok.reduce((a,r)=>a+r.km_over_8m,0).toFixed(2)} km</b></div><div><span>Highest deck</span><b>${Math.max(0,...ok.map(r=>r.h_max)).toFixed(0)} m</b></div>${rs.some(r=>r&&r.pending)?`<div><span>Still running</span><b>${rs.filter(r=>r&&r.pending).length} links</b></div>`:''}`:`<div><span>2:8 grid, for scale</span><b>${g2.toFixed(1)} km</b></div>`}
    ${ST.lim==='any'?`<div><span>Main-line curves tighter than each link’s best limit</span><b>${tight}</b></div>`:''}`;
-  document.getElementById('lk').innerHTML=D.links.map((l,i)=>{const r=run(l);return `<button type="button" class="${i===ST.sel?'on':''}" data-i="${i}"><span><b>${key(l)}</b></span>${r&&r.found?`<span>${r.km.toFixed(2)} km · ${r.minutes.toFixed(2)} min</span>`:r&&r.pending?'<span class="no">running…</span>':'<span class="no">no route</span>'}</button>`}).join('');
+  document.getElementById('lk').innerHTML=D.links.map((l,i)=>{const r=run(l);return `<button type="button" class="${i===ST.sel?'on':''}" data-i="${i}"><span><b>${key(l)}</b></span>${r&&r.found?`<span>${r.km.toFixed(2)} km · ${r.minutes.toFixed(2)} min</span>`:r&&r.pending?'<span class="no">running…</span>':r&&r.failed?'<span class="no">not computed</span>':'<span class="no">no route</span>'}</button>`}).join('');
   document.querySelectorAll('#lk button').forEach(b=>b.onclick=()=>{ST.sel=+b.dataset.i;draw()});
 }
 
@@ -245,6 +245,7 @@ function table(){
   const rows=D.links.map((l,i)=>{const b=bestSet(l);
     return `<tr class="${i===ST.sel?'on':''}"><td class="lkc">${key(l)}</td><td class="none">${l.grid_km!=null?l.grid_km.toFixed(2)+' km':'—'}</td><td class="none">${g4[PAIR(l.a,l.b)]!=null?g4[PAIR(l.a,l.b)].toFixed(2)+' km':'not a link'}</td>${SETS.map(s=>{const r=l.runs[s],c=s===ST.lim?'cur':'';
       if(r&&r.pending)return `<td class="none ${c}">…</td>`;
+      if(r&&r.failed)return `<td class="none ${c}" title="${r.failed}">n/c</td>`;
       if(!r||!r.found)return `<td class="none ${c}">—</td>`;
       return `<td class="${c}"><button type="button" data-i="${i}" data-s="${s}"><span class="${s===b?'best':''}">${r.minutes.toFixed(2)}${r.unstable?'*':''}</span></button></td>`}).join('')}</tr>`}).join('');
   const tr=SETS.map(s=>{const rs=D.links.map(l=>l.runs[s]),all=rs.every(r=>r&&r.found);return `<td class="none ${s===ST.lim?'cur':''}"><b>${all?rs.reduce((a,r)=>a+r.minutes,0).toFixed(1):rs.filter(r=>r&&r.found).length+'/'+rs.length}</b></td>`}).join('');
@@ -270,6 +271,7 @@ function sheet(){
     <div><span>2:8 grid path (8 m cells, no curves)</span><span>${l.grid_km!=null?l.grid_km.toFixed(2)+' km':'—'}</span></div>
     <div><span>Corridor (ground graph)</span><span>${cor?cor.km.toFixed(2)+' km':'not a corridor link'}</span></div>
     <div><span>Rail tool at 30%</span><span>${rt?rt.km.toFixed(2)+' km, '+(rt.valid?'valid':'fails 5 m check'):'no ground route'}</span></div></div>`;
+  if(r&&r.failed){el2.innerHTML=`<h2>${key(l)} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${lab}</small></h2><p class="sub">Not computed: ${r.failed}. Totals for this run leave the link out.</p>${before}`;return}
   if(r&&r.pending){el2.innerHTML=`<h2>${key(l)} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${lab}</small></h2><p class="sub">This link is still running.</p>${before}`;return}
   if(!r||!r.found){el2.innerHTML=`<h2>${key(l)} · ${D.names[l.a]} to ${D.names[l.b]} <small style="color:var(--muted);font-weight:500">${lab}</small></h2><p class="sub">No route found with main-line curves this gentle. The gentlest limit that routes is ${b?Math.round(D.sets[b])+' m ('+kmh(D.sets[b])+' km/h)':'none in the list'}.</p>${before}`;return}
   const sp=spotsFor(l,r).filter(s=>!s.near);
@@ -300,15 +302,15 @@ function frontier(){
   if(!ks.length)return;sec.hidden=false;
   const lk=Object.keys(D.deck).filter(k=>D.deck[k].group==='lid'||(k==='K8'&&Object.values(D.deck).some(d=>d.group==='lid'))).sort((a,b)=>D.deck[a].lid-D.deck[b].lid);
   const agg=k=>{const rs=D.links.map(l=>l.runs[k]),ok=rs.filter(r=>r&&r.found),km=ok.reduce((a,r)=>a+r.km,0);
-    return {n:ok.length,pend:rs.filter(r=>r&&r.pending).length,km,mn:ok.reduce((a,r)=>a+r.minutes,0),hm:ok.reduce((a,r)=>a+r.h_mean*r.km,0)/Math.max(km,1e-9),o8:ok.reduce((a,r)=>a+r.km_over_8m,0),hx:Math.max(0,...ok.map(r=>r.h_max))}};
+    return {n:ok.length,fail:rs.filter(r=>r&&r.failed).length,pend:rs.filter(r=>r&&r.pending).length,km,mn:ok.reduce((a,r)=>a+r.minutes,0),hm:ok.reduce((a,r)=>a+r.h_mean*r.km,0)/Math.max(km,1e-9),o8:ok.reduce((a,r)=>a+r.km_over_8m,0),hx:Math.max(0,...ok.map(r=>r.h_max))}};
   const head='<tr><th>H₀</th><th>Links</th><th>Travel time</th><th>Track</th><th>Mean height</th><th>Over 8 m up</th><th>Highest deck</th></tr>';
   const rows=ks.map(k=>{const a=agg(k),d=D.deck[k],c=k===ST.lim?'cur':'';
-    return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.h0==null?'free':d.h0+' m'}</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
+    return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.h0==null?'free':d.h0+' m'}</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}${a.fail?' ('+a.fail+' n/c)':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
   const t=document.getElementById('frontier');t.innerHTML=head+rows;
   t.querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.lim=b.dataset.s;draw()});
   if(lk.length){document.getElementById('lidwrap').hidden=false;
     const lrows=lk.map(k=>{const a=agg(k),d=D.deck[k],c=k===ST.lim?'cur':'';
-      return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.lid} m</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
+      return `<tr class="${k===ST.lim?'on':''}"><td class="lkc ${c}"><button type="button" data-s="${k}" style="text-align:left">${d.lid} m</button></td><td class="none ${c}">${a.n}/7${a.pend?' (…'+a.pend+')':''}${a.fail?' ('+a.fail+' n/c)':''}</td><td class="${c}" style="padding:5px 6px">${a.mn.toFixed(1)} min</td><td class="${c}" style="padding:5px 6px">${a.km.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hm.toFixed(1)} m</td><td class="${c}" style="padding:5px 6px">${a.o8.toFixed(2)} km</td><td class="${c}" style="padding:5px 6px">${a.hx.toFixed(0)} m</td></tr>`}).join('');
     const t2=document.getElementById('lids');t2.innerHTML=head.replace('<th>H₀</th>','<th>Ceiling</th>')+lrows;
     t2.querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.lim=b.dataset.s;draw()});}
 }
