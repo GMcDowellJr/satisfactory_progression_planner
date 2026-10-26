@@ -1325,3 +1325,28 @@ Greg, 2026-10-25: only one MAM research node needs an item that cannot be
 picked up off the ground. Recorded as stated; the design note treats MAM as
 effectively run-wide on that basis. Which node, and whether "picked up"
 includes hard-drive or crash-site items, is not recorded.
+
+---
+
+## Amendment 6 — 2026-10-26. R does not scale milestone or MAM costs
+
+Appended forward-only. Nothing above is edited, A5 included.
+
+**Observed by Greg, 2026-10-26** (game 1.2.4.0 CL#502094): "R does not
+scale milestone or MAM unlocks." A schematic's purchase cost (Milestone or
+MAM research) is stated at its 1x amount under any recipe-cost multiplier.
+
+    CONFIRMED  `progression.unlocks.schematic_costs` returns unscaled costs
+               and documents them as "NOT scenario-scaled". That was the
+               repo's assumption; it is now an observation.
+    with A5.3  the recipe-cost multiplier acts on crafting recipes only:
+               not Build Gun recipes (O4), not schematic costs (this).
+               Project Assembly quantities are the separate E axis.
+
+Consequence for the multiplier difficulty design note §5.1, measured there:
+under R, milestone bills hold their item counts while the recipes that make
+those items scale. So the milestone share of factory time falls as R rises
+(phases 2–5 at 1R: 21–38%; at 2R: 9–26%).
+
+Still open: the fluid floor's unit (A5.2). The 0.25x Plastic read has not
+been taken.
