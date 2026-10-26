@@ -42,3 +42,14 @@ The rebuilt page's data and markup are identical to the published artifact
 needs at 1x: iron 505k, copper 462k, oil 314k, coal 228k, limestone 122k,
 water 100k, caterium 68k, bauxite 61k, quartz 56k, nitrogen 53k; no sulfur
 or uranium in the chain.
+
+## Amendment 2026-10-25: expand stage uses the demand-expansion engine
+
+`stage_expand` parsed the reference CSVs itself and chose recipes by its own
+sort, against the one-loader rule in AGENTS.md (review finding on PR #8). It
+now calls `demand_expansion` through `production_adapter`'s loaders (default
+route table, 1x, fluids in mL). Measured 2026-10-25, container: Phase 4 raw
+needs identical to the figures above. Phase 5 changes, because the engine
+refuses two items under the default route table where the old sort guessed a
+recipe; expand.json now lists them under UNRESOLVED. The stage is report only:
+the page does not read expand.json.

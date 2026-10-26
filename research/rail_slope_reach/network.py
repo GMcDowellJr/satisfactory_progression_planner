@@ -15,11 +15,15 @@ for cls in ('2:8','4:8'):
     g=np.abs(Z[dr:n,c1]-Z[0:n-dr,c0]).ravel()/L
     ok=~BL[0:n-dr,c0].ravel()&~BL[dr:n,c1].ravel()&np.isfinite(g)&(g<=lim)
     rows.append(a[ok]);cols.append(b[ok]);ws.append(np.full(ok.sum(),L))
-  spans=[]
+  spans=[]; seen=set()
   for k,v in BR.items():
     if not k.startswith(cls): continue
     for s in v['top']:
-      i,j=cell(*s['from_core']),cell(*s['to']); spans.append((i,j,s))
+      i,j=cell(*s['from_core']),cell(*s['to'])
+      # hubs sharing a cut-off component (W1, W2) list the same spans; added twice, the COO -> CSR
+      # sum made a span cost 3x its length instead of 1.5x (review finding on PR #8, 2026-10-25)
+      if (min(i,j),max(i,j)) in seen: continue
+      seen.add((min(i,j),max(i,j))); spans.append((i,j,s))
       rows.append(np.array([i]));cols.append(np.array([j]));ws.append(np.array([s['span_m']*1.5]))  # spans cost 1.5x length
   G=sparse.coo_matrix((np.concatenate(ws),(np.concatenate(rows),np.concatenate(cols))),shape=(n*n,n*n)).tocsr(); G=G.maximum(G.T)
   snaps=R['classes'][cls]['snaps']; keys=list(snaps); src=[snaps[k]['node'] for k in keys]

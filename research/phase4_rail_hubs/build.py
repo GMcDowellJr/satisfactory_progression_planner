@@ -31,7 +31,6 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 OUT = HERE / "out"
-REF = REPO / "planning_data/game/reference"
 PRE = REPO / "tools/site_planner_web/precomputed"
 SLOPE_OUT = REPO / "research/rail_slope_reach/out"
 CORR = REPO / "planning_data/analysis/derived/corridors/build_502094/corridors_v1"
@@ -49,40 +48,31 @@ def jload(name):
 RAW = {"Desc_OreIron_C", "Desc_OreCopper_C", "Desc_Stone_C", "Desc_Coal_C", "Desc_OreGold_C",
        "Desc_RawQuartz_C", "Desc_Sulfur_C", "Desc_OreBauxite_C", "Desc_OreUranium_C",
        "Desc_LiquidOil_C", "Desc_NitrogenGas_C", "Desc_Water_C", "Desc_SAM_C"}
-FACT = ("Constructor", "Assembler", "Manufacturer", "Smelter", "Foundry", "Refinery", "Blender",
-        "HadronCollider", "Packager", "QuantumEncoder", "Converter")
 
 
 def stage_expand():
-    rec = {r["recipe_id"]: r for r in csv.DictReader(open(REF / "recipes.csv", encoding="utf-8"))}
-    io_ = collections.defaultdict(lambda: {"in": {}, "out": {}}); names = {}
-    for r in csv.DictReader(open(REF / "recipe_io.csv", encoding="utf-8")):
-        io_[r["recipe_id"]]["in" if r["direction"] == "input" else "out"][r["item_id"]] = float(r["amount_per_cycle"])
-        names[r["item_id"]] = r["item_name"]
-    prod = collections.defaultdict(list)
-    for r in csv.DictReader(open(REF / "recipe_producers.csv", encoding="utf-8")):
-        prod[r["recipe_id"]].append(r["producer_class"])
-    by_item = collections.defaultdict(list)
-    for rid, d in io_.items():
-        if rid not in rec or rec[rid]["is_alternate"] == "true": continue
-        if not any(any(f in p for f in FACT) for p in prod[rid]): continue
-        outs = list(d["out"])
-        if outs: by_item[outs[0]].append(rid)
-    inv = {v: k for k, v in names.items()}
+    """Phase 4/5 raw demand from the demand-expansion engine (default route table, 1x, fluids in
+    mL), through production_adapter's loaders: the one-loader rule (AGENTS.md) applies here too.
+    Until 2026-10-25 this stage parsed the reference CSVs itself and picked recipes by its own
+    sort (review finding on PR #8); Phase 4 totals are identical either way, while Phase 5 now
+    reports the engine's resolved totals and lists what it refuses instead of guessing a recipe."""
+    from fractions import Fraction
+    for src in ("production_adapter", "demand_expansion"):
+        sys.path.insert(0, str(REPO / "tools" / src / "src"))
+    from production_adapter import Scenario, load, load_game_build, load_project_assembly
+    import demand_expansion as de
+    data = load(REPO); graph = de.build(data, de.DEFAULT_ROUTES)
+    ds = de.build_dataset(graph, load_project_assembly(REPO, data), load_game_build(REPO),
+                          Scenario(recipe_input_multiplier=1.0, project_assembly_requirement_multiplier=1.0,
+                                   fluid_rounding_unit="mL"), "mL")
     result = {}
     for phase in ("4", "5"):
-        tot = collections.Counter()
-        def need(item, q):
-            if item in RAW: tot[item] += q; return
-            rs = by_item.get(item)
-            if not rs: tot["UNRESOLVED:" + names.get(item, item)] += q; return
-            rid = sorted(rs, key=lambda r: (rec[r]["display_name"] != names.get(item), "Converter" in "".join(prod[r]), r))[0]
-            d = io_[rid]; k = q / d["out"][item]
-            for i, a in d["in"].items(): need(i, a * k)
-        for row in csv.DictReader(open(REF / "project_assembly_requirements.csv", encoding="utf-8")):
-            if row["phase"] == phase: need(inv[row["item_name"]], float(row["quantity_default_1x"]))
-        result[phase] = {names.get(k, k): round(v) for k, v in tot.most_common()}
-        print(f"phase {phase}:", result[phase])
+        rows = [r for r in ds.phases if str(r["phase"]) == phase and r["item_id"] in RAW]
+        tot = {r["item_name"]: round(float(Fraction(str(r["quantity_exact"])))) for r in rows}
+        tot = {k: v for k, v in sorted(tot.items(), key=lambda kv: -kv[1]) if v > 0}
+        unres = sorted({r["item_name"] for r in ds.unresolved if str(r.get("phase")) == phase})
+        result[phase] = dict(tot, **({"UNRESOLVED": unres} if unres else {}))
+        print(f"phase {phase}:", tot, f"({len(unres)} unresolved)" if unres else "")
     jdump(result, OUT / "expand.json")
 
 

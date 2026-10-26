@@ -60,3 +60,14 @@ With spans: 2:8 MST 25.5 km using a 34 m (1 m high) and an 80 m (16 m high)
 span; 4:8 MST 20.4 km using a 32 m (8 m high) span. Re-running these scripts
 from this folder reproduced the session's bridges.json and network.json
 exactly.
+
+## Amendment 2026-10-25: spans counted once
+
+`network.py` added each span once per hub listing it, and W1 and W2 share a
+cut-off component, so their spans were added twice and the COO -> CSR sum
+made them cost 3x their length instead of the declared 1.5x (review finding
+on PR #8). Spans are now de-duplicated by endpoint pair. Measured
+2026-10-25, container: the link sets are unchanged (so the seven links that
+research/rail_lattice routes are unchanged); W1-S1 is 5.42 km at 2:8 (was
+5.54) and S1-W1 5.23 km at 4:8 (was 5.27); 2:8 MST 25.38 km (was 25.5), 4:8
+20.33 km (was 20.37). Pages built before this date show the old figures.
