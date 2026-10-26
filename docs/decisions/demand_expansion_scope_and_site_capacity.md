@@ -1233,3 +1233,95 @@ Compacted Coal residue is thereby resolved by reporting rather than by a
 pin. Measured: unresolved targets fall from 44 to 41 rows under the default
 table; the sweep's "Tempered Caterium Ingot refuses 9" becomes "changes 9";
 dataset A gains a `supplied_by` column (recipe / resource / coproduct).
+
+---
+
+## Amendment 5 — 2026-10-26. In-game reads 2026-10-25/26: the sub-1x floor is 1 for solids; the fluid floor's unit is open
+
+Appended forward-only. Nothing above is edited. Source: the multiplier
+difficulty design note (claude.ai Project,
+`multiplier-difficulty-2026-10-26/multiplier-difficulty-design-2026-10-26.md`,
+observations O1–O8), Greg's in-game reads on 1.2.4.0 CL#502094. Counts below
+measured 2026-10-26 in a cloud container at master 4a32faa through
+`gamedata.load` and `Scenario.apply_input_amount`; not carried from the note.
+
+### A5.1 The floor, observed (O7) — closes §3.2.3's sub-1x item for solids
+
+    source     Greg, 2026-10-26, save at recipe 0.25x
+    recipe     Iron Rod: 1 Iron Ingot -> 1 Iron Rod
+    1x         1      0.25x unfloored  0.25 -> 0      observed  1
+
+A cost cannot read 1 at 0.25x unless something holds it at 1. **The rule for
+solid inputs is: nearest integer, half away from zero, never below 1.** The
+earlier 0.25x read "3 Iron Ingot -> 2 Iron Plate" (0.75 -> 1) agrees with it
+but rounds to 1 on its own and does not exercise the floor; this one does.
+
+    CLOSED     §3.2.3 "open: sub-1x settings diverge under the floor
+               assumption", for SOLIDS. §3.2.5's "floor unresolved" line is
+               resolved to 1 for item inputs.
+    measured   the floor binds on solids only at 0.25x: 114 item inputs
+               (83 base, 31 alternate) would otherwise round to 0. At 0.50x
+               and 0.75x no item input rounds below 1 (1 x 0.5 = 0.5 -> 1).
+
+### A5.2 Open: the floor's unit for fluids — not observed, and the repo picks one
+
+`Scenario.apply_input_amount` applies `input_amount_floor` in the unit the
+amount is stated in, so for a fluid a floor of 1 means **1 m3**, applied after
+the mL rounding A2 established. Under `input_amount_floor=1`, measured:
+
+    0.25x   31 fluid inputs lifted to 1 m3 (e.g. Plastic, Crude Oil 0.75 -> 1;
+            Residual Plastic, Water 0.5 -> 1)
+    0.50x    6 fluid inputs lifted (Packaged Nitric Acid, Rocket Fuel,
+            Smokeless Powder, 3 alternates; all 1 m3 -> 0.5 -> 1)
+    0.75x    the same 6 (0.75 -> 1)
+
+**That is an assumption, not a read.** A2 found the game rounds fluids in mL,
+its internal unit; if its floor is likewise 1 internal unit, the fluid floor
+never binds (the smallest scaled fluid on this build is 0.25 m3 = 250 mL).
+That reading is inference from A2, labelled as such. The two predictions
+differ, so this is open, and it now gates every sub-1x setting, not only 0.25x.
+
+Discriminating read, named in advance with its surface (the A1.1 pattern of
+the crossover record): **Plastic's Crude Oil input in a Refinery's recipe UI
+on a 0.25x save** — 0.75 m3 means the floor is per internal unit (does not
+bind); 1 m3 means it is per stated unit (the repo's current behaviour). At
+0.50x Plastic does not discriminate (1.5 either way).
+
+Not changed in code. The `input_amount_floor=None` default and its refusal
+below 1x stay as they are; whether O7 should make 1 the default, and in which
+unit for fluids, is Greg's call.
+
+### A5.3 Corroborations — nothing reopened, nothing moved
+
+    O4  R does not scale Build Gun recipes. Already closed 2026-09-21
+        (storage review §11.1: Constructor 2 RIP + 8 Cable at 1.25x). This
+        record never stated it; it does now. Building costs are outside
+        every scenario transform.
+    O5  At 1.25x a cost of 2 reads 3. Half-away-from-zero at a tie was
+        already observed 2026-09-21 (crossover record A1: Cable 2.5 -> 3,
+        RIP 7.5 -> 8). A third read, same rule.
+    O6  The 1.75x liquid-zeroing bug is fixed in game. Agrees with §3.2.4's
+        version argument (1.2.4.0 is after 1.2.3.0); now observed rather
+        than inferred from the patch order. R = 1.75 needs no special case.
+
+### A5.4 Power axis — observations for §3.3
+
+    O1  P applies to every powered building: miners, extractors, the AWESOME
+        Sink. Belts and lifts are unpowered. Corroborates and widens
+        site-planner record A7 (extractors), which stays as built.
+    O2  P changes consumption only, not generator output. Agrees with A7.1.
+        Consequence not yet modelled: a generator's parasitic load (water
+        extractors feeding coal) scales with P while its output does not.
+    O3  P does not change the clock-power curve (exponent 1.321929,
+        production_building_power_model §7). Clock is therefore a
+        machines-versus-power trade inside a scenario, unchanged in shape by P.
+
+§3.3's "power is not material at all" stands: none of O1–O3 touches a part
+count. They sharpen what P *does* move.
+
+### A5.5 MAM (O8)
+
+Greg, 2026-10-25: only one MAM research node needs an item that cannot be
+picked up off the ground. Recorded as stated; the design note treats MAM as
+effectively run-wide on that basis. Which node, and whether "picked up"
+includes hard-drive or crash-site items, is not recorded.
