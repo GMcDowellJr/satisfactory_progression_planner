@@ -168,3 +168,60 @@ In-game measurements (Greg, 2026-10-24) and what they fit:
 Throughput: about 100-115 k states/s (Numba, one core); 'any' runs take
 30-120 s at 4 m. Memory, not speed, bounds resolution: a 2 m full sweep
 needs 5-8 GB per link with dense arrays.
+
+## Deck-height search, 2026-10-24/25 (branch claude/rail-deck)
+
+Additive to the ground-following search above, whose tables stay
+reproducible with the commands at the top. Decided by Greg, 2026-10-24/25:
+grade 25% (manual placement is imprecise); no clipping into terrain, space
+under the rail acceptable; curves flat, only straights climb; curve angles a
+kit (adopted 1, 2, 4, 10 deg per foundation); height priced, not capped
+(adopted H0 = 8 m); hard lid 32 m; a hub is its neighbourhood (350 m zone);
+braking = acceleration = 0.3 m/s2; the output is a guide to direction and
+shape, adjusted in game, not a placement plan.
+
+    uv run --with numba --with scipy python research/rail_lattice/lattice.py --deck \
+        [links] --kit 1,2,4,10 --h0-m 8 [--lid-m 32] [--hub-zone-m 350] [--acc 0.3] [--dense]
+    uv run --with numba --with scipy python research/rail_lattice/page_deck.py
+    uv run --with numba --with scipy python research/rail_lattice/page_deck.py \
+        --only K8,K4 --out rail-kit-routes.html --title "Rail Kit Routes"
+
+page_deck.py builds the Rail Curve Sweep page from the published v4 page's
+data (saved to out/rail-curve-sweep-v4.html) plus --deck outputs; see RUNS
+there for the output file names.
+
+Model: deck height carried per state (one state per 4 m cell and heading;
+height not keyed, so pruning is lossy in height as in position); straights of
+1, 2, 6 or 12 foundations try three end heights (lowest unclipped, level,
+full climb); curves are one foundation turned N deg (radius 4 / sin(N/2)),
+flat. Checks every 1 m against the 1 m heightfield: no ground above the deck
+under an 8 m footprint (disc rasters, radius 4 + sqrt(0.5) m); deck at most
+the lid over the lowest ground beneath it. Cost: time x (1 + mean height /
+H0) plus a per-move speed-change charge (vhi - vlo)^2 / (2 a vhi). Reported
+minutes are a speed-profile travel time (forward/backward passes, both
+directions, free ends), because braking 120 -> 24 km/h takes ~1.8 km. The
+per-move charge over-rewards stepping through angles; a speed-state search
+is the open fix. Closed set in an int32 hash table (3/4 load, array heap):
+identical to the dense arrays on all 7 links; ~100 M states fit in 7 GB.
+
+Measured 2026-10-24/25, container (2 cores), single 4 m-key runs per link,
+zone edge to zone edge (not comparable with the hub-point tables above);
+every route rechecked against the 1 m heightfield (exact disc, 0.5 m
+samples) with no clipping beyond 0.03 m (the recheck's chord error):
+
+    run                  min    km     mean h  km >8 m  highest
+    5 deg, H0 8          16.03  13.43  4.6     2.88     31.6
+    kit 1-10, H0 8       13.27  12.77  3.8     1.79     31.9
+    kit 1-2-4-10, H0 4   15.16  12.95  2.8     1.31     31.0
+    kit 1-2-4-10, H0 8   14.10  13.50  3.4     1.63     30.9
+    kit 1-2-4-10, H0 16  13.70  13.11  5.3     3.06     31.9
+    kit 1-2-4-10, free   12.76  12.37  15.6    9.10     32.0
+
+    lid sweep, kit 1-2-4-10, H0 8, six links (C1-C3 out of memory at 64 m):
+    lid 32 10.23 min, 10.27 km; lid 64 and 128 both 10.21 min, 10.35 km,
+    highest 47.4 m: the lid stops binding below 64 m.
+
+Review findings on PR #9 (2026-10-25): blocked cells between 8 m samples is
+fixed here (check() and sample_move() sample every 1 m); a tight arc that
+starts inside the hub throat but ends outside it stays as is in the
+ground-following sweep (superseded by the deck search, which has no throat).
