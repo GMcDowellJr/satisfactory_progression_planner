@@ -32,6 +32,10 @@ corrected  2026-10-26 07:51: action 1 done (record A5, branch
            routes); D26–D30. 13:00: next actions refreshed; committed to
            the repo with the scratch scripts under
            research/multiplier_difficulty/.
+           2026-10-26 20:50: action 3 run (§5.10, node_ceiling.py, master
+           3fcab38). §4.4 corrected: caps give a ceiling on the "same pace"
+           endpoint, not super-linear E on "same factory". Next actions
+           refreshed.
 ```
 
 ## Above the fold
@@ -48,16 +52,20 @@ ceil (reproduced to every printed digit at all seven R values; see
 linear scalars, it compares against an invented fixed MW budget, and it
 assumes a 25% clock. Only its UI shape is kept (`lab_ui_reference.md`).
 
-**Next actions (ranked; Greg chooses).** Current as of 2026-10-26 13:00. The
+**Next actions (ranked; Greg chooses).** Current as of 2026-10-26 20:50. The
 session handoff carries the same list.
 
 1. Record §3.3 vs this tool (§7, last item): forward amendment before any
-   repo code.
+   repo code. §5.10 adds a case it should cover: a cell whose "same pace"
+   endpoint is unreachable on default nodes (k < 1) or whose plant nets
+   ≤ 0 has no ×1/1/1 figure on that endpoint; it is reported, with the
+   binding resource named.
 2. Promote to repo: a `tools/` root joint with tests that emits `grid.json`
    through `gamedata`, with pickups, generator fuels and the D30 gathering
    mix declared.
-3. Node caps / purity mix via `solve_portfolio` stage 1: the super-linear
-   end (§4.4).
+3. Node pressure on the page (§5.10): show k (how many 1/1/1-pace factories
+   the default world feeds) or only a pass/fail at k = 1. Greg's call;
+   `node_ceiling.json` holds k for every cell either way.
 4. Gathering card for factory pickups (Mycelia, slugs, remains): needs a
    declared source per pickup, since the LP's choice among free pickups is
    arbitrary.
@@ -198,6 +206,13 @@ the marginal unit cost more as E grows are exactly what's held out:
 So the current E figure is a lower bound on its effect. Node caps are the
 mechanism that's both measurable here (`solve_portfolio` stage 1) and
 likely to dominate.
+
+**Corrected 2026-10-26 20:50 (§5.10).** Node caps do not make E super-linear
+on D19's "same factory" endpoint: a fixed factory draws a fixed rate, so E
+only lengthens the run. They act on the "same pace" endpoint, where E (or R)
+raises the rate: first the cheap sockets fill, then the expensive ones, then
+a hard ceiling. §5.10 measures the ceiling. The rising cost below it (MW and
+extractors per unit as impure sockets come in) is not measured.
 
 **4.5 Power.** Manufacturing MW, plus extractor MW (D12), plus generators by
 tier (D6) with parasitic loads (O2). Generator availability by tier, from
@@ -515,6 +530,92 @@ biomass's impracticality past phase 1 visible, which the hand-fed-Leaves
 model hid. Biomass total work in ph4 at 1.25R/5P is now 8.81 (burn) and
 9.53 (biofuel); §5.6/D26's 7.81 assumed no constructors.
 
+### 5.10 Node ceiling on the default world (measured 2026-10-26 20:40, container, master 3fcab38)
+
+Script: `node_ceiling.py` (rules in its docstring). Data: `node_ceiling.json`
+(world purities) and `node_ceiling_all_normal.json` (same socket counts, every
+one normal), 8 R × 6 P × E{1,10} × 5 phases, factory plus each open
+generator. Prompted by Greg (2026-10-26): use nodes by their proportion in the
+world rather than all normal, since some combinations may be impossible on
+default nodes before shards, somersloops or augmenters.
+
+**What is measured.** `solve_portfolio` stage 1 on one site holding every
+default socket, at the highest extractor mark open at the phase's top tier
+(D12), 100% clock. The bill is the whole phase bill (PA × E + milestones +
+MAM) per minute at the reference pace T_ref, so the scale is **k**: how many
+1/1/1-pace factories the default world feeds. T_ref = §3.3's anchor T ×
+W_total/W_PA at 1/1/1 (serial, D17): ph1 6.36 h, ph2 16.54, ph3 15.43, ph4
+14.04, ph5 45.72. The script re-derives §3.3's anchor T (0.42 / 8.33 / 8.33 /
+11.11 / 33.33 h). k < 1 means the "same pace" endpoint (D19) can't be reached
+on default nodes. "Same factory" always can; it just takes longer
+(T_min = T_ref / k).
+
+**Proportion vs all-normal.** The world is richer than all-normal for most
+raws, in normal-node equivalents (2·pure + normal + ½·impure, against the
+count): iron 1.21x, limestone 1.23x, caterium 1.47x, quartz 1.32x, bauxite
+1.21x, coal 1.14x, copper 1.12x, sulfur 1.12x, oil nodes 1.10x, nitrogen wells
+1.78x. It is poorer for SAM (0.89x) and uranium (0.70x). So the world purity
+mix raises most ceilings 5–20% against all-normal. It lowers them where SAM
+binds (phase 2 at every R ≤ 1.25, where MAM's SAM costs bind) and in some
+power-bound cells. 79 of 712 E=1 cells are lower on the world than on
+all-normal. Assuming all-normal is not the pessimistic case it was taken for.
+
+**Factory ceiling (power outside the solve), world k, E=1:**
+
+| R | ph1 | ph2 | ph3 | ph4 | ph5 |
+|---|---|---|---|---|---|
+| 0.25 | 1367 | 976 | 1572 | 2039 | 1060 |
+| 1 | 246 | 82 | 68 | 11.0 | 24.4 |
+| 1.25 | 155 | 49 | 28 | 3.78 | 8.33 |
+| 1.5 | 26 | 18 | 4.95 | 1.65 | 1.86 |
+| 1.75 | 22 | 15 | 3.39 | **0.78** | **0.90** |
+| 2 | 17 | 11 | 2.42 | **0.52** | **0.52** |
+
+At 1.75R and above, phases 4–5 can't be built at the 1/1/1 pace on every
+default node, even with free power. Binding at 2R: ph4 Bauxite, Copper Ore
+and Crude Oil; ph5 Bauxite, Caterium Ore and SAM. At 1R the world feeds 11x
+the anchor pace in ph4, the tightest phase (Crude Oil binds). At E=10, k
+falls below 1 from 1.25R in ph4 (0.43) and from 1.5R in ph3–5.
+
+**Sole-source power (D27), E=1.** Each generator's fuel comes from the same
+sockets, and extractors are charged by their draw × P. The lowest R where
+k < 1:
+
+| Generator | P ≤ 1 | P2 | P5 |
+|---|---|---|---|
+| Coal | ph4–5 from 1.75R | ph4–5 from 1.75R | ph4 from 1.25R (0.86), ph5 from 1.5R, ph3 at 2R |
+| Fuel | ph4 from 1.5R (P1) or 1.75R; ph5 from 1.75R | ph4–5 from 1.5R | ph4–5 from 1.25R (0.51 / 0.70), ph3 from 1.75R |
+| Nuclear | ph4–5 from 1.75R | ph4–5 from 1.75R | ph4–5 from 1.5R (≈0.2); **unreachable at 2R** |
+| Biomass | same as factory (Leaves are a pickup) | | |
+
+The nuclear zero at 2R/5P reproduces §5.8's net ≤ 0 by a different route.
+Nuclear holds best otherwise: 1.97 at 1.25R/5P ph4, against 0.86 for coal and
+0.51 for fuel, and it is bound by Uranium (5 sockets, none pure).
+
+**"grid" cells.** In 16 cells (Fuel at 1.75–2R/5P, Nuclear at 2R/5P) the
+power row binds and no raw is at its cap: the cheap sockets are full and the
+rest aren't worth working. Checked once (2R/5P ph3 Fuel): doubling the pure
+oil sockets lifts k 1.69x, doubling the impure ones 1.00x. This is purity
+doing what the question expected: under high P, impure sockets cost twice the
+MW per unit and stop paying for themselves.
+
+**Held out (named).** Belts never bind at the top tier (Mk1 pure 120 on Mk2
+120, Mk2 pure 240 on Mk3 270, Mk3 pure 480 on Mk5 780). They would bind
+earlier in a window, which D12 doesn't model. Wells are charged one 150 MW
+pressurizer per core, averaged over the resource's satellites. Geysers are
+left out (geothermal isn't in the generator set). Water is pumped from open
+water without limit. Distance is ignored: every socket on the map is in one
+site. Pickups are dropped from the bill (D29). Raws named directly in the
+bill pass through a zero-power pseudo recipe. Nitrogen is now priced through
+wells (it was unmapped in §5.5); this affects only §5.10.
+
+**Conditioning (corrected in the run).** A first pass solved the raw bill per
+minute (scale about 1e-5) with pickups capped at 1e9. HiGHS then returned 0
+for 1.5R/5P ph5 Coal and short scales for Biomass at 5P, and the plant's
+binding report missed capped raws. Normalising the bill to T_ref (scale = k)
+and capping pickups at 1e7 made all of it regular. Every figure here is from
+the normalised run.
+
 ## 6. Repo capability map (read at 4a32faa)
 
 | Need | Present | Notes |
@@ -551,6 +652,7 @@ default profile, no hidden min/max); new joints go at `tools/` root.
 - RESOLVED D23 (for now) — **MAM: equipment as a research COST.** Greg (2026-10-26): building equipment for the player's own use stays out. Still open: six MAM nodes CONSUME equipment as their unlock cost — Nobelisk ×10/100/200/500, Spiked Rebar ×10/150/200, Rifle Cartridge ×500/1000, Object Scanner ×1. Those are spent to unlock, so they are part of the MAM bill like any part. Equipment Workshop recipes are not in the reference layer; currently unpriced and named.
 - RESOLVED D24 — **Power-plant machines in the work multiplier?** §5.5 counts generators separately. The machines and extractors that make generator fuel (and pump its water) aren't in W (§5.2), so P never raises the work multiplier. If D13 (machine count is build effort) should include the power plant, P enters W too.
 - RESOLVED D25 — **Generator display.** Every open generator is reported and none is chosen (layers report). Should the display show the set, or the cheapest per phase under a declared rule?
-- **Super-linear E (and R).** Node caps / purity mix via `solve_portfolio` stage 1 is the measurable source of decreasing returns (§4.4). Not started.
+- **Super-linear E (and R).** Node caps / purity mix via `solve_portfolio` stage 1 is the measurable source of decreasing returns (§4.4). Ceiling measured 2026-10-26 (§5.10); the rising cost below it (stage 3 at a swept fixed scale) is not measured. Whether it is worth measuring depends on the display choice (next action 3).
+- **Node ceiling scope.** Every default socket is in one site. A start-area or reachable-socket version (the whole-world idea's start biomes) would lower k; not built. Shards, somersloops and augmenters stay out of "default".
 - **Idea (Greg, 2026-10-26; not adopted): power mix.** Unlocking Fuel doesn't stop coal production, so a later version could model a mix of sources per phase rather than D27's sole-source rows.
 - **Contradiction to settle before promotion: record §3.3.** §3.3 says scenarios "may be described, never priced against each other". This tool prices every scenario against 1/1/1 (D11). D15 squared the Pareto front with §3.3's no-ordering line, but not with the no-pricing line. The likely reading is that a per-axis multiplier against a fixed reference, never ranking two non-reference scenarios, is description. That needs a forward amendment to the record saying so. Greg's call.

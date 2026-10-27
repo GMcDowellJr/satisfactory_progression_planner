@@ -26,8 +26,10 @@ from a checkout with the repo path as the first argument, e.g.
 | `grid.py` | The R×P grid (48 pairs × 5 phases) → `grid.json` | §5.8 |
 | `biomass_routes.py` | Patches `grid.json` with the D30 gathering-mix biomass routes | §5.9 |
 | `grid.json` | The page's data: `grid.py` output, patched by `biomass_routes.py` | §5.8–5.9 |
+| `node_ceiling.py` | Node ceiling k on the default world (and all-normal); sole-source power | §5.10 |
+| `node_ceiling.json`, `node_ceiling_all_normal.json` | `node_ceiling.py --grid` output (k per cell) | §5.10 |
 | `mockup_page.dc.html` | Source of the design-canvas mock-up (phone, R/P/E selector), `grid.json` embedded | §5.7–5.9 |
 
 The scripts chain by exec: `power_axis` loads `mam_bill`, `work_axis` loads
-`power_axis`, and `card_numbers`, `common_baseline` and `grid` load
+`power_axis`, and `card_numbers`, `common_baseline`, `grid` and `node_ceiling` load
 `work_axis`. Keep them in one folder.
