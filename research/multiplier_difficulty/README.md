@@ -28,9 +28,10 @@ from a checkout with the repo path as the first argument, e.g.
 | `grid.json` | The page's data: `grid.py` output, patched by `biomass_routes.py` | §5.8–5.9 |
 | `node_ceiling.py` | Node ceiling k on the default world (and all-normal); sole-source power | §5.10 |
 | `node_ceiling.json`, `node_ceiling_all_normal.json`, `node_ceiling_all_impure.json` | `node_ceiling.py --grid [--purity=...]` output (k per cell) | §5.10–5.11 |
+| `carry_forward.py` | Carry-forward power mix (D31, D32): per-phase mix, work multiplier, node check | §5.12 |
 | `plant_cutoff.py` | P above which a sole-source plant nets ≤ 0, per R and purity world | §5.11 |
 | `mockup_page.dc.html` | Source of the design-canvas mock-up (phone, R/P/E selector), `grid.json` embedded | §5.7–5.9 |
 
 The scripts chain by exec: `power_axis` loads `mam_bill`, `work_axis` loads
 `power_axis`, and `card_numbers`, `common_baseline`, `grid` and `node_ceiling` load
-`work_axis`. Keep them in one folder.
+`work_axis`; `plant_cutoff` and `carry_forward` load `node_ceiling`. Keep them in one folder.
