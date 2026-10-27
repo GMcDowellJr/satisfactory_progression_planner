@@ -27,7 +27,8 @@ from a checkout with the repo path as the first argument, e.g.
 | `biomass_routes.py` | Patches `grid.json` with the D30 gathering-mix biomass routes | §5.9 |
 | `grid.json` | The page's data: `grid.py` output, patched by `biomass_routes.py` | §5.8–5.9 |
 | `node_ceiling.py` | Node ceiling k on the default world (and all-normal); sole-source power | §5.10 |
-| `node_ceiling.json`, `node_ceiling_all_normal.json` | `node_ceiling.py --grid` output (k per cell) | §5.10 |
+| `node_ceiling.json`, `node_ceiling_all_normal.json`, `node_ceiling_all_impure.json` | `node_ceiling.py --grid [--purity=...]` output (k per cell) | §5.10–5.11 |
+| `plant_cutoff.py` | P above which a sole-source plant nets ≤ 0, per R and purity world | §5.11 |
 | `mockup_page.dc.html` | Source of the design-canvas mock-up (phone, R/P/E selector), `grid.json` embedded | §5.7–5.9 |
 
 The scripts chain by exec: `power_axis` loads `mam_bill`, `work_axis` loads

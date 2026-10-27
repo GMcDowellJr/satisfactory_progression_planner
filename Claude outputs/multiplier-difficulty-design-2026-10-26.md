@@ -36,6 +36,7 @@ corrected  2026-10-26 07:51: action 1 done (record A5, branch
            3fcab38). §4.4 corrected: caps give a ceiling on the "same pace"
            endpoint, not super-linear E on "same factory". Next actions
            refreshed.
+           2026-10-26 21:20: §5.11 (impossible-to-finish cut-offs).
 ```
 
 ## Above the fold
@@ -615,6 +616,59 @@ for 1.5R/5P ph5 Coal and short scales for Biomass at 5P, and the plant's
 binding report missed capped raws. Normalising the bill to T_ref (scale = k)
 and capping pickups at 1e7 made all of it regular. Every figure here is from
 the normalised run.
+
+### 5.11 When a phase can't be finished at all (measured 2026-10-26 21:20, container, branch claude/node-ceiling)
+
+Greg (2026-10-26): is there a mix of multipliers and node purity that makes
+the game impossible to finish, and where is the cut-off? Scripts:
+`node_ceiling.py --purity=impure` (`node_ceiling_all_impure.json`) and
+`plant_cutoff.py` (bisects P per generator, R and purity world).
+
+**k < 1 is not impossible.** It means the 1/1/1 pace can't be held, so the
+run is slower. Impossible means k = 0: no positive rate at all. With the
+factory alone (power outside the solve), k never reaches 0 in any purity
+world: the lowest is 2R ph5, at 0.52 (world), 0.46 (all-normal) and 0.23
+(all-impure). k = 0 happens only when a sole-source plant (D27) can't net
+positive power. That happens when its own extraction, fuel chain and water,
+all × P, eat its gross output.
+
+**P cut-off above which the source nets ≤ 0** (phases with the same value
+are merged):
+
+| Source | Purity | 1R | 1.5R | 1.75R | 2R |
+|---|---|---|---|---|---|
+| Nuclear (ph4–5) | world | >8 | 7.60 | 5.86 | **4.29** |
+| | all-normal | >8 | 6.20 | **4.67** | **3.29** |
+| | all-impure | >8 | **4.47** | **3.27** | **2.21** |
+| Fuel (ph3 / ph4–5) | world | >8 | >8 | >8 | >8 |
+| | all-normal | >8 | >8 | 7.69 | 7.14 |
+| | all-impure | 7.14 / >8 | 5.56 / 7.41 | **5.00** / 6.78 | **4.55** / 6.25 |
+| Coal (ph2–3 / ph4–5) | world | >8 at every R | | | |
+| | all-normal | 8.00 / 7.27 at every R | | | |
+| | all-impure | 6.67 / 5.71 at every R | | | |
+
+Bold is at or below P = 5, the top of the grid's P levels. Nuclear at 1.25R
+and below has no cut-off under 8 in any world.
+
+- Coal's cut-off doesn't depend on R, because its fuel is a raw. It checks by
+  hand: (75 MW) / ((15 coal × miner MW per unit + 45 m3 water × 20/120) ×
+  P). All-impure Mk2 gives 75 / 11.25 = 6.67, and Mk3 gives 75 / 13.125 =
+  5.71. All-normal gives 8.00 and 7.27.
+- Fuel in phase 3 has only oil extractors. From phase 4, wells add oil at an
+  averaged pressurizer charge that doesn't vary with purity, so the phase 4–5
+  cut-off is higher. The averaging is an approximation (§5.10).
+- Two solves near a cut-off had HiGHS fail after stage 1, both at a scale of
+  about 0 (1.5R ph4 Nuclear at P 4.47, Fuel at P 7.41, all-impure). These are
+  counted as k = 0.
+
+**So, in this model, the game is never impossible with a power mix.**
+Biomass on hand-fed Leaves always nets positive, and coal nets positive up
+to P ≈ 5.7 even on all-impure. What the multipliers and purity can make
+impossible is a given power source. On the default world at P = 5, that is
+nuclear from 2R. On all-impure at P = 5, it is nuclear from 1.5R and fuel in
+phase 3 from 1.75R. Biomass at scale is impractical (§5.9), which is a
+different kind of limit. Whether the game offers P above 5 hasn't been
+checked here.
 
 ## 6. Repo capability map (read at 4a32faa)
 

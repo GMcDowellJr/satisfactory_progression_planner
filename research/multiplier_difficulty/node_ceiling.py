@@ -47,13 +47,16 @@ power shards, somersloops or alien power augmenters.
 Usage: python -I node_ceiling.py <repo> [R:P:E ...]   (default: a short set)
        python -I node_ceiling.py <repo> --grid           (R x P x E{1,10})
        add --all-normal to rerun with every socket's purity set to normal
-       (same counts): the "assume all normal" baseline the question replaces
+       (same counts): the "assume all normal" baseline the question replaces;
+       --purity=impure|normal|pure sets every socket to that purity
 """
 import sys, pathlib, json, time
 here = pathlib.Path(__file__).parent
 args = sys.argv[2:]
-ALL_NORMAL = "--all-normal" in args          # same socket counts, every one normal (comparison)
-args = [a for a in args if a != "--all-normal"]
+PURITY = next((a.split("=")[1] for a in args if a.startswith("--purity=")), None)
+if "--all-normal" in args:
+    PURITY = "normal"           # same socket counts, every one normal (comparison)
+args = [a for a in args if a != "--all-normal" and not a.startswith("--purity=")]
 sys.argv = [str(here / "work_axis.py"), sys.argv[1]]
 src = open(here / "work_axis.py").read().split("base_w = {ph")[0]
 import io, contextlib
@@ -101,8 +104,8 @@ def segments(ph, P):
     for (item, kind, purity), n in sorted(world.items()):
         if item == WATER:
             continue
-        if ALL_NORMAL:
-            purity = "normal"
+        if PURITY:
+            purity = PURITY
         avail = set(open_cls.get(item, ())) & set(EMAP.get(item, ()))
         if kind == "well":
             if WELL not in avail:
@@ -264,7 +267,7 @@ if args == ["--grid"]:
                         s, b = ceiling(float(R), float(P), float(E), ph, g)
                         out[f"{R}|{P}|{E}|{ph}|{gname(g)}"] = [round(s, 4), b]
         print(f"R{R} done {time.time()-t0:.0f}s", flush=True)
-    json.dump({"t_ref_min": T_REF, "cells_are": "k", "cells": out}, open(here / ("node_ceiling_all_normal.json" if ALL_NORMAL else "node_ceiling.json"), "w", newline="\n"),
+    json.dump({"t_ref_min": T_REF, "cells_are": "k", "cells": out}, open(here / (f"node_ceiling_all_{PURITY}.json" if PURITY else "node_ceiling.json"), "w", newline="\n"),
               separators=(",", ":"))
     print("written", len(out))
 else:
