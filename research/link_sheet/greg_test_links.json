@@ -38,6 +38,15 @@
     "elevation_delta_m": -6.208610999999999,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -6.208610999999999,
+    "ridge_above_ends_m": 3.0364851907348633,
+    "ground_climb_m": 97.30000400543213,
+    "ground_drop_m": 102.2000036239624,
+    "over_water_m": 656.2851698263373,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 1.672402595719266,
     "Mk.2": 0.836201297859633,
@@ -129,6 +138,15 @@
     "elevation_delta_m": -73.182918,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -73.182918,
+    "ridge_above_ends_m": 21.962174948242186,
+    "ground_climb_m": 229.69998556375504,
+    "ground_drop_m": 301.4999867081642,
+    "over_water_m": 768.4752149760927,
+    "lifts_for_end_dz": 2,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.099940307003354,
     "Mk.2": 0.049970153501677,
@@ -212,6 +230,15 @@
     "max_edge_grade": 0.9898589849472046,
     "elevation_delta_m": 205.477925,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 205.477925,
+    "ridge_above_ends_m": 11.602061896484372,
+    "ground_climb_m": 523.9000065326691,
+    "ground_drop_m": 318.099999666214,
+    "over_water_m": 64.4635510557046,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.033116883083549785,
@@ -311,6 +338,15 @@
     "elevation_delta_m": -51.765102999999996,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -51.765102999999996,
+    "ridge_above_ends_m": 182.37998994824218,
+    "ground_climb_m": 473.40000009536743,
+    "ground_drop_m": 523.5999989509583,
+    "over_water_m": 241.1898153088862,
+    "lifts_for_end_dz": 2,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.24778696537391873,
     "Mk.2": 0.12389348268695936,
@@ -394,6 +430,15 @@
     "max_edge_grade": 0.9610441327095032,
     "elevation_delta_m": -29.341419000000002,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -29.341419000000002,
+    "ridge_above_ends_m": 6.503676618530273,
+    "ground_climb_m": 64.1999979019165,
+    "ground_drop_m": 92.6999979019165,
+    "over_water_m": 695.899419203373,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 2.0201298680965367,
@@ -479,6 +524,15 @@
     "elevation_delta_m": -251.034417,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -251.034417,
+    "ridge_above_ends_m": 0.0,
+    "ground_climb_m": 542.0000033378601,
+    "ground_drop_m": 793.1000094413757,
+    "over_water_m": 256.0469777426905,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.005341991343324675,
     "Mk.2": 0.0026709956716623375,
@@ -563,6 +617,15 @@
     "elevation_delta_m": 205.477925,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -205.477925,
+    "ridge_above_ends_m": 11.602061896484372,
+    "ground_climb_m": 318.099999666214,
+    "ground_drop_m": 523.9000065326691,
+    "over_water_m": 64.4635510557046,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.003945346324762987,
     "Mk.2": 0.0019726731623814935,
@@ -646,6 +709,15 @@
     "max_edge_grade": 0.9910008311271667,
     "elevation_delta_m": -227.901609,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -227.901609,
+    "ridge_above_ends_m": 1.302074103515622,
+    "ground_climb_m": 471.10001397132874,
+    "ground_drop_m": 698.6000196933746,
+    "over_water_m": 0.0,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.003299783553172438,
@@ -738,6 +810,15 @@
     "elevation_delta_m": -261.236638,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -261.236638,
+    "ridge_above_ends_m": 2.102061896484372,
+    "ground_climb_m": 405.499986410141,
+    "ground_drop_m": 576.7999894618988,
+    "over_water_m": 274.0704648445456,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 1.7401022709791516,
     "Mk.2": 0.8700511354895758,
@@ -829,6 +910,15 @@
     "elevation_delta_m": -257.243028,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -257.243028,
+    "ridge_above_ends_m": 0.802074103515622,
+    "ground_climb_m": 21.49998664855957,
+    "ground_drop_m": 277.49999237060547,
+    "over_water_m": 224.20767607420905,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.049675324625324674,
     "Mk.2": 0.024837662312662337,
@@ -913,6 +1003,15 @@
     "elevation_delta_m": -260.479172,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -260.479172,
+    "ridge_above_ends_m": 3.702067999999997,
+    "ground_climb_m": 544.400010228157,
+    "ground_drop_m": 804.4000159502029,
+    "over_water_m": 128.44157889991502,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.20698051927218616,
     "Mk.2": 0.10349025963609308,
@@ -996,6 +1095,15 @@
     "max_edge_grade": 0.9898589849472046,
     "elevation_delta_m": -289.999499,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -289.999499,
+    "ridge_above_ends_m": 0.0,
+    "ground_climb_m": 575.0999946594238,
+    "ground_drop_m": 865.1000022888184,
+    "over_water_m": 192.07438968513415,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.002505411227726069,
@@ -1088,6 +1196,15 @@
     "elevation_delta_m": -261.236638,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": 261.236638,
+    "ridge_above_ends_m": 2.102061896484372,
+    "ground_climb_m": 576.7999894618988,
+    "ground_drop_m": 405.499986410141,
+    "over_water_m": 274.0704648445456,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 1.0881493557161763,
     "Mk.2": 0.5440746778580882,
@@ -1171,6 +1288,15 @@
     "max_edge_grade": 0.9152031540870667,
     "elevation_delta_m": 0.7574660000000009,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 0.7574660000000009,
+    "ridge_above_ends_m": 104.48124305175782,
+    "ground_climb_m": 201.90000653266907,
+    "ground_drop_m": 290.60000920295715,
+    "over_water_m": 339.26741813135396,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.23181818158484838,
@@ -1256,6 +1382,15 @@
     "elevation_delta_m": -257.243028,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": 257.243028,
+    "ridge_above_ends_m": 0.802074103515622,
+    "ground_climb_m": 277.49999237060547,
+    "ground_drop_m": 21.49998664855957,
+    "over_water_m": 224.20767607420905,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.06623376616709957,
     "Mk.2": 0.033116883083549785,
@@ -1339,6 +1474,15 @@
     "max_edge_grade": 0.9610441327095032,
     "elevation_delta_m": -3.2361439999999995,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -3.2361439999999995,
+    "ridge_above_ends_m": 167.6450929482422,
+    "ground_climb_m": 431.69998997449875,
+    "ground_drop_m": 435.69998997449875,
+    "over_water_m": 771.4559168900234,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.2318181815848484,
@@ -1424,6 +1568,15 @@
     "elevation_delta_m": -32.756471,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": -32.756471,
+    "ridge_above_ends_m": 82.445096,
+    "ground_climb_m": 320.6999955177307,
+    "ground_drop_m": 354.69999742507935,
+    "over_water_m": 912.072275850547,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.049675324625324674,
     "Mk.2": 0.024837662312662337,
@@ -1507,6 +1660,15 @@
     "max_edge_grade": 0.9898589849472046,
     "elevation_delta_m": -260.479172,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 260.479172,
+    "ridge_above_ends_m": 3.702067999999997,
+    "ground_climb_m": 804.4000159502029,
+    "ground_drop_m": 544.400010228157,
+    "over_water_m": 128.44157889991502,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.20698051927218616,
@@ -1592,6 +1754,15 @@
     "elevation_delta_m": -3.2361439999999995,
     "unresolved": null
    },
+   "belt_line": {
+    "end_dz_m": 3.2361439999999995,
+    "ridge_above_ends_m": 167.6450929482422,
+    "ground_climb_m": 435.69998997449875,
+    "ground_drop_m": 431.69998997449875,
+    "over_water_m": 771.4559168900234,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
    "belt_share": {
     "Mk.1": 0.11590909079242424,
     "Mk.2": 0.05795454539621212,
@@ -1675,6 +1846,15 @@
     "max_edge_grade": 0.913212239742279,
     "elevation_delta_m": 105.939389,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 105.939389,
+    "ridge_above_ends_m": 182.56218105175782,
+    "ground_climb_m": 1446.0999759435654,
+    "ground_drop_m": 1340.2999728918076,
+    "over_water_m": 321.0187835961079,
+    "lifts_for_end_dz": 3,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.016558441541774892,
@@ -1766,6 +1946,15 @@
     "max_edge_grade": 0.9610441327095032,
     "elevation_delta_m": -32.756471,
     "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 32.756471,
+    "ridge_above_ends_m": 82.445096,
+    "ground_climb_m": 354.69999742507935,
+    "ground_drop_m": 320.6999955177307,
+    "over_water_m": 912.072275850547,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
    },
    "belt_share": {
     "Mk.1": 0.08279220770887447,

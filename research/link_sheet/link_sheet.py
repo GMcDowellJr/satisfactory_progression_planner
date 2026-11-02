@@ -25,6 +25,16 @@ option A, the corridor tool for distance, all modes, 1/min). Reads a
               Car 32 (per car), Drone 9, Cyber Wagon 1. Vehicle speeds are
               not in the repo's sources, so no verdict is made: the needed
               speed is reported for the player to judge
+    belt      Greg, 2026-11-02 14:48: corridors are how he would get there on
+              foot without scaling a cliff; belts with lifts go more or less
+              straight. So, beside the corridor: the straight line sampled on
+              the terrain field (corridor policy's step), with the height
+              change between the ends, the highest ground above the higher
+              end (a ridge a ground-level belt would have to lift over), the
+              total climb and drop along the ground, and the length over
+              water. Lifts = height change / the tallest lift
+              (logistics_capabilities.csv conveyor_lift height_max_m),
+              rounded up. Supports, foundations and bridging are not costed
     fluids    fluid vehicles (Fluid Truck, fluid Freight Car) carry a fluid
               inventory whose size is not resolved from the snapshot here:
               reported as unresolved, by name
@@ -80,6 +90,7 @@ def main(argv=None) -> int:
     tier = int(run["tier"])
     belts = [c for c in caps if c.capability_type == "belt" and c.unlock_tier is not None
              and c.unlock_tier <= tier]
+    lifts = [c for c in caps if c.capability_type == "conveyor_lift"]
     pipes = [c for c in caps if c.capability_type == "pipeline" and c.unlock_tier is not None
              and c.unlock_tier <= tier]
 
@@ -118,6 +129,37 @@ def main(argv=None) -> int:
                                "elevation_delta_m": d["elevation_m"] - o["elevation_m"]}
         return routes[key]
 
+    import csv as _csv
+    lift_max = max(float(r["height_max_m"]) for r in _csv.DictReader(
+        open(REPO / "planning_data/game/reference/logistics_capabilities.csv", encoding="utf-8"))
+        if r["capability_type"] == "conveyor_lift")
+
+    def profile(o, d) -> dict:
+        n = max(2, int(math.hypot(d["east_m"] - o["east_m"], d["north_m"] - o["north_m"]) / field.step_m) + 1)
+        zs, wet = [], 0
+        for k in range(n):
+            t = k / (n - 1)
+            e = o["east_m"] + t * (d["east_m"] - o["east_m"])
+            nn_ = o["north_m"] + t * (d["north_m"] - o["north_m"])
+            c = int(round((e - field.east0_m) / field.step_m))
+            r_ = int(round((field.north0_m - nn_) / field.step_m))
+            if 0 <= r_ < field.z_m.shape[0] and 0 <= c < field.z_m.shape[1]:
+                z = float(field.z_m[r_, c])
+                if not math.isnan(z):
+                    zs.append(z)
+                dep = field.water_depth_m[r_, c]
+                if not math.isnan(float(dep)) and float(dep) > 0:
+                    wet += 1
+        dz = d["elevation_m"] - o["elevation_m"]
+        climb = sum(max(0.0, b - a) for a, b in zip(zs, zs[1:]))
+        drop = sum(max(0.0, a - b) for a, b in zip(zs, zs[1:]))
+        top = max(o["elevation_m"], d["elevation_m"])
+        return {"end_dz_m": dz, "ridge_above_ends_m": max(0.0, (max(zs) if zs else top) - top),
+                "ground_climb_m": climb, "ground_drop_m": drop,
+                "over_water_m": wet * field.step_m * (math.hypot(d["east_m"] - o["east_m"], d["north_m"] - o["north_m"]) / max(1, (n - 1) * field.step_m)),
+                "lifts_for_end_dz": math.ceil(abs(dz) / lift_max) if abs(dz) > 0.5 else 0,
+                "lift_max_m": lift_max}
+
     pairs: dict[tuple[str, str], dict] = {}
     for t in run["transfers"]:
         item = data.items[t["item_id"]]
@@ -138,6 +180,7 @@ def main(argv=None) -> int:
     for (x, y), p in pairs.items():
         r = route(x, y)
         p["route"] = r
+        p["belt_line"] = profile(site[x], site[y])
         p["belt_share"] = {c.mark: p["solid_items_per_min"] / c.capacity_per_min for c in belts}
         p["pipe_share"] = {c.mark: p["fluid_m3_per_min"] / c.capacity_per_min for c in pipes}
         v = []
