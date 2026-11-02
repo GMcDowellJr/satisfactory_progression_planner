@@ -700,3 +700,69 @@ before the fix still quote the doubled figures (P5 crude 47% of the map at
 - Co-location: each raw's best neighbourhood is found on its own, and they
   may be far apart. That is the logistics step.
 - Water is reported, not thresholded (A12.2).
+
+## Amendment 13 — 2026-11-01. A declared target scale, and the first link sheet
+
+### A13.1 What raised it
+
+Greg, 2026-11-01 21:36: work out how to get resources and products around
+the map. Claude offered (22:00) two framings: A, report the logistics after
+the solve (transfers stay free in it); B, price transfers inside the solve.
+B closes the loop A12.3 keeps open (sites would be chosen by logistics).
+
+### A13.2 Decided by Greg, 2026-11-01 (holds until proven wrong)
+
+- 22:25: option A; distance by the corridor tool; all modes; the 1/min run.
+- Then, answering Claude's question (the portfolio solve only maximised the
+  scale; the 1/min step planner has no sites or transfers): a fixed-rate
+  portfolio mode, and Phase 4 for the first sheet.
+
+### A13.3 Built
+
+- `PortfolioRequest.target_scale` (contracts): positive and finite, or None.
+  When set, the scale column's upper bound is the target, stage 1 still
+  maximises, and a result short of the target raises `Infeasible` naming the
+  maximum. Never delivered short. Stages 2 to 4 are unchanged, so at a target
+  under the maximum the volume stage has slack the maximised plan does not.
+  Tests: exact delivery under the maximum, equality with the maximised plan
+  at the maximum, refusal over it, refusal of a bad target (each guard
+  mutation-checked).
+- `research/link_sheet/` (README there): the P4 run and the link sheet.
+  Research, with its rule breaks declared.
+
+### A13.4 Measured 2026-11-01 (cloud container; claude/step-planner-threshold 1e876f1 + this change)
+
+Bill: each P4 part (Assembly Director System, Magnetic Field Generator,
+Thermal Propulsion Rocket, Nuclear Pasta) at 1/min, tier 8, standard
+recipes, Miner Mk.3 / oil pumps / resource wells at 100 %, water pumped at
+every site, power from outside (no fuel moves). Sites: per raw, the
+single-raw neighborhood (350 m, min 1) with the most capacity; a second one
+while the draw is over it.
+
+- One site holding the world draws Copper Ore 2053/min against 1440 at the
+  best copper neighborhood (1.43), so Copper gets two sites; every other raw
+  fits one. 10 sites in all.
+- The 10-site plan: 36 transfers, 1362.6 items/min moved, over 29 directed
+  pairs (22 site pairs, 7 of them both ways). Per raw its draw equals the
+  one-site probe's except where the recipe mix moved: Bauxite 948 vs 316/min,
+  Water 1299 vs 351, Raw Quartz 60 vs 218. Volume comes before goal cost
+  (A1.2), so the solve trades raw draw for less moved.
+- Corridor distance 0.91 to 10.84 km, 1.21 to 1.87 times the straight line.
+  Bauxite 1's seed snaps into a 4-node component of the corridor graph: its
+  10 directed pairs have no corridor distance.
+- Belts: 5 pairs need more than one Mk.1 (heaviest Iron -> Coal, 291.7/min);
+  every pair fits one Mk.4 (61 % at most).
+- One vehicle per directed pair, needed average speed: Truck at most 48 km/h
+  (Copper Ore 2 -> Crude Oil, 10.84 km corridor), median 1.1; Drone (straight
+  line) at most 155 km/h, median 3.3, 5 pairs over 20 km/h.
+
+### A13.5 Known limits
+
+- The P4 draws here (PA parts only) do not reconcile with the step planner's
+  P4 figures (A12.4: Copper 1557/min at 1/min). Those include milestones, the
+  step build-up and the carry-forward floor; the difference is not
+  decomposed.
+- Placement-blind plan (research/link_sheet/README.md). Fluid vehicle
+  capacity is unresolved; packaging is not offered as a mode.
+- The site rule picks on capacity alone (A12.3), so distances are close to a
+  worst case.

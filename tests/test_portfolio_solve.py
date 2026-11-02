@@ -223,3 +223,40 @@ def test_extractors_must_be_powered_even_at_zero_output(backend, data):
 def test_without_power_the_response_carries_none(backend, data):
     r = backend.solve_portfolio(PortfolioRequest((_site(data, "s", **{IRON: 30.0}),), ((PLATE, 1.0),), PLATES), data)
     assert r.power is None and r.sites[0].generators == ()
+
+
+# -- A13 (Greg, 2026-11-01): a declared target scale --------------------------
+
+
+def _two(data):
+    return (_site(data, "iron", **{IRON: 60.0}), _site(data, "copper", **{COPPER: 30.0}))
+
+
+def test_a_target_under_the_maximum_is_delivered_exactly(backend, data):
+    r = backend.solve_portfolio(PortfolioRequest(_two(data), BILL, BASIC, target_scale=5.0), data)
+    assert r.scale == pytest.approx(5.0, rel=1e-9)
+    assert r.horizon_min == pytest.approx(0.2, rel=1e-9)
+    made = {}
+    for s in r.sites:
+        for item, rate in s.delivered:
+            made[item] = made.get(item, 0.0) + rate
+    assert made[PLATE] == pytest.approx(10.0, rel=1e-6) and made[WIRE] == pytest.approx(15.0, rel=1e-6)
+
+
+def test_a_target_at_the_maximum_is_the_maximised_plan(backend, data):
+    free = backend.solve_portfolio(PortfolioRequest(_two(data), BILL, BASIC), data)
+    pinned = backend.solve_portfolio(PortfolioRequest(_two(data), BILL, BASIC, target_scale=free.scale), data)
+    assert pinned.scale == pytest.approx(free.scale, rel=1e-9)
+    assert pinned.transfer_volume_per_min == pytest.approx(free.transfer_volume_per_min, abs=1e-9)
+
+
+def test_a_target_over_the_maximum_is_refused_with_the_maximum_named(backend, data):
+    from production_adapter.lp_backend import Infeasible
+    with pytest.raises(Infeasible, match=r"scale 20 at most.*target_scale is 21"):
+        backend.solve_portfolio(PortfolioRequest(_two(data), BILL, BASIC, target_scale=21.0), data)
+
+
+@pytest.mark.parametrize("bad", [0.0, -1.0, float("inf"), float("nan")])
+def test_a_target_must_be_positive_and_finite(data, bad):
+    with pytest.raises(ValueError, match="target_scale"):
+        PortfolioRequest(_two(data), BILL, BASIC, target_scale=bad)
