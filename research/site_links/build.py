@@ -32,6 +32,11 @@ the page sorts a list by corridor distance as a view, and shows ties.
               same day: "lower phase will be closer") is a different export
               per phase, not a change to this script. Each seed snaps to the
               graph like a deposit centre; the seed is a real node
+    height    Greg, 2026-11-02 14:48-14:51: belts with lifts go more or less
+              straight, so the page also measures a straight belt line: the
+              terrain field resampled every HSTRIDE cells (z in decimetres,
+              int16 little-endian, and a water flag where measured depth > 0),
+              base64. Lift height comes from logistics_capabilities.csv
     phases    raws each phase draws at 1/min (research/step_planner/
               selection_threshold_output.txt, S0, standard recipes, plant
               included), for the page's phase filter and coverage check
@@ -66,6 +71,7 @@ import site_card  # noqa: E402
 WORLD = "default_502094"
 LINK_M = 350.0
 THIN = 2
+HSTRIDE = 2
 NEIGHBORHOODS = "tools/site_planner_web/precomputed/neighborhoods_v020.json"
 CORRIDORS = "planning_data/analysis/derived/corridors/build_502094/corridors_v1"
 EXTRACTORS = {
@@ -166,7 +172,9 @@ def main(argv=None) -> int:
     for k, nb in enumerate(nb_doc["neighborhoods"]):
         d2 = (ne - nb["east_m"]) ** 2 + (nn - nb["north_m"]) ** 2
         j = int(d2.argmin())
+        seed_z = next((s.elevation_m for s in sockets if s.socket_id == nb["seed_socket_id"]), None)
         out_nb.append({"id": k, "seed": nb["seed_socket_id"], "e": round(nb["east_m"], 1), "n": round(nb["north_m"], 1),
+                       "z": None if seed_z is None else round(seed_z, 1),
                        "sockets": nb["socket_ids"], "snap": j, "snap_m": round(math.sqrt(float(d2[j])), 1)})
 
     out_edges = []
@@ -178,6 +186,19 @@ def main(argv=None) -> int:
                           round(_edge_cost(e), 1), 1 if str(e.corridor_class) == "chokepoint" else 0,
                           round(float(e.max_grade), 3), pts])
 
+    import base64
+    import csv as _csv
+    import numpy as np
+    zg = field.z_m[::HSTRIDE, ::HSTRIDE]
+    wg = field.water_depth_m[::HSTRIDE, ::HSTRIDE]
+    zi = np.where(np.isnan(zg), -32768, np.round(zg * 10)).astype("<i2")
+    wi = (np.nan_to_num(wg, nan=0.0) > 0).astype("u1")
+    lift_max = max(float(r["height_max_m"]) for r in _csv.DictReader(
+        open(REPO / "planning_data/game/reference/logistics_capabilities.csv", encoding="utf-8"))
+        if r["capability_type"] == "conveyor_lift")
+    height = {"east0_m": field.east0_m, "north0_m": field.north0_m, "step_m": field.step_m * HSTRIDE,
+              "rows": int(zi.shape[0]), "cols": int(zi.shape[1]), "nodata": -32768, "z_dm_i16le": base64.b64encode(zi.tobytes()).decode(),
+              "water_u8": base64.b64encode(wi.tobytes()).decode(), "lift_max_m": lift_max}
     items = sorted({d["item"] for d in out_dep})
     doc = {
         "schema": "site-links/0 (research)", "world": WORLD, "link_m": LINK_M,
@@ -187,6 +208,7 @@ def main(argv=None) -> int:
         "nodes": [[round(float(x)), round(float(y))] for x, y in zip(ne, nn)],
         "edges": out_edges,
         "deposits": out_dep,
+        "height": height,
         "neighborhoods": {"source": NEIGHBORHOODS, "policy": nb_doc["policy"], "items": out_nb},
     }
     a.out.write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
