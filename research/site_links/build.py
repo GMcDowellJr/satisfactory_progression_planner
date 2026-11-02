@@ -25,6 +25,13 @@ the page sorts a list by corridor distance as a view, and shows ties.
               runs Dijkstra on the same cost the tool's shortest_corridor does
     snap      each deposit's centroid to its nearest graph node, as the tool
               snaps an endpoint; the snap distance is reported
+    nbhds     the picker's precomputed neighborhoods (NEIGHBORHOODS, v0.20
+              policy, deduped; decided by Greg 2026-11-02 14:27 so plans here
+              load in the picker unchanged). The radius rides along from the
+              export's policy, not a constant here: a per-phase radius (Greg,
+              same day: "lower phase will be closer") is a different export
+              per phase, not a change to this script. Each seed snaps to the
+              graph like a deposit centre; the seed is a real node
     phases    raws each phase draws at 1/min (research/step_planner/
               selection_threshold_output.txt, S0, standard recipes, plant
               included), for the page's phase filter and coverage check
@@ -59,6 +66,7 @@ import site_card  # noqa: E402
 WORLD = "default_502094"
 LINK_M = 350.0
 THIN = 2
+NEIGHBORHOODS = "tools/site_planner_web/precomputed/neighborhoods_v020.json"
 CORRIDORS = "planning_data/analysis/derived/corridors/build_502094/corridors_v1"
 EXTRACTORS = {
     "miner": ("Build_MinerMk1_C", "Build_MinerMk2_C", "Build_MinerMk3_C"),
@@ -148,8 +156,18 @@ def main(argv=None) -> int:
             "z": [round(min(s.elevation_m for s in comp), 1), round(max(s.elevation_m for s in comp), 1)],
             "nodes": len(comp), "purity": purity, "cap": cap,
             "snap": j, "snap_m": round(math.sqrt(float(d2[j])), 1),
-            "sockets": [[round(s.east_m), round(s.north_m), s.purity[0]] for s in comp],
+            "sockets": [[round(s.east_m), round(s.north_m), s.purity[0], s.socket_id] for s in comp],
         })
+
+    nb_doc = json.loads((REPO / NEIGHBORHOODS).read_text(encoding="utf-8"))
+    if nb_doc["world_config_id"] != WORLD:
+        raise SystemExit(f"{NEIGHBORHOODS} is for {nb_doc['world_config_id']}, not {WORLD}")
+    out_nb = []
+    for k, nb in enumerate(nb_doc["neighborhoods"]):
+        d2 = (ne - nb["east_m"]) ** 2 + (nn - nb["north_m"]) ** 2
+        j = int(d2.argmin())
+        out_nb.append({"id": k, "seed": nb["seed_socket_id"], "e": round(nb["east_m"], 1), "n": round(nb["north_m"], 1),
+                       "sockets": nb["socket_ids"], "snap": j, "snap_m": round(math.sqrt(float(d2[j])), 1)})
 
     out_edges = []
     for e in edges.itertuples(index=False):
@@ -169,9 +187,10 @@ def main(argv=None) -> int:
         "nodes": [[round(float(x)), round(float(y))] for x, y in zip(ne, nn)],
         "edges": out_edges,
         "deposits": out_dep,
+        "neighborhoods": {"source": NEIGHBORHOODS, "policy": nb_doc["policy"], "items": out_nb},
     }
     a.out.write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
-    print(f"deposits {len(out_dep)}; graph nodes {len(nodes)}, edges {len(edges)}; "
+    print(f"neighborhoods {len(out_nb)} at {nb_doc['policy']['radius_m']} m; deposits {len(out_dep)}; graph nodes {len(nodes)}, edges {len(edges)}; "
           f"{a.out.stat().st_size / 1e6:.2f} MB")
     by = {}
     for d in out_dep:
