@@ -766,3 +766,76 @@ while the draw is over it.
   capacity is unresolved; packaging is not offered as a mode.
 - The site rule picks on capacity alone (A12.3), so distances are close to a
   worst case.
+
+## Amendment 14 — 2026-11-02. Sites that work together, picked forward; neighbourhoods over deposits; distance by mode
+
+### A14.1 What raised it
+
+The P4 link sheet (A13.4) picked one capacity-best site per raw, so its
+distances were near a worst case and its plan a mesh. Greg, 2026-11-02, on
+why those ten: sites suit different phases (early iron, copper and limestone
+close together; mid-game oil plus nearby raws not usually near oil), and
+late-game sites should not be spent early.
+
+### A14.2 Stated and decided by Greg, 2026-11-02 (holds until proven wrong)
+
+- 12:52: a whole-world placement is not "yet another solver". Assume the
+  default map has several options per phase; the aim is not the best site
+  but a series of sites that work with each other. Claude had flagged that
+  drift (A12.3, and in this session); that flag is withdrawn for this shape.
+- 12:58: pick forward from the starting biome, not backward from P5. The
+  link is the corridor: selecting a site (e.g. crude oil in the south-west)
+  shows the sites that would support it, with their corridors and
+  constraints; elsewhere (Blue Crater lake for oil) the other raws are much
+  closer.
+- 14:23-14:27: neighbourhoods are the sites, deposits an overlay (and the
+  reverse view); the picker's v0.20 deduped set, so plans load in the
+  picker. A later version should set the neighbourhood radius per phase
+  (lower phases closer).
+- 14:48: corridors read as the on-foot route without scaling a cliff. Belts
+  with lifts move resources more or less in a straight line.
+- 14:51: within a phase, sites without access to the phase's key products
+  should fade back (P2: steel).
+
+### A14.3 Built (research/site_links/, README in its docstrings)
+
+- `build.py`: deposits (one raw's nodes chained within 350 m; wells by
+  core), the v0.20 neighbourhoods with seed snap and elevation, the
+  corridors_v1 graph with the corridor tool's own search cost, and the
+  terrain at 32 m for the belt line. `page.py` + `page_template.html`: the
+  Site links page, as published (rebuilt byte-identical, 2026-11-02).
+- The page: pick by neighbourhood or by deposit; supporters per raw grouped
+  by deposit, with the neighbourhoods that reach each; distance basis on
+  foot (corridor), belt + lifts (straight, lifts = height change between
+  seeds / 51 m, length over water), drone (straight); a "can make" filter
+  from a product table declared in the page (standard recipes' bulk-step
+  raws); a plan with clash check, phase coverage and a copy of its sites as
+  portfolio-inputs/2 entries. Nothing ranks; lists sort by distance.
+- `research/link_sheet/sites_run.py`: the P4 1/min run over a declared site
+  list, with shared sockets resolved and reported; `link_sheet.py` adds the
+  straight belt line per pair.
+
+### A14.4 Measured 2026-11-02 (cloud container; claude/link-sheet)
+
+- Raw combinations held together (any capacity; rough distinct places at
+  350 / 700 / 1000 m): iron+copper+limestone ~21 / 13 / 8; oil+copper ~3 / 8
+  / 5; oil+copper+caterium 0 / 8 / 5; oil+copper+quartz 1 / 4 / 5. Early
+  phases have many options at any radius; late phases have few at 350 m.
+- Greg's 12-site test (greg_test_sites.json): three overlaps (one site wholly
+  inside another; two pairs sharing 2 nodes). After resolution: max 0.9935
+  of P4 per minute, copper bound (2040 held vs 2053 drawn). At that scale 29
+  transfers, 490.5 items/min (the capacity picks moved 1362.6 at 1.0).
+- 14 of its 21 site pairs route over 3x the straight line on foot. Two
+  causes, by the belt line: nb_521 sits ~250-290 m above its neighbours
+  (5-6 lifts; Greg's RN596 -> FrackingCore6: 0.98 km straight, 3.41 km on
+  foot, +257 m); the north-south split is flat and mostly water (nb_103 ->
+  FrackingCore6: 0.99 km straight, 656 m of it over water, 11.98 km on foot).
+
+### A14.5 Known limits
+
+- The product table and the lift count are the page's own simplifications:
+  lifts count only the height change between the two seeds; ridges between,
+  supports and bridging are not costed. Rail is not a basis yet.
+- Water access is not assessed beyond resource-well water.
+- Nothing yet warns when a picked site is one of the few places a later
+  phase could use (the scarcity badge proposed in this session).

@@ -1,0 +1,548 @@
+<title>Site Links</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a survey plate. Controls strip, the whole map, and a side card that
+   follows the selection: a neighbourhood (a site) or a deposit (the ground). */
+:root {
+  --ground: #eceeea; --plate: #f7f8f5; --ink: #1d2422; --muted: #5f6a66; --rule: #c9cfca;
+  --route: #c2581a; --sel: #1f4f5a; --ok: #2f6b45; --warn: #9a3412; --clash: #c0262d;
+  --map-filter: none; --map-opacity: .6;
+  --r-iron: #b5562f; --r-copper: #d98a3b; --r-lime: #9d978a; --r-coal: #3a3a3a; --r-oil: #3b2a55;
+  --r-cat: #c9a400; --r-quartz: #d873a8; --r-sulfur: #93ad25; --r-baux: #8f2f2f; --r-uran: #2f9e50;
+  --r-n2: #4fa3cc; --r-sam: #7f4fd0; --r-water: #2a66b8;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #131917; --plate: #1a2120; --ink: #e4e9e6; --muted: #98a39e; --rule: #33403c;
+    --route: #f08a43; --sel: #8fc7d1; --ok: #7cc79a; --warn: #f59e6b; --clash: #ff6b6b;
+    --map-filter: invert(1) contrast(.85); --map-opacity: .36;
+    --r-coal: #a9a9a9; --r-oil: #b39ad8; --r-baux: #d06a6a; --r-water: #6ea6ee; --r-iron: #d77650;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #131917; --plate: #1a2120; --ink: #e4e9e6; --muted: #98a39e; --rule: #33403c;
+  --route: #f08a43; --sel: #8fc7d1; --ok: #7cc79a; --warn: #f59e6b; --clash: #ff6b6b;
+  --map-filter: invert(1) contrast(.85); --map-opacity: .36;
+  --r-coal: #a9a9a9; --r-oil: #b39ad8; --r-baux: #d06a6a; --r-water: #6ea6ee; --r-iron: #d77650;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1260px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 16px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(30px, 6vw, 44px)/1 var(--display); margin: 0; }
+.lede { margin: 0; max-width: 72ch; color: var(--muted); }
+.main { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 400px; align-items: start; }
+@media (max-width: 960px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.plate { background: var(--plate); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+.controls label { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+select { font: 500 13px var(--body); color: var(--ink); background: var(--plate); border: 1px solid var(--rule); border-radius: 4px; padding: 5px 6px; }
+input[type=range] { width: 110px; accent-color: var(--route); }
+.val { font: 500 12px var(--mono); color: var(--ink); min-width: 4.5ch; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button { font: 500 13px var(--body); color: var(--muted); background: transparent; border: 0; padding: 5px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--plate); }
+.btn { font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--plate); border-color: var(--ink); }
+.btn.small { padding: 3px 8px; font-size: 12px; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
+svg.map { display: block; width: 100%; height: auto; touch-action: manipulation; cursor: pointer; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--rule); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.card { padding: 14px; display: grid; gap: 12px; }
+.card h2 { font: 700 24px/1.1 var(--display); margin: 0; }
+.card h3 { font: 600 12px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; margin: 0; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font: 500 13px var(--mono); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+.card > * { min-width: 0; }
+.held span { min-width: 0; overflow-wrap: anywhere; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.group { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.held { display: grid; gap: 3px; font-size: 13px; }
+.held div { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+.held .m { font: 500 12.5px var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.held .s { color: var(--muted); font-size: 12px; }
+.dep { display: grid; gap: 4px; padding: 6px; border-radius: 4px; border: 1px solid var(--rule); }
+.dep .top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.dep .top b { font: 500 13px var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font: 500 11.5px var(--mono); padding: 3px 6px; border-radius: 3px; border: 1px solid var(--rule); background: transparent; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip.on { border-color: var(--route); background: color-mix(in srgb, var(--route) 14%, transparent); }
+.chip .dots { display: inline-flex; gap: 2px; }
+.chip .dots i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.chip.go { border-style: dashed; }
+.pill { display: inline-block; font: 600 11px/1 var(--mono); padding: 3px 6px; border-radius: 3px; }
+.pill.ok { color: var(--ok); border: 1px solid var(--ok); }
+.pill.warn { color: var(--warn); border: 1px solid var(--warn); }
+.pill.clash { color: var(--clash); border: 1px solid var(--clash); }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+.cover { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cover td, .cover th { padding: 4px 6px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+.cover td:first-child, .cover th:first-child { text-align: left; }
+.cover th { font: 500 11px var(--mono); color: var(--muted); text-transform: uppercase; }
+.cover td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.limits { padding: 14px; display: grid; gap: 8px; }
+.limits h2 { font: 700 22px/1.1 var(--display); margin: 0; }
+.limits ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 85ch; font-size: 13.5px; }
+.controls + .controls { border-top: 0; padding-top: 0; }
+.tag { font: 600 10.5px/1 var(--mono); padding: 2px 5px; border-radius: 3px; border: 1px solid var(--rule); color: var(--muted); }
+.tag.here { color: var(--ok); border-color: var(--ok); }
+.tag.link { color: var(--route); border-color: var(--route); }
+.lbl { font-family: var(--display); font-weight: 600; paint-order: stroke; stroke: var(--plate); fill: var(--ink); pointer-events: none; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Site planner · research · neighbourhoods v0.20 + deposits</div>
+    <h1>Site links</h1>
+    <p class="lede">Neighbourhoods are the sites you pick; deposits are what is in the ground. Tap a neighbourhood to see what it holds, how much of each deposit it captures, and which deposits of the raws it lacks are within reach: on foot by terrain corridor, by belt and lifts, or by drone. "Can make" fades the sites that cannot make a phase's key product, even with a link. Switch to deposits to start from a resource and see every site that reaches it. Nothing is ranked; lists are sorted by distance.</p>
+  </header>
+
+  <div class="main">
+    <section class="plate" aria-label="Map">
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Tap the map to pick">
+          <button id="m-nb" aria-pressed="true">Pick neighbourhood</button>
+          <button id="m-dep" aria-pressed="false">Pick deposit</button>
+        </div>
+        <label for="phase">Phase
+          <select id="phase">
+            <option value="all">All raws</option>
+            <option value="1">P1</option><option value="2">P2</option><option value="3">P3</option>
+            <option value="4" selected>P4</option><option value="5">P5</option>
+          </select>
+        </label>
+        <label for="tier">Miner
+          <select id="tier"><option value="0">Mk.1</option><option value="1">Mk.2</option><option value="2" selected>Mk.3</option></select>
+        </label>
+        <label for="reach">Reach <input id="reach" type="range" min="0.5" max="8" step="0.5" value="3"><span class="val" id="reachv"></span></label>
+        <button class="btn" id="zoombtn" aria-pressed="false">Zoom to reach</button>
+      </div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Distance basis">
+          <button id="b-foot" aria-pressed="false" title="Corridor: the on-foot route without scaling a cliff">On foot</button>
+          <button id="b-belt" aria-pressed="true" title="Straight line, lifts for the height change">Belt + lifts</button>
+          <button id="b-drone" aria-pressed="false" title="Straight line">Drone</button>
+        </div>
+        <label for="product">Can make
+          <select id="product"></select>
+        </label>
+        <label for="hide"><input id="hide" type="checkbox"> Hide the rest</label>
+      </div>
+      <svg class="map" id="map" role="img" aria-label="World map of neighbourhoods and deposits"></svg>
+      <div class="legend" id="legend"></div>
+    </section>
+    <aside class="plate card" id="side" aria-live="polite"></aside>
+  </div>
+
+  <section class="plate limits">
+    <h2>What this does and does not check</h2>
+    <ul id="limits"></ul>
+  </section>
+</div>
+
+<script>
+const D = __DATA__;
+const $ = (id) => document.getElementById(id);
+const fmt = (x, d = 1) => (x == null || !isFinite(x)) ? "–" : x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const COLOR = {
+  Desc_OreIron_C: "--r-iron", Desc_OreCopper_C: "--r-copper", Desc_Stone_C: "--r-lime", Desc_Coal_C: "--r-coal",
+  Desc_LiquidOil_C: "--r-oil", Desc_OreGold_C: "--r-cat", Desc_RawQuartz_C: "--r-quartz", Desc_Sulfur_C: "--r-sulfur",
+  Desc_OreBauxite_C: "--r-baux", Desc_OreUranium_C: "--r-uran", Desc_NitrogenGas_C: "--r-n2", Desc_SAM_C: "--r-sam",
+  Desc_Water_C: "--r-water",
+};
+const col = (item) => `var(${COLOR[item] || "--muted"})`;
+const nameOf = (item) => D.items[item].name;
+const TIERS = ["Mk.1", "Mk.2", "Mk.3"];
+const NB = D.neighborhoods.items, RADIUS = D.neighborhoods.policy.radius_m;
+
+// ---- indexes ------------------------------------------------------------
+const deps = D.deposits;
+const sock = {};                          // socket id -> {e, n, p, dep, item, kind}
+for (const d of deps) for (const s of d.sockets) sock[s[3]] = { e: s[0], n: s[1], p: s[2], dep: d.id, item: d.item, kind: d.kind };
+const nbsOfDep = deps.map(() => []);      // deposit -> neighbourhoods holding >= 1 of its nodes
+for (const nb of NB) {
+  nb.ext = nb.sockets.filter((s) => sock[s]);      // extractable members (cores have no deposit)
+  nb.items = {};
+  for (const s of nb.ext) (nb.items[sock[s].item] ||= []).push(s);
+  const seen = new Set(nb.ext.map((s) => sock[s].dep));
+  for (const di of seen) nbsOfDep[di].push(nb.id);
+}
+const RATE = { m: [[30, 60, 120], [60, 120, 240], [120, 240, 480]], oil: [60, 120, 240], well: [30, 60, 120] };
+const PI = { i: 0, n: 1, p: 2 };
+const capSock = (s) => { const x = sock[s]; return x.kind === "miner" ? RATE.m[+$("tier").value][PI[x.p]] : RATE[x.kind][PI[x.p]]; };
+const capOf = (ids) => ids.reduce((t, s) => t + capSock(s), 0);
+const purTxt = (ids) => { const c = { p: 0, n: 0, i: 0 }; for (const s of ids) c[sock[s].p]++; return [["p", "P"], ["n", "N"], ["i", "I"]].filter(([k]) => c[k]).map(([k, l]) => c[k] + l).join(" "); };
+const depPur = (d) => purTxt(d.sockets.map((s) => s[3]));
+
+// ---- graph --------------------------------------------------------------
+const NN = D.nodes.length, adj = Array.from({ length: NN }, () => []);
+D.edges.forEach((e, i) => { adj[e[0]].push([e[1], i]); adj[e[1]].push([e[0], i]); });
+function dijkstra(src) {
+  const dist = new Float64Array(NN).fill(Infinity), len = new Float64Array(NN), prev = new Int32Array(NN).fill(-1);
+  dist[src] = 0; const h = [[0, src]];
+  const push = (x) => { h.push(x); let i = h.length - 1; while (i) { const p = (i - 1) >> 1; if (h[p][0] <= h[i][0]) break; [h[p], h[i]] = [h[i], h[p]]; i = p; } };
+  const pop = () => { const t = h[0], l = h.pop(); if (h.length) { h[0] = l; let i = 0; for (;;) { const a = 2 * i + 1, b = a + 1; let m = i; if (a < h.length && h[a][0] < h[m][0]) m = a; if (b < h.length && h[b][0] < h[m][0]) m = b; if (m === i) break; [h[m], h[i]] = [h[i], h[m]]; i = m; } } return t; };
+  while (h.length) { const [d, u] = pop(); if (d !== dist[u]) continue;
+    for (const [v, ei] of adj[u]) { const nd = d + D.edges[ei][3]; if (nd < dist[v]) { dist[v] = nd; len[v] = len[u] + D.edges[ei][2]; prev[v] = ei; push([nd, v]); } } }
+  return { src, dist, len, prev };
+}
+function walk(r, to) { const out = []; let v = to, g = 0; while (v !== r.src && r.prev[v] >= 0 && g++ < NN) { const e = D.edges[r.prev[v]]; out.push([r.prev[v], e[1] === v]); v = e[0] === v ? e[1] : e[0]; } return out.reverse(); }
+function route(r, from, to) {
+  if (!isFinite(r.dist[to.snap])) return null;
+  const path = walk(r, to.snap); let choke = 0;
+  for (const [ei] of path) choke += D.edges[ei][4];
+  return { km: (from.snap_m + r.len[to.snap] + to.snap_m) / 1000, choke, path };
+}
+function routePts(info, from, to) {
+  const pts = [[from.e, from.n]];
+  for (const [ei, fwd] of info.path) { const g = D.edges[ei][6]; for (const p of (fwd ? g : g.slice().reverse())) pts.push(p); }
+  pts.push([to.e, to.n]); return pts;
+}
+
+// ---- state --------------------------------------------------------------
+let mode = "nb";                               // what a map tap picks
+let basis = "belt";                            // foot | belt | drone
+// Products whose bulk step joins raws at one place (standard recipes, recipe_io.csv).
+// Declared here as the view's own table; "phase" is the phase it first matters in.
+const PRODUCTS = [
+  { id: "basics", name: "Ingots + concrete (iron, copper, limestone)", raws: ["Desc_OreIron_C", "Desc_OreCopper_C", "Desc_Stone_C"], phase: 1, src: "Recipe_IngotIron_C, Recipe_IngotCopper_C, Recipe_Concrete_C" },
+  { id: "steel", name: "Steel (iron + coal)", raws: ["Desc_OreIron_C", "Desc_Coal_C"], phase: 2, src: "Recipe_IngotSteel_C" },
+  { id: "eib", name: "Encased beams (iron + coal + limestone)", raws: ["Desc_OreIron_C", "Desc_Coal_C", "Desc_Stone_C"], phase: 2, src: "Recipe_IngotSteel_C + Recipe_Concrete_C -> Recipe_EncasedIndustrialBeam_C" },
+  { id: "oil", name: "Plastic, rubber, fuel (crude)", raws: ["Desc_LiquidOil_C"], phase: 3, src: "Recipe_Plastic_C, Recipe_Rubber_C, Recipe_LiquidFuel_C" },
+  { id: "cat", name: "Quickwire (caterium)", raws: ["Desc_OreGold_C"], phase: 3, src: "Recipe_IngotCaterium_C" },
+  { id: "quartz", name: "Silica, crystals (quartz)", raws: ["Desc_RawQuartz_C"], phase: 3, src: "Recipe_Silica_C, Recipe_QuartzCrystal_C" },
+  { id: "alu", name: "Aluminium (bauxite + coal)", raws: ["Desc_OreBauxite_C", "Desc_Coal_C"], phase: 4, src: "Recipe_AluminaSolution_C -> Recipe_AluminumScrap_C; silica partly from the alumina by-product" },
+  { id: "alu-oil", name: "Aluminium + oil products (bauxite + coal + crude)", raws: ["Desc_OreBauxite_C", "Desc_Coal_C", "Desc_LiquidOil_C"], phase: 4, src: "as above, with Recipe_Plastic_C / Recipe_Rubber_C" },
+  { id: "n2", name: "Nitrogen products (nitrogen)", raws: ["Desc_NitrogenGas_C"], phase: 4, src: "Recipe_PackagedNitrogen_C" },
+];
+const DEFAULT_PRODUCT = { all: "none", 1: "basics", 2: "steel", 3: "oil", 4: "alu", 5: "alu-oil" };
+let sel = null;                                // {type:"nb"|"dep", id}
+const plan = new Set();                        // neighbourhood ids
+let zoomed = false, run = null, runSnap = null;
+const phaseItems = () => { const p = $("phase").value; return p === "all" ? null : Object.keys(D.phase_draw[p]); };
+const selPt = () => !sel ? null : sel.type === "nb" ? NB[sel.id] : deps[sel.id];
+function ensureRun() { const o = selPt(); if (!o) return null; if (runSnap !== o.snap) { run = dijkstra(o.snap); runSnap = o.snap; } return run; }
+const reach = () => +$("reach").value;
+// ---- terrain for the belt line ------------------------------------------
+const H = D.height;
+const ZB = Uint8Array.from(atob(H.z_dm_i16le), (c) => c.charCodeAt(0));
+const ZG = new Int16Array(ZB.buffer, ZB.byteOffset, ZB.length >> 1);
+const WG = Uint8Array.from(atob(H.water_u8), (c) => c.charCodeAt(0));
+function zAt(e, n) {
+  const c = Math.round((e - H.east0_m) / H.step_m), r = Math.round((H.north0_m - n) / H.step_m);
+  if (r < 0 || c < 0 || r >= H.rows || c >= H.cols) return [null, 0];
+  const v = ZG[r * H.cols + c];
+  return [v === H.nodata ? null : v / 10, WG[r * H.cols + c]];
+}
+const zOf = (p) => p.z != null ? p.z : (p.z && p.z.length ? (p.z[0] + p.z[1]) / 2 : zAt(p.e, p.n)[0]);
+function beltLine(o, d) {
+  const L = Math.hypot(d.e - o.e, d.n - o.n), n = Math.max(2, Math.ceil(L / H.step_m) + 1);
+  let wet = 0, hi = -Infinity;
+  for (let k = 0; k < n; k++) { const t = k / (n - 1); const [z, w] = zAt(o.e + t * (d.e - o.e), o.n + t * (d.n - o.n)); if (z != null) hi = Math.max(hi, z); wet += w; }
+  const zo = endZ(o), zd = endZ(d);
+  const dz = (zd ?? 0) - (zo ?? 0), top = Math.max(zo ?? -Infinity, zd ?? -Infinity);
+  return { km: L / 1000, dz, lifts: Math.abs(dz) > 0.5 ? Math.ceil(Math.abs(dz) / H.lift_max_m) : 0,
+    ridge: isFinite(hi) && isFinite(top) ? Math.max(0, hi - top) : 0, water: wet / (n - 1) * L };
+}
+function endZ(p) { if (typeof p.z === "number") return p.z; if (Array.isArray(p.z)) return (p.z[0] + p.z[1]) / 2; return zAt(p.e, p.n)[0]; }
+function nbDist(nb) {
+  const o = selPt();
+  const straight = Math.hypot(nb.e - o.e, nb.n - o.n) / 1000;
+  if (straight > reach() + 0.001 && !plan.has(nb.id)) return { straight, info: undefined };
+  if (basis === "foot") { const r = ensureRun(); const info = route(r, o, nb); return { straight, info: info && { ...info, kind: "foot" } }; }
+  if (basis === "belt") { const b = beltLine(o, nb); return { straight, info: { kind: "belt", ...b } }; }
+  return { straight, info: { kind: "drone", km: straight } };
+}
+const distTxt = (i) => !i ? "unreachable" : i.kind === "foot" ? `${fmt(i.km, 2)} km · ${i.choke} choke` : i.kind === "belt" ? `${fmt(i.km, 2)} km · ${i.lifts} lift${i.lifts === 1 ? "" : "s"}${i.water > 50 ? ` · ${fmt(i.water, 0)} m water` : ""}` : `${fmt(i.km, 2)} km`;
+const distKm = (i) => !i ? "unreachable" : fmt(i.km, 2) + " km";
+
+// ---- product filter: can this neighbourhood make the selected product? ---
+const sockSnap = {};
+for (const id in sock) { const s = sock[id]; let j = 0, b = Infinity; for (let i = 0; i < NN; i++) { const dx = D.nodes[i][0] - s.e, dy = D.nodes[i][1] - s.n, q = dx * dx + dy * dy; if (q < b) { b = q; j = i; } } sockSnap[id] = { snap: j, snap_m: Math.sqrt(b) }; }
+const runCache = new Map();
+const runFrom = (snap) => { if (!runCache.has(snap)) runCache.set(snap, dijkstra(snap)); return runCache.get(snap); };
+const product = () => PRODUCTS.find((p) => p.id === $("product").value) || null;
+const access = new Map();     // nb id -> {level: "here"|"link"|"no", missing: [[item, km]]}
+function accessOf(nb) {
+  const p = product(); if (!p) return { level: "here", missing: [] };
+  const key = `${nb.id}|${p.id}|${basis}|${reach()}`;
+  if (access.has(key)) return access.get(key);
+  const have = p.raws.filter((i) => nb.items[i]);
+  let res;
+  if (!have.length) res = { level: "no", missing: p.raws.map((i) => [i, null]) };
+  else {
+    const missing = [];
+    for (const item of p.raws.filter((i) => !nb.items[i])) {
+      let best = Infinity;
+      const r = basis === "foot" ? runFrom(nb.snap) : null;
+      for (const id in sock) {
+        const s = sock[id]; if (s.item !== item) continue;
+        const straight = Math.hypot(s.e - nb.e, s.n - nb.n) / 1000; if (straight > reach()) continue;
+        let km = straight;
+        if (basis === "foot") { const sn = sockSnap[id]; if (!isFinite(r.dist[sn.snap])) continue; km = (nb.snap_m + r.len[sn.snap] + sn.snap_m) / 1000; }
+        best = Math.min(best, km);
+      }
+      missing.push([item, isFinite(best) && best <= reach() ? best : null]);
+    }
+    res = { level: missing.every(([, k]) => k != null) ? (missing.length ? "link" : "here") : "no", missing };
+  }
+  access.set(key, res); return res;
+}
+// example: a neighbourhood holding crude oil, the most south-westerly
+{
+  const oilNbs = NB.filter((nb) => nb.items.Desc_LiquidOil_C);
+  const ex = oilNbs.reduce((m, nb) => (nb.e + nb.n) < (m.e + m.n) ? nb : m);
+  sel = { type: "nb", id: ex.id, example: true };
+}
+
+// ---- map ----------------------------------------------------------------
+const svg = $("map"), NS = "http://www.w3.org/2000/svg";
+const STYLED = new Set(["stroke", "fill", "opacity"]);
+const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) { if (STYLED.has(k)) e.style.setProperty(k, a[k]); else e.setAttribute(k, a[k]); } (p || svg).appendChild(e); return e; };
+const bm = D.basemap;
+let vb = [bm.x_m, bm.y_m, bm.width_m, bm.height_m];
+el("image", { href: D.img, x: bm.x_m, y: bm.y_m, width: bm.width_m, height: bm.height_m, preserveAspectRatio: "none", style: "filter: var(--map-filter); opacity: var(--map-opacity)" });
+const gUnder = el("g", {}), gRoutes = el("g", {}), gNodes = el("g", {}), gTop = el("g", {});
+const U = () => vb[2] / Math.max(svg.clientWidth || 800, 1);
+function setView() {
+  const o = selPt();
+  if (zoomed && o) { const r = reach() * 1000 * 1.2; vb = [o.e - r, -o.n - r, 2 * r, 2 * r]; } else vb = [bm.x_m, bm.y_m, bm.width_m, bm.height_m];
+  svg.setAttribute("viewBox", vb.join(" "));
+}
+const visItem = (item) => { const s = phaseItems(); return !s || s.includes(item); };
+
+function draw() {
+  setView();
+  const u = U(), o = selPt();
+  gUnder.replaceChildren(); gRoutes.replaceChildren(); gNodes.replaceChildren(); gTop.replaceChildren();
+  // plan rings and clashes
+  const owner = {};
+  for (const id of plan) for (const s of NB[id].ext) (owner[s] ||= []).push(id);
+  for (const id of plan) { const nb = NB[id]; el("circle", { cx: nb.e, cy: -nb.n, r: RADIUS, fill: "var(--route)", opacity: .1 }, gUnder); el("circle", { cx: nb.e, cy: -nb.n, r: RADIUS, fill: "none", stroke: "var(--route)", "stroke-width": u * 1.8 }, gUnder); }
+  // selection
+  const hot = new Set();     // sockets to emphasise
+  if (o && sel.type === "nb") {
+    el("circle", { cx: o.e, cy: -o.n, r: RADIUS, fill: "none", stroke: "var(--ink)", "stroke-width": u * 2, "stroke-dasharray": `${u * 5} ${u * 3}` }, gUnder);
+    for (const s of o.ext) hot.add(s);
+  } else if (o) {
+    for (const s of o.sockets) hot.add(s[3]);
+    for (const id of nbsOfDep[o.id]) el("circle", { cx: NB[id].e, cy: -NB[id].n, r: RADIUS, fill: "none", stroke: "var(--sel)", "stroke-width": u * 1, opacity: .7 }, gUnder);
+  }
+  if (o) el("circle", { cx: o.e, cy: -o.n, r: reach() * 1000, fill: "none", stroke: "var(--muted)", "stroke-width": u, "stroke-dasharray": `${u * 4} ${u * 4}`, opacity: .6 }, gUnder);
+  // routes from a selected neighbourhood: nearest reaching site per lacking raw (thin), plan sites (bold)
+  if (o && sel.type === "nb") {
+    const r = ensureRun();
+    const { lists } = supporters();
+    for (const [item, rows] of lists) {
+      const first = rows.find((x) => x.best && x.best.info);
+      if (first && !plan.has(first.best.nb.id)) { const P = basis === "foot" ? routePts(first.best.info, o, first.best.nb) : [[o.e, o.n], [first.best.nb.e, first.best.nb.n]]; el("path", { d: "M" + P.map(([x, y]) => `${x},${-y}`).join("L"), fill: "none", stroke: col(item), "stroke-width": u * 1.6, opacity: .8, "stroke-linejoin": "round" }, gRoutes); }
+    }
+    for (const id of plan) { if (id === o.id) continue; const info = basis === "foot" ? route(r, o, NB[id]) : true; if (info) { const P = basis === "foot" ? routePts(info, o, NB[id]) : [[o.e, o.n], [NB[id].e, NB[id].n]]; el("path", { d: "M" + P.map(([x, y]) => `${x},${-y}`).join("L"), fill: "none", stroke: "var(--route)", "stroke-width": u * 3, "stroke-linejoin": "round", "stroke-linecap": "round" }, gRoutes); } }
+  }
+  // nodes (the ground): small, coloured by raw
+  for (const id in sock) {
+    const s = sock[id]; if (!visItem(s.item) && !hot.has(id)) continue;
+    const clash = owner[id] && owner[id].length > 1;
+    const big = hot.has(id);
+    el("circle", { cx: s.e, cy: -s.n, r: u * (big ? 3.4 : 2.2), fill: col(s.item), opacity: big || !o ? 1 : .55,
+      stroke: clash ? "var(--clash)" : big ? "var(--ink)" : "none", "stroke-width": u * (clash ? 2.2 : 1) }, gNodes);
+  }
+  // neighbourhood seeds: hollow ticks, drawn in neighbourhood mode
+  if (mode === "nb") for (const nb of NB) {
+    if (phaseItems() && !Object.keys(nb.items).some(visItem)) continue;
+    const isSel = sel && sel.type === "nb" && sel.id === nb.id;
+    const acc = accessOf(nb).level;
+    if (acc === "no" && $("hide").checked && !isSel && !plan.has(nb.id)) continue;
+    const fade = acc === "here" ? 1 : acc === "link" ? .6 : .18;
+    el("rect", { x: nb.e - u * 2.6, y: -nb.n - u * 2.6, width: u * 5.2, height: u * 5.2, transform: `rotate(45 ${nb.e} ${-nb.n})`,
+      fill: isSel ? "var(--ink)" : acc === "here" && product() ? "var(--ok)" : "var(--plate)", stroke: plan.has(nb.id) ? "var(--route)" : "var(--ink)", "stroke-width": u * (isSel || plan.has(nb.id) ? 1.8 : 1), opacity: isSel || plan.has(nb.id) ? 1 : fade }, gTop);
+  }
+  const sbx = vb[0] + u * 14, sby = vb[1] + vb[3] - u * 12;
+  el("line", { x1: sbx, y1: sby, x2: sbx + 1000, y2: sby, stroke: "var(--ink)", "stroke-width": u * 2.5 }, gTop);
+  const st = el("text", { x: sbx, y: sby - u * 6, class: "lbl", style: `font-size:${u * 12}px; stroke-width:${u * 3}px` }, gTop); st.textContent = "1 km";
+}
+
+svg.addEventListener("click", (ev) => {
+  const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse()); const e = p.x, n = -p.y;
+  const tol = U() * 16;
+  if (mode === "nb") {
+    let best = null, bd = tol;
+    for (const nb of NB) { if (phaseItems() && !Object.keys(nb.items).some(visItem)) continue; if ($("hide").checked && accessOf(nb).level === "no") continue; const d = Math.hypot(nb.e - e, nb.n - n); if (d < bd) { bd = d; best = nb; } }
+    if (best) { sel = { type: "nb", id: best.id }; render(); }
+  } else {
+    let best = null, bd = tol;
+    for (const id in sock) { const s = sock[id]; if (!visItem(s.item)) continue; const d = Math.hypot(s.e - e, s.n - n); if (d < bd) { bd = d; best = s; } }
+    if (best) { sel = { type: "dep", id: best.dep }; render(); }
+  }
+});
+
+// ---- side ---------------------------------------------------------------
+function supporters() {
+  // for each phase raw: deposits within reach, each with the neighbourhoods that reach it
+  const o = selPt(); const lists = []; if (basis === "foot") ensureRun();
+  const items = phaseItems() || Object.keys(D.items).filter((i) => nbsOfDep.some((x, di) => x.length && deps[di].item === i));
+  const dcache = {};
+  const dist = (nb) => (dcache[nb.id] ||= nbDist(nb));
+  for (const item of items) {
+    const rows = [];
+    for (const d of deps) {
+      if (d.item !== item || !nbsOfDep[d.id].length) continue;
+      const reachers = nbsOfDep[d.id].filter((id) => id !== o.id).map((id) => ({ nb: NB[id], ...dist(NB[id]) }))
+        .filter((x) => x.info !== undefined && (plan.has(x.nb.id) || (x.info && x.info.km <= reach()) || (!x.info && x.straight <= reach())));
+      if (!reachers.length) continue;
+      reachers.sort((a, b) => (a.info ? a.info.km : 1e9) - (b.info ? b.info.km : 1e9));
+      rows.push({ d, reachers, best: reachers[0] });
+    }
+    rows.sort((a, b) => (a.best.info ? a.best.info.km : 1e9) - (b.best.info ? b.best.info.km : 1e9));
+    lists.push([item, rows]);
+  }
+  return { lists };
+}
+const dotsOf = (nb) => `<span class="dots">${Object.keys(nb.items).map((i) => `<i style="background:${col(i)}"></i>`).join("")}</span>`;
+function chip(x) {
+  const on = plan.has(x.nb.id);
+  return `<button class="chip ${on ? "on" : ""}" data-plan="${x.nb.id}" aria-pressed="${on}" title="${on ? "Remove from plan" : "Add to plan"}">${dotsOf(x.nb)}${distTxt(x.info)}</button>` +
+    `<button class="chip go" data-go="${x.nb.id}" title="Make this the selected neighbourhood">open</button>`;
+}
+function heldBlock(nb) {
+  const phase = phaseItems();
+  return Object.entries(nb.items).map(([item, ids]) => {
+    const dset = [...new Set(ids.map((s) => sock[s].dep))];
+    const capt = dset.map((di) => { const tot = deps[di].nodes, here = ids.filter((s) => sock[s].dep === di).length; return here === tot ? `whole deposit (${tot})` : `${here} of ${tot} in deposit`; }).join(", ");
+    const need = phase && D.phase_draw[$("phase").value][item];
+    return `<div><span class="dot" style="background:${col(item)}"></span><span>${nameOf(item)} <span class="s">${purTxt(ids)} · ${capt}</span></span><span class="m">${fmt(capOf(ids), 0)}/min${need ? ` <span class="s">/ ${fmt(need, 0)}</span>` : ""}</span></div>`;
+  }).join("");
+}
+function planBlock() {
+  if (!plan.size) return "";
+  const owner = {}; for (const id of plan) for (const s of NB[id].ext) (owner[s] ||= []).push(id);
+  const clashes = Object.entries(owner).filter(([, v]) => v.length > 1);
+  const union = Object.keys(owner);
+  const have = {}; for (const s of union) have[sock[s].item] = (have[sock[s].item] || 0) + capSock(s);
+  const p = $("phase").value;
+  const need = p === "all" ? null : D.phase_draw[p];
+  const rows = (need ? Object.keys(need) : Object.keys(have)).map((item) => {
+    const h = have[item] || 0, v = need ? need[item] : null;
+    return `<tr><td><span class="dot" style="background:${col(item)}"></span> ${nameOf(item)}</td>${need ? `<td>${fmt(v, 0)}</td>` : ""}<td>${fmt(h, 0)}</td>${need ? `<td>${h >= v ? '<span class="pill ok">covers</span>' : h ? '<span class="pill warn">short</span>' : "–"}</td>` : ""}</tr>`;
+  }).join("");
+  return `<div class="group"><h3>Plan · ${plan.size} neighbourhood${plan.size > 1 ? "s" : ""} ${clashes.length ? `<span class="pill clash">${clashes.length} shared node${clashes.length > 1 ? "s" : ""}</span>` : ""}</h3>
+    <div style="overflow-x:auto"><table class="cover"><thead><tr><th>Raw</th>${need ? `<th>P${p} draws</th>` : ""}<th>Plan holds</th>${need ? "<th></th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>
+    ${clashes.length ? `<p class="note">Ringed red on the map: nodes in more than one planned neighbourhood. A portfolio run refuses that; drop one of the pair or trim it in the picker. Capacity above counts each node once.</p>` : ""}
+    <div class="row-actions"><button class="btn small" id="copy">Copy sites (portfolio-inputs/2)</button><button class="btn small" id="clear">Clear plan</button></div>
+    <p class="note" id="copymsg">Copies the <span style="font-family:var(--mono)">sites</span> list by node id, for a portfolio-inputs/2 file or the picker.</p></div>`;
+}
+function side() {
+  const box = $("side"), o = selPt();
+  if (!o) { box.innerHTML = `<h2>Nothing selected</h2><p class="note">Tap a neighbourhood marker or a node.</p>`; return; }
+  let html = "";
+  if (sel.type === "nb") {
+    const inPlan = plan.has(o.id);
+    html += `<h2>Neighbourhood ${sel.example ? '<span class="note">(example: south-west, holds crude)</span>' : ""}</h2>
+      <dl class="kv"><dt>Seed node</dt><dd>${o.seed.replace(/^BP_/, "").replace(/_UAID_.*$/, "")}</dd><dt>Radius</dt><dd>${fmt(RADIUS, 0)} m</dd><dt>Snap to corridor</dt><dd>${fmt(o.snap_m, 0)} m</dd></dl>
+      <div class="held">${heldBlock(o)}</div>
+      ${productLine(o)}
+      <div class="row-actions"><button class="btn small" data-plan="${o.id}" aria-pressed="${inPlan}">${inPlan ? "In plan" : "Add to plan"}</button></div>`;
+    html += planBlock();
+    const { lists } = supporters();
+    const lacking = phaseItems() ? phaseItems().filter((i) => !o.items[i]) : [];
+    for (const [item, rows] of lists) {
+      if (o.items[item] && !phaseItems()) continue;
+      const here = !!o.items[item];
+      html += `<div class="group"><h3><span class="dot" style="background:${col(item)}"></span>${nameOf(item)} · ${rows.length} deposit${rows.length === 1 ? "" : "s"} in reach${here ? " · also here" : ""}</h3>
+        ${rows.length ? rows.slice(0, 8).map((x) => `<div class="dep"><div class="top"><span>${depPur(x.d)} · ${x.d.nodes} node${x.d.nodes > 1 ? "s" : ""} · ${fmt(capOf(x.d.sockets.map((s) => s[3])), 0)}/min</span><b>${distKm(x.best.info)}</b></div>
+          <div class="chips">${x.reachers.slice(0, 4).map(chip).join("")}${x.reachers.length > 4 ? `<span class="note">+${x.reachers.length - 4} more</span>` : ""}</div></div>`).join("")
+          + (rows.length > 8 ? `<p class="note">${rows.length - 8} more deposits further out.</p>` : "")
+          : `<p class="note">None within ${fmt(reach(), 1)} km.</p>`}</div>`;
+    }
+    html += `<p class="note">Each deposit row: its purity mix, nodes and capacity, then the neighbourhoods that reach it (coloured dots: what else each holds) with corridor distance seed to seed. Tap a distance chip to add or remove that neighbourhood; "open" makes it the selection.${lacking.length ? "" : ""}</p>`;
+  } else {
+    const d = o;
+    html += `<h2><span class="dot" style="background:${col(d.item)};width:14px;height:14px"></span> ${nameOf(d.item)} deposit</h2>
+      <dl class="kv"><dt>Nodes</dt><dd>${d.nodes} · ${depPur(d)}</dd><dt>Capacity</dt><dd>${fmt(capOf(d.sockets.map((s) => s[3])), 0)}/min</dd>
+      <dt>Elevation</dt><dd>${d.z[0] === d.z[1] ? fmt(d.z[0], 0) : fmt(d.z[0], 0) + "–" + fmt(d.z[1], 0)} m</dd><dt>Neighbourhoods reaching it</dt><dd>${nbsOfDep[d.id].length}</dd></dl>`;
+    html += planBlock();
+    const ids = new Set(d.sockets.map((s) => s[3]));
+    html += `<div class="group"><h3>Sites that hold it</h3>` + (nbsOfDep[d.id].length ? nbsOfDep[d.id].map((id) => {
+      const nb = NB[id], here = nb.ext.filter((s) => ids.has(s)).length, on = plan.has(id);
+      const others = Object.entries(nb.items).filter(([i]) => i !== d.item).map(([i, s]) => `<span style="white-space:nowrap"><span class="dot" style="background:${col(i)};width:8px;height:8px"></span> ${nameOf(i)} ${purTxt(s)}</span>`).join(" · ");
+      return `<div class="dep"><div class="top"><span>${here} of ${d.nodes} nodes of this deposit</span><b>${fmt(capOf(nb.ext.filter((s) => ids.has(s))), 0)}/min</b></div>
+        <div class="note">${others || "nothing else"}</div>
+        <div class="chips"><button class="chip ${on ? "on" : ""}" data-plan="${id}" aria-pressed="${on}">${on ? "in plan" : "add to plan"}</button><button class="chip go" data-go="${id}">open</button></div></div>`;
+    }).join("") : `<p class="note">No v0.20 neighbourhood holds this deposit (raws outside the v0.20 policy, such as uranium and water wells).</p>`) + `</div>`;
+  }
+  box.innerHTML = html;
+  for (const b of box.querySelectorAll("[data-plan]")) b.addEventListener("click", () => { const id = +b.dataset.plan; plan.has(id) ? plan.delete(id) : plan.add(id); render(); });
+  for (const b of box.querySelectorAll("[data-go]")) b.addEventListener("click", () => { sel = { type: "nb", id: +b.dataset.go }; setMode("nb"); render(); });
+  $("clear")?.addEventListener("click", () => { plan.clear(); render(); });
+  $("copy")?.addEventListener("click", () => {
+    const sites = [...plan].map((id) => ({ label: "nb_" + NB[id].seed.replace(/^BP_/, ""), socket_ids: NB[id].sockets, pumps_water: false, supply: [] }));
+    const text = JSON.stringify(sites, null, 1);
+    const ok = () => { $("copymsg").textContent = `Copied ${sites.length} site${sites.length > 1 ? "s" : ""}.`; };
+    const fail = () => { $("copymsg").innerHTML = `<textarea readonly style="width:100%;height:120px;font:12px var(--mono)">${text.replace(/</g, "&lt;")}</textarea>`; const t = $("copymsg").querySelector("textarea"); t.focus(); t.select(); };
+    try { navigator.clipboard.writeText(text).then(ok, fail); } catch { fail(); }
+  });
+}
+function productLine(nb) {
+  const p = product(); if (!p) return "";
+  const a = accessOf(nb);
+  const parts = p.raws.map((i) => {
+    if (nb.items[i]) return `<span class="tag here">${nameOf(i)} here</span>`;
+    const m = a.missing.find(([x]) => x === i);
+    const none = !p.raws.some((x) => nb.items[x]);
+    return none ? `<span class="tag">${nameOf(i)} not here</span>` : m && m[1] != null ? `<span class="tag link">${nameOf(i)} ${fmt(m[1], 2)} km</span>` : `<span class="tag">${nameOf(i)} not in reach</span>`;
+  }).join(" ");
+  const verdict = a.level === "here" ? "makes it here" : a.level === "link" ? "with a link" : p.raws.some((x) => nb.items[x]) ? "not with a link in reach" : "holds none of it";
+  return `<div class="group"><h3>${p.name} · ${verdict}</h3><div class="chips">${parts}</div></div>`;
+}
+function setBasis(b) { basis = b; for (const k of ["foot", "belt", "drone"]) $("b-" + k).setAttribute("aria-pressed", String(k === b)); render(); }
+function fillProducts() {
+  const p = $("phase").value;
+  const opts = PRODUCTS.filter((x) => p === "all" || x.phase <= +p);
+  $("product").innerHTML = `<option value="none">No filter</option>` + opts.map((x) => `<option value="${x.id}">${x.name}</option>`).join("");
+  const want = DEFAULT_PRODUCT[p];
+  $("product").value = opts.some((x) => x.id === want) ? want : "none";
+}
+function legend() {
+  const s = phaseItems();
+  const items = Object.keys(COLOR).filter((i) => D.items[i] && (!s || s.includes(i)));
+  $("legend").innerHTML = items.map((i) => `<span><i style="background:${col(i)}"></i>${nameOf(i)}</span>`).join("") +
+    `<span>◇ neighbourhood seed (filled green: makes the selected product here; faded: cannot, even with a link in reach) · dashed ring: ${fmt(RADIUS, 0)} m site · grey ring: reach</span>`;
+}
+function limits() {
+  const p = D.neighborhoods.policy;
+  $("limits").innerHTML = [
+    `Neighbourhoods are the picker's precomputed set (${NB.length}): every included node within ${fmt(p.radius_m, 0)} m of a seed node, deduped at Jaccard ${p.dedupe.jaccard} and ${fmt(p.dedupe.seed_distance_m, 0)} m seed distance, most types first. Dedupe depends on order, so some workable sites are not in the set. A per-phase radius would be a separate export per phase.`,
+    `A deposit is one raw's nodes chained within ${fmt(D.link_m, 0)} m of each other; resource wells group by their core. "4 of 9 in deposit" means the site's ring cuts the deposit and the rest lies outside it.`,
+    `Distance is the corridor tool's terrain route between seed nodes (16 m step, its own cost), plus each seed's snap to the graph. It is physical connectivity, not a belt, road or rail route. Unreachable means the snaps land in separate pockets of the graph.`,
+    `Capacity is at 100 % clock with the selected miner, before belt limits; oil pumps and resource wells at their own rates. Phase draws are the step planner's at 1/min with standard recipes and the power plant, for the whole phase.`,
+    `Distance basis. On foot: the corridor, the walking route without scaling a cliff, which also suits ground vehicles. Belt + lifts: the straight line; lifts are the height change between the two seeds divided by the tallest lift (${fmt(H.lift_max_m, 0)} m), rounded up, and the length over water is shown. Supports, foundations, bridges and any ridge in between are not costed. Drone: the straight line.`,
+    `"Can make" reads standard recipes: a neighbourhood makes a product here when it holds every raw of the product's bulk step; "with a link" when it holds at least one and the rest lie within reach on the chosen basis. The product list is this page's own table, not a solve.`,
+    `Not assessed: buildable space, water access, and whether a line can be built along the route.`,
+  ].map((t) => `<li>${t}</li>`).join("");
+}
+function setMode(m) { mode = m; $("m-nb").setAttribute("aria-pressed", String(m === "nb")); $("m-dep").setAttribute("aria-pressed", String(m === "dep")); }
+function render() { $("reachv").textContent = fmt(reach(), 1) + " km"; draw(); side(); legend(); }
+$("m-nb").addEventListener("click", () => { setMode("nb"); draw(); });
+$("m-dep").addEventListener("click", () => { setMode("dep"); draw(); });
+for (const id of ["tier", "reach", "product", "hide"]) $(id).addEventListener("input", render);
+$("phase").addEventListener("input", () => { fillProducts(); render(); });
+for (const k of ["foot", "belt", "drone"]) $("b-" + k).addEventListener("click", () => setBasis(k));
+$("zoombtn").addEventListener("click", () => { zoomed = !zoomed; $("zoombtn").setAttribute("aria-pressed", String(zoomed)); draw(); });
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(draw, 120); });
+fillProducts(); limits(); render();
+</script>
