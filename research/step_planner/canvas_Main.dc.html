@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phase steps</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#14161A}
+a{color:#F2A33A}a:hover{color:#FFC777}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 5200px; box-sizing: border-box; background: #14161A; color: #E8E6E1; font-family: 'IBM Plex Sans', system-ui, sans-serif; padding: 20px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+
+<nav style="display: flex; align-items: center; justify-content: space-between; gap: 6px" aria-label="Phases">
+<button onClick="{{prev}}" aria-label="Previous phase" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; background: #1E2127; color: #A3A8B0; border: 0; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+</button>
+<div style="display: flex; gap: 4px">
+<sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5">
+<button onClick="{{tb.pick}}" aria-current="{{tb.cur}}" style="{{tb.style}}">{{tb.label}}</button>
+</sc-for>
+</div>
+<button onClick="{{next}}" aria-label="Next phase" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; background: #1E2127; color: #A3A8B0; border: 0; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+</button>
+</nav>
+
+<sc-if value="{{loading}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 14px; color: #A3A8B0; padding: 24px 0">Loading plan data…</div>
+</sc-if>
+
+<sc-if value="{{ready}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 28px; line-height: 1.15; font-weight: 700">{{ph.title}}</h1>
+<div style="font-size: 14px; color: #A3A8B0">{{ph.sub}}</div>
+</header>
+
+<button onClick="{{toggleRun}}" aria-expanded="{{runOpenStr}}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 8px 12px; background: #1E2127; color: #E8E6E1; border: 1px solid #2E333B; border-radius: 10px; cursor: pointer; text-align: left">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.5">{{runLabel}}</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: #A3A8B0"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+</button>
+
+<sc-if value="{{runOpen}}" hint-placeholder-val="{{ false }}">
+<section style="background: #1E2127; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 14px; border: 1px solid #2E333B" aria-label="Run settings">
+<sc-for list="{{axes}}" as="ax" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 600">{{ax.name}}</span><span style="color: #A3A8B0">{{ax.hint}}</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{ax.opts}}" as="o" hint-placeholder-count="4">
+<button onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="{{o.style}}">{{o.label}}</button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<div style="font-size: 12px; color: #A3A8B0; line-height: 1.5">Stretch: P4/P5 ×1.25 (fixed at 1/1/1). Levels shown are placeholders until record §3.3.1's levels are copied in.</div>
+</section>
+</sc-if>
+
+
+<section style="background: #1E2127; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #2E333B" aria-label="Node defaults">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Node defaults</h2>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A3A8B0">{{nd.head}}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{nd.cases}}" as="nc" hint-placeholder-count="3">
+<button onClick="{{nc.pick}}" aria-pressed="{{nc.on}}" style="{{nc.style}}">{{nc.label}}</button>
+</sc-for>
+</div>
+<sc-if value="{{nd.shift}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 12px; color: #FFD9A0; line-height: 1.45">{{nd.shiftText}}</div>
+</sc-if>
+<sc-if value="{{nd.none}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px; color: #A3A8B0">{{nd.noneText}}</div>
+</sc-if>
+<sc-for list="{{nd.rows}}" as="nr" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 3px; border-top: 1px solid #2A2E35; padding-top: 6px">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px"><span>{{nr.name}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #E8E6E1">{{nr.nodes}}</span></div>
+<div style="height: 6px; background: #2A2E35; border-radius: 3px; position: relative"><div style="{{nr.barStyle}}"></div></div>
+<div style="display: flex; justify-content: space-between; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A3A8B0"><span>{{nr.draw}}</span><span style="text-align: right">{{nr.share}}</span></div>
+<sc-if value="{{nr.hasFlag}}" hint-placeholder-val="{{ false }}"><div style="font-size: 11px; color: #F0A08E">{{nr.flag}}</div></sc-if>
+</div>
+</sc-for>
+<button onClick="{{nd.apply}}" style="min-height: 44px; padding: 0 12px; border-radius: 8px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; font-size: 13px; cursor: pointer; text-align: left">{{nd.applyLabel}}</button>
+<div style="font-size: 11px; color: #A3A8B0; line-height: 1.5">{{nd.note}}</div>
+</section>
+
+<button onClick="{{toggleSite}}" aria-expanded="{{siteOpenStr}}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 8px 12px; background: #1E2127; color: #E8E6E1; border: 1px solid #2E333B; border-radius: 10px; cursor: pointer; text-align: left">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600">Site nodes</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A3A8B0; line-height: 1.4">{{siteSummary}}</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: #A3A8B0"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+</button>
+<sc-if value="{{siteOpen}}" hint-placeholder-val="{{ false }}">
+<section style="background: #1E2127; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #2E333B" aria-label="Site nodes">
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{sitePresets}}" as="pp" hint-placeholder-count="3">
+<button onClick="{{pp.pick}}" style="min-height: 44px; padding: 0 12px; border-radius: 8px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; font-size: 13px; cursor: pointer">{{pp.label}}</button>
+</sc-for>
+</div>
+<sc-for list="{{siteRows}}" as="sr" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #2A2E35; padding-top: 6px">
+<button onClick="{{sr.toggle}}" aria-expanded="{{sr.openStr}}" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; background: transparent; color: #E8E6E1; border: 0; cursor: pointer; text-align: left">
+<span style="font-size: 13px">{{sr.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A3A8B0">{{sr.summary}} · {{sr.capText}}</span>
+</button>
+<sc-if value="{{sr.open}}" hint-placeholder-val="{{ false }}">
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{sr.steppers}}" as="sp" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+<span style="font-size: 11px; color: #A3A8B0">{{sp.label}}</span>
+<div style="display: flex; align-items: center; gap: 4px">
+<button onClick="{{sp.dec}}" aria-label="{{sp.decLabel}}" style="width: 44px; height: 44px; border-radius: 8px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; font-size: 18px; cursor: pointer">−</button>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; min-width: 18px; text-align: center">{{sp.n}}</span>
+<button onClick="{{sp.inc}}" aria-label="{{sp.incLabel}}" style="width: 44px; height: 44px; border-radius: 8px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; font-size: 18px; cursor: pointer">+</button>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<div style="font-size: 11px; color: #A3A8B0; line-height: 1.5">Capacity = nodes × the extractor rate for that purity at the phase's tier (miners: P1 Mk.1, P2–3 Mk.2, P4–5 Mk.3, at most one belt per node; oil extractors; resource-well satellites from P4). Water counts as unlimited. Saved on this device.</div>
+</section>
+</sc-if>
+<sc-if value="{{notBaseline}}" hint-placeholder-val="{{ false }}">
+<div style="background: #3A2A12; color: #FFD9A0; border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.45">{{bannerText}}</div>
+</sc-if>
+<sc-if value="{{altsOn}}" hint-placeholder-val="{{ false }}">
+<div style="background: #16302B; color: #BFEFE2; border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.45">Alternate plan, set at each phase's last required step ({{planStep}}, {{planCount}} items), each from its unlock: alternates that cut the binding resource first (only when one is at 10% or more of world capacity); every other item by line complexity (fewest raws per line; rare raws already mined don't count), then no new raw, then fewer machines — per consumer line. [idle] = a standard line left behind on another building.</div>
+</sc-if>
+
+<section style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px" aria-label="Phase totals">
+<div style="background: #1E2127; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600">{{ph.mach}}</div>
+<div style="font-size: 12px; color: #A3A8B0">machines</div>
+<sc-if value="{{showFloor}}" hint-placeholder-val="{{ true }}"><div style="font-size: 12px; color: #A3A8B0">floor {{ph.floor}}</div></sc-if>
+<div style="{{badgeStyle}}">{{bMach}}</div>
+</div>
+<div style="background: #1E2127; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600">{{ph.mw}}</div>
+<div style="font-size: 12px; color: #A3A8B0">MW demand</div>
+<div style="{{badgeStyle}}">{{bMW}}</div>
+</div>
+<div style="background: #1E2127; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600">{{ph.lines}}</div>
+<div style="font-size: 12px; color: #A3A8B0">lines</div>
+<div style="{{badgeStyle}}">{{bLines}}</div>
+</div>
+</section>
+<div style="font-size: 13px; color: #A3A8B0; margin-top: -6px">Generators: {{ph.gens}}</div>
+
+<section style="background: #1E2127; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px" aria-label="Phase timeline">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #A3A8B0"><span>Timeline</span><span style="font-family: 'IBM Plex Mono', monospace">0 – {{ph.T}} h</span></div>
+<div style="display: flex; height: 28px; border-radius: 6px; overflow: hidden; gap: 2px">
+<sc-for list="{{ph.segs}}" as="s" hint-placeholder-count="4">
+<div style="{{s.barStyle}}"></div>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: #A3A8B0">
+<sc-for list="{{ph.segs}}" as="s" hint-placeholder-count="4">
+<span style="display: flex; align-items: center; gap: 6px"><span style="{{s.dotStyle}}"></span>{{s.title}} · {{s.span}}</span>
+</sc-for>
+</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #A3A8B0; margin-top: 4px">PROJECT ASSEMBLY PARTS IN PRODUCTION</div>
+<sc-for list="{{ph.lanes}}" as="l" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px"><span>{{l.name}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0">{{l.qty}} · from {{l.from}} h</span></div>
+<div style="height: 8px; background: #2A2E35; border-radius: 4px; position: relative"><div style="{{l.style}}"></div></div>
+</div>
+</sc-for>
+</section>
+
+<section style="background: #1E2127; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #2E333B" aria-label="Alternate recipes">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Alternates in reach</h2>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A3A8B0">{{alt.total}} new</span>
+</div>
+<div style="font-size: 12px; color: #A3A8B0; line-height: 1.45">Obtainable from the step its HUB dependencies are paid and its building and inputs can be made (MAM-gated ones follow their inputs). Finding the drive isn't scheduled. 11 alternates need items outside the model and aren't placed.</div>
+<sc-if value="{{alt.none}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px; color: #A3A8B0">No new alternates become producible in this phase.</div>
+</sc-if>
+<sc-for list="{{alt.fams}}" as="f" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<button onClick="{{f.toggle}}" aria-expanded="{{f.openStr}}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 12px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; border-radius: 8px; font-size: 13px; cursor: pointer">
+<span style="display: flex; align-items: center; gap: 8px"><span style="{{f.dot}}"></span>{{f.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0">{{f.count}} · {{f.chev}}</span>
+</button>
+<sc-if value="{{f.open}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 4px">
+<sc-for list="{{f.items}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 1px; border-bottom: 1px solid #2A2E35; padding: 6px 0">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px"><span>{{r.name}}</span><span style="color: #A3A8B0">→ {{r.out}}</span></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A3A8B0">{{r.ins}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</section>
+
+<sc-for list="{{ph.segs}}" as="st" hint-placeholder-count="4">
+<article style="background: #1E2127; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #2E333B">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<h2 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px"><span style="{{st.dotStyle}}"></span>{{st.title}}</h2>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A3A8B0">{{st.window}}</span>
+</div>
+
+<sc-if value="{{st.hasMs}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{st.ms}}" as="m" hint-placeholder-count="2">
+<span style="{{m.chip}}">{{m.name}}<span style="{{m.tagStyle}}">{{m.tag}}</span></span>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<div style="background: #14161A; border-radius: 8px; padding: 8px 10px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600">{{st.mach}}</div>
+<div style="font-size: 11px; color: #A3A8B0">machines {{st.dmach}}</div>
+<sc-if value="{{showFloor}}" hint-placeholder-val="{{ true }}"><div style="font-size: 11px; color: #A3A8B0">floor {{st.floor}}</div></sc-if>
+</div>
+<div style="background: #14161A; border-radius: 8px; padding: 8px 10px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600">{{st.mw}}</div>
+<div style="font-size: 11px; color: #A3A8B0">MW {{st.dmw}}</div>
+</div>
+<div style="background: #14161A; border-radius: 8px; padding: 8px 10px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600">{{st.nLines}}</div>
+<div style="font-size: 11px; color: #A3A8B0">lines</div>
+</div>
+</div>
+<div style="font-size: 12px; color: #A3A8B0">Generators: {{st.gens}}</div>
+<sc-if value="{{st.use.has}}" hint-placeholder-val="{{ false }}">
+<div style="background: #14161A; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px"><span style="font-size: 12px; font-weight: 600">Raw draw vs your nodes</span><span style="{{st.use.headStyle}}">{{st.use.head}}</span></div>
+<sc-for list="{{st.use.rows}}" as="ur" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px"><span>{{ur.name}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0; text-align: right">{{ur.text}}</span></div>
+<div style="height: 6px; background: #2A2E35; border-radius: 3px; position: relative"><div style="{{ur.barStyle}}"></div></div>
+<sc-if value="{{ur.over}}" hint-placeholder-val="{{ false }}"><div style="font-size: 11px; color: #F0A08E">{{ur.note}}</div></sc-if>
+</div>
+</sc-for>
+<div style="font-size: 11px; color: #A3A8B0">Peak draw in this step, factory + power plant, against the nodes you declared. Water not counted.</div>
+</div>
+</sc-if>
+<sc-if value="{{st.hasAltRun}}" hint-placeholder-val="{{ false }}">
+<div style="background: #16302B; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 12px; font-weight: 600; color: #BFEFE2">Alternates running ({{st.altRunCount}})</div>
+<sc-for list="{{st.altRun}}" as="ar" hint-placeholder-count="3">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #E8E6E1"><span>{{ar.what}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0; flex: none">{{ar.why}}</span></div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{st.stdHint}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 12px; color: #A3A8B0">Standard recipes. {{st.stdHintText}}</div>
+</sc-if>
+
+<sc-if value="{{st.rel.has}}" hint-placeholder-val="{{ true }}">
+<div style="background: #14161A; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">Binds: {{st.rel.raw}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A3A8B0">{{st.rel.share}} of world</span>
+</div>
+<div style="height: 6px; background: #2A2E35; border-radius: 3px; position: relative"><div style="{{st.rel.barStyle}}"></div><div style="{{st.rel.plantStyle}}"></div></div>
+<div style="font-size: 11px; color: #A3A8B0">{{st.rel.plantNote}}</div>
+<sc-for list="{{st.rel.rows}}" as="rr" hint-placeholder-count="1">
+<div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #2A2E35; padding-top: 8px">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px"><span style="font-weight: 600">{{rr.label}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0">{{rr.nums}}</span></div>
+<sc-if value="{{rr.none}}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: #A3A8B0">{{rr.noneText}}</div></sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{rr.top}}" as="tp" hint-placeholder-count="3">
+<span style="font-size: 11px; border: 1px solid #4A5260; border-radius: 999px; padding: 3px 8px">{{tp.name}} <span style="font-family: 'IBM Plex Mono', monospace; color: {{accent}}">{{tp.v}}</span></span>
+</sc-for>
+</div>
+<sc-if value="{{rr.hasIndiff}}" hint-placeholder-val="{{ false }}"><div style="font-size: 11px; color: #A3A8B0; line-height: 1.45">{{rr.indiffText}}</div></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{st.rel.missing}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 12px; color: #A3A8B0">Binding resource computed for 1P and 5P only.</div>
+</sc-if>
+<sc-if value="{{st.rel.nothing}}" hint-placeholder-val="{{ false }}">
+<div style="background: #14161A; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #A3A8B0; line-height: 1.45">{{st.rel.nothingText}}</div>
+</sc-if>
+
+<sc-if value="{{st.hasPa}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 8px; background: #16302B; border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #BFEFE2">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+<span>Starts PA: {{st.pa}}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{st.isFinish}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px; color: #A3A8B0; line-height: 1.45">No milestone bills. PA parts finish their quota on the installed factory.</div>
+</sc-if>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+<button onClick="{{st.toggleLines}}" aria-expanded="{{st.linesOpenStr}}" style="min-height: 44px; padding: 0 12px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: space-between"><span>Lines</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0">{{st.linesChev}}</span></button>
+<sc-if value="{{st.hasPay}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{st.togglePay}}" aria-expanded="{{st.payOpenStr}}" style="min-height: 44px; padding: 0 12px; background: #14161A; color: #E8E6E1; border: 1px solid #2E333B; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: space-between"><span>Pay · {{st.payCount}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0">{{st.payChev}}</span></button>
+</sc-if>
+</div>
+
+<sc-if value="{{st.linesOpen}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #A3A8B0">ALL LINES · MACHINES</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{st.lines}}" as="ln" hint-placeholder-count="6">
+<span style="font-size: 12px; background: #2A2E35; border-radius: 6px; padding: 4px 8px">{{ln.name}} <span style="font-family: 'IBM Plex Mono', monospace; color: {{accent}}">{{ln.n}}</span></span>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{st.payOpen}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 4px">
+<sc-for list="{{st.pay}}" as="p" hint-placeholder-count="5">
+<div style="display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid #2A2E35; padding: 5px 0"><span>{{p.name}}</span><span style="font-family: 'IBM Plex Mono', monospace; color: #A3A8B0">{{p.q}}</span></div>
+</sc-for>
+</div>
+</sc-if>
+</article>
+</sc-for>
+
+<div style="font-size: 12px; color: #A3A8B0; line-height: 1.5">Machines are installed capacity (lines kept once built). Floor = lower bound if machines could switch items within a building type; excludes capacity carried in from earlier phases.</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#F2A33A","options":["#F2A33A","#5CC8B0","#7FB2F0"]},"showFloor":{"editor":"boolean","default":true},"startPhase":{"editor":"enum","options":["1","2","3","4","5"],"default":"2"},"$preview":{"width":390,"height":5200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { data: null, dataAlt: null, alts: null, plan: {}, siteData: null, nodeDefaults: null, ndCase: 'all1', site: null, siteOpen: false, siteRaw: null, phase: null, open: {}, runOpen: false, run: { R: '1', P: '1', E: '1', recipes: 'Standard' } };
+  }
+  componentDidMount() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('pa_site_v1') || 'null'); } catch (e) { saved = null; }
+    this.setState({ site: saved || { 'Iron Ore': [0, 3, 0], 'Copper Ore': [0, 2, 0], 'Limestone': [0, 1, 0] } });
+    fetch('/_blob/93545f71fadf475122533dca693a817b')
+      .then(r => r.json())
+      .then(d => this.setState({ siteData: d }))
+      .catch(() => this.setState({ siteData: null }));
+    fetch('/_blob/dd6b966e9c02af3fe0dbb6a2fd6f0722')
+      .then(r => r.json())
+      .then(d => this.setState({ nodeDefaults: d }))
+      .catch(() => this.setState({ nodeDefaults: null }));
+    fetch('/_blob/f6b0863042f0e6a40f595da7d6181016')
+      .then(r => r.json())
+      .then(d => this.setState({ data: d }))
+      .catch(() => this.setState({ data: [] }));
+    fetch('/_blob/67cb1454202c189fa10ac617e2128e26')
+      .then(r => r.json())
+      .then(a => this.setState({ alts: a.alts, relief: a.relief, plan: a.plan || {}, reliefMeta: { bind_min: a.bind_min } }))
+      .catch(() => this.setState({ alts: {}, relief: {}, plan: {} }));
+    fetch('/_blob/af7910ce42dfce2081babc0092fa02a4')
+      .then(r => r.json())
+      .then(d => this.setState({ dataAlt: d }))
+      .catch(() => this.setState({ dataAlt: [] }));
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#F2A33A';
+    const showFloor = this.props.showFloor ?? true;
+    const phase = this.state.phase ?? parseInt(this.props.startPhase ?? '2', 10);
+    const altsOn0 = (this.state.run || {}).recipes === 'Alternates (plan)';
+    const data = altsOn0 ? this.state.dataAlt : this.state.data;
+    const setPhase = p => this.setState({ phase: Math.min(5, Math.max(1, p)), open: {} });
+    const tabs = [1, 2, 3, 4, 5].map(p => ({
+      label: 'P' + p, cur: p === phase ? 'page' : 'false', pick: () => setPhase(p),
+      style: 'min-width: 40px; height: 44px; border: 0; border-radius: 8px; cursor: pointer; font-family: \'IBM Plex Mono\', monospace; font-size: 13px; ' +
+        (p === phase ? 'background: ' + accent + '; color: #14161A; font-weight: 600' : 'background: transparent; color: #A3A8B0')
+    }));
+    const run = this.state.run;
+    const runOpen = !!this.state.runOpen;
+    const setRun = (key, v) => this.setState({ run: { ...run, [key]: v } });
+    const optStyle = on => 'min-height: 44px; min-width: 44px; padding: 0 10px; border-radius: 8px; cursor: pointer; font-family: \'IBM Plex Mono\', monospace; font-size: 13px; ' +
+      (on ? 'background: ' + accent + '; color: #14161A; border: 1px solid ' + accent + '; font-weight: 600' : 'background: #14161A; color: #E8E6E1; border: 1px solid #2E333B');
+    const axisDefs = [
+      { key: 'R', name: 'R · ore grade', hint: 'recipe inputs', levels: ['0.5', '1', '1.25', '1.5', '2'] },
+      { key: 'P', name: 'P · utility load', hint: 'power use', levels: ['0.5', '1', '2', '5'] },
+      { key: 'E', name: 'E · order book', hint: 'PA quantities', levels: ['1', '2', '5', '10'] },
+      { key: 'recipes', name: 'Recipes', hint: 'preset', levels: ['Standard', 'Alternates (plan)'] }
+    ];
+    const axes = axisDefs.map(a => ({ name: a.name, hint: a.hint,
+      opts: a.levels.map(l => ({ label: a.key === 'recipes' ? l : l + a.key, on: run[a.key] === l ? 'true' : 'false', style: optStyle(run[a.key] === l), pick: () => setRun(a.key, l) })) }));
+    const altsOn = run.recipes === 'Alternates (plan)';
+    const unmod = [run.R !== '1' ? 'R' : null, run.E !== '1' ? 'E' : null, run.P !== '1' ? 'P' : null].filter(Boolean);
+    const notBaseline = unmod.length > 0;
+    const bannerText = 'Placeholder: ' + unmod.join(', ') + (unmod.length > 1 ? ' aren\'t' : ' isn\'t') + ' modelled in the step numbers yet. Machines, MW and lines below are the 1R · 1P · 1E run' + (altsOn ? ' with relief alternates.' : '.') + (run.P === '5' ? ' The Binds block does use 5P.' : '');
+    const runLabel = run.R + 'R · ' + run.P + 'P · ' + run.E + 'E · ' + (altsOn ? 'Alt plan' : 'Standard recipes') + ' · P4/P5 ×1.25';
+    const ratio = (key) => {
+      if (notBaseline) return '×— not modelled';
+      if (!altsOn) return '×1.00 · baseline';
+      const sd = (this.state.data || []).find(x => x[0] === phase), ad = (this.state.dataAlt || []).find(x => x[0] === phase);
+      if (!sd || !ad) return '';
+      const sl = sd[4][sd[4].length - 1], al = ad[4][ad[4].length - 1];
+      const v = key === 'lines' ? al[11].length / sl[11].length : al[key] / sl[key];
+      return '×' + v.toFixed(2) + ' vs standard';
+    };
+    const bMach = ratio(4), bMW = ratio(7), bLines = ratio('lines');
+    const planK = (this.state.plan || {})[String(phase)] || { step: '', items: {} };
+    const planWhy = {};
+    Object.values(planK.items || {}).forEach(cs => Object.values(cs).forEach(v => { planWhy[v[0]] = planWhy[v[0]] && planWhy[v[0]] !== v[2] ? planWhy[v[0]] + ', ' + v[2] : v[2]; }));
+    const badgeStyle = 'margin-top: 4px; font-family: \'IBM Plex Mono\', monospace; font-size: 11px; ' + (notBaseline ? 'color: #FFD9A0' : altsOn ? 'color: #BFEFE2' : 'color: #A3A8B0');
+    const famColors = { Electronics: '#7FB2F0', Petrochemical: '#B48EE0', Ingots: '#E07A5F', Structural: '#A3A8B0', 'Motors & thermal': '#5CC8B0', Minerals: '#D8C27A', 'Nuclear & exotic': '#9BD46A', Other: '#6B7280' };
+    const famOrder = ['Ingots', 'Structural', 'Electronics', 'Motors & thermal', 'Petrochemical', 'Minerals', 'Nuclear & exotic', 'Other'];
+    const altsAll = this.state.alts || {};
+    const altPh = altsAll[String(phase)] || {};
+    const fams = famOrder.filter(f => altPh[f]).map(f => {
+      const key = 'a' + f; const o = !!(this.state.open || {})[key];
+      return { name: f, count: altPh[f].length, open: o, openStr: o ? 'true' : 'false', chev: o ? 'Hide' : 'Show',
+        dot: 'width: 10px; height: 10px; border-radius: 999px; display: inline-block; background: ' + famColors[f],
+        items: altPh[f].map(([name, out, ins, seg, pre, modelled]) => ({ name: name + (planWhy[name] ? ' · in plan (' + planWhy[name] + ')' : ''), out, ins: ins + ' · from ' + seg + (modelled ? '' : ' · not in relief model') })),
+        toggle: () => this.setState({ open: { ...(this.state.open || {}), [key]: !o } }) };
+    });
+    const alt = { fams, total: fams.reduce((s, f) => s + f.count, 0), none: fams.length === 0 };
+    // ---- site: declared nodes (Greg 2026-10-29: purity + node count input; location / neighborhoods later) ----
+    const SD = this.state.siteData;
+    const RAWS = ['Iron Ore', 'Copper Ore', 'Limestone', 'Coal', 'Caterium Ore', 'Raw Quartz', 'Sulfur', 'Bauxite', 'Crude Oil', 'Nitrogen Gas', 'SAM', 'Uranium'];
+    const PUR = ['impure', 'normal', 'pure'];
+    const site = this.state.site || {};
+    const saveSite = s => { this.setState({ site: s }); try { localStorage.setItem('pa_site_v1', JSON.stringify(s)); } catch (e) { /* per-device convenience only */ } };
+    const MARK = { 1: 'Build_MinerMk1_C', 2: 'Build_MinerMk2_C', 3: 'Build_MinerMk2_C', 4: 'Build_MinerMk3_C', 5: 'Build_MinerMk3_C' };
+    const extractor = (r, kk) => r === 'Crude Oil' ? 'Build_OilPump_C' : r === 'Nitrogen Gas' ? 'Build_FrackingExtractor_C' : MARK[kk];
+    const rate = (r, kk, p) => {
+      if (!SD) return 0;
+      const v = SD.rates[extractor(r, kk) + '|' + p] || 0;
+      return (r === 'Crude Oil' || r === 'Nitrogen Gas') ? v : Math.min(v, SD.tiers[String(kk)].belt);
+    };
+    const capOf = (r, kk) => {
+      if ((r === 'Nitrogen Gas' && kk < 4) || (r === 'Crude Oil' && kk < 3)) return 0;
+      const c = site[r] || [0, 0, 0];
+      return PUR.reduce((t, p, i) => t + c[i] * rate(r, kk, p), 0);
+    };
+    const fmtN = c => PUR.map((p, i) => c[i] ? c[i] + p[0].toUpperCase() : '').filter(Boolean).join(' ');
+    const siteOpen = !!this.state.siteOpen, siteRaw = this.state.siteRaw;
+    const bump = (r, i, dlt) => () => { const c = [...(site[r] || [0, 0, 0])]; c[i] = Math.max(0, c[i] + dlt); saveSite({ ...site, [r]: c }); };
+    const PRESETS = { 'Starter': { 'Iron Ore': [0, 3, 0], 'Copper Ore': [0, 2, 0], 'Limestone': [0, 1, 0] }, 'Whole world': null, 'Blank': {} };
+    const sitePresets = Object.keys(PRESETS).map(name => ({ label: name, pick: () => {
+      if (name === 'Whole world') {
+        if (!SD) return;
+        const w = {}; RAWS.forEach(r => { const x = SD.world[r]; if (x) w[r] = [x.impure, x.normal, x.pure]; }); saveSite(w);
+      } else saveSite(JSON.parse(JSON.stringify(PRESETS[name])));
+    } }));
+    const siteRows = RAWS.map(r => {
+      const c = site[r] || [0, 0, 0], o = siteRaw === r;
+      return { name: r, summary: fmtN(c) || 'none', capText: Math.round(capOf(r, phase)) + '/min in P' + phase, open: o, openStr: o ? 'true' : 'false',
+        toggle: () => this.setState({ siteRaw: o ? null : r }),
+        steppers: PUR.map((p, i) => ({ label: p, n: c[i], dec: bump(r, i, -1), inc: bump(r, i, 1), decLabel: 'One fewer ' + p + ' ' + r + ' node', incLabel: 'One more ' + p + ' ' + r + ' node' })) };
+    });
+    const siteSummary = RAWS.filter(r => (site[r] || [0, 0, 0]).some(x => x > 0)).map(r => fmtN(site[r]) + ' ' + r.replace(' Ore', '').toLowerCase()).join(' · ') || 'no nodes declared';
+    const usageFor = (kk, i) => {
+      const none = { has: false, rows: [], head: '', headStyle: '' };
+      if (!SD) return none;
+      const s = ((altsOn ? SD.plan : SD.std)[String(kk)] || [])[i];
+      if (!s) return none;
+      const tot = {};
+      [s.fac, s.plant].forEach(o => Object.entries(o).forEach(([r, v]) => { tot[r] = (tot[r] || 0) + v; }));
+      const rows = Object.entries(tot).filter(([r, v]) => r !== 'Water' && v > 0.05).map(([r, v]) => {
+        const cap = capOf(r, kk), u = cap > 0 ? v / cap : Infinity, pl = (s.plant[r] || 0) / v;
+        const nr = rate(r, kk, 'normal'), need = v - cap > 1e-6 && nr > 0 ? Math.ceil((v - cap) / nr) : 0;
+        const w = Math.min(isFinite(u) ? u : 1, 1) * 100;
+        return { name: r, u, over: u > 1,
+          text: Math.round(v) + '/min' + (pl > 0.01 ? ' (' + Math.round(pl * 100) + '% plant)' : '') + ' · ' + (cap > 0 ? Math.round(u * 100) + '% of ' + Math.round(cap) : 'none declared'),
+          note: need ? 'needs ' + need + ' more normal node' + (need > 1 ? 's' : '') + ' (or the equivalent)' : '',
+          barStyle: 'position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; width: ' + w.toFixed(1) + '%; background: ' + (u > 1 ? '#E07A5F' : accent) };
+      }).sort((a, b) => b.u - a.u);
+      const nOver = rows.filter(x => x.over).length;
+      return { has: rows.length > 0, rows, head: nOver ? nOver + ' over your nodes' : 'within your nodes',
+        headStyle: 'font-family: ' + "'IBM Plex Mono', monospace" + '; font-size: 12px; color: ' + (nOver ? '#F0A08E' : '#A3A8B0') };
+    };
+    // ---- node defaults (2026-10-29): nodes each phase requires at normal purity + world-supply ceiling ----
+    const ND = this.state.nodeDefaults, ndKey = this.state.ndCase || 'all1';
+    const ndC = ND ? (ND.cases.find(c => c.key === ndKey) || ND.cases[0]) : null;
+    const pctTxt = v => v >= 0.995 ? Math.round(v * 100) + '%' : v >= 0.0995 ? Math.round(v * 100) + '%' : (v * 100).toFixed(1) + '%';
+    const ndCum = {};
+    if (ndC) for (let kk = 1; kk <= phase; kk++) (((ndC.phases[String(kk)] || {}).rows) || []).forEach(x => { if (x.n) ndCum[x.r] = Math.max(ndCum[x.r] || 0, x.n); });
+    const ndPh = ndC ? ndC.phases[String(phase)] : null;
+    const ndRows = ndPh ? ndPh.rows.map(x => {
+      const has = x.n != null, s = x.s100 || 0;
+      return { name: x.r,
+        nodes: has ? x.n + ' normal in use' : '—',
+        draw: Math.round(x.draw).toLocaleString('en-US') + '/min' + (x.plant > 0.05 ? ' (' + Math.round(x.plant / x.draw * 100) + '% plant)' : ''),
+        share: has ? pctTxt(s) + ' of map · ' + pctTxt(x.s250) + ' at 250%' : '',
+        hasFlag: !!x.flag, flag: x.flag,
+        barStyle: 'position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; width: ' + Math.max(Math.min(s, 1) * 100, 0.8).toFixed(1) + '%; background: ' + (s > 1 ? '#E07A5F' : accent) };
+    }) : [];
+    const nd = {
+      head: ndPh ? 'P' + phase + ' · ' + ndPh.h.toFixed(1) + ' h' : '',
+      cases: ND ? ND.cases.map(c => ({ label: c.label, on: c.key === ndKey ? 'true' : 'false', style: optStyle(c.key === ndKey), pick: () => this.setState({ ndCase: c.key }) })) : [],
+      rows: ndRows, none: !ND || !ndRows.length, noneText: ND ? 'No raw draw in this phase.' : 'Node defaults did not load.',
+      shift: ndKey !== 'all1' && phase === 4,
+      shiftText: 'P4 builds P5’s Nuclear Pasta line at the P5 rate (carry-forward floor), so P5 copper lands in these P4 defaults.',
+      applyLabel: 'Use as site nodes (P' + phase + ', all normal)',
+      apply: () => { const s = {}; Object.entries(ndCum).forEach(([r, n]) => { s[r] = [0, n, 0]; }); saveSite(s); },
+      note: 'Nodes = this phase’s peak draw at normal purity on the phase’s extractor, 100% clock; the count is how many this phase uses. Map share = every node of that resource on the map at the same tier. Plant draw is the 1/min plant in every case. Standard recipes. Applying sets the most any phase up to this one has used (one node set for the run) and replaces your declared nodes; adjust purity and count under Site nodes.' };
+    const base = { accent, showFloor, tabs, nd, prev: () => setPhase(phase - 1), next: () => setPhase(phase + 1),
+      runOpen, runOpenStr: runOpen ? 'true' : 'false', toggleRun: () => this.setState({ runOpen: !runOpen }),
+      axes, notBaseline, bannerText, altsOn, siteOpen, siteOpenStr: siteOpen ? 'true' : 'false', toggleSite: () => this.setState({ siteOpen: !siteOpen }), sitePresets, siteRows, siteSummary, planStep: planK.step, planCount: Object.keys(planK.items).length, runLabel, bMach, bMW, bLines, badgeStyle, alt };
+    if (!data || !data.length) return { ...base, loading: true, ready: false, ph: { segs: [], lanes: [] } };
+
+    const [k, T, stretch, lanesRaw, segsRaw] = data.find(x => x[0] === phase);
+    const stepColors = [accent, '#C9822B', '#9A6A2E', '#7A5A33', '#5E4A35'];
+    let si = 0;
+    const colorFor = name => name === 'PA Finish' ? '#5CC8B0' : name === 'Extras' ? '#4A5260' : name === 'HUB upgrades' ? '#8C7A5B' : stepColors[Math.min(si++, stepColors.length - 1)];
+    const tagStyles = {
+      required: { chip: 'background: ' + accent + '; color: #14161A', tag: 'color: #14161A; opacity: 0.75' },
+      practical: { chip: 'background: transparent; color: #BCD6F7; border: 1px solid #7FB2F0', tag: 'color: #BCD6F7' },
+      optional: { chip: 'background: transparent; color: #C4C8CE; border: 1px solid #4A5260', tag: 'color: #A3A8B0' }
+    };
+    const fmt = n => Number(n).toLocaleString('en-US');
+    const sign = n => (n >= 0 ? '+' : '') + fmt(n);
+    const open = this.state.open || {};
+    const toggle = key => () => this.setState({ open: { ...open, [key]: !open[key] } });
+    // alternates running by the end of a step (from the phase plan; t_on <= step end)
+    const planItems = (planK && planK.items) || {};
+    const nPlan = Object.values(planItems).reduce((n, cs) => n + Object.values(cs).filter(v => v[1] <= T + 1e-9).length, 0);
+    const altInfo = (title, endH) => {
+      if (!altsOn) return { hasAltRun: false, altRun: [], altRunCount: 0, stdHint: nPlan > 0, stdHintText: nPlan + ' alternate uses in this phase’s plan — choose Recipes: Alternates (plan) in run settings to apply them.' };
+      const grp = {};
+      Object.entries(planItems).forEach(([item, cs]) => Object.entries(cs).forEach(([ctx, v]) => {
+        if (v[1] > endH + 1e-9) return;
+        const key = v[0] + '|' + item;
+        const g = grp[key] || (grp[key] = { name: v[0], item, ctxs: [], whys: new Set() });
+        g.ctxs.push(ctx); g.whys.add(v[2]);
+      }));
+      const out = Object.values(grp).map(g => ({
+        what: g.name + ' → ' + g.item + (g.ctxs.includes('*') ? '' : ' (in ' + g.ctxs.join(', ') + ')'),
+        why: [...g.whys].join(', ') }));
+      out.sort((x, y) => x.what.localeCompare(y.what));
+      return { hasAltRun: out.length > 0, altRun: out, altRunCount: out.length, stdHint: false, stdHintText: '' };
+    };
+    const segs = segsRaw.map((s, i) => {
+      const [title, a, b, ms, mach, dmach, floor, mw, dmw, gens, pa, lines, pay] = s;
+      const c = colorFor(title);
+      const lo = !!open['l' + i], po = !!open['p' + i];
+      const pKey = run.P === '1' ? 1 : run.P === '5' ? 5 : null;
+      const R = pKey ? (this.state.relief || {})[k + '|' + title + '|' + pKey] : null;
+      const pct = v => (v > 0 ? '+' : '') + Math.round(v * 100) + '%';
+      const bindMin = (this.state.reliefMeta || {}).bind_min || 0.10;
+      let rel = { has: false, missing: !pKey, rows: [], nothing: false, nothingText: '' };
+      if (R && R.share < bindMin) {
+        rel = { has: false, missing: false, rows: [], nothing: true,
+          nothingText: 'Nothing binds here. Largest draw: ' + R.raw + ' at ' + (R.share * 100).toFixed(1) + '% of world capacity (binds at ' + Math.round(bindMin * 100) + '%). Recipes are decided by line complexity, then machines.' };
+      } else if (R) {
+        const mk = (label, o) => ({ label, nums: R.raw + ' ' + pct(o.bind) + ' · MW ' + pct(o.mw) + ' · mach ' + pct(o.mach),
+          none: o.bind > -0.005 && label.startsWith('Resource'), noneText: 'No alternate in reach cuts ' + R.raw + ' here.',
+          top: o.top.map(([name, v]) => ({ name, v: '−' + Math.round(v * 100) + '%' })),
+          hasIndiff: !!(o.indiff && o.indiff.length), indiffText: (o.indiff || []).length + ' more picked that don’t move ' + R.raw + ' (free choice): ' + (o.indiff || []).join(', ') });
+        const rows = [mk('Resource-lean', R.res)];
+        if (pKey > 1 || R.pow.mw < R.res.mw - 0.05) rows.push(mk('Power-lean', R.pow));
+        const w = Math.min(R.share * 100, 100);
+        rel = { has: true, missing: false, rows, raw: R.raw, share: (R.share * 100).toFixed(1) + '%',
+          plantNote: R.plant > 0.005 ? Math.round(R.plant * 100) + '% of it is power-plant fuel' : 'none of it is power-plant fuel',
+          barStyle: 'position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: ' + accent + '; width: ' + w.toFixed(1) + '%',
+          plantStyle: 'position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: #7FB2F0; width: ' + (w * R.plant).toFixed(1) + '%' };
+      }
+      return {
+        title, window: a.toFixed(2) + '–' + b.toFixed(2) + ' h', span: (b - a).toFixed(2) + ' h',
+        barStyle: 'flex: 0 0 ' + Math.max(((b - a) / T) * 100, 1.2).toFixed(2) + '%; background: ' + c,
+        dotStyle: 'width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; background: ' + c,
+        hasMs: ms.length > 0,
+        ms: ms.map(([name, tag]) => ({ name, tag,
+          chip: 'display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 5px 9px; border-radius: 999px; ' + tagStyles[tag].chip,
+          tagStyle: 'font-family: \'IBM Plex Mono\', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; ' + tagStyles[tag].tag })),
+        mach: fmt(mach), dmach: sign(dmach), floor: fmt(floor), mw: fmt(mw), dmw: sign(dmw), gens,
+        rel, use: usageFor(k, i), ...altInfo(title, b), nLines: lines.length, hasPa: pa.length > 0, pa: pa.join(', '), isFinish: title === 'PA Finish',
+        lines: lines.map(([name, n]) => ({ name, n })),
+        hasPay: pay.length > 0, payCount: pay.length, pay: pay.map(([name, q]) => ({ name, q: fmt(q) })),
+        linesOpen: lo, linesOpenStr: lo ? 'true' : 'false', linesChev: lo ? 'Hide' : 'Show', toggleLines: toggle('l' + i),
+        payOpen: po, payOpenStr: po ? 'true' : 'false', payChev: po ? 'Hide' : 'Show', togglePay: toggle('p' + i)
+      };
+    });
+    const last = segsRaw[segsRaw.length - 1];
+    const nSteps = segsRaw.filter(s => s[0].startsWith('Step')).length;
+    const ph = {
+      kicker: 'PHASE ' + k + ' · ALL MILESTONES · ' + (stretch === 1 ? 'BASE TIME' : 'STRETCH ×' + stretch),
+      title: 'Phase ' + k,
+      sub: T.toFixed(1) + ' h · ' + nSteps + (nSteps === 1 ? ' step' : ' steps') + ' + extras',
+      T: T.toFixed(1), mach: fmt(last[4]), floor: fmt(last[6]), mw: fmt(last[7]), gens: last[9], lines: last[11].length,
+      segs,
+      lanes: lanesRaw.map(([name, q, from]) => ({ name, qty: fmt(q), from: from.toFixed(2),
+        style: 'position: absolute; top: 0; bottom: 0; border-radius: 4px; background: #5CC8B0; left: ' + Math.min(from / T * 100, 99).toFixed(2) + '%; right: 0' }))
+    };
+    return { ...base, loading: false, ready: true, ph };
+  }
+}
+</script>
+</body>
+</html>

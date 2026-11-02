@@ -1,0 +1,474 @@
+{
+ "all1": {
+  "ppm": {},
+  "warns": [],
+  "phases": {
+   "1": {
+    "h": 3.8833333333333333,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 0.0,
+     "SAM": 0.0,
+     "Limestone": 55.13506969919297,
+     "Iron Ore": 56.37045343350064,
+     "Copper Ore": 11.48647285399852,
+     "Caterium Ore": 0.0,
+     "Coal": 0.0,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 0.0,
+     "Crude Oil": 0.0,
+     "Nitrogen Gas": 0.0,
+     "Water": 0.0
+    },
+    "gens": {
+     "Biomass Burner": 3,
+     "Coal Generator": 0,
+     "Fuel Generator": 0
+    },
+    "peak_MW": 62.6942926563263
+   },
+   "2": {
+    "h": 27.033333333333335,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 0.0,
+     "SAM": 0.0,
+     "Limestone": 18.585152920439214,
+     "Iron Ore": 92.01418017623655,
+     "Copper Ore": 40.924005953140295,
+     "Caterium Ore": 0.0,
+     "Coal": 37.326744730220526,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 37.85290895377824,
+     "Crude Oil": 0.0,
+     "Nitrogen Gas": 0.0,
+     "Water": 113.55872686133472
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 3,
+     "Fuel Generator": 0
+    },
+    "peak_MW": 189.2645447688912
+   },
+   "3": {
+    "h": 65.05,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 134.40715623275355,
+     "SAM": 0.0,
+     "Limestone": 82.38840712826641,
+     "Iron Ore": 359.4726104240981,
+     "Copper Ore": 169.31540800558287,
+     "Caterium Ore": 0.0,
+     "Coal": 157.69560778338928,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 25.04404689502431,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 2
+    },
+    "peak_MW": 1028.753772775065
+   },
+   "4": {
+    "h": 13.15,
+    "factory": {
+     "Nitrogen Gas": 203.2836866838494,
+     "Crude Oil": 443.14218361840176,
+     "SAM": 0.0,
+     "Limestone": 160.8016673800812,
+     "Iron Ore": 396.0555774478944,
+     "Copper Ore": 1557.28871137643,
+     "Caterium Ore": 412.2865576832264,
+     "Coal": 280.2782872557667,
+     "Raw Quartz": 223.60300768696277,
+     "Sulfur": 0.0,
+     "Bauxite": 355.2659359070094,
+     "Uranium": 0.0,
+     "Water": 388.51096732413237
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 522.2759199443822,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 23
+    },
+    "peak_MW": 6179.574319243207
+   },
+   "5": {
+    "h": 28.466666666666665,
+    "factory": {
+     "Nitrogen Gas": 318.8507460651209,
+     "Crude Oil": 892.1448644623665,
+     "SAM": 161.97019898077997,
+     "Limestone": 108.07863439236596,
+     "Iron Ore": 746.2447116129406,
+     "Copper Ore": 1893.1438570465273,
+     "Caterium Ore": 228.99282281774867,
+     "Coal": 582.6185620347511,
+     "Raw Quartz": 345.0414826981488,
+     "Sulfur": 0.0,
+     "Bauxite": 460.9007934459223,
+     "Uranium": 0.0,
+     "Water": 520.7071178940183
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 983.2766230558179,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 35
+    },
+    "peak_MW": 9219.750618014215
+   }
+  }
+ },
+ "p5x5": {
+  "ppm": {
+   "5": 5.0
+  },
+  "warns": [],
+  "phases": {
+   "1": {
+    "h": 3.8833333333333333,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 0.0,
+     "SAM": 0.0,
+     "Limestone": 55.13506969919297,
+     "Iron Ore": 56.37045343350064,
+     "Copper Ore": 11.48647285399852,
+     "Caterium Ore": 0.0,
+     "Coal": 0.0,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 0.0,
+     "Crude Oil": 0.0,
+     "Nitrogen Gas": 0.0,
+     "Water": 0.0
+    },
+    "gens": {
+     "Biomass Burner": 3,
+     "Coal Generator": 0,
+     "Fuel Generator": 0
+    },
+    "peak_MW": 62.6942926563263
+   },
+   "2": {
+    "h": 27.033333333333335,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 0.0,
+     "SAM": 0.0,
+     "Limestone": 18.585152920439214,
+     "Iron Ore": 92.01418017623655,
+     "Copper Ore": 40.924005953140295,
+     "Caterium Ore": 0.0,
+     "Coal": 37.326744730220526,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 37.85290895377824,
+     "Crude Oil": 0.0,
+     "Nitrogen Gas": 0.0,
+     "Water": 113.55872686133472
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 3,
+     "Fuel Generator": 0
+    },
+    "peak_MW": 189.2645447688912
+   },
+   "3": {
+    "h": 65.05,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 134.40715623275355,
+     "SAM": 0.0,
+     "Limestone": 82.38840712826641,
+     "Iron Ore": 359.4726104240981,
+     "Copper Ore": 169.31540800558287,
+     "Caterium Ore": 0.0,
+     "Coal": 157.69560778338928,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 25.04404689502431,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 2
+    },
+    "peak_MW": 1028.753772775065
+   },
+   "4": {
+    "h": 13.15,
+    "factory": {
+     "Nitrogen Gas": 245.78957079805264,
+     "Crude Oil": 565.7419523361823,
+     "SAM": 0.0,
+     "Limestone": 203.94084178641424,
+     "Iron Ore": 549.4058035891012,
+     "Copper Ore": 6436.46772867348,
+     "Caterium Ore": 412.2865576832264,
+     "Coal": 417.82623001285657,
+     "Raw Quartz": 356.3242037620263,
+     "Sulfur": 0.0,
+     "Bauxite": 544.0834726085013,
+     "Uranium": 0.0,
+     "Water": 577.3285040256171
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 1883.0011168771152,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 70
+    },
+    "peak_MW": 17859.505873454324
+   },
+   "5": {
+    "h": 5.7,
+    "factory": {
+     "Nitrogen Gas": 845.1557455802231,
+     "Crude Oil": 854.1444503618721,
+     "SAM": 809.0912161617889,
+     "Limestone": 300.0000000000109,
+     "Iron Ore": 4026.076606421775,
+     "Copper Ore": 960.472915101809,
+     "Caterium Ore": 228.99282281774867,
+     "Coal": 1885.2015686233742,
+     "Raw Quartz": 538.7381110302696,
+     "Sulfur": 0.0,
+     "Bauxite": 847.1869126216261,
+     "Uranium": 0.0,
+     "Water": 1025.305178995177
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 3228.562475014612,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 113
+    },
+    "peak_MW": 28845.424994421788
+   }
+  }
+ },
+ "p5x40": {
+  "ppm": {
+   "5": 40.0
+  },
+  "warns": [],
+  "phases": {
+   "1": {
+    "h": 3.8833333333333333,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 0.0,
+     "SAM": 0.0,
+     "Limestone": 55.13506969919297,
+     "Iron Ore": 56.37045343350064,
+     "Copper Ore": 11.48647285399852,
+     "Caterium Ore": 0.0,
+     "Coal": 0.0,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 0.0,
+     "Crude Oil": 0.0,
+     "Nitrogen Gas": 0.0,
+     "Water": 0.0
+    },
+    "gens": {
+     "Biomass Burner": 3,
+     "Coal Generator": 0,
+     "Fuel Generator": 0
+    },
+    "peak_MW": 62.6942926563263
+   },
+   "2": {
+    "h": 27.033333333333335,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 0.0,
+     "SAM": 0.0,
+     "Limestone": 18.585152920439214,
+     "Iron Ore": 92.01418017623655,
+     "Copper Ore": 40.924005953140295,
+     "Caterium Ore": 0.0,
+     "Coal": 37.326744730220526,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 37.85290895377824,
+     "Crude Oil": 0.0,
+     "Nitrogen Gas": 0.0,
+     "Water": 113.55872686133472
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 3,
+     "Fuel Generator": 0
+    },
+    "peak_MW": 189.2645447688912
+   },
+   "3": {
+    "h": 65.05,
+    "factory": {
+     "Nitrogen Gas": 0.0,
+     "Crude Oil": 134.40715623275355,
+     "SAM": 0.0,
+     "Limestone": 82.38840712826641,
+     "Iron Ore": 359.4726104240981,
+     "Copper Ore": 169.31540800558287,
+     "Caterium Ore": 0.0,
+     "Coal": 157.69560778338928,
+     "Raw Quartz": 0.0,
+     "Sulfur": 0.0,
+     "Bauxite": 0.0,
+     "Uranium": 0.0,
+     "Water": 0.0
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 25.04404689502431,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 2
+    },
+    "peak_MW": 1028.753772775065
+   },
+   "4": {
+    "h": 13.15,
+    "factory": {
+     "Nitrogen Gas": 281.4852416138592,
+     "Crude Oil": 614.3716965130734,
+     "SAM": 0.0,
+     "Limestone": 269.659452462889,
+     "Iron Ore": 737.8477471682709,
+     "Copper Ore": 48469.09462949741,
+     "Caterium Ore": 412.2865576832264,
+     "Coal": 551.3375390312274,
+     "Raw Quartz": 441.92839225167893,
+     "Sulfur": 0.0,
+     "Bauxite": 679.6688692923344,
+     "Uranium": 0.0,
+     "Water": 712.9139007094598
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 12902.108370087353,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 437
+    },
+    "peak_MW": 109820.48227291976
+   },
+   "5": {
+    "h": 0.7166666666666667,
+    "factory": {
+     "Nitrogen Gas": 5931.873138710545,
+     "Crude Oil": 4400.812060508586,
+     "SAM": 6424.142548433134,
+     "Limestone": 2400.0000000000055,
+     "Iron Ore": 9424.597072756722,
+     "Copper Ore": 6137.813820257385,
+     "Caterium Ore": 1757.5142961120437,
+     "Coal": 11839.16148288446,
+     "Raw Quartz": 2337.3236735778464,
+     "Sulfur": 0.0,
+     "Bauxite": 3709.6998522923495,
+     "Uranium": 0.0,
+     "Water": 5096.074480034454
+    },
+    "plant": {
+     "Coal": 120.0,
+     "Crude Oil": 22679.68921662255,
+     "Nitrogen Gas": 0.0,
+     "Water": 360.0
+    },
+    "gens": {
+     "Biomass Burner": 0,
+     "Coal Generator": 8,
+     "Fuel Generator": 789
+    },
+    "peak_MW": 197782.34281246722
+   }
+  }
+ }
+}

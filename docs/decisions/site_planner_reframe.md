@@ -588,3 +588,115 @@ provenance nulled; cold start plus run about 7.4 to 7.6 s.
   not assessed: the table says what covering the need would take.
 - A standing grid beside the need, a pumping site in report_need, and the
   district solve (district_run, site_card) are refused, not modelled.
+
+## Amendment 12 — 2026-11-01. Where one site stops being enough: the selection threshold
+
+### A12.1 What raised it
+
+The PA walk-back step planner (claude.ai Project, 2026-10-27 to 10-31; copied
+to `research/step_planner/` in this change) answered "how much to make" lower
+than Greg expected. Greg, 2026-11-01 12:50: the next question is where to
+build what, and how the sites connect, for a minimal run and a whole-world
+run alike. 12:58: site selection matters more as the share of the world used
+rises. 13:01: a reasonable next step to look into, assumed to come before the
+logistics that connect sites.
+
+### A12.2 Stated by Greg, 2026-11-01 (facts and direction, not design decisions)
+
+- 12:38: before the step planner he would maximise the output of nearby
+  resources; its 1/min result needs far less extraction than that.
+- 17:28: the step planner will be joined to the site locations from the
+  neighbourhood work (A9); worth saving in the repo as part of the process.
+- 17:28: the fuel alternates come from MAM Sulfur research, and from hard
+  drives after that. The data agrees: `schematic_recipe_unlocks.csv` lists
+  Turbofuel and Compacted Coal under `Research_Sulfur_TurboFuel_C` and
+  `Research_Sulfur_CompactedCoal_C` as well as under `Schematic_Alternate_*`.
+  `alternate_recipe_unlocks.csv` is a HUB-prerequisite table of 79 rows and
+  does not list every alternate; that is not a data gap.
+- 17:28: water is essentially unlimited. Ocean extractors are bounded only by
+  the world border; treat water as infinite, power and logistics aside.
+
+### A12.3 Claude's reading (proposed; Greg may reverse any of it)
+
+- **"Maximise nearby" is a view, not an objective.** The step planner is
+  demand-driven: raw draw comes from the PA bill, milestones and the
+  carry-forward floor, and node counts follow from it. The supply-side
+  reading already exists: `LpBackend.solve_district` stage 1 (A27.2, A31),
+  max scale with every bill product held at its bill proportion, within the
+  caps, is "what ppm can these nodes carry". `demand_expansion_scope_and_site_capacity.md`
+  §5 ("node saturation is the wrong target"; design to a tier) is the nearest
+  prior position. Wiring stage 1 in as the step planner's driver, rather than
+  as a reported scale, is the drift to guard against.
+- **The selection threshold.** Per raw and phase: ratio = draw ÷ the
+  capacity of the single best neighbourhood of that raw alone, at the
+  phase's extractor tier. Over 1, one place cannot supply that raw and a
+  second site is forced on it. Capacity only, never location quality:
+  location quality depends on logistics, so ranking by it would close a loop
+  the order in A12.1 keeps open.
+- **Three regimes, by share of the binding raw.** Low share: many choices are
+  feasible and selection is about proximity. Middle: selection decides
+  feasibility and which dispersed nodes are forced. Near full: "which nodes"
+  collapses and routing dominates. Selection peaks in the middle; connection
+  work keeps rising with share.
+
+### A12.4 Measured 2026-11-01 (cloud container; master 3fcab38 + `research/step_planner/`)
+
+Draws: `plant_resize.py` (factory peak per phase, standard recipes, as
+`nodes.py`; power plant re-sized per case). Neighbourhoods:
+`tools/neighborhoods.py`, one raw per run, no dedupe, min 1. Capacity:
+`nodes.py`'s tier tables. Full output: `selection_threshold_output.txt`.
+Ratios at 350 m / 1000 m; S0 = the run2 plant (coal, then standard Fuel).
+
+    case          phase  over 1 at 350 m (S0)                         notes
+    1/min         P4     Copper 1.08 / 0.46                           crude 0.95 / 0.70
+    1/min         P5     Crude 1.84 / 1.36, Copper 1.31 / 0.56        crude is ~52% plant
+    P5 at 5/min   P4     Copper 4.47 / 1.92, Crude 2.40 / 1.77
+    P5 at 5/min   P5     Crude 4.00 / 2.96 (103% of map), SAM 1.69,
+                         Coal 1.19, Iron 1.16
+    P5 at 40/min  P5     every raw; crude 684% of map, SAM 158%,
+                         nitrogen 124%
+
+- **Radius is policy that changes the answer.** Copper at 1/min crosses at
+  350 m and not at 1000 m. A9.3 already makes the radius declared; this is
+  the first figure where the choice decides the result.
+- **Power drives selection at scale.** run2 fixes 8 coal generators by P3 and
+  covers all later growth with Fuel Generators, so every case's growth lands
+  on crude (plant crude at P5: 983, 3 229, 22 680/min for the three cases).
+- **Power alternates move the binding raw; they do not remove it.** Raw draw
+  per MW of fuel-generator output, generator energy only (recipe_io.csv,
+  generator_fuels.csv):
+
+      set                          crude/MW   other raws per MW
+      S0 standard Fuel             0.120      —
+      S1 HOR + Diluted Fuel        0.030      water 0.080
+      S2 S1 + Turbofuel            0.0135     water 0.036, coal 0.024, sulfur 0.024
+      S3 S1 + Nitro Rocket Fuel    0.0042     water 0.011, N2 0.0083, sulfur 0.011, coal 0.0056
+
+  At 1/min, S1 takes P5 crude to 1.12 / 0.82 and S2 to 0.98 / 0.73; copper
+  (a factory draw) still crosses at P4 and P5. At P5 5/min, coal crosses in
+  every set (S2 1.58) and SAM 1.69 is untouched by power. At P5 40/min no
+  fuel route fits the map: S2 needs 105% of the map's sulfur, S3 156% of its
+  nitrogen. Fuel power cannot carry that rate; geothermal or nuclear has to.
+
+### A12.5 Defect found on the way (fixed at the site, 2026-11-01)
+
+The Project's `step3-relief/site_data.py` added the crude for Fuel a second
+time on top of `run2.power_block`'s `pb['raw']`, which already held it, so
+plant crude was 2x. Fixed in the Project. `site_data.json`, `nodes.py`
+`PLANT` and `node_defaults.json` were regenerated, with only the crude
+fields changing. The repo copy is the fixed one. Session handoffs written
+before the fix still quote the doubled figures (P5 crude 47% of the map at
+1/min) and stay as written.
+
+### A12.6 Not covered
+
+- Production alternates. The factory draws are standard recipes; at P5
+  5/min coal and SAM are factory draws, so that is the next lever.
+- Unlock timing of S1–S3. They are applied from P4 (Diluted Fuel's HUB
+  prerequisite is `tier_7_8`). Whether a player holds them by then depends on
+  MAM Sulfur research and hard drives, and is not checked.
+- The fuel chains' own machine power, and the Compacted Coal by-product of
+  Nitro Rocket Fuel. S1–S3 read slightly better than real.
+- Co-location: each raw's best neighbourhood is found on its own, and they
+  may be far apart. That is the logistics step.
+- Water is reported, not thresholded (A12.2).
