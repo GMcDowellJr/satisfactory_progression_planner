@@ -1,0 +1,558 @@
+{
+ "schema": "link-sheet-run/0 (research)",
+ "phase": 4,
+ "tier": 8,
+ "goal": "resources",
+ "source_sites": "research/link_sheet/greg_test_sites.json",
+ "resolution": [
+  "dropped nb_ResourceNode88: wholly inside nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+  "BP_ResourceNode573_UAID_40B076DF2F7974E101_1674467201: stays with nb_ResourceNode131, removed from nb_FrackingCore4",
+  "BP_ResourceNode573_UAID_40B076DF2F79ACE101_1257410031: stays with nb_ResourceNode131, removed from nb_FrackingCore4",
+  "BP_ResourceNode26_99: stays with nb_ResourceNode26_99, removed from nb_ResourceNode29_102",
+  "BP_ResourceNode29_102: stays with nb_ResourceNode26_99, removed from nb_ResourceNode29_102"
+ ],
+ "max_scale": 0.9935064935064934,
+ "binding": [
+  "Desc_OreBauxite_C",
+  "Desc_OreCopper_C",
+  "Desc_OreIron_C"
+ ],
+ "caps_total": {
+  "Desc_Stone_C": 6960.0,
+  "Desc_OreIron_C": 6480.0,
+  "Desc_OreCopper_C": 2040.0,
+  "Desc_LiquidOil_C": 1920.0,
+  "Desc_NitrogenGas_C": 780.0,
+  "Desc_Coal_C": 3000.0,
+  "Desc_RawQuartz_C": 1200.0,
+  "Desc_SAM_C": 480.0,
+  "Desc_OreBauxite_C": 480.0,
+  "Desc_OreGold_C": 960.0,
+  "Desc_Sulfur_C": 480.0,
+  "Desc_OreUranium_C": 0.0
+ },
+ "bill": [
+  {
+   "item_id": "Desc_SpaceElevatorPart_7_C",
+   "name": "Assembly Director System",
+   "per_min": 1.0
+  },
+  {
+   "item_id": "Desc_SpaceElevatorPart_6_C",
+   "name": "Magnetic Field Generator",
+   "per_min": 1.0
+  },
+  {
+   "item_id": "Desc_SpaceElevatorPart_8_C",
+   "name": "Thermal Propulsion Rocket",
+   "per_min": 1.0
+  },
+  {
+   "item_id": "Desc_SpaceElevatorPart_9_C",
+   "name": "Nuclear Pasta",
+   "per_min": 1.0
+  }
+ ],
+ "target_scale": null,
+ "note": "1/min not reachable; transfers are the max-scale plan at 0.9935/min",
+ "sites": [
+  {
+   "label": "nb_ResourceNode103",
+   "item_id": null,
+   "east_m": -2670.514062,
+   "north_m": 243.867891,
+   "elevation_m": -7.236485,
+   "socket_ids": [
+    "BP_ResourceNode102_2068",
+    "BP_ResourceNode103",
+    "BP_ResourceNode104",
+    "BP_ResourceNode105_2463",
+    "BP_ResourceNode106",
+    "BP_ResourceNode107",
+    "BP_ResourceNode108",
+    "BP_ResourceNode109",
+    "BP_ResourceNode111_3367",
+    "BP_ResourceNode112",
+    "BP_ResourceNode153"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode131",
+   "item_id": null,
+   "east_m": -2669.039375,
+   "north_m": 1333.554375,
+   "elevation_m": 59.737822,
+   "socket_ids": [
+    "BP_ResourceNode131",
+    "BP_ResourceNode160",
+    "BP_ResourceNode161",
+    "BP_ResourceNode164",
+    "BP_ResourceNode165",
+    "BP_ResourceNode573_UAID_40B076DF2F7973E101_1125437021",
+    "BP_ResourceNode573_UAID_40B076DF2F7974E101_1439035199",
+    "BP_ResourceNode573_UAID_40B076DF2F7974E101_1674467201",
+    "BP_ResourceNode573_UAID_40B076DF2F79ACE101_1257410031"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode118_4340",
+   "item_id": null,
+   "east_m": -1334.448594,
+   "north_m": 352.402461,
+   "elevation_m": 38.320007,
+   "socket_ids": [
+    "BP_ResourceNode114",
+    "BP_ResourceNode115",
+    "BP_ResourceNode117",
+    "BP_ResourceNode118_4340",
+    "BP_ResourceNode119",
+    "BP_ResourceNode129",
+    "BP_ResourceNode130",
+    "BP_ResourceNode158",
+    "BP_ResourceNode_700"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode80",
+   "item_id": null,
+   "east_m": -1676.031406,
+   "north_m": -1795.571562,
+   "elevation_m": 15.896323,
+   "socket_ids": [
+    "BP_ResourceNode71_UAID_40B076DF2F797CDB01_1695622247",
+    "BP_ResourceNode80",
+    "BP_ResourceNode81",
+    "BP_ResourceNode82",
+    "BP_ResourceNode83",
+    "BP_ResourceNode84",
+    "BP_ResourceNode85"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "item_id": null,
+   "east_m": -1643.809023,
+   "north_m": -648.407657,
+   "elevation_m": 243.797932,
+   "socket_ids": [
+    "BP_ResourceNode176_UAID_40B076DF2F793BDF01_1694110039",
+    "BP_ResourceNode519_UAID_40B076DF2F79D3D901_1586151453",
+    "BP_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+    "BP_ResourceNode521_UAID_40B076DF2F79C3E101_1735462083",
+    "BP_ResourceNode573_UAID_40B076DF2F7971E101_2069219665",
+    "BP_ResourceNode573_UAID_40B076DF2F7972E101_1083579843",
+    "BP_ResourceNode596",
+    "BP_ResourceNode606"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode135",
+   "item_id": null,
+   "east_m": -1821.833525,
+   "north_m": 1423.670007,
+   "elevation_m": -17.438706,
+   "socket_ids": [
+    "BP_ResourceNode110",
+    "BP_ResourceNode113",
+    "BP_ResourceNode128_5242",
+    "BP_ResourceNode132_5908",
+    "BP_ResourceNode135",
+    "BP_ResourceNode159",
+    "BP_ResourceNode166",
+    "BP_ResourceNode167",
+    "BP_ResourceNode168",
+    "BP_ResourceNode552",
+    "BP_ResourceNode588",
+    "BP_ResourceNode588_UAID_40B076DF2F79CEDF01_1910960903"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": null,
+   "east_m": -2615.721005,
+   "north_m": -747.049599,
+   "elevation_m": -13.445096,
+   "socket_ids": [
+    "BP_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_1933830510",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_2053713511",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1587984689",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1704280690",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1999134691",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D9DF01_1230935868",
+    "BP_ResourceNode86",
+    "BP_ResourceNode87",
+    "BP_ResourceNode88",
+    "BP_ResourceNode89"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_FrackingCore4",
+   "item_id": null,
+   "east_m": -2513.950312,
+   "north_m": 1870.708594,
+   "elevation_m": -16.68124,
+   "socket_ids": [
+    "BP_FrackingCore4",
+    "BP_FrackingSatellite21",
+    "BP_FrackingSatellite22",
+    "BP_FrackingSatellite24",
+    "BP_FrackingSatellite25",
+    "BP_FrackingSatellite26",
+    "BP_FrackingSatellite27",
+    "BP_FrackingSatellite51_1",
+    "BP_ResourceNode20_3137",
+    "BP_ResourceNode20_UAID_04D9F5D42711A7C902_1245462149"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode26_99",
+   "item_id": null,
+   "east_m": 444.958086,
+   "north_m": 2289.500312,
+   "elevation_m": -17.43504,
+   "socket_ids": [
+    "BP_ResourceNode26_99",
+    "BP_ResourceNode27_100",
+    "BP_ResourceNode29_102"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode29_102",
+   "item_id": null,
+   "east_m": 524.710117,
+   "north_m": 2014.647188,
+   "elevation_m": -16.587415,
+   "socket_ids": [
+    "BP_ResourceNode14_609",
+    "BP_ResourceNode23_96",
+    "BP_ResourceNode25_98"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  },
+  {
+   "label": "nb_ResourceNode488",
+   "item_id": null,
+   "east_m": -949.054688,
+   "north_m": -2626.775,
+   "elevation_m": -46.201567,
+   "socket_ids": [
+    "BP_ResourceNode488",
+    "BP_ResourceNode489",
+    "BP_ResourceNode490",
+    "BP_ResourceNode491",
+    "BP_ResourceNode492",
+    "BP_ResourceNode493",
+    "BP_ResourceNode509",
+    "BP_ResourceNode530",
+    "BP_ResourceNode531",
+    "BP_ResourceNode532",
+    "BP_ResourceNode533",
+    "BP_ResourceNode556",
+    "BP_ResourceNode557",
+    "BP_ResourceNode72_998"
+   ],
+   "capacity_per_min": null,
+   "draw_world_per_min": null
+  }
+ ],
+ "site_draw_per_min": {
+  "nb_ResourceNode103": {
+   "Desc_OreCopper_C": 480.0,
+   "Desc_OreIron_C": 115.49512975387987
+  },
+  "nb_ResourceNode131": {
+   "Desc_Coal_C": 199.73041747024618,
+   "Desc_OreCopper_C": 120.0,
+   "Desc_OreIron_C": 416.25486874462024,
+   "Desc_Stone_C": 112.03155389950757
+  },
+  "nb_ResourceNode118_4340": {
+   "Desc_Coal_C": 349.430296262718,
+   "Desc_OreCopper_C": 480.0,
+   "Desc_OreIron_C": 960.0,
+   "Desc_Stone_C": 245.6307834028301
+  },
+  "nb_ResourceNode80": {
+   "Desc_OreCopper_C": 480.0
+  },
+  "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081": {
+   "Desc_Coal_C": 156.97402581602597,
+   "Desc_OreBauxite_C": 479.9999980379618,
+   "Desc_Water_C": 563.0259712409168
+  },
+  "nb_ResourceNode135": {
+   "Desc_OreCopper_C": 240.0,
+   "Desc_OreIron_C": 59.61038955038961,
+   "Desc_RawQuartz_C": 175.0714287649381
+  },
+  "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789": {
+   "Desc_LiquidOil_C": 803.9951290608798
+  },
+  "nb_FrackingCore4": {
+   "Desc_NitrogenGas_C": 223.53896081396095,
+   "Desc_Water_C": 34.77272723772726
+  },
+  "nb_ResourceNode26_99": {},
+  "nb_ResourceNode29_102": {},
+  "nb_ResourceNode488": {
+   "Desc_OreCopper_C": 239.99999794666655,
+   "Desc_OreGold_C": 135.9116881748883
+  }
+ },
+ "transfers": [
+  {
+   "source": "nb_ResourceNode103",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_CopperIngot_C",
+   "name": "Copper Ingot",
+   "form": "solid",
+   "rate_per_min": 95.3766232806235
+  },
+  {
+   "source": "nb_ResourceNode103",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_SpaceElevatorPart_1_C",
+   "name": "Smart Plating",
+   "form": "solid",
+   "rate_per_min": 4.967532462532468
+  },
+  {
+   "source": "nb_ResourceNode131",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_ModularFrameHeavy_C",
+   "name": "Heavy Modular Frame",
+   "form": "solid",
+   "rate_per_min": 1.2447950433278618
+  },
+  {
+   "source": "nb_ResourceNode131",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_SpaceElevatorPart_3_C",
+   "name": "Automated Wiring",
+   "form": "solid",
+   "rate_per_min": 4.751623376873378
+  },
+  {
+   "source": "nb_ResourceNode118_4340",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "item_id": "Desc_ModularFrameHeavy_C",
+   "name": "Heavy Modular Frame",
+   "form": "solid",
+   "rate_per_min": 1.9870129850129872
+  },
+  {
+   "source": "nb_ResourceNode118_4340",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_ModularFrameHeavy_C",
+   "name": "Heavy Modular Frame",
+   "form": "solid",
+   "rate_per_min": 0.7422179416851251
+  },
+  {
+   "source": "nb_ResourceNode118_4340",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_Motor_C",
+   "name": "Motor",
+   "form": "solid",
+   "rate_per_min": 8.941558432558441
+  },
+  {
+   "source": "nb_ResourceNode118_4340",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_SpaceElevatorPart_3_C",
+   "name": "Automated Wiring",
+   "form": "solid",
+   "rate_per_min": 5.183441548191557
+  },
+  {
+   "source": "nb_ResourceNode80",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_CopperSheet_C",
+   "name": "Copper Sheet",
+   "form": "solid",
+   "rate_per_min": 121.2077920857922
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode103",
+   "item_id": "Desc_PressureConversionCube_C",
+   "name": "Pressure Conversion Cube",
+   "form": "solid",
+   "rate_per_min": 0.3205194805994805
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode118_4340",
+   "item_id": "Desc_PressureConversionCube_C",
+   "name": "Pressure Conversion Cube",
+   "form": "solid",
+   "rate_per_min": 0.23672077948577921
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode80",
+   "item_id": "Desc_PressureConversionCube_C",
+   "name": "Pressure Conversion Cube",
+   "form": "solid",
+   "rate_per_min": 0.19798701319034628
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode135",
+   "item_id": "Desc_AluminumScrap_C",
+   "name": "Aluminum Scrap",
+   "form": "solid",
+   "rate_per_min": 104.31818171318177
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode135",
+   "item_id": "Desc_PressureConversionCube_C",
+   "name": "Pressure Conversion Cube",
+   "form": "solid",
+   "rate_per_min": 0.08795454556732327
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_ModularFrameFused_C",
+   "name": "Fused Modular Frame",
+   "form": "solid",
+   "rate_per_min": 0.9935064925064935
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_ModularFrameLightweight_C",
+   "name": "Radio Control Unit",
+   "form": "solid",
+   "rate_per_min": 1.9870129850129872
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_FrackingCore4",
+   "item_id": "Desc_GasTank_C",
+   "name": "Empty Fluid Tank",
+   "form": "solid",
+   "rate_per_min": 12.41883115633117
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode488",
+   "item_id": "Desc_PressureConversionCube_C",
+   "name": "Pressure Conversion Cube",
+   "form": "solid",
+   "rate_per_min": 0.15032467366356414
+  },
+  {
+   "source": "nb_ResourceNode135",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "item_id": "Desc_CrystalOscillator_C",
+   "name": "Crystal Oscillator",
+   "form": "solid",
+   "rate_per_min": 1.9870129850129872
+  },
+  {
+   "source": "nb_ResourceNode135",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "item_id": "Desc_RawQuartz_C",
+   "name": "Raw Quartz",
+   "form": "solid",
+   "rate_per_min": 63.30194835795759
+  },
+  {
+   "source": "nb_ResourceNode135",
+   "destination": "nb_FrackingCore4",
+   "item_id": "Desc_AluminumPlateReinforced_C",
+   "name": "Heat Sink",
+   "form": "solid",
+   "rate_per_min": 13.909090895090902
+  },
+  {
+   "source": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "item_id": "Desc_Computer_C",
+   "name": "Computer",
+   "form": "solid",
+   "rate_per_min": 3.9740259700259744
+  },
+  {
+   "source": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "destination": "nb_FrackingCore4",
+   "item_id": "Desc_Rubber_C",
+   "name": "Rubber",
+   "form": "solid",
+   "rate_per_min": 13.909090895090904
+  },
+  {
+   "source": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "destination": "nb_ResourceNode488",
+   "item_id": "Desc_CircuitBoard_C",
+   "name": "Circuit Board",
+   "form": "solid",
+   "rate_per_min": 2.9805194775194805
+  },
+  {
+   "source": "nb_FrackingCore4",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "item_id": "Desc_PackagedNitrogenGas_C",
+   "name": "Packaged Nitrogen Gas",
+   "form": "solid",
+   "rate_per_min": 12.41883115633117
+  },
+  {
+   "source": "nb_FrackingCore4",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_CoolingSystem_C",
+   "name": "Cooling System",
+   "form": "solid",
+   "rate_per_min": 6.9545454475454545
+  },
+  {
+   "source": "nb_ResourceNode488",
+   "destination": "nb_ResourceNode131",
+   "item_id": "Desc_CircuitBoardHighSpeed_C",
+   "name": "AI Limiter",
+   "form": "solid",
+   "rate_per_min": 0.9935064925064935
+  },
+  {
+   "source": "nb_ResourceNode488",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_CircuitBoardHighSpeed_C",
+   "name": "AI Limiter",
+   "form": "solid",
+   "rate_per_min": 1.9870129850129872
+  },
+  {
+   "source": "nb_ResourceNode488",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "item_id": "Desc_HighSpeedConnector_C",
+   "name": "High-Speed Connector",
+   "form": "solid",
+   "rate_per_min": 2.9805194775194805
+  }
+ ],
+ "transfer_volume_per_min": 490.5097401357499,
+ "scale": 0.9935064935064934
+}
