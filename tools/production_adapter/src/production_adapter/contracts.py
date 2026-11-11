@@ -9,6 +9,8 @@ presentation concern (plan section 15) and is applied by the caller, not here.
 """
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -559,8 +561,17 @@ class PortfolioRequest:
     #: then `extraction_mw` must be 0.0; without segments, `extraction_mw` is
     #: the caller's nameplate constant (P2). None: power outside the solve
     power: PowerBalance | None = None
+    #: Site planner A13 (Greg, 2026-11-01: "fixed-rate portfolio mode"): the
+    #: bill scale to deliver, declared. Stage 1 then caps the scale at it
+    #: instead of maximising without bound, and a target the sites cannot
+    #: carry is refused (lp_backend.Infeasible naming the maximum), never
+    #: delivered short. None: stage 1 maximises the scale (A1.2)
+    target_scale: float | None = None
 
     def __post_init__(self) -> None:
+        if self.target_scale is not None and not (
+                math.isfinite(self.target_scale) and self.target_scale > 0.0):
+            raise ValueError(f"target_scale must be a positive finite number: {self.target_scale!r}")
         if not self.sites:
             raise ValueError("a portfolio needs at least one site")
         labels = [s.label for s in self.sites]

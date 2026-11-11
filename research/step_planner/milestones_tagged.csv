@@ -1,0 +1,49 @@
+schematic_id,name,tier,paid_in_phase,tag,tag_if_P5_nuclear,reason,cost
+Schematic_Tutorial1_5_C,HUB Upgrade 2,0,1,required,,HUB tutorial chain (Space Elevator gate),Iron Rod 20; Iron Plate 10
+Schematic_Tutorial1_C,HUB Upgrade 1,0,1,required,,HUB tutorial chain (Space Elevator gate),Iron Rod 10
+Schematic_Tutorial2_C,HUB Upgrade 3,0,1,required,,HUB tutorial chain (Space Elevator gate),Iron Plate 20; Iron Rod 20; Wire 20
+Schematic_Tutorial3_C,HUB Upgrade 4,0,1,required,,HUB tutorial chain (Space Elevator gate),Iron Plate 75; Cable 20; Concrete 10
+Schematic_Tutorial4_C,HUB Upgrade 5,0,1,required,,HUB tutorial chain (Space Elevator gate),Iron Rod 75; Cable 50; Concrete 20
+Schematic_Tutorial5_C,HUB Upgrade 6,0,1,required,,HUB tutorial chain (Space Elevator gate),Iron Rod 100; Iron Plate 100; Wire 100; Concrete 50
+Schematic_1-1_C,Base Building,1,1,optional,,,Concrete 200; Iron Plate 100; Iron Rod 100
+Schematic_1-2_C,Logistics,1,1,practical,,splitter/merger,Iron Plate 150; Iron Rod 150; Wire 300
+Schematic_1-3_C,Field Research,1,1,optional,,,Wire 300; Screw 300; Iron Plate 100
+Schematic_2-1_C,Part Assembly,2,1,required,,building Assembler; recipe Copper Sheet; recipe Modular Frame; recipe Rotor; recipe Smart Plating,Cable 200; Iron Rod 200; Screw 500; Iron Plate 300
+Schematic_2-2_C,Obstacle Clearing,2,1,required,,"recipe Solid Biofuel; recipe Solid Biofuel (P1 power, PMULT<=1)",Screw 500; Cable 100; Concrete 100
+Schematic_2-3_C,Jump Pads,2,1,optional,,,Rotor 50; Iron Plate 300; Cable 150
+Schematic_2-5_C,Resource Sink Bonus Program,2,1,optional,,,Concrete 400; Wire 500; Iron Rod 200; Iron Plate 200
+Schematic_3-2_C,Logistics Mk.2,2,1,practical,,belt Mk.2,Reinforced Iron Plate 50; Concrete 200; Iron Rod 300; Iron Plate 300
+Schematic_3-1_C,Coal Power,3,2,required,,"Pipeline Mk.1 (fluids); Water Extractor (coal gens, Alumina, N-chain); generator Coal (P2+)",Reinforced Iron Plate 150; Rotor 50; Cable 500
+Schematic_3-3_C,Vehicular Transport,3,2,optional,,,Modular Frame 25; Rotor 100; Cable 200; Iron Plate 400
+Schematic_3-4_C,Basic Steel Production,3,2,required,,building Foundry; recipe Steel Beam; recipe Steel Ingot; recipe Steel Pipe; recipe Versatile Framework,Modular Frame 50; Rotor 150; Concrete 500; Wire 1000
+Schematic_4-2_C,Enhanced Asset Security,3,2,optional,,,Reinforced Iron Plate 100; Iron Rod 600; Wire 1500
+Schematic_4-1_C,Advanced Steel Production,4,2,required,,recipe Automated Wiring; recipe Encased Industrial Beam; recipe Motor; recipe Stator,Steel Pipe 100; Modular Frame 100; Rotor 200; Concrete 500
+Schematic_4-3_C,Expanded Power Infrastructure,4,2,optional,,,Encased Industrial Beam 50; Steel Beam 100; Modular Frame 200; Wire 2000
+Schematic_4-4_C,Hypertubes,4,2,optional,,,Encased Industrial Beam 50; Steel Pipe 300; Copper Sheet 500
+Schematic_4-5_C,FICSIT Blueprints,4,2,optional,,,Modular Frame 100; Steel Beam 200; Cable 500; Concrete 1000
+Schematic_5-3_C,Logistics Mk.3,4,2,practical,,belt Mk.3; industrial storage (stockpile),Steel Beam 200; Steel Pipe 200; Reinforced Iron Plate 400
+Schematic_5-1_C,Oil Processing,5,3,required,,Oil Extractor; building Refinery; recipe Circuit Board; recipe Fuel; recipe Plastic; recipe Residual Fuel (HOR -> Fuel); recipe Rubber,Motor 50; Encased Industrial Beam 100; Steel Pipe 500; Copper Sheet 500
+Schematic_5-4_C,Fluid Packaging,5,3,optional,,,Plastic 200; Steel Beam 400; Copper Sheet 1000
+Schematic_5-5_C,Petroleum Power,5,3,required,,generator Fuel (P3+),Motor 100; Encased Industrial Beam 100; Rubber 200; Plastic 200
+Schematic_6-1_C,Logistics Mk.4,5,3,practical,,belt Mk.4,Rubber 200; Encased Industrial Beam 300; Modular Frame 400
+Schematic_6-2_C,Jetpack,5,3,optional,,,Motor 50; Cable 1000; Iron Plate 1000
+Schematic_5-2_C,Industrial Manufacturing,6,3,required,,building Manufacturer; recipe Adaptive Control Unit; recipe Computer; recipe Heavy Modular Frame; recipe Modular Engine,Motor 200; Modular Frame 200; Plastic 400; Cable 1000
+Schematic_6-3_C,Monorail Train Technology,6,3,optional,,,Motor 250; Encased Industrial Beam 500; Steel Beam 1000; Steel Pipe 1000
+Schematic_6-5_C,Pipeline Engineering Mk.2,6,3,practical,,Pipeline Mk.2,Heavy Modular Frame 50; Plastic 1000; Rubber 1000
+Schematic_6-6_C,FICSIT Blueprints Mk.2,6,3,optional,,,Heavy Modular Frame 100; Computer 100; Rubber 400; Concrete 1500
+Schematic_6-7_C,Railway Signalling,6,3,optional,,,Computer 50; Steel Pipe 400; Copper Sheet 1000
+Schematic_7-1_C,Bauxite Refinement,7,4,required,,recipe Alclad Aluminum Sheet; recipe Alumina Solution; recipe Aluminum Casing; recipe Aluminum Ingot; recipe Aluminum Scrap,Computer 100; Heavy Modular Frame 100; Motor 250; Rubber 500
+Schematic_7-2_C,Logistics Mk.5,7,4,practical,,belt Mk.5,Alclad Aluminum Sheet 200; Encased Industrial Beam 400; Reinforced Iron Plate 600
+Schematic_7-3_C,Hazmat Suit,7,4,optional,practical,Hazmat Suit for uranium nodes (variant B),Gas Filter 50; Aluminum Casing 100; Quickwire 500
+Schematic_7-5_C,Control System Development,7,4,required,,building Blender; recipe Assembly Director System; recipe Supercomputer,Alclad Aluminum Sheet 200; Aluminum Casing 400; Computer 200; Plastic 1000
+Schematic_8-3_C,Hoverpack,7,4,optional,,,Alclad Aluminum Sheet 100; Heavy Modular Frame 100; Computer 100; Motor 250
+Schematic_7-4_C,Aeronautical Engineering,8,4,optional,,,Radio Control Unit 50; Alclad Aluminum Sheet 100; Aluminum Casing 200; Motor 300
+Schematic_8-1_C,Nuclear Power,8,4,required,,recipe Electromagnetic Control Rod; recipe Magnetic Field Generator,Supercomputer 50; Heavy Modular Frame 200; Cable 1000; Concrete 2000
+Schematic_8-2_C,Advanced Aluminum Production,8,4,required,,Resource Well (Nitrogen Gas); Resource Well Pressurizer (Nitrogen Gas); recipe Cooling System; recipe Fused Modular Frame; recipe Heat Sink,Radio Control Unit 50; Aluminum Casing 200; Alclad Aluminum Sheet 400; Wire 3000
+Schematic_8-4_C,Leading-Edge Production,8,4,required,,recipe Thermal Propulsion Rocket; recipe Turbo Motor,Fused Modular Frame 50; Supercomputer 100; Steel Pipe 1000
+Schematic_8-5_C,Particle Enrichment,8,4,required,,building Particle Accelerator; recipe Copper Powder; recipe Nuclear Pasta; recipe Pressure Conversion Cube,Turbo Motor 50; Fused Modular Frame 100; Cooling System 200; Quickwire 2500
+Schematic_9-1_C,Matter Conversion,9,5,required,,building Converter; recipe Biochemical Sculptor; recipe Diamonds; recipe Ficsite Ingot; recipe Ficsite Trigon; recipe Time Crystal,Fused Modular Frame 100; Radio Control Unit 250; Cooling System 500
+Schematic_9-2_C,Quantum Encoding,9,5,required,,building Quantum Encoder; recipe AI Expansion Server; recipe Dark Matter Crystal; recipe Dark Matter Residue; recipe Excited Photonic Matter; recipe Neural-Quantum Processor; recipe Superposition Oscillator,Time Crystal 50; Ficsite Trigon 100; Turbo Motor 200; Supercomputer 400
+Schematic_9-3_C,FICSIT Blueprints Mk.3,9,5,optional,,,Neural-Quantum Processor 100; Time Crystal 250; Ficsite Trigon 500; Fused Modular Frame 500
+Schematic_9-4_C,Spatial Energy Regulation,9,5,required,,recipe Ballistic Warp Drive; recipe Singularity Cell,Superposition Oscillator 100; Turbo Motor 250; Radio Control Unit 500; SAM Fluctuator 1000
+Schematic_9-5_C,Peak Efficiency,9,5,practical,,belt Mk.6,Time Crystal 250; Ficsite Trigon 250; Alclad Aluminum Sheet 5000; Iron Plate 10000

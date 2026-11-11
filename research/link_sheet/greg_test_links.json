@@ -1,0 +1,2017 @@
+{
+ "schema": "link-sheet/0 (research)",
+ "run": "research/link_sheet/greg_test_run.json",
+ "tier": 8,
+ "corridor_policy": "corridors_v1",
+ "pairs": [
+  {
+   "source": "nb_ResourceNode103",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "Copper Ingot",
+     "form": "solid",
+     "rate_per_min": 95.3766232806235,
+     "stack_size": 100,
+     "stacks_per_min": 0.9537662328062351
+    },
+    {
+     "name": "Smart Plating",
+     "form": "solid",
+     "rate_per_min": 4.967532462532468,
+     "stack_size": 50,
+     "stacks_per_min": 0.09935064925064935
+    }
+   ],
+   "solid_items_per_min": 100.34415574315597,
+   "stacks_per_min": 1.0531168820568844,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 992.4312324203149,
+    "corridor_m": 11983.095510823345,
+    "snap_m": [
+     45.87046501320565,
+     118.76271530354471
+    ],
+    "chokepoint_edges": 90,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -6.208610999999999,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -6.208610999999999,
+    "ridge_above_ends_m": 3.0364851907348633,
+    "ground_climb_m": 97.30000400543213,
+    "ground_drop_m": 102.2000036239624,
+    "over_water_m": 656.2851698263373,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 1.672402595719266,
+    "Mk.2": 0.836201297859633,
+    "Mk.3": 0.371645021270948,
+    "Mk.4": 0.20905032446490826,
+    "Mk.5": 0.12864635351686662
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 45.57898635738257,
+     "needed_avg_kmh": 31.549000454370322
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 23.73905539447009,
+     "needed_avg_kmh": 60.57408087239102
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 11.394746589345642,
+     "needed_avg_kmh": 126.19600181748129
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 30.385990904921712,
+     "needed_avg_kmh": 47.32350068155548
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 8.546059942009231,
+     "needed_avg_kmh": 13.935281135231378
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 0.9495622157788035,
+     "needed_avg_kmh": 1514.3520218097754
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode131",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "Heavy Modular Frame",
+     "form": "solid",
+     "rate_per_min": 1.2447950433278618,
+     "stack_size": 50,
+     "stacks_per_min": 0.024895900866557238
+    },
+    {
+     "name": "Automated Wiring",
+     "form": "solid",
+     "rate_per_min": 4.751623376873378,
+     "stack_size": 50,
+     "stacks_per_min": 0.09503246753746757
+    }
+   ],
+   "solid_items_per_min": 5.99641842020124,
+   "stacks_per_min": 0.11992836840402481,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2081.287040560251,
+    "corridor_m": 12425.506523796073,
+    "snap_m": [
+     78.71380204278813,
+     118.76271530354471
+    ],
+    "chokepoint_edges": 92,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -73.182918,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -73.182918,
+    "ridge_above_ends_m": 21.962174948242186,
+    "ground_climb_m": 229.69998556375504,
+    "ground_drop_m": 301.4999867081642,
+    "over_water_m": 768.4752149760927,
+    "lifts_for_end_dz": 2,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.099940307003354,
+    "Mk.2": 0.049970153501677,
+    "Mk.3": 0.022208957111856446,
+    "Mk.4": 0.01249253837541925,
+    "Mk.5": 0.007687715923334924
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 400.2389146018693,
+     "needed_avg_kmh": 3.725426809981073
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 208.4577680218069,
+     "needed_avg_kmh": 7.15281947516366
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 100.05972865046732,
+     "needed_avg_kmh": 14.901707239924292
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 266.8259430679128,
+     "needed_avg_kmh": 5.5881402149716095
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 75.04479648785049,
+     "needed_avg_kmh": 3.3280714527310975
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 8.338310720872276,
+     "needed_avg_kmh": 178.8204868790915
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode118_4340",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "items": [
+    {
+     "name": "Heavy Modular Frame",
+     "form": "solid",
+     "rate_per_min": 1.9870129850129872,
+     "stack_size": 50,
+     "stacks_per_min": 0.039740259700259746
+    }
+   ],
+   "solid_items_per_min": 1.9870129850129872,
+   "stacks_per_min": 0.039740259700259746,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 1047.5327046551997,
+    "corridor_m": 10274.889428577535,
+    "snap_m": [
+     22.84590211467596,
+     54.12953591565493
+    ],
+    "chokepoint_edges": 97,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": 205.477925,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 205.477925,
+    "ridge_above_ends_m": 11.602061896484372,
+    "ground_climb_m": 523.9000065326691,
+    "ground_drop_m": 318.099999666214,
+    "over_water_m": 64.4635510557046,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.033116883083549785,
+    "Mk.2": 0.016558441541774892,
+    "Mk.3": 0.007359307351899953,
+    "Mk.4": 0.004139610385443723,
+    "Mk.5": 0.002547452544888445
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 1207.8431384706394,
+     "needed_avg_kmh": 1.0208169357078116
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 629.084967953458,
+     "needed_avg_kmh": 1.9599685165589986
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 301.96078461765984,
+     "needed_avg_kmh": 4.0832677428312465
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 805.2287589804262,
+     "needed_avg_kmh": 1.5312254035617177
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 226.47058846324487,
+     "needed_avg_kmh": 0.5550562897001751
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 25.163398718138318,
+     "needed_avg_kmh": 48.999212913974965
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode118_4340",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "Heavy Modular Frame",
+     "form": "solid",
+     "rate_per_min": 0.7422179416851251,
+     "stack_size": 50,
+     "stacks_per_min": 0.014844358833702503
+    },
+    {
+     "name": "Motor",
+     "form": "solid",
+     "rate_per_min": 8.941558432558441,
+     "stack_size": 50,
+     "stacks_per_min": 0.17883116865116883
+    },
+    {
+     "name": "Automated Wiring",
+     "form": "solid",
+     "rate_per_min": 5.183441548191557,
+     "stack_size": 50,
+     "stacks_per_min": 0.10366883096383114
+    }
+   ],
+   "solid_items_per_min": 14.867217922435124,
+   "stacks_per_min": 0.29734435844870244,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 1688.3287071622033,
+    "corridor_m": 10955.28710995324,
+    "snap_m": [
+     22.84590211467596,
+     118.76271530354471
+    ],
+    "chokepoint_edges": 86,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -51.765102999999996,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -51.765102999999996,
+    "ridge_above_ends_m": 182.37998994824218,
+    "ground_climb_m": 473.40000009536743,
+    "ground_drop_m": 523.5999989509583,
+    "over_water_m": 241.1898153088862,
+    "lifts_for_end_dz": 2,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.24778696537391873,
+    "Mk.2": 0.12389348268695936,
+    "Mk.3": 0.05506377008309305,
+    "Mk.4": 0.03097337067173984,
+    "Mk.5": 0.019060535797993747
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 161.42899179397384,
+     "needed_avg_kmh": 8.143732043325963
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 84.0775998926947,
+     "needed_avg_kmh": 15.635965523185849
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 40.35724794849346,
+     "needed_avg_kmh": 32.57492817330385
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 107.61932786264923,
+     "needed_avg_kmh": 12.215598064988946
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 30.267935961370092,
+     "needed_avg_kmh": 6.693533550422301
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 3.3631039957077884,
+     "needed_avg_kmh": 390.89913807964626
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode80",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "Copper Sheet",
+     "form": "solid",
+     "rate_per_min": 121.2077920857922,
+     "stack_size": 200,
+     "stacks_per_min": 0.606038960428961
+    }
+   ],
+   "solid_items_per_min": 121.2077920857922,
+   "stacks_per_min": 0.606038960428961,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 1407.9825458300802,
+    "corridor_m": 1942.6328505556496,
+    "snap_m": [
+     20.02828932926316,
+     118.76271530354471
+    ],
+    "chokepoint_edges": 15,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -29.341419000000002,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -29.341419000000002,
+    "ridge_above_ends_m": 6.503676618530273,
+    "ground_climb_m": 64.1999979019165,
+    "ground_drop_m": 92.6999979019165,
+    "over_water_m": 695.899419203373,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 2.0201298680965367,
+    "Mk.2": 1.0100649340482684,
+    "Mk.3": 0.44891774846589705,
+    "Mk.4": 0.2525162335120671,
+    "Mk.5": 0.15539460523819515
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 79.20282875217309,
+     "needed_avg_kmh": 2.9432779831147373
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 41.251473308423485,
+     "needed_avg_kmh": 5.651093727580296
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 19.800707188043273,
+     "needed_avg_kmh": 11.77311193245895
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 52.801885834782055,
+     "needed_avg_kmh": 4.414916974672106
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 14.850530391032454,
+     "needed_avg_kmh": 11.377230378359782
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 1.6500589323369392,
+     "needed_avg_kmh": 141.2773431895074
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode103",
+   "items": [
+    {
+     "name": "Pressure Conversion Cube",
+     "form": "solid",
+     "rate_per_min": 0.3205194805994805,
+     "stack_size": 50,
+     "stacks_per_min": 0.00641038961198961
+    }
+   ],
+   "solid_items_per_min": 0.3205194805994805,
+   "stacks_per_min": 0.00641038961198961,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 1360.2495692580433,
+    "corridor_m": 11302.69782944764,
+    "snap_m": [
+     54.12953591565493,
+     45.87046501320565
+    ],
+    "chokepoint_edges": 101,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": -251.034417,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -251.034417,
+    "ridge_above_ends_m": 0.0,
+    "ground_climb_m": 542.0000033378601,
+    "ground_drop_m": 793.1000094413757,
+    "over_water_m": 256.0469777426905,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.005341991343324675,
+    "Mk.2": 0.0026709956716623375,
+    "Mk.3": 0.0011871091874054833,
+    "Mk.4": 0.0006677489179155844,
+    "Mk.5": 0.000410922411024975
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 7487.84440655895,
+     "needed_avg_kmh": 0.18113674188337164
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 3899.9189617494535,
+     "needed_avg_kmh": 0.34778254441607354
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 1871.9611016397375,
+     "needed_avg_kmh": 0.7245469675334866
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 4991.8962710393,
+     "needed_avg_kmh": 0.2717051128250575
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 1403.9708262298032,
+     "needed_avg_kmh": 0.11626306277980136
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 155.99675846997812,
+     "needed_avg_kmh": 8.69456361040184
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode118_4340",
+   "items": [
+    {
+     "name": "Pressure Conversion Cube",
+     "form": "solid",
+     "rate_per_min": 0.23672077948577921,
+     "stack_size": 50,
+     "stacks_per_min": 0.004734415589715584
+    }
+   ],
+   "solid_items_per_min": 0.23672077948577921,
+   "stacks_per_min": 0.004734415589715584,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 1047.5327046551997,
+    "corridor_m": 10274.889428577535,
+    "snap_m": [
+     22.84590211467596,
+     54.12953591565493
+    ],
+    "chokepoint_edges": 97,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": 205.477925,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -205.477925,
+    "ridge_above_ends_m": 11.602061896484372,
+    "ground_climb_m": 318.099999666214,
+    "ground_drop_m": 523.9000065326691,
+    "over_water_m": 64.4635510557046,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.003945346324762987,
+    "Mk.2": 0.0019726731623814935,
+    "Mk.3": 0.0008767436277251083,
+    "Mk.4": 0.0004931682905953734,
+    "Mk.5": 0.00030348817882792207
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 10138.526939685824,
+     "needed_avg_kmh": 0.12161399173315333
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 5280.482781086367,
+     "needed_avg_kmh": 0.2334988641276544
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 2534.631734921456,
+     "needed_avg_kmh": 0.48645596693261334
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 6759.01795979055,
+     "needed_avg_kmh": 0.18242098759972997
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 1900.9738011910922,
+     "needed_avg_kmh": 0.06612606890208678
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 211.21931124345468,
+     "needed_avg_kmh": 5.837471603191359
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode80",
+   "items": [
+    {
+     "name": "Pressure Conversion Cube",
+     "form": "solid",
+     "rate_per_min": 0.19798701319034628,
+     "stack_size": 50,
+     "stacks_per_min": 0.003959740263806926
+    }
+   ],
+   "solid_items_per_min": 0.19798701319034628,
+   "stacks_per_min": 0.003959740263806926,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 1147.616358763262,
+    "corridor_m": 2723.920594129181,
+    "snap_m": [
+     54.12953591565493,
+     20.02828932926316
+    ],
+    "chokepoint_edges": 33,
+    "max_edge_grade": 0.9910008311271667,
+    "elevation_delta_m": -227.901609,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -227.901609,
+    "ridge_above_ends_m": 1.302074103515622,
+    "ground_climb_m": 471.10001397132874,
+    "ground_drop_m": 698.6000196933746,
+    "over_water_m": 0.0,
+    "lifts_for_end_dz": 5,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.003299783553172438,
+    "Mk.2": 0.001649891776586219,
+    "Mk.3": 0.0007332852340383196,
+    "Mk.4": 0.00041247294414655477,
+    "Mk.5": 0.0002538295040901875
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 12122.007203031146,
+     "needed_avg_kmh": 0.026965045129965504
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 6313.545418245388,
+     "needed_avg_kmh": 0.05177288664953377
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 3030.5018007577864,
+     "needed_avg_kmh": 0.10786018051986201
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 8081.338135354096,
+     "needed_avg_kmh": 0.040447567694948255
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 2272.8763505683396,
+     "needed_avg_kmh": 0.060590169375978435
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 252.5418167298155,
+     "needed_avg_kmh": 1.2943221662383442
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode135",
+   "items": [
+    {
+     "name": "Aluminum Scrap",
+     "form": "solid",
+     "rate_per_min": 104.31818171318177,
+     "stack_size": 500,
+     "stacks_per_min": 0.20863636342636355
+    },
+    {
+     "name": "Pressure Conversion Cube",
+     "form": "solid",
+     "rate_per_min": 0.08795454556732327,
+     "stack_size": 50,
+     "stacks_per_min": 0.0017590909113464654
+    }
+   ],
+   "solid_items_per_min": 104.4061362587491,
+   "stacks_per_min": 0.21039545433771,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2079.711174408611,
+    "corridor_m": 11393.461973839723,
+    "snap_m": [
+     54.12953591565493,
+     22.360439425594404
+    ],
+    "chokepoint_edges": 78,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": -261.236638,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -261.236638,
+    "ridge_above_ends_m": 2.102061896484372,
+    "ground_climb_m": 405.499986410141,
+    "ground_drop_m": 576.7999894618988,
+    "over_water_m": 274.0704648445456,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 1.7401022709791516,
+    "Mk.2": 0.8700511354895758,
+    "Mk.3": 0.3866893935509226,
+    "Mk.4": 0.21751278387239395,
+    "Mk.5": 0.13385402084455014
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 228.14181110089112,
+     "needed_avg_kmh": 5.992831521163577
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 118.82385994838079,
+     "needed_avg_kmh": 11.506236520634069
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 57.03545277522278,
+     "needed_avg_kmh": 23.971326084654308
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 152.0945407339274,
+     "needed_avg_kmh": 8.989247281745367
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 42.776589581417085,
+     "needed_avg_kmh": 5.834157032412163
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 4.752954397935231,
+     "needed_avg_kmh": 287.65591301585175
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "Fused Modular Frame",
+     "form": "solid",
+     "rate_per_min": 0.9935064925064935,
+     "stack_size": 50,
+     "stacks_per_min": 0.01987012985012987
+    },
+    {
+     "name": "Radio Control Unit",
+     "form": "solid",
+     "rate_per_min": 1.9870129850129872,
+     "stack_size": 50,
+     "stacks_per_min": 0.039740259700259746
+    }
+   ],
+   "solid_items_per_min": 2.9805194775194805,
+   "stacks_per_min": 0.059610389550389616,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 976.9048743233393,
+    "corridor_m": 3411.4388580750365,
+    "snap_m": [
+     54.12953591565493,
+     118.76271530354471
+    ],
+    "chokepoint_edges": 35,
+    "max_edge_grade": 0.9910008311271667,
+    "elevation_delta_m": -257.243028,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -257.243028,
+    "ridge_above_ends_m": 0.802074103515622,
+    "ground_climb_m": 21.49998664855957,
+    "ground_drop_m": 277.49999237060547,
+    "over_water_m": 224.20767607420905,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.049675324625324674,
+    "Mk.2": 0.024837662312662337,
+    "Mk.3": 0.011038961027849927,
+    "Mk.4": 0.006209415578165584,
+    "Mk.5": 0.0038211788173326674
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 805.2287589804263,
+     "needed_avg_kmh": 0.508392998142973
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 419.38997863563867,
+     "needed_avg_kmh": 0.9761145564345083
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 201.30718974510657,
+     "needed_avg_kmh": 2.033571992571892
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 536.8191726536176,
+     "needed_avg_kmh": 0.7625894972144596
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 150.98039230882992,
+     "needed_avg_kmh": 0.7764490681611822
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 16.77559914542555,
+     "needed_avg_kmh": 24.402863910862706
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_FrackingCore4",
+   "items": [
+    {
+     "name": "Empty Fluid Tank",
+     "form": "solid",
+     "rate_per_min": 12.41883115633117,
+     "stack_size": 100,
+     "stacks_per_min": 0.1241883115633117
+    }
+   ],
+   "solid_items_per_min": 12.41883115633117,
+   "stacks_per_min": 0.1241883115633117,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2665.1627621732364,
+    "corridor_m": 12713.754804965178,
+    "snap_m": [
+     54.12953591565493,
+     62.45817760993503
+    ],
+    "chokepoint_edges": 115,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": -260.479172,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -260.479172,
+    "ridge_above_ends_m": 3.702067999999997,
+    "ground_climb_m": 544.400010228157,
+    "ground_drop_m": 804.4000159502029,
+    "over_water_m": 128.44157889991502,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.20698051927218616,
+    "Mk.2": 0.10349025963609308,
+    "Mk.3": 0.0459956709493747,
+    "Mk.4": 0.02587256490902327,
+    "Mk.5": 0.01592157840555278
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 386.50980431060464,
+     "needed_avg_kmh": 3.9472493571464162
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 201.30718974510657,
+     "needed_avg_kmh": 7.578718765721119
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 96.62745107765116,
+     "needed_avg_kmh": 15.788997428585665
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 257.6732028737364,
+     "needed_avg_kmh": 5.920874035719625
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 72.47058830823836,
+     "needed_avg_kmh": 4.413094179676084
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 8.052287589804262,
+     "needed_avg_kmh": 189.467969143028
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "destination": "nb_ResourceNode488",
+   "items": [
+    {
+     "name": "Pressure Conversion Cube",
+     "form": "solid",
+     "rate_per_min": 0.15032467366356414,
+     "stack_size": 50,
+     "stacks_per_min": 0.0030064934732712827
+    }
+   ],
+   "solid_items_per_min": 0.15032467366356414,
+   "stacks_per_min": 0.0030064934732712827,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2096.812087396048,
+    "corridor_m": 3810.3528210942345,
+    "snap_m": [
+     54.12953591565493,
+     179.4025083430478
+    ],
+    "chokepoint_edges": 33,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": -289.999499,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -289.999499,
+    "ridge_above_ends_m": 0.0,
+    "ground_climb_m": 575.0999946594238,
+    "ground_drop_m": 865.1000022888184,
+    "over_water_m": 192.07438968513415,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.002505411227726069,
+    "Mk.2": 0.0012527056138630344,
+    "Mk.3": 0.0005567580506057931,
+    "Mk.4": 0.0003131764034657586,
+    "Mk.5": 0.000192723940594313
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 15965.442940999477,
+     "needed_avg_kmh": 0.02863950221870159
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 8315.334865103894,
+     "needed_avg_kmh": 0.05498784425990704
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 3991.3607352498693,
+     "needed_avg_kmh": 0.11455800887480636
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 10643.628627332984,
+     "needed_avg_kmh": 0.04295925332805239
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 2993.520551437402,
+     "needed_avg_kmh": 0.0840540247391007
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 332.61339460415576,
+     "needed_avg_kmh": 1.3746961064976764
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode135",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "items": [
+    {
+     "name": "Crystal Oscillator",
+     "form": "solid",
+     "rate_per_min": 1.9870129850129872,
+     "stack_size": 100,
+     "stacks_per_min": 0.019870129850129873
+    },
+    {
+     "name": "Raw Quartz",
+     "form": "solid",
+     "rate_per_min": 63.30194835795759,
+     "stack_size": 100,
+     "stacks_per_min": 0.6330194835795759
+    }
+   ],
+   "solid_items_per_min": 65.28896134297058,
+   "stacks_per_min": 0.6528896134297059,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2079.711174408611,
+    "corridor_m": 11393.461973839723,
+    "snap_m": [
+     54.12953591565493,
+     22.360439425594404
+    ],
+    "chokepoint_edges": 78,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": -261.236638,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 261.236638,
+    "ridge_above_ends_m": 2.102061896484372,
+    "ground_climb_m": 576.7999894618988,
+    "ground_drop_m": 405.499986410141,
+    "over_water_m": 274.0704648445456,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 1.0881493557161763,
+    "Mk.2": 0.5440746778580882,
+    "Mk.3": 0.24181096793692808,
+    "Mk.4": 0.13601866946452204,
+    "Mk.5": 0.08370379659355202
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 73.51931936526047,
+     "needed_avg_kmh": 18.596682459315677
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 38.291312169406496,
+     "needed_avg_kmh": 35.7056303218861
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 18.379829841315118,
+     "needed_avg_kmh": 74.3867298372627
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 49.01287957684032,
+     "needed_avg_kmh": 27.895023688973513
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 13.78487238098634,
+     "needed_avg_kmh": 18.104290996067704
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 1.53165248677626,
+     "needed_avg_kmh": 892.6407580471524
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode135",
+   "destination": "nb_FrackingCore4",
+   "items": [
+    {
+     "name": "Heat Sink",
+     "form": "solid",
+     "rate_per_min": 13.909090895090902,
+     "stack_size": 100,
+     "stacks_per_min": 0.13909090895090903
+    }
+   ],
+   "solid_items_per_min": 13.909090895090902,
+   "stacks_per_min": 0.13909090895090903,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 823.9351583190025,
+    "corridor_m": 2154.0330459604015,
+    "snap_m": [
+     22.360439425594404,
+     62.45817760993503
+    ],
+    "chokepoint_edges": 15,
+    "max_edge_grade": 0.9152031540870667,
+    "elevation_delta_m": 0.7574660000000009,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 0.7574660000000009,
+    "ridge_above_ends_m": 104.48124305175782,
+    "ground_climb_m": 201.90000653266907,
+    "ground_drop_m": 290.60000920295715,
+    "over_water_m": 339.26741813135396,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.23181818158484838,
+    "Mk.2": 0.11590909079242419,
+    "Mk.3": 0.05151515146329964,
+    "Mk.4": 0.028977272698106047,
+    "Mk.5": 0.017832167814219105
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 345.09803956304,
+     "needed_avg_kmh": 0.7490160356823186
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 179.73856227241666,
+     "needed_avg_kmh": 1.4381107885100517
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 86.27450989076,
+     "needed_avg_kmh": 2.9960641427292742
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 230.06535970869334,
+     "needed_avg_kmh": 1.1235240535234778
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 64.70588241807,
+     "needed_avg_kmh": 1.5280252011626825
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 7.189542490896667,
+     "needed_avg_kmh": 35.95276971275129
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "items": [
+    {
+     "name": "Computer",
+     "form": "solid",
+     "rate_per_min": 3.9740259700259744,
+     "stack_size": 50,
+     "stacks_per_min": 0.07948051940051949
+    }
+   ],
+   "solid_items_per_min": 3.9740259700259744,
+   "stacks_per_min": 0.07948051940051949,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 976.9048743233393,
+    "corridor_m": 3411.4388580750365,
+    "snap_m": [
+     54.12953591565493,
+     118.76271530354471
+    ],
+    "chokepoint_edges": 35,
+    "max_edge_grade": 0.9910008311271667,
+    "elevation_delta_m": -257.243028,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 257.243028,
+    "ridge_above_ends_m": 0.802074103515622,
+    "ground_climb_m": 277.49999237060547,
+    "ground_drop_m": 21.49998664855957,
+    "over_water_m": 224.20767607420905,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.06623376616709957,
+    "Mk.2": 0.033116883083549785,
+    "Mk.3": 0.014718614703799905,
+    "Mk.4": 0.008279220770887446,
+    "Mk.5": 0.00509490508977689
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 603.9215692353197,
+     "needed_avg_kmh": 0.6778573308572974
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 314.542483976729,
+     "needed_avg_kmh": 1.3014860752460111
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 150.98039230882992,
+     "needed_avg_kmh": 2.7114293234291895
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 402.6143794902131,
+     "needed_avg_kmh": 1.0167859962859462
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 113.23529423162243,
+     "needed_avg_kmh": 1.0352654242149097
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 12.581699359069159,
+     "needed_avg_kmh": 32.53715188115028
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "destination": "nb_FrackingCore4",
+   "items": [
+    {
+     "name": "Rubber",
+     "form": "solid",
+     "rate_per_min": 13.909090895090904,
+     "stack_size": 200,
+     "stacks_per_min": 0.06954545447545452
+    }
+   ],
+   "solid_items_per_min": 13.909090895090904,
+   "stacks_per_min": 0.06954545447545452,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2619.7357177723716,
+    "corridor_m": 13394.152486340883,
+    "snap_m": [
+     118.76271530354471,
+     62.45817760993503
+    ],
+    "chokepoint_edges": 104,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -3.2361439999999995,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -3.2361439999999995,
+    "ridge_above_ends_m": 167.6450929482422,
+    "ground_climb_m": 431.69998997449875,
+    "ground_drop_m": 435.69998997449875,
+    "over_water_m": 771.4559168900234,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.2318181815848484,
+    "Mk.2": 0.1159090907924242,
+    "Mk.3": 0.051515151463299644,
+    "Mk.4": 0.02897727269810605,
+    "Mk.5": 0.017832167814219108
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 690.19607912608,
+     "needed_avg_kmh": 2.3287560549402895
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 359.4771245448333,
+     "needed_avg_kmh": 4.471211625485355
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 172.54901978152,
+     "needed_avg_kmh": 9.315024219761158
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 460.1307194173867,
+     "needed_avg_kmh": 3.493134082410434
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 129.41176483614,
+     "needed_avg_kmh": 2.429209481307475
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 14.379084981793333,
+     "needed_avg_kmh": 111.78029063713389
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "destination": "nb_ResourceNode488",
+   "items": [
+    {
+     "name": "Circuit Board",
+     "form": "solid",
+     "rate_per_min": 2.9805194775194805,
+     "stack_size": 200,
+     "stacks_per_min": 0.014902597387597402
+    }
+   ],
+   "solid_items_per_min": 2.9805194775194805,
+   "stacks_per_min": 0.014902597387597402,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2512.199075588349,
+    "corridor_m": 4045.966664498368,
+    "snap_m": [
+     118.76271530354471,
+     179.4025083430478
+    ],
+    "chokepoint_edges": 20,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -32.756471,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": -32.756471,
+    "ridge_above_ends_m": 82.445096,
+    "ground_climb_m": 320.6999955177307,
+    "ground_drop_m": 354.69999742507935,
+    "over_water_m": 912.072275850547,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.049675324625324674,
+    "Mk.2": 0.024837662312662337,
+    "Mk.3": 0.011038961027849927,
+    "Mk.4": 0.006209415578165584,
+    "Mk.5": 0.0038211788173326674
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 3220.9150359217056,
+     "needed_avg_kmh": 0.15073853061164888
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 1677.559914542555,
+     "needed_avg_kmh": 0.28941797877436587
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 805.2287589804264,
+     "needed_avg_kmh": 0.6029541224465955
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 2147.27669061447,
+     "needed_avg_kmh": 0.22610779591747338
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 603.9215692353198,
+     "needed_avg_kmh": 0.4991772184131671
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 67.1023965817022,
+     "needed_avg_kmh": 7.235449469359148
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_FrackingCore4",
+   "destination": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "items": [
+    {
+     "name": "Packaged Nitrogen Gas",
+     "form": "solid",
+     "rate_per_min": 12.41883115633117,
+     "stack_size": 100,
+     "stacks_per_min": 0.1241883115633117
+    }
+   ],
+   "solid_items_per_min": 12.41883115633117,
+   "stacks_per_min": 0.1241883115633117,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2665.1627621732364,
+    "corridor_m": 12713.754804965178,
+    "snap_m": [
+     54.12953591565493,
+     62.45817760993503
+    ],
+    "chokepoint_edges": 115,
+    "max_edge_grade": 0.9898589849472046,
+    "elevation_delta_m": -260.479172,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 260.479172,
+    "ridge_above_ends_m": 3.702067999999997,
+    "ground_climb_m": 804.4000159502029,
+    "ground_drop_m": 544.400010228157,
+    "over_water_m": 128.44157889991502,
+    "lifts_for_end_dz": 6,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.20698051927218616,
+    "Mk.2": 0.10349025963609308,
+    "Mk.3": 0.0459956709493747,
+    "Mk.4": 0.02587256490902327,
+    "Mk.5": 0.01592157840555278
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 386.50980431060464,
+     "needed_avg_kmh": 3.9472493571464162
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 201.30718974510657,
+     "needed_avg_kmh": 7.578718765721119
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 96.62745107765116,
+     "needed_avg_kmh": 15.788997428585665
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 257.6732028737364,
+     "needed_avg_kmh": 5.920874035719625
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 72.47058830823836,
+     "needed_avg_kmh": 4.413094179676084
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 8.052287589804262,
+     "needed_avg_kmh": 189.467969143028
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_FrackingCore4",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "Cooling System",
+     "form": "solid",
+     "rate_per_min": 6.9545454475454545,
+     "stack_size": 100,
+     "stacks_per_min": 0.06954545447545454
+    }
+   ],
+   "solid_items_per_min": 6.9545454475454545,
+   "stacks_per_min": 0.06954545447545454,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2619.7357177723716,
+    "corridor_m": 13394.152486340883,
+    "snap_m": [
+     118.76271530354471,
+     62.45817760993503
+    ],
+    "chokepoint_edges": 104,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -3.2361439999999995,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 3.2361439999999995,
+    "ridge_above_ends_m": 167.6450929482422,
+    "ground_climb_m": 435.69998997449875,
+    "ground_drop_m": 431.69998997449875,
+    "over_water_m": 771.4559168900234,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.11590909079242424,
+    "Mk.2": 0.05795454539621212,
+    "Mk.3": 0.025757575731649832,
+    "Mk.4": 0.01448863634905303,
+    "Mk.5": 0.008916083907109558
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 690.1960791260798,
+     "needed_avg_kmh": 2.3287560549402904
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 359.4771245448332,
+     "needed_avg_kmh": 4.471211625485357
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 172.54901978151995,
+     "needed_avg_kmh": 9.315024219761161
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 460.1307194173865,
+     "needed_avg_kmh": 3.4931340824104353
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 129.41176483613995,
+     "needed_avg_kmh": 2.429209481307476
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 14.379084981793328,
+     "needed_avg_kmh": 111.78029063713393
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode488",
+   "destination": "nb_ResourceNode131",
+   "items": [
+    {
+     "name": "AI Limiter",
+     "form": "solid",
+     "rate_per_min": 0.9935064925064935,
+     "stack_size": 100,
+     "stacks_per_min": 0.009935064925064935
+    }
+   ],
+   "solid_items_per_min": 0.9935064925064935,
+   "stacks_per_min": 0.009935064925064935,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 4317.702639367651,
+    "corridor_m": 9407.128713955375,
+    "snap_m": [
+     179.4025083430478,
+     78.71380204278813
+    ],
+    "chokepoint_edges": 74,
+    "max_edge_grade": 0.913212239742279,
+    "elevation_delta_m": 105.939389,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 105.939389,
+    "ridge_above_ends_m": 182.56218105175782,
+    "ground_climb_m": 1446.0999759435654,
+    "ground_drop_m": 1340.2999728918076,
+    "over_water_m": 321.0187835961079,
+    "lifts_for_end_dz": 3,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.016558441541774892,
+    "Mk.2": 0.008279220770887446,
+    "Mk.3": 0.003679653675949976,
+    "Mk.4": 0.0020698051927218616,
+    "Mk.5": 0.0012737262724442223
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 4831.372553882558,
+     "needed_avg_kmh": 0.2336510863289731
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 2516.3398718138324,
+     "needed_avg_kmh": 0.4486100857516285
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 1207.8431384706396,
+     "needed_avg_kmh": 0.9346043453158924
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 3220.9150359217056,
+     "needed_avg_kmh": 0.35047662949345965
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 905.8823538529797,
+     "needed_avg_kmh": 0.5719554139898912
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 100.6535948725533,
+     "needed_avg_kmh": 11.215252143790709
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  },
+  {
+   "source": "nb_ResourceNode488",
+   "destination": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "items": [
+    {
+     "name": "AI Limiter",
+     "form": "solid",
+     "rate_per_min": 1.9870129850129872,
+     "stack_size": 100,
+     "stacks_per_min": 0.019870129850129873
+    },
+    {
+     "name": "High-Speed Connector",
+     "form": "solid",
+     "rate_per_min": 2.9805194775194805,
+     "stack_size": 100,
+     "stacks_per_min": 0.029805194775194804
+    }
+   ],
+   "solid_items_per_min": 4.967532462532468,
+   "stacks_per_min": 0.049675324625324674,
+   "fluid_m3_per_min": 0.0,
+   "route": {
+    "straight_m": 2512.199075588349,
+    "corridor_m": 4045.966664498368,
+    "snap_m": [
+     118.76271530354471,
+     179.4025083430478
+    ],
+    "chokepoint_edges": 20,
+    "max_edge_grade": 0.9610441327095032,
+    "elevation_delta_m": -32.756471,
+    "unresolved": null
+   },
+   "belt_line": {
+    "end_dz_m": 32.756471,
+    "ridge_above_ends_m": 82.445096,
+    "ground_climb_m": 354.69999742507935,
+    "ground_drop_m": 320.6999955177307,
+    "over_water_m": 912.072275850547,
+    "lifts_for_end_dz": 1,
+    "lift_max_m": 51.0
+   },
+   "belt_share": {
+    "Mk.1": 0.08279220770887447,
+    "Mk.2": 0.04139610385443723,
+    "Mk.3": 0.01839826837974988,
+    "Mk.4": 0.010349025963609308,
+    "Mk.5": 0.006368631362221112
+   },
+   "pipe_share": {
+    "Mk.1": 0.0,
+    "Mk.2": 0.0
+   },
+   "vehicles": [
+    {
+     "vehicle": "Truck",
+     "slots": 48,
+     "path": "corridor",
+     "round_trip_budget_min": 966.2745107765116,
+     "needed_avg_kmh": 0.5024617687054963
+    },
+    {
+     "vehicle": "Tractor",
+     "slots": 25,
+     "path": "corridor",
+     "round_trip_budget_min": 503.2679743627665,
+     "needed_avg_kmh": 0.964726595914553
+    },
+    {
+     "vehicle": "Explorer",
+     "slots": 12,
+     "path": "corridor",
+     "round_trip_budget_min": 241.5686276941279,
+     "needed_avg_kmh": 2.009847074821985
+    },
+    {
+     "vehicle": "Freight Car",
+     "slots": 32,
+     "path": "corridor",
+     "round_trip_budget_min": 644.1830071843411,
+     "needed_avg_kmh": 0.7536926530582444
+    },
+    {
+     "vehicle": "Drone",
+     "slots": 9,
+     "path": "straight",
+     "round_trip_budget_min": 181.17647077059593,
+     "needed_avg_kmh": 1.663924061377224
+    },
+    {
+     "vehicle": "Cyber Wagon",
+     "slots": 1,
+     "path": "corridor",
+     "round_trip_budget_min": 20.13071897451066,
+     "needed_avg_kmh": 24.11816489786382
+    }
+   ],
+   "fluid_vehicles_unresolved": []
+  }
+ ]
+}

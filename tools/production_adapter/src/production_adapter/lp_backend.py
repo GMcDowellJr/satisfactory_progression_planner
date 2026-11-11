@@ -746,7 +746,11 @@ class LpBackend:
                 a_eq[row0[a] + i, col] = -1.0   # leaves a
                 a_eq[row0[b] + i, col] = 1.0    # arrives at b
         bounds.extend((0.0, FLOW_UPPER_BOUND) for _ in range(len(pairs) * n_items))
-        bounds.append((0.0, FLOW_UPPER_BOUND))
+        # A13: a declared target caps the scale column; stage 1 still
+        # maximises, so a target the sites cannot reach comes back short
+        # and is refused below, with the maximum named
+        bounds.append((0.0, FLOW_UPPER_BOUND if request.target_scale is None
+                       else float(request.target_scale)))
         index = {i: n for n, i in enumerate(p0.item_ids)}
         # A3: ONE shared grid row, row 0 when present: every site's own row
         # from _build_core (lanes, generators, extraction draw) side by side
@@ -789,6 +793,11 @@ class LpBackend:
         first = run(c1)
         # HiGHS returns -1e-13 for a bill nothing here can cover; that is 0.0
         scale = -float(first.fun) if -float(first.fun) > self.tolerance else 0.0
+        if request.target_scale is not None:
+            target = float(request.target_scale)
+            if scale < target * (1.0 - 1.0e-9):
+                raise Infeasible(f"the declared sites carry the bill at scale {scale:.6g} at most; "
+                                 f"the declared target_scale is {target:.6g} (A13)")
         pin(c1, float(first.fun))
         c2 = np.zeros(n)
         c2[t0:lam] = 1.0

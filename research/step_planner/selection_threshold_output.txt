@@ -1,0 +1,343 @@
+selection_threshold.py -- radius 350 m / 1000 m; ratio = draw / best single same-raw neighborhood; map = draw / every socket of that raw at the phase tier; * = over 1 at the first radius
+
+all1 P1 | S0 standard Fuel | fuel MW from crude 0 | water 0/min (not thresholded)
+     Limestone            55    0.15 /   0.04   map    0.8%
+     Iron Ore             56    0.06 /   0.02   map    0.6%
+     Copper Ore           11    0.03 /   0.01   map    0.3%
+
+all1 P2 | S0 standard Fuel | fuel MW from crude 0 | water 114/min (not thresholded)
+     Coal                 75    0.09 /   0.04   map    0.9%
+     Copper Ore           41    0.06 /   0.02   map    0.6%
+     Iron Ore             92    0.05 /   0.02   map    0.5%
+     Limestone            19    0.03 /   0.01   map    0.1%
+
+all1 P3 | S0 standard Fuel | fuel MW from crude 209 | water 360/min (not thresholded)
+     Coal                278    0.33 /   0.14   map    3.3%
+     Copper Ore          169    0.24 /   0.10   map    2.3%
+     Iron Ore            359    0.21 /   0.08   map    2.0%
+     Crude Oil           159    0.16 /   0.12   map    4.0%
+     Limestone            82    0.11 /   0.03   map    0.6%
+
+all1 P4 | S0 standard Fuel | fuel MW from crude 4,352 | water 749/min (not thresholded)
+   * Copper Ore         1557    1.08 /   0.46   map   10.6%
+     Crude Oil           965    0.95 /   0.70   map   24.4%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Bauxite             355    0.37 /   0.17   map    7.2%
+     Coal                400    0.24 /   0.10   map    2.4%
+     Raw Quartz          224    0.19 /   0.14   map    4.1%
+     Nitrogen Gas        203    0.17 /   0.17   map    4.2%
+     Iron Ore            396    0.11 /   0.04   map    1.1%
+     Limestone           161    0.11 /   0.03   map    0.6%
+
+all1 P4 | S1 HOR + Diluted Fuel | fuel MW from crude 4,352 | water 1,097/min (not thresholded)
+   * Copper Ore         1557    1.08 /   0.46   map   10.6%
+     Crude Oil           574    0.56 /   0.42   map   14.5%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Bauxite             355    0.37 /   0.17   map    7.2%
+     Coal                400    0.24 /   0.10   map    2.4%
+     Raw Quartz          224    0.19 /   0.14   map    4.1%
+     Nitrogen Gas        203    0.17 /   0.17   map    4.2%
+     Iron Ore            396    0.11 /   0.04   map    1.1%
+     Limestone           161    0.11 /   0.03   map    0.6%
+
+all1 P4 | S2 S1 + Turbofuel | fuel MW from crude 4,352 | water 905/min (not thresholded)
+   * Copper Ore         1557    1.08 /   0.46   map   10.6%
+     Crude Oil           502    0.49 /   0.36   map   12.7%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Bauxite             355    0.37 /   0.17   map    7.2%
+     Coal                505    0.30 /   0.13   map    3.0%
+     Raw Quartz          224    0.19 /   0.14   map    4.1%
+     Nitrogen Gas        203    0.17 /   0.17   map    4.2%
+     Sulfur              104    0.12 /   0.11   map    2.4%
+     Iron Ore            396    0.11 /   0.04   map    1.1%
+     Limestone           161    0.11 /   0.03   map    0.6%
+
+all1 P4 | S3 S1 + Nitro Rocket Fuel | fuel MW from crude 4,352 | water 797/min (not thresholded)
+   * Copper Ore         1557    1.08 /   0.46   map   10.6%
+     Crude Oil           461    0.45 /   0.33   map   11.6%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Bauxite             355    0.37 /   0.17   map    7.2%
+     Coal                424    0.25 /   0.11   map    2.5%
+     Nitrogen Gas        240    0.20 /   0.20   map    5.0%
+     Raw Quartz          224    0.19 /   0.14   map    4.1%
+     Iron Ore            396    0.11 /   0.04   map    1.1%
+     Limestone           161    0.11 /   0.03   map    0.6%
+     Sulfur               48    0.06 /   0.05   map    1.1%
+
+all1 P5 | S0 standard Fuel | fuel MW from crude 8,194 | water 881/min (not thresholded)
+   * Crude Oil          1875    1.84 /   1.36   map   47.4%
+   * Copper Ore         1893    1.31 /   0.56   map   12.8%
+     Bauxite             461    0.48 /   0.23   map    9.4%
+     Coal                703    0.42 /   0.18   map    4.2%
+     SAM                 162    0.34 /   0.15   map    4.0%
+     Raw Quartz          345    0.29 /   0.22   map    6.4%
+     Nitrogen Gas        319    0.27 /   0.27   map    6.6%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Iron Ore            746    0.21 /   0.08   map    2.0%
+     Limestone           108    0.08 /   0.02   map    0.4%
+
+all1 P5 | S1 HOR + Diluted Fuel | fuel MW from crude 8,194 | water 1,536/min (not thresholded)
+   * Copper Ore         1893    1.31 /   0.56   map   12.8%
+   * Crude Oil          1138    1.12 /   0.82   map   28.7%
+     Bauxite             461    0.48 /   0.23   map    9.4%
+     Coal                703    0.42 /   0.18   map    4.2%
+     SAM                 162    0.34 /   0.15   map    4.0%
+     Raw Quartz          345    0.29 /   0.22   map    6.4%
+     Nitrogen Gas        319    0.27 /   0.27   map    6.6%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Iron Ore            746    0.21 /   0.08   map    2.0%
+     Limestone           108    0.08 /   0.02   map    0.4%
+
+all1 P5 | S2 S1 + Turbofuel | fuel MW from crude 8,194 | water 1,176/min (not thresholded)
+   * Copper Ore         1893    1.31 /   0.56   map   12.8%
+     Crude Oil          1003    0.98 /   0.73   map   25.3%
+     Coal                899    0.54 /   0.23   map    5.3%
+     Bauxite             461    0.48 /   0.23   map    9.4%
+     SAM                 162    0.34 /   0.15   map    4.0%
+     Raw Quartz          345    0.29 /   0.22   map    6.4%
+     Nitrogen Gas        319    0.27 /   0.27   map    6.6%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Sulfur              197    0.23 /   0.20   map    4.6%
+     Iron Ore            746    0.21 /   0.08   map    2.0%
+     Limestone           108    0.08 /   0.02   map    0.4%
+
+all1 P5 | S3 S1 + Nitro Rocket Fuel | fuel MW from crude 8,194 | water 972/min (not thresholded)
+   * Copper Ore         1893    1.31 /   0.56   map   12.8%
+     Crude Oil           926    0.91 /   0.67   map   23.4%
+     Bauxite             461    0.48 /   0.23   map    9.4%
+     Coal                748    0.45 /   0.19   map    4.4%
+     SAM                 162    0.34 /   0.15   map    4.0%
+     Nitrogen Gas        387    0.32 /   0.32   map    8.1%
+     Raw Quartz          345    0.29 /   0.22   map    6.4%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Iron Ore            746    0.21 /   0.08   map    2.0%
+     Sulfur               91    0.11 /   0.09   map    2.1%
+     Limestone           108    0.08 /   0.02   map    0.4%
+
+p5x5 P1 | S0 standard Fuel | fuel MW from crude 0 | water 0/min (not thresholded)
+     Limestone            55    0.15 /   0.04   map    0.8%
+     Iron Ore             56    0.06 /   0.02   map    0.6%
+     Copper Ore           11    0.03 /   0.01   map    0.3%
+
+p5x5 P2 | S0 standard Fuel | fuel MW from crude 0 | water 114/min (not thresholded)
+     Coal                 75    0.09 /   0.04   map    0.9%
+     Copper Ore           41    0.06 /   0.02   map    0.6%
+     Iron Ore             92    0.05 /   0.02   map    0.5%
+     Limestone            19    0.03 /   0.01   map    0.1%
+
+p5x5 P3 | S0 standard Fuel | fuel MW from crude 209 | water 360/min (not thresholded)
+     Coal                278    0.33 /   0.14   map    3.3%
+     Copper Ore          169    0.24 /   0.10   map    2.3%
+     Iron Ore            359    0.21 /   0.08   map    2.0%
+     Crude Oil           159    0.16 /   0.12   map    4.0%
+     Limestone            82    0.11 /   0.03   map    0.6%
+
+p5x5 P4 | S0 standard Fuel | fuel MW from crude 15,692 | water 937/min (not thresholded)
+   * Copper Ore         6436    4.47 /   1.92   map   43.6%
+   * Crude Oil          2449    2.40 /   1.77   map   61.8%
+     Bauxite             544    0.57 /   0.27   map   11.1%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Coal                538    0.32 /   0.14   map    3.2%
+     Raw Quartz          356    0.30 /   0.23   map    6.6%
+     Nitrogen Gas        246    0.20 /   0.20   map    5.1%
+     Iron Ore            549    0.16 /   0.06   map    1.5%
+     Limestone           204    0.14 /   0.03   map    0.7%
+
+p5x5 P4 | S1 HOR + Diluted Fuel | fuel MW from crude 15,692 | water 2,193/min (not thresholded)
+   * Copper Ore         6436    4.47 /   1.92   map   43.6%
+   * Crude Oil          1036    1.02 /   0.75   map   26.2%
+     Bauxite             544    0.57 /   0.27   map   11.1%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Coal                538    0.32 /   0.14   map    3.2%
+     Raw Quartz          356    0.30 /   0.23   map    6.6%
+     Nitrogen Gas        246    0.20 /   0.20   map    5.1%
+     Iron Ore            549    0.16 /   0.06   map    1.5%
+     Limestone           204    0.14 /   0.03   map    0.7%
+
+p5x5 P4 | S2 S1 + Turbofuel | fuel MW from crude 15,692 | water 1,502/min (not thresholded)
+   * Copper Ore         6436    4.47 /   1.92   map   43.6%
+     Crude Oil           778    0.76 /   0.56   map   19.6%
+     Bauxite             544    0.57 /   0.27   map   11.1%
+     Coal                914    0.54 /   0.23   map    5.4%
+     Sulfur              377    0.45 /   0.39   map    8.7%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Raw Quartz          356    0.30 /   0.23   map    6.6%
+     Nitrogen Gas        246    0.20 /   0.20   map    5.1%
+     Iron Ore            549    0.16 /   0.06   map    1.5%
+     Limestone           204    0.14 /   0.03   map    0.7%
+
+p5x5 P4 | S3 S1 + Nitro Rocket Fuel | fuel MW from crude 15,692 | water 1,112/min (not thresholded)
+   * Copper Ore         6436    4.47 /   1.92   map   43.6%
+     Crude Oil           631    0.62 /   0.46   map   15.9%
+     Bauxite             544    0.57 /   0.27   map   11.1%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Coal                625    0.37 /   0.16   map    3.7%
+     Nitrogen Gas        377    0.31 /   0.31   map    7.8%
+     Raw Quartz          356    0.30 /   0.23   map    6.6%
+     Sulfur              174    0.21 /   0.18   map    4.0%
+     Iron Ore            549    0.16 /   0.06   map    1.5%
+     Limestone           204    0.14 /   0.03   map    0.7%
+
+p5x5 P5 | S0 standard Fuel | fuel MW from crude 26,905 | water 1,385/min (not thresholded)
+   * Crude Oil          4083    4.00 /   2.96   map  103.1%
+   * SAM                 809    1.69 /   0.75   map   19.8%
+   * Coal               2005    1.19 /   0.51   map   11.9%
+   * Iron Ore           4026    1.16 /   0.43   map   10.9%
+     Bauxite             847    0.88 /   0.42   map   17.2%
+     Nitrogen Gas        845    0.70 /   0.70   map   17.6%
+     Copper Ore          960    0.67 /   0.29   map    6.5%
+     Raw Quartz          539    0.45 /   0.35   map   10.0%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Limestone           300    0.21 /   0.05   map    1.1%
+
+p5x5 P5 | S1 HOR + Diluted Fuel | fuel MW from crude 26,905 | water 3,538/min (not thresholded)
+   * SAM                 809    1.69 /   0.75   map   19.8%
+   * Crude Oil          1661    1.63 /   1.20   map   42.0%
+   * Coal               2005    1.19 /   0.51   map   11.9%
+   * Iron Ore           4026    1.16 /   0.43   map   10.9%
+     Bauxite             847    0.88 /   0.42   map   17.2%
+     Nitrogen Gas        845    0.70 /   0.70   map   17.6%
+     Copper Ore          960    0.67 /   0.29   map    6.5%
+     Raw Quartz          539    0.45 /   0.35   map   10.0%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Limestone           300    0.21 /   0.05   map    1.1%
+
+p5x5 P5 | S2 S1 + Turbofuel | fuel MW from crude 26,905 | water 2,354/min (not thresholded)
+   * SAM                 809    1.69 /   0.75   map   19.8%
+   * Coal               2651    1.58 /   0.67   map   15.7%
+   * Crude Oil          1217    1.19 /   0.88   map   30.7%
+   * Iron Ore           4026    1.16 /   0.43   map   10.9%
+     Bauxite             847    0.88 /   0.42   map   17.2%
+     Sulfur              646    0.77 /   0.67   map   14.9%
+     Nitrogen Gas        845    0.70 /   0.70   map   17.6%
+     Copper Ore          960    0.67 /   0.29   map    6.5%
+     Raw Quartz          539    0.45 /   0.35   map   10.0%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Limestone           300    0.21 /   0.05   map    1.1%
+
+p5x5 P5 | S3 S1 + Nitro Rocket Fuel | fuel MW from crude 26,905 | water 1,684/min (not thresholded)
+   * SAM                 809    1.69 /   0.75   map   19.8%
+   * Coal               2155    1.28 /   0.54   map   12.7%
+   * Iron Ore           4026    1.16 /   0.43   map   10.9%
+     Crude Oil           966    0.95 /   0.70   map   24.4%
+     Nitrogen Gas       1069    0.89 /   0.89   map   22.3%
+     Bauxite             847    0.88 /   0.42   map   17.2%
+     Copper Ore          960    0.67 /   0.29   map    6.5%
+     Raw Quartz          539    0.45 /   0.35   map   10.0%
+     Sulfur              299    0.36 /   0.31   map    6.9%
+     Caterium Ore        229    0.24 /   0.16   map    3.8%
+     Limestone           300    0.21 /   0.05   map    1.1%
+
+p5x40 P1 | S0 standard Fuel | fuel MW from crude 0 | water 0/min (not thresholded)
+     Limestone            55    0.15 /   0.04   map    0.8%
+     Iron Ore             56    0.06 /   0.02   map    0.6%
+     Copper Ore           11    0.03 /   0.01   map    0.3%
+
+p5x40 P2 | S0 standard Fuel | fuel MW from crude 0 | water 114/min (not thresholded)
+     Coal                 75    0.09 /   0.04   map    0.9%
+     Copper Ore           41    0.06 /   0.02   map    0.6%
+     Iron Ore             92    0.05 /   0.02   map    0.5%
+     Limestone            19    0.03 /   0.01   map    0.1%
+
+p5x40 P3 | S0 standard Fuel | fuel MW from crude 209 | water 360/min (not thresholded)
+     Coal                278    0.33 /   0.14   map    3.3%
+     Copper Ore          169    0.24 /   0.10   map    2.3%
+     Iron Ore            359    0.21 /   0.08   map    2.0%
+     Crude Oil           159    0.16 /   0.12   map    4.0%
+     Limestone            82    0.11 /   0.03   map    0.6%
+
+p5x40 P4 | S0 standard Fuel | fuel MW from crude 107,518 | water 1,073/min (not thresholded)
+   * Copper Ore        48469   33.66 /  14.43   map  328.4%
+   * Crude Oil         13516   13.25 /   9.79   map  341.3%
+     Bauxite             680    0.71 /   0.33   map   13.8%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Coal                671    0.40 /   0.17   map    4.0%
+     Raw Quartz          442    0.37 /   0.28   map    8.2%
+     Nitrogen Gas        281    0.23 /   0.23   map    5.9%
+     Iron Ore            738    0.21 /   0.08   map    2.0%
+     Limestone           270    0.19 /   0.04   map    1.0%
+
+p5x40 P4 | S1 HOR + Diluted Fuel | fuel MW from crude 107,518 | water 9,674/min (not thresholded)
+   * Copper Ore        48469   33.66 /  14.43   map  328.4%
+   * Crude Oil          3840    3.76 /   2.78   map   97.0%
+     Bauxite             680    0.71 /   0.33   map   13.8%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Coal                671    0.40 /   0.17   map    4.0%
+     Raw Quartz          442    0.37 /   0.28   map    8.2%
+     Nitrogen Gas        281    0.23 /   0.23   map    5.9%
+     Iron Ore            738    0.21 /   0.08   map    2.0%
+     Limestone           270    0.19 /   0.04   map    1.0%
+
+p5x40 P4 | S2 S1 + Turbofuel | fuel MW from crude 107,518 | water 4,944/min (not thresholded)
+   * Copper Ore        48469   33.66 /  14.43   map  328.4%
+   * Sulfur             2580    3.07 /   2.69   map   59.7%
+   * Crude Oil          2066    2.03 /   1.50   map   52.2%
+   * Coal               3252    1.94 /   0.82   map   19.2%
+     Bauxite             680    0.71 /   0.33   map   13.8%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Raw Quartz          442    0.37 /   0.28   map    8.2%
+     Nitrogen Gas        281    0.23 /   0.23   map    5.9%
+     Iron Ore            738    0.21 /   0.08   map    2.0%
+     Limestone           270    0.19 /   0.04   map    1.0%
+
+p5x40 P4 | S3 S1 + Nitro Rocket Fuel | fuel MW from crude 107,518 | water 2,268/min (not thresholded)
+   * Copper Ore        48469   33.66 /  14.43   map  328.4%
+   * Sulfur             1195    1.42 /   1.24   map   27.7%
+   * Crude Oil          1062    1.04 /   0.77   map   26.8%
+     Nitrogen Gas       1177    0.98 /   0.98   map   24.5%
+     Coal               1269    0.76 /   0.32   map    7.5%
+     Bauxite             680    0.71 /   0.33   map   13.8%
+     Caterium Ore        412    0.43 /   0.29   map    6.9%
+     Raw Quartz          442    0.37 /   0.28   map    8.2%
+     Iron Ore            738    0.21 /   0.08   map    2.0%
+     Limestone           270    0.19 /   0.04   map    1.0%
+
+p5x40 P5 | S0 standard Fuel | fuel MW from crude 188,997 | water 5,456/min (not thresholded)
+   * Crude Oil         27081   26.55 /  19.62   map  683.9%
+   * SAM                6424   13.38 /   5.95   map  157.5%
+   * Coal              11959    7.12 /   3.02   map   70.7%
+   * Nitrogen Gas       5932    4.94 /   4.94   map  123.6%
+   * Copper Ore         6138    4.26 /   1.83   map   41.6%
+   * Bauxite            3710    3.86 /   1.82   map   75.4%
+   * Iron Ore           9425    2.71 /   1.01   map   25.6%
+   * Raw Quartz         2337    1.95 /   1.50   map   43.3%
+   * Caterium Ore       1758    1.83 /   1.22   map   29.3%
+   * Limestone          2400    1.67 /   0.38   map    8.7%
+
+p5x40 P5 | S1 HOR + Diluted Fuel | fuel MW from crude 188,997 | water 20,576/min (not thresholded)
+   * SAM                6424   13.38 /   5.95   map  157.5%
+   * Crude Oil         10071    9.87 /   7.30   map  254.3%
+   * Coal              11959    7.12 /   3.02   map   70.7%
+   * Nitrogen Gas       5932    4.94 /   4.94   map  123.6%
+   * Copper Ore         6138    4.26 /   1.83   map   41.6%
+   * Bauxite            3710    3.86 /   1.82   map   75.4%
+   * Iron Ore           9425    2.71 /   1.01   map   25.6%
+   * Raw Quartz         2337    1.95 /   1.50   map   43.3%
+   * Caterium Ore       1758    1.83 /   1.22   map   29.3%
+   * Limestone          2400    1.67 /   0.38   map    8.7%
+
+p5x40 P5 | S2 S1 + Turbofuel | fuel MW from crude 188,997 | water 12,260/min (not thresholded)
+   * SAM                6424   13.38 /   5.95   map  157.5%
+   * Coal              16495    9.82 /   4.17   map   97.5%
+   * Crude Oil          6952    6.82 /   5.04   map  175.6%
+   * Sulfur             4536    5.40 /   4.72   map  105.0%
+   * Nitrogen Gas       5932    4.94 /   4.94   map  123.6%
+   * Copper Ore         6138    4.26 /   1.83   map   41.6%
+   * Bauxite            3710    3.86 /   1.82   map   75.4%
+   * Iron Ore           9425    2.71 /   1.01   map   25.6%
+   * Raw Quartz         2337    1.95 /   1.50   map   43.3%
+   * Caterium Ore       1758    1.83 /   1.22   map   29.3%
+   * Limestone          2400    1.67 /   0.38   map    8.7%
+
+p5x40 P5 | S3 S1 + Nitro Rocket Fuel | fuel MW from crude 188,997 | water 7,556/min (not thresholded)
+   * SAM                6424   13.38 /   5.95   map  157.5%
+   * Coal              13009    7.74 /   3.29   map   76.9%
+   * Nitrogen Gas       7507    6.26 /   6.26   map  156.4%
+   * Crude Oil          5188    5.09 /   3.76   map  131.0%
+   * Copper Ore         6138    4.26 /   1.83   map   41.6%
+   * Bauxite            3710    3.86 /   1.82   map   75.4%
+   * Iron Ore           9425    2.71 /   1.01   map   25.6%
+   * Sulfur             2100    2.50 /   2.19   map   48.6%
+   * Raw Quartz         2337    1.95 /   1.50   map   43.3%
+   * Caterium Ore       1758    1.83 /   1.22   map   29.3%
+   * Limestone          2400    1.67 /   0.38   map    8.7%

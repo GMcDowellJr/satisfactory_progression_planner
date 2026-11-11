@@ -1,0 +1,197 @@
+[
+ {
+  "label": "nb_ResourceNode103",
+  "socket_ids": [
+   "BP_ResourceNode102_2068",
+   "BP_ResourceNode103",
+   "BP_ResourceNode104",
+   "BP_ResourceNode105_2463",
+   "BP_ResourceNode106",
+   "BP_ResourceNode107",
+   "BP_ResourceNode108",
+   "BP_ResourceNode109",
+   "BP_ResourceNode111_3367",
+   "BP_ResourceNode112",
+   "BP_ResourceNode153"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode131",
+  "socket_ids": [
+   "BP_ResourceNode131",
+   "BP_ResourceNode160",
+   "BP_ResourceNode161",
+   "BP_ResourceNode164",
+   "BP_ResourceNode165",
+   "BP_ResourceNode573_UAID_40B076DF2F7973E101_1125437021",
+   "BP_ResourceNode573_UAID_40B076DF2F7974E101_1439035199",
+   "BP_ResourceNode573_UAID_40B076DF2F7974E101_1674467201",
+   "BP_ResourceNode573_UAID_40B076DF2F79ACE101_1257410031"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode118_4340",
+  "socket_ids": [
+   "BP_ResourceNode114",
+   "BP_ResourceNode115",
+   "BP_ResourceNode117",
+   "BP_ResourceNode118_4340",
+   "BP_ResourceNode119",
+   "BP_ResourceNode129",
+   "BP_ResourceNode130",
+   "BP_ResourceNode158",
+   "BP_ResourceNode_700"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode88",
+  "socket_ids": [
+   "BP_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_1933830510",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_2053713511",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1587984689",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1999134691",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D9DF01_1230935868",
+   "BP_ResourceNode86",
+   "BP_ResourceNode87",
+   "BP_ResourceNode88",
+   "BP_ResourceNode89"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode80",
+  "socket_ids": [
+   "BP_ResourceNode71_UAID_40B076DF2F797CDB01_1695622247",
+   "BP_ResourceNode80",
+   "BP_ResourceNode81",
+   "BP_ResourceNode82",
+   "BP_ResourceNode83",
+   "BP_ResourceNode84",
+   "BP_ResourceNode85"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+  "socket_ids": [
+   "BP_ResourceNode176_UAID_40B076DF2F793BDF01_1694110039",
+   "BP_ResourceNode519_UAID_40B076DF2F79D3D901_1586151453",
+   "BP_ResourceNode521_UAID_40B076DF2F79C3E101_1100698081",
+   "BP_ResourceNode521_UAID_40B076DF2F79C3E101_1735462083",
+   "BP_ResourceNode573_UAID_40B076DF2F7971E101_2069219665",
+   "BP_ResourceNode573_UAID_40B076DF2F7972E101_1083579843",
+   "BP_ResourceNode596",
+   "BP_ResourceNode606"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode135",
+  "socket_ids": [
+   "BP_ResourceNode110",
+   "BP_ResourceNode113",
+   "BP_ResourceNode128_5242",
+   "BP_ResourceNode132_5908",
+   "BP_ResourceNode135",
+   "BP_ResourceNode159",
+   "BP_ResourceNode166",
+   "BP_ResourceNode167",
+   "BP_ResourceNode168",
+   "BP_ResourceNode552",
+   "BP_ResourceNode588",
+   "BP_ResourceNode588_UAID_40B076DF2F79CEDF01_1910960903"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+  "socket_ids": [
+   "BP_FrackingCore6_UAID_40B076DF2F79D3DF01_1961476789",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_1933830510",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_2053713511",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1587984689",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1704280690",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1999134691",
+   "BP_FrackingSatellite61_UAID_40B076DF2F79D9DF01_1230935868",
+   "BP_ResourceNode86",
+   "BP_ResourceNode87",
+   "BP_ResourceNode88",
+   "BP_ResourceNode89"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_FrackingCore4",
+  "socket_ids": [
+   "BP_FrackingCore4",
+   "BP_FrackingSatellite21",
+   "BP_FrackingSatellite22",
+   "BP_FrackingSatellite24",
+   "BP_FrackingSatellite25",
+   "BP_FrackingSatellite26",
+   "BP_FrackingSatellite27",
+   "BP_FrackingSatellite51_1",
+   "BP_ResourceNode20_3137",
+   "BP_ResourceNode20_UAID_04D9F5D42711A7C902_1245462149",
+   "BP_ResourceNode573_UAID_40B076DF2F7974E101_1674467201",
+   "BP_ResourceNode573_UAID_40B076DF2F79ACE101_1257410031"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode26_99",
+  "socket_ids": [
+   "BP_ResourceNode26_99",
+   "BP_ResourceNode27_100",
+   "BP_ResourceNode29_102"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode29_102",
+  "socket_ids": [
+   "BP_ResourceNode14_609",
+   "BP_ResourceNode23_96",
+   "BP_ResourceNode25_98",
+   "BP_ResourceNode26_99",
+   "BP_ResourceNode29_102"
+  ],
+  "pumps_water": false,
+  "supply": []
+ },
+ {
+  "label": "nb_ResourceNode488",
+  "socket_ids": [
+   "BP_ResourceNode488",
+   "BP_ResourceNode489",
+   "BP_ResourceNode490",
+   "BP_ResourceNode491",
+   "BP_ResourceNode492",
+   "BP_ResourceNode493",
+   "BP_ResourceNode509",
+   "BP_ResourceNode530",
+   "BP_ResourceNode531",
+   "BP_ResourceNode532",
+   "BP_ResourceNode533",
+   "BP_ResourceNode556",
+   "BP_ResourceNode557",
+   "BP_ResourceNode72_998"
+  ],
+  "pumps_water": false,
+  "supply": []
+ }
+]

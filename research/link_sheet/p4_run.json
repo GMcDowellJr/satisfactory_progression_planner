@@ -1,0 +1,544 @@
+{
+ "schema": "link-sheet-run/0 (research)",
+ "phase": 4,
+ "tier": 8,
+ "target_scale": 1.0,
+ "goal": "resources",
+ "radius_m": 350.0,
+ "bill": [
+  {
+   "item_id": "Desc_SpaceElevatorPart_7_C",
+   "name": "Assembly Director System",
+   "per_min": 1.0
+  },
+  {
+   "item_id": "Desc_SpaceElevatorPart_6_C",
+   "name": "Magnetic Field Generator",
+   "per_min": 1.0
+  },
+  {
+   "item_id": "Desc_SpaceElevatorPart_8_C",
+   "name": "Thermal Propulsion Rocket",
+   "per_min": 1.0
+  },
+  {
+   "item_id": "Desc_SpaceElevatorPart_9_C",
+   "name": "Nuclear Pasta",
+   "per_min": 1.0
+  }
+ ],
+ "probe_draw_per_min": {
+  "Desc_Coal_C": 710.74999928925,
+  "Desc_LiquidOil_C": 809.24999919075,
+  "Desc_NitrogenGas_C": 224.999999775,
+  "Desc_OreBauxite_C": 315.999999684,
+  "Desc_OreCopper_C": 2053.33333128,
+  "Desc_OreGold_C": 136.79999986320001,
+  "Desc_OreIron_C": 1561.4999984385,
+  "Desc_RawQuartz_C": 217.999999782,
+  "Desc_Stone_C": 359.99999964000006,
+  "Desc_Water_C": 350.99999964899996
+ },
+ "sites": [
+  {
+   "label": "Coal 1",
+   "item_id": "Desc_Coal_C",
+   "draw_world_per_min": 710.74999928925,
+   "capacity_per_min": 1680.0,
+   "seed_socket_id": "BP_ResourceNode449",
+   "east_m": 1362.902188,
+   "north_m": 209.236113,
+   "elevation_m": 94.252988,
+   "socket_ids": [
+    "BP_ResourceNode449",
+    "BP_ResourceNode451",
+    "BP_ResourceNode452",
+    "BP_ResourceNode469"
+   ]
+  },
+  {
+   "label": "Crude Oil 1",
+   "item_id": "Desc_LiquidOil_C",
+   "draw_world_per_min": 809.24999919075,
+   "capacity_per_min": 1080.0,
+   "seed_socket_id": "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_1933830510",
+   "east_m": -2606.257674,
+   "north_m": -725.732231,
+   "elevation_m": -11.880452,
+   "socket_ids": [
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_1933830510",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D7DF01_2053713511",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1587984689",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1704280690",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D8DF01_1999134691",
+    "BP_FrackingSatellite61_UAID_40B076DF2F79D9DF01_1230935868",
+    "BP_ResourceNode86",
+    "BP_ResourceNode87",
+    "BP_ResourceNode88",
+    "BP_ResourceNode89"
+   ]
+  },
+  {
+   "label": "Nitrogen Gas 1",
+   "item_id": "Desc_NitrogenGas_C",
+   "draw_world_per_min": 224.999999775,
+   "capacity_per_min": 1200.0,
+   "seed_socket_id": "BP_FrackingSatellite35",
+   "east_m": 879.167314,
+   "north_m": -1020.448701,
+   "elevation_m": 101.779662,
+   "socket_ids": [
+    "BP_FrackingSatellite35",
+    "BP_FrackingSatellite36",
+    "BP_FrackingSatellite37",
+    "BP_FrackingSatellite38",
+    "BP_FrackingSatellite39",
+    "BP_FrackingSatellite40",
+    "BP_FrackingSatellite41",
+    "BP_FrackingSatellite42",
+    "BP_FrackingSatellite43",
+    "BP_FrackingSatellite44"
+   ]
+  },
+  {
+   "label": "Bauxite 1",
+   "item_id": "Desc_OreBauxite_C",
+   "draw_world_per_min": 315.999999684,
+   "capacity_per_min": 960.0,
+   "seed_socket_id": "BP_ResourceNode633",
+   "east_m": 1060.476484,
+   "north_m": -504.787852,
+   "elevation_m": 97.651162,
+   "socket_ids": [
+    "BP_ResourceNode633",
+    "BP_ResourceNode634",
+    "BP_ResourceNode635",
+    "BP_ResourceNode636"
+   ]
+  },
+  {
+   "label": "Copper Ore 1",
+   "item_id": "Desc_OreCopper_C",
+   "draw_world_per_min": 2053.33333128,
+   "capacity_per_min": 1440.0,
+   "seed_socket_id": "BP_ResourceNode513",
+   "east_m": 1526.484219,
+   "north_m": -52.270913,
+   "elevation_m": 151.682705,
+   "socket_ids": [
+    "BP_ResourceNode513",
+    "BP_ResourceNode514",
+    "BP_ResourceNode515"
+   ]
+  },
+  {
+   "label": "Copper Ore 2",
+   "item_id": "Desc_OreCopper_C",
+   "draw_world_per_min": 2053.33333128,
+   "capacity_per_min": 960.0,
+   "seed_socket_id": "BP_ResourceNode213",
+   "east_m": 3554.617188,
+   "north_m": 1498.080781,
+   "elevation_m": 42.145044,
+   "socket_ids": [
+    "BP_ResourceNode213",
+    "BP_ResourceNode235"
+   ]
+  },
+  {
+   "label": "Caterium Ore 1",
+   "item_id": "Desc_OreGold_C",
+   "draw_world_per_min": 136.79999986320001,
+   "capacity_per_min": 960.0,
+   "seed_socket_id": "BP_ResourceNode142_UAID_40B076DF2F79E8DD01_2087440367",
+   "east_m": 2118.432155,
+   "north_m": 188.196546,
+   "elevation_m": -0.291999,
+   "socket_ids": [
+    "BP_ResourceNode142_UAID_40B076DF2F79E8DD01_2087440367",
+    "BP_ResourceNode142_UAID_40B076DF2F79E9DD01_1434900545",
+    "BP_ResourceNode142_UAID_40B076DF2F79E9DD01_1872254547"
+   ]
+  },
+  {
+   "label": "Iron Ore 1",
+   "item_id": "Desc_OreIron_C",
+   "draw_world_per_min": 1561.4999984385,
+   "capacity_per_min": 3480.0,
+   "seed_socket_id": "BP_ResourceNode239",
+   "east_m": 2975.758125,
+   "north_m": 1501.86375,
+   "elevation_m": 39.729917,
+   "socket_ids": [
+    "BP_ResourceNode180",
+    "BP_ResourceNode184",
+    "BP_ResourceNode200",
+    "BP_ResourceNode203",
+    "BP_ResourceNode204_0",
+    "BP_ResourceNode205",
+    "BP_ResourceNode207",
+    "BP_ResourceNode219",
+    "BP_ResourceNode238",
+    "BP_ResourceNode239"
+   ]
+  },
+  {
+   "label": "Raw Quartz 1",
+   "item_id": "Desc_RawQuartz_C",
+   "draw_world_per_min": 217.999999782,
+   "capacity_per_min": 1200.0,
+   "seed_socket_id": "BP_ResourceNode552",
+   "east_m": -1942.303438,
+   "north_m": 1404.219531,
+   "elevation_m": -12.419169,
+   "socket_ids": [
+    "BP_ResourceNode552",
+    "BP_ResourceNode588",
+    "BP_ResourceNode588_UAID_40B076DF2F79CEDF01_1910960903"
+   ]
+  },
+  {
+   "label": "Limestone 1",
+   "item_id": "Desc_Stone_C",
+   "draw_world_per_min": 359.99999964000006,
+   "capacity_per_min": 1440.0,
+   "seed_socket_id": "BP_ResourceNode440",
+   "east_m": 695.520859,
+   "north_m": 1003.687031,
+   "elevation_m": 93.918877,
+   "socket_ids": [
+    "BP_ResourceNode439_1",
+    "BP_ResourceNode440",
+    "BP_ResourceNode441",
+    "BP_ResourceNode442",
+    "BP_ResourceNode60_984"
+   ]
+  }
+ ],
+ "site_draw_per_min": {
+  "Coal 1": {
+   "Desc_Coal_C": 710.74999928925
+  },
+  "Crude Oil 1": {
+   "Desc_LiquidOil_C": 809.24999919078
+  },
+  "Nitrogen Gas 1": {
+   "Desc_NitrogenGas_C": 224.999999775,
+   "Desc_Water_C": 34.999999965
+  },
+  "Bauxite 1": {
+   "Desc_OreBauxite_C": 947.9999936016845,
+   "Desc_Water_C": 1263.9999905604213
+  },
+  "Copper Ore 1": {
+   "Desc_OreCopper_C": 1405.999998594
+  },
+  "Copper Ore 2": {
+   "Desc_OreCopper_C": 647.333332686
+  },
+  "Caterium Ore 1": {
+   "Desc_OreGold_C": 136.79999986320001
+  },
+  "Iron Ore 1": {
+   "Desc_OreIron_C": 1561.4999984385
+  },
+  "Raw Quartz 1": {
+   "Desc_RawQuartz_C": 60.00000130258313
+  },
+  "Limestone 1": {
+   "Desc_Stone_C": 359.99999964000006
+  }
+ },
+ "transfers": [
+  {
+   "source": "Coal 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_Coal_C",
+   "name": "Coal",
+   "form": "solid",
+   "rate_per_min": 157.999999842
+  },
+  {
+   "source": "Coal 1",
+   "destination": "Copper Ore 2",
+   "item_id": "Desc_SteelPipe_C",
+   "name": "Steel Pipe",
+   "form": "solid",
+   "rate_per_min": 34.4999999655
+  },
+  {
+   "source": "Coal 1",
+   "destination": "Iron Ore 1",
+   "item_id": "Desc_Coal_C",
+   "name": "Coal",
+   "form": "solid",
+   "rate_per_min": 260.99999973900003
+  },
+  {
+   "source": "Coal 1",
+   "destination": "Limestone 1",
+   "item_id": "Desc_SteelPlate_C",
+   "name": "Steel Beam",
+   "form": "solid",
+   "rate_per_min": 59.99999994
+  },
+  {
+   "source": "Crude Oil 1",
+   "destination": "Nitrogen Gas 1",
+   "item_id": "Desc_Rubber_C",
+   "name": "Rubber",
+   "form": "solid",
+   "rate_per_min": 13.999999985999999
+  },
+  {
+   "source": "Crude Oil 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_Computer_C",
+   "name": "Computer",
+   "form": "solid",
+   "rate_per_min": 3.9999999959999997
+  },
+  {
+   "source": "Crude Oil 1",
+   "destination": "Caterium Ore 1",
+   "item_id": "Desc_CircuitBoard_C",
+   "name": "Circuit Board",
+   "form": "solid",
+   "rate_per_min": 2.999999997
+  },
+  {
+   "source": "Nitrogen Gas 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_CoolingSystem_C",
+   "name": "Cooling System",
+   "form": "solid",
+   "rate_per_min": 6.999999993002273
+  },
+  {
+   "source": "Nitrogen Gas 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_PackagedNitrogenGas_C",
+   "name": "Packaged Nitrogen Gas",
+   "form": "solid",
+   "rate_per_min": 12.4999999875
+  },
+  {
+   "source": "Bauxite 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_ModularFrameFused_C",
+   "name": "Fused Modular Frame",
+   "form": "solid",
+   "rate_per_min": 0.999999999
+  },
+  {
+   "source": "Bauxite 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_ModularFrameLightweight_C",
+   "name": "Radio Control Unit",
+   "form": "solid",
+   "rate_per_min": 1.9999999980006493
+  },
+  {
+   "source": "Bauxite 1",
+   "destination": "Nitrogen Gas 1",
+   "item_id": "Desc_AluminumPlateReinforced_C",
+   "name": "Heat Sink",
+   "form": "solid",
+   "rate_per_min": 13.999999985999999
+  },
+  {
+   "source": "Bauxite 1",
+   "destination": "Nitrogen Gas 1",
+   "item_id": "Desc_GasTank_C",
+   "name": "Empty Fluid Tank",
+   "form": "solid",
+   "rate_per_min": 12.4999999875
+  },
+  {
+   "source": "Bauxite 1",
+   "destination": "Copper Ore 1",
+   "item_id": "Desc_PressureConversionCube_C",
+   "name": "Pressure Conversion Cube",
+   "form": "solid",
+   "rate_per_min": 0.999999999
+  },
+  {
+   "source": "Copper Ore 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_CircuitBoardHighSpeed_C",
+   "name": "AI Limiter",
+   "form": "solid",
+   "rate_per_min": 1.9999999980000003
+  },
+  {
+   "source": "Copper Ore 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_CopperSheet_C",
+   "name": "Copper Sheet",
+   "form": "solid",
+   "rate_per_min": 41.999999958
+  },
+  {
+   "source": "Copper Ore 1",
+   "destination": "Caterium Ore 1",
+   "item_id": "Desc_CopperIngot_C",
+   "name": "Copper Ingot",
+   "form": "solid",
+   "rate_per_min": 29.999999970000005
+  },
+  {
+   "source": "Copper Ore 1",
+   "destination": "Iron Ore 1",
+   "item_id": "Desc_OreCopper_C",
+   "name": "Copper Ore",
+   "form": "solid",
+   "rate_per_min": 71.999999928
+  },
+  {
+   "source": "Copper Ore 2",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_CopperSheet_C",
+   "name": "Copper Sheet",
+   "form": "solid",
+   "rate_per_min": 121.999999878
+  },
+  {
+   "source": "Copper Ore 2",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_OreCopper_C",
+   "name": "Copper Ore",
+   "form": "solid",
+   "rate_per_min": 95.99999990399999
+  },
+  {
+   "source": "Copper Ore 2",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_SpaceElevatorPart_3_C",
+   "name": "Automated Wiring",
+   "form": "solid",
+   "rate_per_min": 9.999999990000001
+  },
+  {
+   "source": "Copper Ore 2",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_OreCopper_C",
+   "name": "Copper Ore",
+   "form": "solid",
+   "rate_per_min": 23.33333331
+  },
+  {
+   "source": "Copper Ore 2",
+   "destination": "Iron Ore 1",
+   "item_id": "Desc_ElectromagneticControlRod_C",
+   "name": "Electromagnetic Control Rod",
+   "form": "solid",
+   "rate_per_min": 0.999999999
+  },
+  {
+   "source": "Copper Ore 2",
+   "destination": "Raw Quartz 1",
+   "item_id": "Desc_Cable_C",
+   "name": "Cable",
+   "form": "solid",
+   "rate_per_min": 27.999999971999998
+  },
+  {
+   "source": "Caterium Ore 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_HighSpeedConnector_C",
+   "name": "High-Speed Connector",
+   "form": "solid",
+   "rate_per_min": 2.999999997
+  },
+  {
+   "source": "Caterium Ore 1",
+   "destination": "Copper Ore 1",
+   "item_id": "Desc_GoldIngot_C",
+   "name": "Caterium Ingot",
+   "form": "solid",
+   "rate_per_min": 7.999999992000001
+  },
+  {
+   "source": "Caterium Ore 1",
+   "destination": "Copper Ore 2",
+   "item_id": "Desc_GoldIngot_C",
+   "name": "Caterium Ingot",
+   "form": "solid",
+   "rate_per_min": 3.9999999960000006
+  },
+  {
+   "source": "Iron Ore 1",
+   "destination": "Coal 1",
+   "item_id": "Desc_OreIron_C",
+   "name": "Iron Ore",
+   "form": "solid",
+   "rate_per_min": 291.74999970825
+  },
+  {
+   "source": "Iron Ore 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_ModularFrameHeavy_C",
+   "name": "Heavy Modular Frame",
+   "form": "solid",
+   "rate_per_min": 1.999999998
+  },
+  {
+   "source": "Iron Ore 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_Motor_C",
+   "name": "Motor",
+   "form": "solid",
+   "rate_per_min": 8.999999990999594
+  },
+  {
+   "source": "Iron Ore 1",
+   "destination": "Crude Oil 1",
+   "item_id": "Desc_SpaceElevatorPart_1_C",
+   "name": "Smart Plating",
+   "form": "solid",
+   "rate_per_min": 4.999999995001623
+  },
+  {
+   "source": "Iron Ore 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_ModularFrameHeavy_C",
+   "name": "Heavy Modular Frame",
+   "form": "solid",
+   "rate_per_min": 1.999999998
+  },
+  {
+   "source": "Iron Ore 1",
+   "destination": "Raw Quartz 1",
+   "item_id": "Desc_IronPlateReinforced_C",
+   "name": "Reinforced Iron Plate",
+   "form": "solid",
+   "rate_per_min": 4.999999995
+  },
+  {
+   "source": "Raw Quartz 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_CrystalOscillator_C",
+   "name": "Crystal Oscillator",
+   "form": "solid",
+   "rate_per_min": 1.9999999979999998
+  },
+  {
+   "source": "Raw Quartz 1",
+   "destination": "Bauxite 1",
+   "item_id": "Desc_RawQuartz_C",
+   "name": "Raw Quartz",
+   "form": "solid",
+   "rate_per_min": 1.3625831343233587e-06
+  },
+  {
+   "source": "Limestone 1",
+   "destination": "Iron Ore 1",
+   "item_id": "Desc_SteelPlateReinforced_C",
+   "name": "Encased Industrial Beam",
+   "form": "solid",
+   "rate_per_min": 19.99999998
+  }
+ ],
+ "transfer_volume_per_min": 1362.5833333333374,
+ "scale": 1.0
+}
