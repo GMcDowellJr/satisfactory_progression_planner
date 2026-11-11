@@ -32,6 +32,13 @@ corrected  2026-10-26 07:51: action 1 done (record A5, branch
            routes); D26–D30. 13:00: next actions refreshed; committed to
            the repo with the scratch scripts under
            research/multiplier_difficulty/.
+           2026-10-26 20:50: action 3 run (§5.10, node_ceiling.py, master
+           3fcab38). §4.4 corrected: caps give a ceiling on the "same pace"
+           endpoint, not super-linear E on "same factory". Next actions
+           refreshed.
+           2026-10-26 21:20: §5.11 (impossible-to-finish cut-offs).
+           2026-10-26 21:50: O10, D31, D32; §5.12 carry-forward power mix
+           (carry_forward.py); next actions refreshed.
 ```
 
 ## Above the fold
@@ -48,21 +55,28 @@ ceil (reproduced to every printed digit at all seven R values; see
 linear scalars, it compares against an invented fixed MW budget, and it
 assumes a 25% clock. Only its UI shape is kept (`lab_ui_reference.md`).
 
-**Next actions (ranked; Greg chooses).** Current as of 2026-10-26 13:00. The
+**Next actions (ranked; Greg chooses).** Current as of 2026-10-26 21:50. The
 session handoff carries the same list.
 
 1. Record §3.3 vs this tool (§7, last item): forward amendment before any
-   repo code.
-2. Promote to repo: a `tools/` root joint with tests that emits `grid.json`
-   through `gamedata`, with pickups, generator fuels and the D30 gathering
-   mix declared.
-3. Node caps / purity mix via `solve_portfolio` stage 1: the super-linear
-   end (§4.4).
-4. Gathering card for factory pickups (Mycelia, slugs, remains): needs a
+   repo code. It must also cover a cell whose "same pace" endpoint is
+   unreachable on default nodes (k < 1) or whose plant nets ≤ 0: no ×1/1/1
+   figure on that endpoint, reported with the binding resource named
+   (§5.10–5.11).
+2. Power mix on the page (D31, §5.12): settle the geothermal order (first,
+   as run, or behind the newest source), then regenerate `grid.json` with
+   the mix in place of D27's sole-source rows.
+3. Node pressure on the page (§5.10): show k, or only pass/fail at k = 1.
+   Greg's call; `node_ceiling.json` holds k for every cell either way. In
+   cells with k < 1, the §5.12 mix is sized for a pace the world can't feed.
+4. Promote to repo: a `tools/` root joint with tests that emits `grid.json`
+   through `gamedata`, with pickups, generator fuels, the D30 gathering mix
+   and the D31 rule declared. Gated on action 1.
+5. Gathering card for factory pickups (Mycelia, slugs, remains): needs a
    declared source per pickup, since the LP's choice among free pickups is
    arbitrary.
-5. Fluid floor unit: the 0.25R Plastic read, then the `input_amount_floor`
-   default (record A5.2).
+
+The fluid floor unit (record A5.2) moved to §7, pending the 0.25R Plastic read.
 
 ## 1. In-game observations (Greg, as stated)
 
@@ -77,6 +91,8 @@ session handoff carries the same list.
 | O7 | 0.25R: 1 Iron Ingot makes 1 Iron Rod (unfloored would be 0) | 2026-10-26 | Confirms floor of 1 for solids. Rule: nearest, half away from zero, never below 1. Fluid floor unit not observed (record A5.2) |
 | O8 | Only one hard-drive unlock at crash sites needs an item that cannot be picked up off the ground. Clarified by Greg 2026-10-26: about crash-site hard drives, not MAM (an earlier read of this note applied it to MAM) | 2026-10-25 | No effect on the MAM bill; crash sites are outside the current scope (alternates) |
 | O9 | R does not scale milestone or MAM unlock costs | 2026-10-26 | Confirms `unlocks.schematic_costs` (unscaled); record A6. §5.1's falling milestone share under R is real, not an artefact |
+| O10 | No P above 5x ("No P above 5x") | 2026-10-26 | §5.11's cut-offs above 5 are outside the game; only the bold ones apply |
+| O11 | Geothermal can be had at the start by hunting drop pods and the resources around them, but that is difficult enough to be impractical | 2026-10-26 | D32: the drop-pod route is ignored |
 
 The earlier read "1 ingot -> 2 plates at 0.25R" (3 x 0.25 = 0.75 -> 1) is
 consistent with nearest rounding, but it does not exercise the floor. O7 does.
@@ -114,6 +130,8 @@ consistent with nearest rounding, but it does not exercise the floor. O7 does.
 | D28 | The run is named by the record §3.3.1 triple (ore grade · utility load · order book), shown with the selector. The naming may later expand to node purity/randomness options | 2026-10-26 |
 | D29 | Hand-gathering is its own output in item counts (stacks), not part of work ("adding it here feels like mixing too many things"). Also consistent with record §9's no-player-time line | 2026-10-26 |
 | D30 | Biomass burners are fed from a declared gathering mix: 5 stacks of Leaves to 1 of Wood (Greg's typical 1/1/1 haul, no chainsaw). Mycelia (occasional) and Alien Protein (goes to DNA capsules) are left out. Two routes are shown: burn Biomass, or via Solid Biofuel (D25 style). This replaces the hand-fed-Leaves fuel of §5.5 | 2026-10-26 |
+| D31 | Power is a carry-forward mix ("B makes the most sense"): plants built in earlier phases keep running at the size they were built; the newest source covers only the growth. Plants are sized at the 1/1/1 pace ("1/1/1 pace"). Supersedes D27's sole-source rows for the displayed figure; sole-source rows stay available as a comparison | 2026-10-26 |
+| D32 | Geothermal enters the mix from the phase where the MAM placement puts its node (Research_Caterium_7_2: phase 3), capped by the default world's geysers. The early drop-pod route is ignored (O11) | 2026-10-26 |
 | D18 | Mycelia is a hand-supplied input ("treat mycelia as hand-supplied input"): a leaf with no extractor and no machine time; Biomass and Fabric are still machine-made | 2026-10-26 |
 
 ## 3. Structural findings
@@ -198,6 +216,13 @@ the marginal unit cost more as E grows are exactly what's held out:
 So the current E figure is a lower bound on its effect. Node caps are the
 mechanism that's both measurable here (`solve_portfolio` stage 1) and
 likely to dominate.
+
+**Corrected 2026-10-26 20:50 (§5.10).** Node caps do not make E super-linear
+on D19's "same factory" endpoint: a fixed factory draws a fixed rate, so E
+only lengthens the run. They act on the "same pace" endpoint, where E (or R)
+raises the rate: first the cheap sockets fill, then the expensive ones, then
+a hard ceiling. §5.10 measures the ceiling. The rising cost below it (MW and
+extractors per unit as impure sockets come in) is not measured.
 
 **4.5 Power.** Manufacturing MW, plus extractor MW (D12), plus generators by
 tier (D6) with parasitic loads (O2). Generator availability by tier, from
@@ -515,6 +540,202 @@ biomass's impracticality past phase 1 visible, which the hand-fed-Leaves
 model hid. Biomass total work in ph4 at 1.25R/5P is now 8.81 (burn) and
 9.53 (biofuel); §5.6/D26's 7.81 assumed no constructors.
 
+### 5.10 Node ceiling on the default world (measured 2026-10-26 20:40, container, master 3fcab38)
+
+Script: `node_ceiling.py` (rules in its docstring). Data: `node_ceiling.json`
+(world purities) and `node_ceiling_all_normal.json` (same socket counts, every
+one normal), 8 R × 6 P × E{1,10} × 5 phases, factory plus each open
+generator. Prompted by Greg (2026-10-26): use nodes by their proportion in the
+world rather than all normal, since some combinations may be impossible on
+default nodes before shards, somersloops or augmenters.
+
+**What is measured.** `solve_portfolio` stage 1 on one site holding every
+default socket, at the highest extractor mark open at the phase's top tier
+(D12), 100% clock. The bill is the whole phase bill (PA × E + milestones +
+MAM) per minute at the reference pace T_ref, so the scale is **k**: how many
+1/1/1-pace factories the default world feeds. T_ref = §3.3's anchor T ×
+W_total/W_PA at 1/1/1 (serial, D17): ph1 6.36 h, ph2 16.54, ph3 15.43, ph4
+14.04, ph5 45.72. The script re-derives §3.3's anchor T (0.42 / 8.33 / 8.33 /
+11.11 / 33.33 h). k < 1 means the "same pace" endpoint (D19) can't be reached
+on default nodes. "Same factory" always can; it just takes longer
+(T_min = T_ref / k).
+
+**Proportion vs all-normal.** The world is richer than all-normal for most
+raws, in normal-node equivalents (2·pure + normal + ½·impure, against the
+count): iron 1.21x, limestone 1.23x, caterium 1.47x, quartz 1.32x, bauxite
+1.21x, coal 1.14x, copper 1.12x, sulfur 1.12x, oil nodes 1.10x, nitrogen wells
+1.78x. It is poorer for SAM (0.89x) and uranium (0.70x). So the world purity
+mix raises most ceilings 5–20% against all-normal. It lowers them where SAM
+binds (phase 2 at every R ≤ 1.25, where MAM's SAM costs bind) and in some
+power-bound cells. 79 of 712 E=1 cells are lower on the world than on
+all-normal. Assuming all-normal is not the pessimistic case it was taken for.
+
+**Factory ceiling (power outside the solve), world k, E=1:**
+
+| R | ph1 | ph2 | ph3 | ph4 | ph5 |
+|---|---|---|---|---|---|
+| 0.25 | 1367 | 976 | 1572 | 2039 | 1060 |
+| 1 | 246 | 82 | 68 | 11.0 | 24.4 |
+| 1.25 | 155 | 49 | 28 | 3.78 | 8.33 |
+| 1.5 | 26 | 18 | 4.95 | 1.65 | 1.86 |
+| 1.75 | 22 | 15 | 3.39 | **0.78** | **0.90** |
+| 2 | 17 | 11 | 2.42 | **0.52** | **0.52** |
+
+At 1.75R and above, phases 4–5 can't be built at the 1/1/1 pace on every
+default node, even with free power. Binding at 2R: ph4 Bauxite, Copper Ore
+and Crude Oil; ph5 Bauxite, Caterium Ore and SAM. At 1R the world feeds 11x
+the anchor pace in ph4, the tightest phase (Crude Oil binds). At E=10, k
+falls below 1 from 1.25R in ph4 (0.43) and from 1.5R in ph3–5.
+
+**Sole-source power (D27), E=1.** Each generator's fuel comes from the same
+sockets, and extractors are charged by their draw × P. The lowest R where
+k < 1:
+
+| Generator | P ≤ 1 | P2 | P5 |
+|---|---|---|---|
+| Coal | ph4–5 from 1.75R | ph4–5 from 1.75R | ph4 from 1.25R (0.86), ph5 from 1.5R, ph3 at 2R |
+| Fuel | ph4 from 1.5R (P1) or 1.75R; ph5 from 1.75R | ph4–5 from 1.5R | ph4–5 from 1.25R (0.51 / 0.70), ph3 from 1.75R |
+| Nuclear | ph4–5 from 1.75R | ph4–5 from 1.75R | ph4–5 from 1.5R (≈0.2); **unreachable at 2R** |
+| Biomass | same as factory (Leaves are a pickup) | | |
+
+The nuclear zero at 2R/5P reproduces §5.8's net ≤ 0 by a different route.
+Nuclear holds best otherwise: 1.97 at 1.25R/5P ph4, against 0.86 for coal and
+0.51 for fuel, and it is bound by Uranium (5 sockets, none pure).
+
+**"grid" cells.** In 16 cells (Fuel at 1.75–2R/5P, Nuclear at 2R/5P) the
+power row binds and no raw is at its cap: the cheap sockets are full and the
+rest aren't worth working. Checked once (2R/5P ph3 Fuel): doubling the pure
+oil sockets lifts k 1.69x, doubling the impure ones 1.00x. This is purity
+doing what the question expected: under high P, impure sockets cost twice the
+MW per unit and stop paying for themselves.
+
+**Held out (named).** Belts never bind at the top tier (Mk1 pure 120 on Mk2
+120, Mk2 pure 240 on Mk3 270, Mk3 pure 480 on Mk5 780). They would bind
+earlier in a window, which D12 doesn't model. Wells are charged one 150 MW
+pressurizer per core, averaged over the resource's satellites. Geysers are
+left out (geothermal isn't in the generator set). Water is pumped from open
+water without limit. Distance is ignored: every socket on the map is in one
+site. Pickups are dropped from the bill (D29). Raws named directly in the
+bill pass through a zero-power pseudo recipe. Nitrogen is now priced through
+wells (it was unmapped in §5.5); this affects only §5.10.
+
+**Conditioning (corrected in the run).** A first pass solved the raw bill per
+minute (scale about 1e-5) with pickups capped at 1e9. HiGHS then returned 0
+for 1.5R/5P ph5 Coal and short scales for Biomass at 5P, and the plant's
+binding report missed capped raws. Normalising the bill to T_ref (scale = k)
+and capping pickups at 1e7 made all of it regular. Every figure here is from
+the normalised run.
+
+### 5.11 When a phase can't be finished at all (measured 2026-10-26 21:20, container, branch claude/node-ceiling)
+
+Greg (2026-10-26): is there a mix of multipliers and node purity that makes
+the game impossible to finish, and where is the cut-off? Scripts:
+`node_ceiling.py --purity=impure` (`node_ceiling_all_impure.json`) and
+`plant_cutoff.py` (bisects P per generator, R and purity world).
+
+**k < 1 is not impossible.** It means the 1/1/1 pace can't be held, so the
+run is slower. Impossible means k = 0: no positive rate at all. With the
+factory alone (power outside the solve), k never reaches 0 in any purity
+world: the lowest is 2R ph5, at 0.52 (world), 0.46 (all-normal) and 0.23
+(all-impure). k = 0 happens only when a sole-source plant (D27) can't net
+positive power. That happens when its own extraction, fuel chain and water,
+all × P, eat its gross output.
+
+**P cut-off above which the source nets ≤ 0** (phases with the same value
+are merged):
+
+| Source | Purity | 1R | 1.5R | 1.75R | 2R |
+|---|---|---|---|---|---|
+| Nuclear (ph4–5) | world | >8 | 7.60 | 5.86 | **4.29** |
+| | all-normal | >8 | 6.20 | **4.67** | **3.29** |
+| | all-impure | >8 | **4.47** | **3.27** | **2.21** |
+| Fuel (ph3 / ph4–5) | world | >8 | >8 | >8 | >8 |
+| | all-normal | >8 | >8 | 7.69 | 7.14 |
+| | all-impure | 7.14 / >8 | 5.56 / 7.41 | **5.00** / 6.78 | **4.55** / 6.25 |
+| Coal (ph2–3 / ph4–5) | world | >8 at every R | | | |
+| | all-normal | 8.00 / 7.27 at every R | | | |
+| | all-impure | 6.67 / 5.71 at every R | | | |
+
+Bold is at or below P = 5, the top of the grid's P levels. Nuclear at 1.25R
+and below has no cut-off under 8 in any world.
+
+- Coal's cut-off doesn't depend on R, because its fuel is a raw. It checks by
+  hand: (75 MW) / ((15 coal × miner MW per unit + 45 m3 water × 20/120) ×
+  P). All-impure Mk2 gives 75 / 11.25 = 6.67, and Mk3 gives 75 / 13.125 =
+  5.71. All-normal gives 8.00 and 7.27.
+- Fuel in phase 3 has only oil extractors. From phase 4, wells add oil at an
+  averaged pressurizer charge that doesn't vary with purity, so the phase 4–5
+  cut-off is higher. The averaging is an approximation (§5.10).
+- Two solves near a cut-off had HiGHS fail after stage 1, both at a scale of
+  about 0 (1.5R ph4 Nuclear at P 4.47, Fuel at P 7.41, all-impure). These are
+  counted as k = 0.
+
+**So, in this model, the game is never impossible with a power mix.**
+Biomass on hand-fed Leaves always nets positive, and coal nets positive up
+to P ≈ 5.7 even on all-impure. What the multipliers and purity can make
+impossible is a given power source. On the default world at P = 5, that is
+nuclear from 2R. On all-impure at P = 5, it is nuclear from 1.5R and fuel in
+phase 3 from 1.75R. Biomass at scale is impractical (§5.9), which is a
+different kind of limit. Whether the game offers P above 5 hasn't been
+checked here.
+
+### 5.12 Carry-forward power mix (D31, D32), measured 2026-10-26 21:45, container, branch claude/node-ceiling
+
+Script: `carry_forward.py` (rules in its docstring). Demand per phase is
+D_p = phase energy (§5.5) / T_ref_p: MW at the 1/1/1 pace. Phase by phase,
+built generator counts carry forward, and their net MW is re-read at the new
+phase's extractor mark. Any shortfall goes first to geothermal (from phase 3,
+up to the cap of 31 geysers, 7,100 MW at an ASSUMED 0.5/1/2 × 200 MW), then
+to the newest open source that nets > 0. Every built plant runs at the same
+load. Work = factory (§5.6) + plant machine-minutes, divided by the 1/1/1
+total under the same rule.
+
+**Check by hand.** At 1/1/1, phase 1's 52 MW is about 1.7 burners. In phase 2,
+D = 128 MW, so coal covers 128 − 52 = 76 MW, which is 76 / 65.6 = 1.16
+generators (65.6 net at 1P, §5.5). That matches.
+
+**Work multiplier with the mix (with geothermal | without):**
+
+| Scenario | ph1 | ph2 | ph3 | ph4 | ph5 |
+|---|---|---|---|---|---|
+| 1R/5P | 1.64 | 2.34 | 1.51 / 1.84 | 1.38 / 1.45 | 1.66 / 1.76 |
+| 1.25R/1P | 1.31 | 1.40 | 1.80 | 2.55 | 2.23 |
+| 1.25R/5P | 2.12 | 3.28 | 2.54 / 3.25 | 3.98 / 4.17 | 4.09 / 4.28 |
+| 2R/1P | 3.97 | 5.23 | 8.21 | 24.7 | 38.0 |
+| 2R/5P | 6.15 | 12.3 | 14.7 / 16.9 | 50.6 / 50.2 | 81.6 / 79.6 |
+| 1R/1P/10E | 1.58 | 5.37 | 5.78 | 8.23 | 7.82 |
+
+Against §5.6's sole-source rows (1R/5P ph4: Biomass 2.26, Coal 3.99, Fuel
+1.77, Nuclear 1.29), the mix sits close to the cheapest source. That's
+because the expensive early plant is a small share by the time the large
+late demand comes in.
+
+**What the rule produces:**
+- At 1/1/1, geothermal covers all growth from phase 3 (phase 4 needs about
+  3,000 MW against a 7,100 MW cap), so no fuel or nuclear plant is ever
+  built. Geothermal-first is Claude's ordering; D32 doesn't fix the order. It
+  shapes the mix more than anything else does: at 1R/5P, without
+  geothermal, phase 3 builds 16 fuel generators and phase 4 builds 7 nuclear.
+  Next action 2.
+- Geothermal matters most under P, because its output isn't P-scaled and it
+  has no parasitic load. Phase 3 at 1R/5P is 1.51 with it and 1.84 without.
+- Load below 1 (1.25R ph5: 0.71) means phase 4's plant is larger than phase
+  5 needs.
+- 2R/5P: nuclear nets −1,303 MW per generator and is skipped (§5.11), so
+  fuel covers phase 4's growth with 3,568 generators. At the 1/1/1 pace that
+  draws 44x the default world's crude oil. 2R/1P is also over in phases 4–5
+  (Bauxite 2.1x, Copper 2.9x, Uranium 2.6x, ...), consistent with k ≈ 0.52
+  (§5.10). Where k < 1 the mix is sized for a pace the world can't feed. The
+  machine-minute total is still the honest work figure, but which sources
+  get built depends on that pace.
+
+Held out (named): geothermal's purity multiplier is assumed, it fluctuates
+in game, and the geysers are spread across the map (distance ignored).
+Biomass runs on hand-fed Leaves here, not the D30 gathering mix. Unlock
+timing inside a phase window is collapsed to the window's top tier (D12),
+and both Fuel (5-5) and Nuclear (8-1) open late in their windows. The node
+check is the plant's own LP draw, not an optimisation under caps.
+
 ## 6. Repo capability map (read at 4a32faa)
 
 | Need | Present | Notes |
@@ -542,6 +763,7 @@ default profile, no hidden min/max); new joints go at `tools/` root.
 - Clock policy as an input (the 25% vs 100% question); the anchor fixes final machines at 100%.
 - Optimistic-alternates option: unlock timing not constrained (the lab's limitation carries over).
 - `input_amount_floor` default.
+- Fluid floor unit: the 0.25R Plastic read, then the `input_amount_floor` default (record A5.2). Moved here from the next actions on 2026-10-26 21:50.
 - Fluid floor unit (record A5.2). Read not yet available (Greg, 2026-10-26: no 0.25R Plastic yet). Discriminating read: Plastic's Crude Oil in a Refinery's recipe UI on a 0.25R save — 0.75 m3 (per internal unit; floor never binds on fluids) or 1 m3 (per stated unit; the repo's current behaviour).
 - RESOLVED O9 (2026-10-26) — **Milestone costs under R**: unscaled, observed. Covers MAM too.
 - RESOLVED D19 (2026-10-26) — **What R costs: machines or time.** Serial with the factory held at the 1/1/1 size gives T(R,E)/T(1,1,1) = (E·W_PA(R) + W_ms(R)) / (W_PA(1) + W_ms(1)), so R shows up as time. The anchor model (§4.1) sizes the factory to R, so R shows up as machines and T doesn't move. These are two readings of one trade; neither is chosen. Example, ph4 at 1.25R, E=1: 2.46x time on a fixed factory, against the §5 machine ratios on an anchored one.
@@ -551,6 +773,8 @@ default profile, no hidden min/max); new joints go at `tools/` root.
 - RESOLVED D23 (for now) — **MAM: equipment as a research COST.** Greg (2026-10-26): building equipment for the player's own use stays out. Still open: six MAM nodes CONSUME equipment as their unlock cost — Nobelisk ×10/100/200/500, Spiked Rebar ×10/150/200, Rifle Cartridge ×500/1000, Object Scanner ×1. Those are spent to unlock, so they are part of the MAM bill like any part. Equipment Workshop recipes are not in the reference layer; currently unpriced and named.
 - RESOLVED D24 — **Power-plant machines in the work multiplier?** §5.5 counts generators separately. The machines and extractors that make generator fuel (and pump its water) aren't in W (§5.2), so P never raises the work multiplier. If D13 (machine count is build effort) should include the power plant, P enters W too.
 - RESOLVED D25 — **Generator display.** Every open generator is reported and none is chosen (layers report). Should the display show the set, or the cheapest per phase under a declared rule?
-- **Super-linear E (and R).** Node caps / purity mix via `solve_portfolio` stage 1 is the measurable source of decreasing returns (§4.4). Not started.
-- **Idea (Greg, 2026-10-26; not adopted): power mix.** Unlocking Fuel doesn't stop coal production, so a later version could model a mix of sources per phase rather than D27's sole-source rows.
+- **Super-linear E (and R).** Node caps / purity mix via `solve_portfolio` stage 1 is the measurable source of decreasing returns (§4.4). Ceiling measured 2026-10-26 (§5.10); the rising cost below it (stage 3 at a swept fixed scale) is not measured. Whether it is worth measuring depends on the display choice (next action 3).
+- **Node ceiling scope.** Every default socket is in one site. A start-area or reachable-socket version (the whole-world idea's start biomes) would lower k; not built. Shards, somersloops and augmenters stay out of "default".
+- RESOLVED D31 (2026-10-26) — **Idea (Greg, 2026-10-26): power mix.** Unlocking Fuel doesn't stop coal production, so a later version could model a mix of sources per phase rather than D27's sole-source rows. Adopted as reading B (carry-forward), §5.12.
+- **Geothermal order in the mix.** §5.12 runs geothermal first in each phase's growth; the alternative is the newest source first, with geothermal behind it. It shapes the mix more than any other choice (§5.12).
 - **Contradiction to settle before promotion: record §3.3.** §3.3 says scenarios "may be described, never priced against each other". This tool prices every scenario against 1/1/1 (D11). D15 squared the Pareto front with §3.3's no-ordering line, but not with the no-pricing line. The likely reading is that a per-axis multiplier against a fixed reference, never ranking two non-reference scenarios, is description. That needs a forward amendment to the record saying so. Greg's call.
