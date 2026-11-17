@@ -24,7 +24,7 @@ kinds of question, in three tracks over one shared core:
 |---|---|---|---|
 | **Site portfolio** | What can be made where, and how do the sites connect? | Supply-bounded LP over declared sites and claimed sockets | Built (`portfolio_run.py`, `site_planner_web/`) |
 | **Run planner** | What is next, and what would reaching a declared target take? | Demand-driven: a declared target and horizon give the rates, then the LP gives the plan | Planned (R9). Pieces exist (`schedule`, `goal_run`, `LpBackend.solve`) |
-| **Factory planner** | What can this factory deliver from what it has? | Supply-driven, the default for the current factory: maximise a **declared** goal mix within available supply | Built (R7: `factory_run.py`, `factory-inputs/1` → `factory-plan/1`); timeline planned (R8) |
+| **Factory planner** | What can this factory deliver from what it has? | Supply-driven, the default for the current factory: maximise a **declared** goal mix within available supply | Built (R7: `factory_run.py`, `factory-inputs/1` → `factory-plan/1`; R8: `progression.timeline`) |
 
 How the tracks connect:
 - The run planner's output (`run-plan/1`, ordered steps) can feed the factory
@@ -51,7 +51,7 @@ factory-design specification is archived as a proposal.
 CLIENTS        site_planner_web (Pyodide: runs this repo's Python; no maths in JS)
 TRACKS         tools/*.py root joints, one versioned record each
 PROGRESSION    tools/progression      unlocks, pool, schedule, lag, stock, power, district
-                                      playthrough, availability (R5), infrastructure (R6); planned: timeline
+                                      playthrough, availability (R5), infrastructure (R6), timeline (R8)
 REALIZATION    tools/realization      buses, residual, realize: whole machines, clocks, belts
                                       (steady state per bus; may not become a solver)
 CORE           tools/production_adapter
@@ -111,7 +111,7 @@ module is not built yet.
 | Power, report side | `progression.power.ledger` | tests only; candidate for retirement (open) |
 | PA demand | `gamedata.load_project_assembly` → `district.compose_bill` / `stock` | demand A1 |
 | PA pacing (bill ÷ T) | `progression.schedule` | carried as implementation, demand-side only |
-| Storage-priority banks, PA duration | planned `progression.timeline` (R8) | A15.2 (B3, Q6) |
+| Storage-priority banks, PA duration | `progression.timeline` (R8): FILLING then FULL segments, smart or standard splitter, container options by unlock | A15.2 (B3, Q6) |
 | Recipe expansion to quantities | `demand_expansion` (tier-blind, primary outputs) | demand A1–A4; its role beside the LP is decided in R9 |
 
 ---
@@ -217,5 +217,5 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | R5 | playthrough + availability (milestone-level) | done |
 | R6 | infrastructure marks + step-down policy | done |
 | R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | done |
-| R8 | timeline: storage-priority banks, PA duration | planned |
+| R8 | timeline: storage-priority banks, PA duration | done |
 | R9 | run track (`run_plan`, `run-plan/1`) | planned |
