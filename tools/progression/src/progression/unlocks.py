@@ -41,6 +41,7 @@ or holds as an alternate. Nothing here guesses it.
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from production_adapter.contracts import (
@@ -142,24 +143,8 @@ def at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    recipes = {r.recipe_id: r.is_alternate for r in load_recipe_rows(repo_root)}
-    schematics = {s.schematic_id: s for s in load_schematic_rows(repo_root)}
-
-    granted: set[RecipeId] = set()
-    by_research: set[RecipeId] = set()
-    for row in load_schematic_unlock_rows(repo_root):
-        recipe_id = row.recipe_id
-        if recipe_id not in recipes:
-            continue  # building and customiser recipes; not production
-        schematic = schematics.get(row.schematic_id)
-        if schematic is None:
-            raise UnlockDataError(
-                f"{row.schematic_id} unlocks {recipe_id} but is absent from schematics.csv"
-            )
-        if schematic.schematic_type in RESEARCH_TYPES:
-            by_research.add(recipe_id)
-        if _reached_at_tier(schematic, tier):
-            granted.add(recipe_id)
+    recipes, granted, by_research = recipe_grants(
+        repo_root, lambda s: _reached_at_tier(s, tier))
 
     base = {r for r, is_alt in recipes.items() if not is_alt}
     alternates = {r for r, is_alt in recipes.items() if is_alt}
@@ -181,6 +166,94 @@ def at_tier(
         uncertain=tuple(sorted(granted & by_research - set(declared))),
         pool=pool,
     )
+
+
+def recipe_grants(
+    repo_root: str | pathlib.Path,
+    owns: Callable[[SchematicRow], bool],
+) -> tuple[dict[RecipeId, bool], set[RecipeId], set[RecipeId]]:
+    """The one grant join, for any notion of "owned". Reconciliation R5.
+
+    Returns (recipe_id -> is_alternate for every production recipe, the
+    recipes some OWNED schematic unlocks, the recipes some research or
+    hard-drive schematic unlocks). `at_tier` passes "reached at tier N";
+    `progression.availability` passes "in the declared playthrough state".
+    One join, so the two cannot drift (the three-lists defect, see
+    `_reached_at_tier`). Interprets nothing beyond `RESEARCH_TYPES`.
+    """
+    recipes = {r.recipe_id: r.is_alternate for r in load_recipe_rows(repo_root)}
+    schematics = {s.schematic_id: s for s in load_schematic_rows(repo_root)}
+
+    granted: set[RecipeId] = set()
+    by_research: set[RecipeId] = set()
+    for row in load_schematic_unlock_rows(repo_root):
+        recipe_id = row.recipe_id
+        if recipe_id not in recipes:
+            continue  # building and customiser recipes; not production
+        schematic = schematics.get(row.schematic_id)
+        if schematic is None:
+            raise UnlockDataError(
+                f"{row.schematic_id} unlocks {recipe_id} but is absent from schematics.csv"
+            )
+        if schematic.schematic_type in RESEARCH_TYPES:
+            by_research.add(recipe_id)
+        if owns(schematic):
+            granted.add(recipe_id)
+    return recipes, granted, by_research
+
+
+def buildings_unlocked(
+    repo_root: str | pathlib.Path,
+    owns: Callable[[SchematicRow], bool],
+) -> tuple[set[str], dict[str, RecipeId]]:
+    """(Desc_* building classes whose build recipe an owned schematic
+    unlocks, building class -> build recipe). The join the tier filters for
+    extractors and generators share; R5 made "owned" a parameter."""
+    reached = {s.schematic_id for s in load_schematic_rows(repo_root) if owns(s)}
+    open_recipes = {
+        r.recipe_id for r in load_schematic_unlock_rows(repo_root)
+        if r.schematic_id in reached
+    }
+    rows = load_building_recipe_rows(repo_root)
+    return (
+        {r.building_class for r in rows if r.recipe_id in open_recipes},
+        {r.building_class: r.recipe_id for r in rows},
+    )
+
+
+def extractors_open(
+    repo_root: str | pathlib.Path,
+    owns: Callable[[SchematicRow], bool],
+) -> dict[ItemId, tuple[ProducerClass, ...]]:
+    """Per raw resource, the extractor classes an owned schematic unlocks, in
+    resource_extraction_map.csv order. A filter: chooses none."""
+    open_buildings, _ = buildings_unlocked(repo_root, owns)
+    by_item: dict[ItemId, list[ProducerClass]] = {}
+    for r in load_extraction_map_rows(repo_root):
+        extractor = r.extractor_class
+        if "Desc_" + extractor[len("Build_"):] in open_buildings:
+            by_item.setdefault(r.item_id, []).append(extractor)
+    return {item: tuple(classes) for item, classes in by_item.items()}
+
+
+def generators_open(
+    repo_root: str | pathlib.Path,
+    owns: Callable[[SchematicRow], bool],
+    generator_classes: tuple[ProducerClass, ...],
+) -> tuple[ProducerClass, ...]:
+    """The given generator classes whose build recipe an owned schematic
+    unlocks, in the order given. A class with no build recipe is refused."""
+    open_buildings, built_by = buildings_unlocked(repo_root, owns)
+    out: list[ProducerClass] = []
+    for cls in generator_classes:
+        if not cls.startswith("Build_"):
+            raise UnlockDataError(f"{cls!r} is not a Build_*_C class")
+        desc = "Desc_" + cls[len("Build_"):]
+        if desc not in built_by:
+            raise UnlockDataError(f"{cls}: no build recipe in building_recipes.csv")
+        if desc in open_buildings and cls not in out:
+            out.append(cls)
+    return tuple(out)
 
 
 # --------------------------------------------------------------------------
@@ -308,23 +381,7 @@ def extractors_open_at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    reached = {
-        s.schematic_id for s in load_schematic_rows(repo_root) if _reached_at_tier(s, tier)
-    }
-    open_recipes = {
-        r.recipe_id for r in load_schematic_unlock_rows(repo_root)
-        if r.schematic_id in reached
-    }
-    open_buildings = {
-        r.building_class for r in load_building_recipe_rows(repo_root)
-        if r.recipe_id in open_recipes
-    }
-    by_item: dict[ItemId, list[ProducerClass]] = {}
-    for r in load_extraction_map_rows(repo_root):
-        extractor = r.extractor_class
-        if "Desc_" + extractor[len("Build_"):] in open_buildings:
-            by_item.setdefault(r.item_id, []).append(extractor)
-    return {item: tuple(classes) for item, classes in by_item.items()}
+    return extractors_open(repo_root, lambda s: _reached_at_tier(s, tier))
 
 
 def generators_open_at_tier(
@@ -346,21 +403,4 @@ def generators_open_at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    reached = {
-        s.schematic_id for s in load_schematic_rows(repo_root) if _reached_at_tier(s, tier)
-    }
-    open_recipes = {
-        r.recipe_id for r in load_schematic_unlock_rows(repo_root)
-        if r.schematic_id in reached
-    }
-    built_by = {r.building_class: r.recipe_id for r in load_building_recipe_rows(repo_root)}
-    out: list[ProducerClass] = []
-    for cls in generator_classes:
-        if not cls.startswith("Build_"):
-            raise UnlockDataError(f"{cls!r} is not a Build_*_C class")
-        recipe = built_by.get("Desc_" + cls[len("Build_"):])
-        if recipe is None:
-            raise UnlockDataError(f"{cls}: no build recipe in building_recipes.csv")
-        if recipe in open_recipes and cls not in out:
-            out.append(cls)
-    return tuple(out)
+    return generators_open(repo_root, lambda s: _reached_at_tier(s, tier), generator_classes)

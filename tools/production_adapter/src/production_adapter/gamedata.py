@@ -151,6 +151,11 @@ class Capability:
     unit: str
     unlock_tier: int
     unlock_text: str
+    #: The milestone named after the tier ("Logistics Mk.3"), as written. Joined
+    #: to `schematics.display_name` by `progression.availability`, which refuses
+    #: a name matching zero or several schematics. Reconciliation R5 (2026-11-17):
+    #: availability follows the milestones owned, not the tier (reframe A15.2 Q2).
+    unlock_milestone: str = ""
 
 
 @dataclass(frozen=True)
@@ -520,6 +525,14 @@ def _unlock_tier(unlock_text: str) -> int:
     return int(head)
 
 
+def _unlock_milestone(unlock_text: str) -> str:
+    """Parse "Tier 4 - Logistics Mk.3" to "Logistics Mk.3". Raises without one."""
+    _, sep, name = unlock_text.partition(" - ")
+    if not sep or not name.strip():
+        raise ReferenceDataError(f"unlock text names no milestone: {unlock_text!r}")
+    return name.strip()
+
+
 def load_logistics(
     repo_root: str | pathlib.Path,
 ) -> tuple[tuple[Capability, ...], tuple[ExtractionRate, ...]]:
@@ -545,6 +558,7 @@ def load_logistics(
             unit=r["unit"],
             unlock_tier=_unlock_tier(r["unlock"]),
             unlock_text=r["unlock"],
+            unlock_milestone=_unlock_milestone(r["unlock"]),
         )
         for r in _rows(ref / "logistics_capabilities.csv")
     )

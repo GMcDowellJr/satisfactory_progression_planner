@@ -51,7 +51,7 @@ factory-design specification is archived as a proposal.
 CLIENTS        site_planner_web (Pyodide: runs this repo's Python; no maths in JS)
 TRACKS         tools/*.py root joints, one versioned record each
 PROGRESSION    tools/progression      unlocks, pool, schedule, lag, stock, power, district
-                                      planned: playthrough, availability, infrastructure, timeline
+                                      playthrough, availability (R5); planned: infrastructure, timeline
 REALIZATION    tools/realization      buses, residual, realize: whole machines, clocks, belts
                                       (steady state per bus; may not become a solver)
 CORE           tools/production_adapter
@@ -98,10 +98,10 @@ module is not built yet.
 | R / P / E transforms, rounding | `scenario.Scenario` | demand §3.2.4–3.2.5, A2, A5, A6; reframe A7 |
 | Sub-1× floor | `scenario` | A15.2 (B4): solids fixed at 1 (`SOLID_INPUT_FLOOR`, R4); fluid floor declared (`fluid_input_floor`), open until the 0.25× Plastic read |
 | Recipe set at a tier | `progression.unlocks.at_tier` | LP §18 rule (carried) |
-| Availability from milestones owned | planned `progression.availability` (R5) | A15.2 (Q2) |
-| Recipe status (owned / in pool / MAM research / locked) | planned `progression.availability` (R5) | A15.2 (B5, Q3) |
+| Availability from milestones owned | `progression.availability` (R5); grant joins shared with `at_tier` (`unlocks.recipe_grants`, `extractors_open`, `generators_open`) | A15.2 (Q2) |
+| Recipe status (owned / in pool / MAM research / locked) | `progression.availability.RecipeStatus` (R5) | A15.2 (B5, Q3) |
 | Hard-drive pool | `progression.pool` (automatic entry) | LP §19 (carried) |
-| Playthrough state (milestones and alternates owned) | planned `progression.playthrough` (R5) | A15.2 |
+| Playthrough state (milestones, research and alternates owned) | `progression.playthrough` (R5) | A15.2 |
 | Resource supply and socket claims | `site_card.load_sockets` (reader), `portfolio_run` (no double claim) | reframe A9, A10 |
 | Extractor and belt marks per socket and link | planned `progression.infrastructure` (R6) | A15.2 (B2, Q1) |
 | Production solve | `lp_backend` | reframe A2, A3, A6, A13; LP record (carried as implementation) |
@@ -211,7 +211,7 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | R2 | shared `compose_bill`; stale power notes | done |
 | R3 | this document, A15, archive index, deprecations | done |
 | R4 | solid floor 1 at sub-1× R; fluid floor declared | done (behaviour change recorded in its commit) |
-| R5 | playthrough + availability (milestone-level) | planned |
+| R5 | playthrough + availability (milestone-level) | done |
 | R6 | infrastructure marks + step-down policy | planned |
 | R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | planned |
 | R8 | timeline: storage-priority banks, PA duration | planned |

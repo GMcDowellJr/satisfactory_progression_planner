@@ -72,6 +72,8 @@ def test_the_scan_sees_every_module():
         "power.py",      # goal run A5 (D4 P5), 2026-09-24
         "lag.py",        # crossover A18, 2026-09-24
         "district.py",   # crossover A26/A27, 2026-10-08
+        "playthrough.py",   # reframe A15.2 Q2, reconciliation R5, 2026-11-17
+        "availability.py",  # reframe A15.2 Q2/B2/B5, reconciliation R5, 2026-11-17
     }
 
 

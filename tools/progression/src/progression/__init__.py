@@ -1,6 +1,8 @@
 """Progression-layer modules. Sits above `production_adapter` and imports downward.
 
     unlocks   resolve a tech tier into a recipe set, and report what it withheld
+    playthrough  a declared state: milestones, research, alternates owned (R5)
+    availability what a state makes available, by milestone; recipe status (R5)
     district  a district's declared nodes composed into resource caps (A26/A27)
     pool      which alternates are obtainable at a tier — not which you hold
     stock     the build-material bill, in quantities. NOT re-exported below and
@@ -18,6 +20,8 @@ from .district import (
     generators_at_tier, nameplate_mw, partition_recipes, pumped_caps, pumped_water, reach_caps,
     recipe_ids_by_name, resource_caps, site_extraction, resources_in_reference_order, standing_generation,
 )
+from .availability import Availability, RecipeStatus, availability, generators_available
+from .playthrough import PlaythroughError, PlaythroughState, playthrough
 from .pool import PoolAvailability, PoolDataError, available_at, resolve_slugs
 from .unlocks import PROGRESSION_TYPES, TierUnlocks, UnlockDataError, at_tier
 
@@ -29,5 +33,7 @@ __all__ = [
     "PoolAvailability", "PoolDataError", "TierUnlocks", "UnlockDataError", "at_tier",
     "available_at", "bill_units", "recipe_ids_by_name", "resolve_slugs", "resource_caps",
     "resources_in_reference_order",
+    "Availability", "PlaythroughError", "PlaythroughState", "RecipeStatus", "availability",
+    "generators_available", "playthrough",
 ]
 __version__ = "0.1.0"
