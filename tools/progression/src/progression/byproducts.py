@@ -60,14 +60,26 @@ PACKAGE_NOT_OWNED = "package_not_owned"
 STORE_OVERFLOW_SINK = "store_overflow_sink"
 FUEL_ROUTES = (POWER, PACKAGE)
 
-#: A18: the packager recipe for each generator fuel. Each takes one Empty
-#: Canister per unit, reported; where the canisters come from is not modelled.
-PACKAGING: dict[ItemId, RecipeId] = {
-    "Desc_LiquidFuel_C": "Recipe_Fuel_C",
-    "Desc_LiquidTurboFuel_C": "Recipe_PackagedTurboFuel_C",
-    "Desc_LiquidBiofuel_C": "Recipe_PackagedBiofuel_C",
-}
-CANISTER = "Desc_FluidCanister_C"
+#: A18: a fluid generator fuel is packaged by THE base Packager recipe that takes
+#: it plus one container (Empty Canister, or Empty Gas Tank for Rocket and
+#: Ionized Fuel) and makes one solid. Read from the data, not listed: until
+#: the Codex review on PR #15 a hand list missed the two gases and they fell
+#: through to "power" against a declared "package" route.
+PACKAGER = "Build_Packager_C"
+
+
+def packaging_recipe(data: ReferenceData, fuel: ItemId):
+    """(recipe, container item) or None; several candidates are refused."""
+    hits = [r for r in data.recipes.values()
+            if r.producer_class == PACKAGER and not r.is_alternate
+            and len(r.inputs) == 2 and fuel in dict(r.inputs) and len(r.outputs) == 1
+            and data.items[r.outputs[0][0]].form == "solid"]
+    if len(hits) > 1:
+        raise ValueError(f"{fuel}: {len(hits)} packaging recipes; which one is a choice")
+    if not hits:
+        return None
+    (container,) = [i for i, _ in hits[0].inputs if i != fuel]
+    return hits[0], container
 CONVERT = "convert"
 CONVERT_NOT_OWNED = "convert_not_owned"
 NEEDS_PACKAGING = "needs_packaging"
@@ -94,7 +106,8 @@ class Byproduct:
     recipe_id: RecipeId | None = None              # CONVERT
     machines: float | None = None                  # CONVERT: at 100 %
     machine_mw: float | None = None                # CONVERT/PACKAGE: drawn, P-scaled
-    canisters_per_min: float | None = None         # PACKAGE: Empty Canisters taken
+    containers_per_min: float | None = None        # PACKAGE: empty containers taken
+    container_item_id: ItemId | None = None        # PACKAGE: Empty Canister or Gas Tank
     downstream: tuple["Byproduct", ...] = ()       # CONVERT/PACKAGE: its products
 
 
@@ -160,11 +173,15 @@ def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
         if ctx.can_sink:
             return Byproduct(item, rate, SINK, sink_points_per_min=rate * ctx.points.get(item, 0))
         return Byproduct(item, rate, SINK_NOT_UNLOCKED)
-    if ctx.fuel_route == PACKAGE and item in PACKAGING:
-        recipe_id = PACKAGING[item]
+    if ctx.fuel_route == PACKAGE and item in ctx.burners:
+        found = packaging_recipe(ctx.data, item)
+        if found is None:
+            raise ValueError(f"{item}: fuel_route 'package' declared, but no packaging recipe "
+                             "takes it; refused rather than burned")
+        recipe, container = found
+        recipe_id = recipe.recipe_id
         if recipe_id not in ctx.owned_recipes:
             return Byproduct(item, rate, PACKAGE_NOT_OWNED, recipe_id=recipe_id)
-        recipe = ctx.data.recipes[recipe_id]
         machines = rate / dict(recipe.inputs)[item]
         (packed, per_machine), = recipe.outputs
         out_rate = machines * per_machine
@@ -172,7 +189,8 @@ def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
                            sink_points_per_min=out_rate * ctx.points.get(packed, 0))
         return Byproduct(item, rate, PACKAGE, recipe_id=recipe_id, machines=machines,
                          machine_mw=machines * recipe.power.mean_mw,
-                         canisters_per_min=machines * dict(recipe.inputs).get(CANISTER, 0.0),
+                         containers_per_min=machines * dict(recipe.inputs)[container],
+                         container_item_id=container,
                          downstream=(stored,))
     burners = ctx.burners.get(item, [])
     if burners:
@@ -250,7 +268,7 @@ def report_lines(byproducts: tuple[Byproduct, ...]) -> list[str]:
             how = f"{b.machines:.3g} x {b.recipe_id}, {b.machine_mw:.3g} MW drawn"
         elif b.disposition == PACKAGE:
             how = (f"{b.machines:.3g} x {b.recipe_id}, {b.machine_mw:.3g} MW drawn, "
-                   f"{b.canisters_per_min:.4g} Empty Canisters/min")
+                   f"{b.containers_per_min:.4g} {b.container_item_id}/min")
         elif b.disposition in (SINK, STORE_OVERFLOW_SINK):
             how = f"{b.sink_points_per_min:.4g} points/min if all sunk"
         else:

@@ -188,7 +188,7 @@ def test_packaged_fuel_goes_to_storage_with_overflow_to_the_sink(data):
     (fuel,) = ledger(REPO, data, state, (ItemFlow(FUEL, 80.0, 0.0),), {}, owned,
                      fuel_route="package")
     assert (fuel.disposition, fuel.recipe_id) == (PACKAGE, "Recipe_Fuel_C")
-    assert fuel.machines == pytest.approx(2.0) and fuel.canisters_per_min == pytest.approx(80.0)
+    assert fuel.machines == pytest.approx(2.0) and fuel.containers_per_min == pytest.approx(80.0)
     (stored,) = fuel.downstream
     assert (stored.item_id, stored.disposition) == ("Desc_Fuel_C", STORE_OVERFLOW_SINK)
     assert stored.sink_points_per_min == pytest.approx(80.0 * 270)
@@ -208,3 +208,30 @@ def test_the_fuel_route_has_no_default(data):
     state, owned = _owned(5)
     with pytest.raises(ValueError, match="fuel_route"):
         ledger(REPO, data, state, (), {}, owned, fuel_route="burn")
+
+
+def test_every_generator_fluid_has_one_packaging_recipe(data):
+    """Read from the data (Codex on PR #15: a hand list missed the gases)."""
+    from production_adapter.gamedata import load_generators
+    from progression.byproducts import packaging_recipe
+    fluids = {g.fuel_item_id for g in load_generators(REPO)
+              if data.items[g.fuel_item_id].form != "solid"}
+    found = {f: packaging_recipe(data, f) for f in sorted(fluids)}
+    assert all(v is not None for v in found.values()), found
+    assert found["Desc_RocketFuel_C"][1] == "Desc_GasTank_C"
+    assert found["Desc_LiquidFuel_C"][1] == "Desc_FluidCanister_C"
+
+
+def test_a_declared_package_route_is_never_overridden_by_power(data):
+    """Rocket Fuel under fuel_route 'package' is packaged (or named not owned),
+    never burned."""
+    from progression.byproducts import PACKAGE, PACKAGE_NOT_OWNED
+    state, owned = _owned(9)
+    flows = (ItemFlow("Desc_RocketFuel_C", 20.0, 0.0),)
+    # at tier 9 alone the packaging recipe is not owned (it needs research)
+    (rf,) = ledger(REPO, data, state, flows, {}, owned, fuel_route="package")
+    assert (rf.disposition, rf.recipe_id) == (PACKAGE_NOT_OWNED, "Recipe_PackagedRocketFuel_C")
+    (rf,) = ledger(REPO, data, state, flows, {}, owned + ("Recipe_PackagedRocketFuel_C",),
+                   fuel_route="package")
+    assert rf.disposition == PACKAGE and rf.container_item_id == "Desc_GasTank_C"
+    assert rf.containers_per_min == pytest.approx(10.0)   # 120 fuel : 60 tanks
