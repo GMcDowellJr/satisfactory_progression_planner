@@ -23,10 +23,12 @@ A joint at tools/ root, like portfolio_run: it composes and adds no solver.
     power      "grid" (A3: generators the state can build, a declared standing
                grid) or "report_need" (A11), with A11's refusals
 
-Per-socket draws for the step-down are read at an EQUAL SHARE of each raw's
-cap (the choice-free reading `progression.extraction_at_share` uses, reframe
-A6): the solve sees a raw's sockets as one cap and does not say which socket
-it would work. Stated on every report.
+Per-socket draws for the step-down are the solve's own segment draws
+(`SitePlan.segment_draws`), summed over sockets with the same MW per unit and
+shared by capacity among them: where the solve is indifferent, the
+choice-free reading `progression.extraction_at_share` uses (reframe A6). So
+the socket plan carries exactly the extraction power the solve accounted for.
+Stated on every report.
 
 Input: `factory-inputs/1` (every key required, unknown keys refused, like
 portfolio-inputs/2). Output: `factory-plan/1`. The run-plan track (R9) will
@@ -93,8 +95,9 @@ FORM_SOLID = "solid"  # items.csv `form`: solid | liquid | gas
 #: not extract (cores, geysers) never reach this.
 ACTIVATED_BY_KIND = {"resource_node": False, "fracking_satellite": True}
 
-SHARE_NOTE = ("per-socket draws are read at an equal share of each raw's cap (reframe A6's "
-              "choice-free reading); the solve does not say which socket it would work")
+SHARE_NOTE = ("per-socket draws are the solve's own, summed over sockets of equal MW per unit "
+              "and shared equally among them (reframe A6's choice-free reading where the solve "
+              "is indifferent); the socket plan's extraction power is the solve's")
 
 
 class FactoryRunError(ValueError):
@@ -305,16 +308,31 @@ def run_factory(
     plan = response.sites[0]
     draw = {r.item_id: r.rate_per_min for r in plan.plan.raw_inputs}
 
-    # B2, realize half: per-socket draw at an equal share of the raw's cap
-    cap_of = {c.item_id: c.rate_per_min for c in caps}
+    # B2, realize half: per-socket draws from the solve (Codex on PR #15,
+    # 2026-11-17: an equal share across a raw's sockets could put ore on a
+    # dearer node than the solve did and report more power than it accounted
+    # for). The solve's segment draws are summed per group of sockets with the
+    # same MW per unit (it is indifferent inside a group, so any split there is
+    # its choice, not ours) and shared by capacity inside each group.
+    node_segments = segments[:len(definition.nodes)]
+    solved = {id(seg): x for seg, x in plan.segment_draws}
+    group_of = {}
+    for sock, seg in zip(extracted, node_segments):
+        group_of[sock.socket_id] = (seg.item_id, round(seg.mw_per_unit, 12))
+    group_draw: dict = {}
+    group_cap: dict = {}
+    for sock, seg in zip(extracted, node_segments):
+        g = group_of[sock.socket_id]
+        group_draw[g] = group_draw.get(g, 0.0) + solved.get(id(seg), 0.0)
+        group_cap[g] = group_cap.get(g, 0.0) + (seg.cap_per_min or 0.0)
     socket_plans = []
     for s in chosen:
         if s.socket_id not in options_of:
             continue
         opts = options_of[s.socket_id]
         top = highest_extractor(opts)
-        total = cap_of.get(s.item_id) or 0.0
-        share = (draw.get(s.item_id, 0.0) / total) if total > 0 else 0.0
+        g = group_of[s.socket_id]
+        share = group_draw[g] / group_cap[g] if group_cap[g] > 0 else 0.0
         socket_cap = top.nominal_rate_min * clock_of[s.socket_id]   # lane-limited
         socket_draw = min(socket_cap, share * socket_cap)
         mark = step_down_extractor(s.socket_id, s.item_id, s.purity, socket_draw, opts)

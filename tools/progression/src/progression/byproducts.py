@@ -58,6 +58,9 @@ POWER_NOT_OWNED = "power_not_owned"
 PACKAGE = "package"
 PACKAGE_NOT_OWNED = "package_not_owned"
 STORE_OVERFLOW_SINK = "store_overflow_sink"
+#: packaged and stored, but the overflow has nowhere to go: no AWESOME Sink yet
+#: (Codex on PR #15, 2026-11-17)
+STORE_NO_SINK = "store_sink_not_unlocked"
 FUEL_ROUTES = (POWER, PACKAGE)
 
 #: A18: a fluid generator fuel is packaged by THE base Packager recipe that takes
@@ -185,8 +188,11 @@ def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
         machines = rate / dict(recipe.inputs)[item]
         (packed, per_machine), = recipe.outputs
         out_rate = machines * per_machine
-        stored = Byproduct(packed, out_rate, STORE_OVERFLOW_SINK,
-                           sink_points_per_min=out_rate * ctx.points.get(packed, 0))
+        if ctx.can_sink:
+            stored = Byproduct(packed, out_rate, STORE_OVERFLOW_SINK,
+                               sink_points_per_min=out_rate * ctx.points.get(packed, 0))
+        else:
+            stored = Byproduct(packed, out_rate, STORE_NO_SINK)
         return Byproduct(item, rate, PACKAGE, recipe_id=recipe_id, machines=machines,
                          machine_mw=machines * recipe.power.mean_mw,
                          containers_per_min=machines * dict(recipe.inputs)[container],

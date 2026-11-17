@@ -235,3 +235,18 @@ def test_a_declared_package_route_is_never_overridden_by_power(data):
                    fuel_route="package")
     assert rf.disposition == PACKAGE and rf.container_item_id == "Desc_GasTank_C"
     assert rf.containers_per_min == pytest.approx(10.0)   # 120 fuel : 60 tanks
+
+
+def test_packaged_overflow_needs_the_sink(data):
+    """Codex on PR #15: storage stays, but without the AWESOME Sink the overflow
+    route is named unavailable, with no sink points."""
+    from progression.byproducts import PACKAGE, STORE_NO_SINK
+    from progression import availability
+    tier5 = playthrough(REPO, through_tier=5)
+    no_sink = playthrough(REPO, milestones=[m for m in tier5.milestones if m != "Schematic_2-5_C"])
+    owned = availability(REPO, no_sink).recipe_ids
+    (fuel,) = ledger(REPO, data, no_sink, (ItemFlow(FUEL, 20.0, 0.0),), {}, owned,
+                     fuel_route="package")
+    assert fuel.disposition == PACKAGE
+    (stored,) = fuel.downstream
+    assert stored.disposition == STORE_NO_SINK and stored.sink_points_per_min is None

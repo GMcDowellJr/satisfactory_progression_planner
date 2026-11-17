@@ -145,7 +145,7 @@ def test_the_record_echoes_its_inputs_and_states_its_reading(tier3):
     assert rec["schema"] == "factory-plan/1"
     assert rec["inputs"]["schema"] == "factory-inputs/1"
     assert len(rec["sockets"]) == len(tier3.sockets)
-    assert any("equal share" in w for w in rec["warnings"])
+    assert any("the solve's own" in w for w in rec["warnings"])
 
 
 def test_the_cli_writes_the_record(tmp_path):
@@ -235,3 +235,16 @@ def test_report_need_carries_the_power_stack_and_grid_does_not(tier3):
     d["power_mode"] = "grid"
     d["grid_mw"] = 10000.0
     assert F.run_inputs(d).power_stack is None
+
+
+def test_the_socket_plan_carries_the_solves_extraction_power():
+    """Codex on PR #15: a pure and a normal iron node at a fixed 60 ingots/min.
+    The solve draws the pure node (cheaper per unit); an equal share would have
+    put 20/min on the normal one and reported more power than was accounted."""
+    d = _doc(tier=2, sockets=("BP_ResourceNode114", "BP_ResourceNode109"),
+             mix=("Desc_IronIngot_C",), target=60.0)
+    run = F.run_inputs(d)
+    draws = {p.socket_id: p.mark.draw_per_min for p in run.sockets}
+    assert draws["BP_ResourceNode114"] == pytest.approx(60.0)
+    assert draws["BP_ResourceNode109"] == pytest.approx(0.0)
+    assert run.extraction_mw_highest == pytest.approx(run.power.extraction_mw)

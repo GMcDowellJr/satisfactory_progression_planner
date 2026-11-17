@@ -873,6 +873,8 @@ class LpBackend:
                 site.label, dataclasses.replace(plan, warnings=()), delivered, binding,
                 generators=gens, lane_mw=lane_mw, extraction_mw=drawn_mw,
                 extraction_nameplate_mw=nameplate_mw, pumped=pumped,
+                segment_draws=tuple((e, float(x)) for e, x in
+                                    zip(p.extraction, vs[p.e0:p.e0 + p.n_e])),
             ))
         transfers = tuple(
             Transfer(request.sites[a].label, request.sites[b].label, p0.item_ids[i],

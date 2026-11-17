@@ -632,6 +632,11 @@ class SitePlan:
     #: A4: (item, rate/min) drawn from uncapped (pumped) segments: what is
     #: needed, for counting, grouping and clocking extractors later
     pumped: tuple[tuple[ItemId, float], ...] = ()
+    #: each extraction segment the solve read, with its solved draw per minute
+    #: (the same segment objects the request carried). Additive, 2026-11-17:
+    #: factory_run reads per-socket draws from it (Codex on PR #15), so the
+    #: socket plan carries the extraction power the solve accounted for
+    segment_draws: tuple[tuple["ExtractionSegment", float], ...] = ()
 
 
 @dataclass(frozen=True)
