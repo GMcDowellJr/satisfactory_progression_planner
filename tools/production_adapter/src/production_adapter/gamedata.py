@@ -660,3 +660,222 @@ def load_construction(repo_root: str | pathlib.Path) -> ConstructionData:
         )
 
     return ConstructionData(game_build_id=build_id, by_building_class=by_class)
+
+
+# --------------------------------------------------------------------------
+# Unlock, pool and power tables: ROWS, typed, in file order. 2026-11-17.
+# --------------------------------------------------------------------------
+#
+# Architecture reconciliation R1 (checkpoint 2, decided by Greg 2026-11-17):
+# AGENTS.md makes this module the only code that knows reference CSV names and
+# columns. `progression.unlocks`, `.pool`, `.power` and `.stock` used to open
+# these tables themselves, under the older rule that "the adapter never sees a
+# progression concept" (production_solver_selection.md section 6, now an
+# exploration log under the site-planner reframe section 3). Both rules hold
+# once reading is split from meaning: the loaders below return typed rows and
+# interpret NOTHING. What a tier grants, what a pool holds and which extractor
+# is open stay in `progression`, unchanged.
+
+
+@dataclass(frozen=True)
+class RecipeRow:
+    """recipes.csv: identity and the alternate flag, nothing scenario-dependent."""
+
+    recipe_id: RecipeId
+    display_name: str
+    is_alternate: bool
+
+
+@dataclass(frozen=True)
+class SchematicRow:
+    """schematics.csv."""
+
+    schematic_id: str
+    display_name: str
+    schematic_type: str
+    tech_tier: int
+
+
+@dataclass(frozen=True)
+class SchematicUnlockRow:
+    """schematic_recipe_unlocks.csv: one schematic grants one recipe."""
+
+    schematic_id: str
+    recipe_id: RecipeId
+
+
+@dataclass(frozen=True)
+class BuildingRecipeRow:
+    """building_recipes.csv: which build recipe places which building."""
+
+    recipe_id: RecipeId
+    display_name: str
+    building_class: str  # Desc_*_C, or "" for a recipe that places nothing
+
+
+@dataclass(frozen=True)
+class ExtractionMapRow:
+    """resource_extraction_map.csv: a resource and an extractor that takes it."""
+
+    item_id: ItemId
+    extractor_class: ProducerClass
+
+
+@dataclass(frozen=True)
+class SchematicCostRow:
+    """schematic_costs.csv: items, NOT scenario-scaled (demand record A6)."""
+
+    schematic_id: str
+    item_id: ItemId
+    amount: float
+
+
+@dataclass(frozen=True)
+class ProgressionClusterRow:
+    """progression_clusters.csv."""
+
+    progression_cluster_id: str
+    sort_order: int
+
+
+@dataclass(frozen=True)
+class AlternateUnlockRow:
+    """alternate_recipe_unlocks.csv: keyed by slug, not by Recipe_*_C."""
+
+    slug: str
+    recipe_name: str
+    progression_cluster_id: str
+    eligibility_type: str
+
+
+@dataclass(frozen=True)
+class PowerBuildingRow:
+    """power_buildings.csv."""
+
+    generator_class: ProducerClass
+    power_model: str
+    power_production_mw: float | None  # None where the model is not fixed
+
+
+@dataclass(frozen=True)
+class GeneratorFuelRow:
+    """generator_fuels.csv, the columns the power ledger reads."""
+
+    generator_class: ProducerClass
+    fuel_item_id: ItemId
+    burn_rate_per_min: float
+    supplemental_item_id: ItemId | None
+    supplemental_rate_per_min: float
+
+
+@dataclass(frozen=True)
+class ExtractionBuildingRow:
+    """extraction_buildings.csv."""
+
+    extractor_class: ProducerClass
+    base_power_mw: float
+
+
+def _ref(repo_root: str | pathlib.Path) -> pathlib.Path:
+    return pathlib.Path(repo_root) / REFERENCE_SUBPATH
+
+
+def load_recipe_rows(repo_root: str | pathlib.Path) -> tuple[RecipeRow, ...]:
+    return tuple(
+        RecipeRow(r["recipe_id"], r["display_name"], r["is_alternate"] == "true")
+        for r in _rows(_ref(repo_root) / "recipes.csv")
+    )
+
+
+def load_schematic_rows(repo_root: str | pathlib.Path) -> tuple[SchematicRow, ...]:
+    return tuple(
+        SchematicRow(r["schematic_id"], r["display_name"], r["schematic_type"],
+                     int(r["tech_tier"]))
+        for r in _rows(_ref(repo_root) / "schematics.csv")
+    )
+
+
+def load_schematic_unlock_rows(repo_root: str | pathlib.Path) -> tuple[SchematicUnlockRow, ...]:
+    return tuple(
+        SchematicUnlockRow(r["schematic_id"], r["recipe_id"])
+        for r in _rows(_ref(repo_root) / "schematic_recipe_unlocks.csv")
+    )
+
+
+def load_building_recipe_rows(repo_root: str | pathlib.Path) -> tuple[BuildingRecipeRow, ...]:
+    return tuple(
+        BuildingRecipeRow(r["recipe_id"], r["display_name"], r["building_class"])
+        for r in _rows(_ref(repo_root) / "building_recipes.csv")
+    )
+
+
+def load_extraction_map_rows(repo_root: str | pathlib.Path) -> tuple[ExtractionMapRow, ...]:
+    """In table order, which `extractors_open_at_tier` returns classes in."""
+    return tuple(
+        ExtractionMapRow(r["item_id"], r["extractor_class"])
+        for r in _rows(_ref(repo_root) / "resource_extraction_map.csv")
+    )
+
+
+def load_schematic_cost_rows(repo_root: str | pathlib.Path) -> tuple[SchematicCostRow, ...]:
+    return tuple(
+        SchematicCostRow(r["schematic_id"], r["item_id"], float(r["amount"]))
+        for r in _rows(_ref(repo_root) / "schematic_costs.csv")
+    )
+
+
+def load_progression_cluster_rows(
+    repo_root: str | pathlib.Path,
+) -> tuple[ProgressionClusterRow, ...]:
+    return tuple(
+        ProgressionClusterRow(r["progression_cluster_id"], int(r["sort_order"]))
+        for r in _rows(_ref(repo_root) / "progression_clusters.csv")
+    )
+
+
+def load_alternate_unlock_rows(repo_root: str | pathlib.Path) -> tuple[AlternateUnlockRow, ...]:
+    return tuple(
+        AlternateUnlockRow(r["recipe_id"], r["recipe_name"], r["progression_cluster_id"],
+                           r["eligibility_type"])
+        for r in _rows(_ref(repo_root) / "alternate_recipe_unlocks.csv")
+    )
+
+
+def load_power_building_rows(repo_root: str | pathlib.Path) -> tuple[PowerBuildingRow, ...]:
+    return tuple(
+        PowerBuildingRow(
+            r["generator_class"], r["power_model"],
+            float(r["power_production_mw"]) if r["power_model"] == "fixed" else None,
+        )
+        for r in _rows(_ref(repo_root) / "power_buildings.csv")
+    )
+
+
+def load_generator_fuel_rows(repo_root: str | pathlib.Path) -> tuple[GeneratorFuelRow, ...]:
+    return tuple(
+        GeneratorFuelRow(
+            generator_class=r["generator_class"],
+            fuel_item_id=r["fuel_item_id"],
+            burn_rate_per_min=float(r["burn_rate_per_min"]),
+            supplemental_item_id=r["supplemental_item_id"] or None,
+            supplemental_rate_per_min=float(r["supplemental_rate_per_min"] or 0.0),
+        )
+        for r in _rows(_ref(repo_root) / "generator_fuels.csv")
+    )
+
+
+def load_extraction_building_rows(
+    repo_root: str | pathlib.Path,
+) -> tuple[ExtractionBuildingRow, ...]:
+    return tuple(
+        ExtractionBuildingRow(r["extractor_class"], float(r["base_power_mw"]))
+        for r in _rows(_ref(repo_root) / "extraction_buildings.csv")
+    )
+
+
+def load_stack_sizes(repo_root: str | pathlib.Path) -> dict[ItemId, int]:
+    """`cached_stack_size` per item, where the table has one (items.csv)."""
+    return {
+        r["item_id"]: int(r["cached_stack_size"])
+        for r in _rows(_ref(repo_root) / "items.csv") if r["cached_stack_size"]
+    }

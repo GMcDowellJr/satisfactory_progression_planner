@@ -1,12 +1,14 @@
 """Which recipes a tech tier grants — and, loudly, which ones it does not.
 
-The production adapter is forbidden to know what a tier is: `gamedata.py` reads six
-reference tables and none of them is a schematic, and the boundary invariant in
-`docs/decisions/production_solver_selection.md` section 6 is that "the adapter never
-sees a progression concept". So this lives outside it, imports
-`production_adapter.contracts` for its types, and is imported by the adapter never.
-Same one-way shape as the demand expansion module in section 11.1 of the formulation
-record.
+The production adapter does not know what a tier MEANS. Since R1 of the
+architecture reconciliation (2026-11-17) `gamedata` reads the schematic tables, as
+the AGENTS.md "one loader" rule requires, but only as typed rows; the meaning (which
+schematic types a tier accounts for, what is research-gated) lives here. That keeps
+the older invariant of `docs/decisions/production_solver_selection.md` section 6,
+"the adapter never sees a progression concept", in substance. This module imports
+`production_adapter.contracts` and `.gamedata`, and is imported by the adapter
+never. Same one-way shape as the demand expansion module in section 11.1 of the
+formulation record.
 
 What this does and does not do, because "unlocks" sits close enough to "planner" to
 wander:
@@ -38,17 +40,18 @@ or holds as an alternate. Nothing here guesses it.
 """
 from __future__ import annotations
 
-import csv
 import pathlib
 from dataclasses import dataclass
 
 from production_adapter.contracts import (
     AllowedRecipes, ItemId, ProducerClass, RecipeId, RecipeMode,
 )
+from production_adapter.gamedata import (
+    SchematicRow, load_building_recipe_rows, load_extraction_map_rows, load_recipe_rows,
+    load_schematic_cost_rows, load_schematic_rows, load_schematic_unlock_rows,
+)
 
 from .pool import PoolAvailability, available_at
-
-REFERENCE_SUBPATH = pathlib.Path("planning_data") / "game" / "reference"
 
 #: Schematic types that a tech tier accounts for. MAM is player-driven research and
 #: Alternate is hard-drive loot; neither is implied by reaching a tier.
@@ -64,7 +67,7 @@ class UnlockDataError(RuntimeError):
     """The reference layer is missing something this module requires."""
 
 
-def _reached_at_tier(schematic: dict[str, str], tier: int) -> bool:
+def _reached_at_tier(schematic: SchematicRow, tier: int) -> bool:
     """Whether reaching `tier` accounts for this schematic.
 
     Extracted 2026-09-22 so the tier filter exists ONCE. `at_tier` resolves it to
@@ -72,16 +75,9 @@ def _reached_at_tier(schematic: dict[str, str], tier: int) -> bool:
     is how the provenance work's three-lists defect started.
     """
     return (
-        schematic["schematic_type"] in PROGRESSION_TYPES
-        and int(schematic["tech_tier"]) <= tier
+        schematic.schematic_type in PROGRESSION_TYPES
+        and schematic.tech_tier <= tier
     )
-
-
-def _rows(path: pathlib.Path) -> list[dict[str, str]]:
-    if not path.is_file():
-        raise UnlockDataError(f"missing reference table: {path}")
-    with open(path, encoding="utf-8") as f:
-        return list(csv.DictReader(f))
 
 
 @dataclass(frozen=True)
@@ -146,23 +142,21 @@ def at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
-
-    recipes = {r["recipe_id"]: r["is_alternate"] == "true" for r in _rows(ref / "recipes.csv")}
-    schematics = {s["schematic_id"]: s for s in _rows(ref / "schematics.csv")}
+    recipes = {r.recipe_id: r.is_alternate for r in load_recipe_rows(repo_root)}
+    schematics = {s.schematic_id: s for s in load_schematic_rows(repo_root)}
 
     granted: set[RecipeId] = set()
     by_research: set[RecipeId] = set()
-    for row in _rows(ref / "schematic_recipe_unlocks.csv"):
-        recipe_id = row["recipe_id"]
+    for row in load_schematic_unlock_rows(repo_root):
+        recipe_id = row.recipe_id
         if recipe_id not in recipes:
             continue  # building and customiser recipes; not production
-        schematic = schematics.get(row["schematic_id"])
+        schematic = schematics.get(row.schematic_id)
         if schematic is None:
             raise UnlockDataError(
-                f"{row['schematic_id']} unlocks {recipe_id} but is absent from schematics.csv"
+                f"{row.schematic_id} unlocks {recipe_id} but is absent from schematics.csv"
             )
-        if schematic["schematic_type"] in RESEARCH_TYPES:
+        if schematic.schematic_type in RESEARCH_TYPES:
             by_research.add(recipe_id)
         if _reached_at_tier(schematic, tier):
             granted.add(recipe_id)
@@ -224,10 +218,9 @@ def schematics_at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
     return tuple(sorted(
-        s["schematic_id"]
-        for s in _rows(ref / "schematics.csv")
+        s.schematic_id
+        for s in load_schematic_rows(repo_root)
         if _reached_at_tier(s, tier)
     ))
 
@@ -249,12 +242,9 @@ def schematic_costs(
     is not a part; the stock pass reports those the same way it reports the
     Portable Miner, by naming them rather than dropping them.
     """
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
     by_schematic: dict[SchematicId, list[tuple[ItemId, float]]] = {}
-    for row in _rows(ref / "schematic_costs.csv"):
-        by_schematic.setdefault(row["schematic_id"], []).append(
-            (row["item_id"], float(row["amount"]))
-        )
+    for row in load_schematic_cost_rows(repo_root):
+        by_schematic.setdefault(row.schematic_id, []).append((row.item_id, row.amount))
     return {k: tuple(sorted(v)) for k, v in by_schematic.items()}
 
 
@@ -290,11 +280,10 @@ def schematics_in_tiers(
     for tier in wanted:
         if tier < 0:
             raise ValueError(f"tier must be non-negative, got {tier}")
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
     found = tuple(sorted(
-        s["schematic_id"]
-        for s in _rows(ref / "schematics.csv")
-        if s["schematic_type"] in PROGRESSION_TYPES and int(s["tech_tier"]) in wanted
+        s.schematic_id
+        for s in load_schematic_rows(repo_root)
+        if s.schematic_type in PROGRESSION_TYPES and s.tech_tier in wanted
     ))
     unknown = [x for x in exclude if x not in found]
     if unknown:
@@ -319,23 +308,22 @@ def extractors_open_at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
     reached = {
-        s["schematic_id"] for s in _rows(ref / "schematics.csv") if _reached_at_tier(s, tier)
+        s.schematic_id for s in load_schematic_rows(repo_root) if _reached_at_tier(s, tier)
     }
     open_recipes = {
-        r["recipe_id"] for r in _rows(ref / "schematic_recipe_unlocks.csv")
-        if r["schematic_id"] in reached
+        r.recipe_id for r in load_schematic_unlock_rows(repo_root)
+        if r.schematic_id in reached
     }
     open_buildings = {
-        r["building_class"] for r in _rows(ref / "building_recipes.csv")
-        if r["recipe_id"] in open_recipes
+        r.building_class for r in load_building_recipe_rows(repo_root)
+        if r.recipe_id in open_recipes
     }
     by_item: dict[ItemId, list[ProducerClass]] = {}
-    for r in _rows(ref / "resource_extraction_map.csv"):
-        extractor = r["extractor_class"]
+    for r in load_extraction_map_rows(repo_root):
+        extractor = r.extractor_class
         if "Desc_" + extractor[len("Build_"):] in open_buildings:
-            by_item.setdefault(r["item_id"], []).append(extractor)
+            by_item.setdefault(r.item_id, []).append(extractor)
     return {item: tuple(classes) for item, classes in by_item.items()}
 
 
@@ -358,15 +346,14 @@ def generators_open_at_tier(
     """
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
     reached = {
-        s["schematic_id"] for s in _rows(ref / "schematics.csv") if _reached_at_tier(s, tier)
+        s.schematic_id for s in load_schematic_rows(repo_root) if _reached_at_tier(s, tier)
     }
     open_recipes = {
-        r["recipe_id"] for r in _rows(ref / "schematic_recipe_unlocks.csv")
-        if r["schematic_id"] in reached
+        r.recipe_id for r in load_schematic_unlock_rows(repo_root)
+        if r.schematic_id in reached
     }
-    built_by = {r["building_class"]: r["recipe_id"] for r in _rows(ref / "building_recipes.csv")}
+    built_by = {r.building_class: r.recipe_id for r in load_building_recipe_rows(repo_root)}
     out: list[ProducerClass] = []
     for cls in generator_classes:
         if not cls.startswith("Build_"):

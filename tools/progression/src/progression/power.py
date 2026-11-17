@@ -31,16 +31,16 @@ touches `realization.contracts`.
 """
 from __future__ import annotations
 
-import csv
 import enum
 import pathlib
 from dataclasses import dataclass
 
 from production_adapter.contracts import ItemId, ProducerClass
+from production_adapter.gamedata import (
+    load_extraction_building_rows, load_generator_fuel_rows, load_power_building_rows,
+)
 
 from .stock import BootstrapSet, NetBuildings
-
-REFERENCE = ("planning_data", "game", "reference")
 
 
 class PowerLedgerError(ValueError):
@@ -112,45 +112,36 @@ def load_power_tables(repo_root: str | pathlib.Path) -> PowerTables:
     """power_buildings.csv, generator_fuels.csv, extraction_buildings.csv.
 
     An extractor class listed twice with different base power is refused
-    rather than picked.
+    rather than picked. Rows come from `gamedata` (R1, 2026-11-17); a missing
+    table raises `gamedata.ReferenceDataError` there.
     """
-    base = pathlib.Path(repo_root).joinpath(*REFERENCE)
-
-    def rows(name: str) -> list[dict[str, str]]:
-        path = base / name
-        if not path.is_file():
-            raise PowerLedgerError(f"missing reference table: {path}")
-        with path.open(encoding="utf-8") as fh:
-            return list(csv.DictReader(fh))
-
     generators: dict[ProducerClass, GeneratorSpec] = {}
     variable: set[ProducerClass] = set()
-    for r in rows("power_buildings.csv"):
-        if r["power_model"] == "fixed":
-            generators[r["generator_class"]] = GeneratorSpec(
-                r["generator_class"], float(r["power_production_mw"]))
+    for r in load_power_building_rows(repo_root):
+        if r.power_production_mw is not None:
+            generators[r.generator_class] = GeneratorSpec(r.generator_class, r.power_production_mw)
         else:
-            variable.add(r["generator_class"])
+            variable.add(r.generator_class)
 
     fuels: dict[tuple[ProducerClass, ItemId], FuelSpec] = {}
-    for r in rows("generator_fuels.csv"):
-        fuels[(r["generator_class"], r["fuel_item_id"])] = FuelSpec(
-            producer_class=r["generator_class"],
-            fuel=r["fuel_item_id"],
-            burn_per_min=float(r["burn_rate_per_min"]),
-            supplemental=r["supplemental_item_id"] or None,
-            supplemental_per_min=float(r["supplemental_rate_per_min"] or 0.0),
+    for r in load_generator_fuel_rows(repo_root):
+        fuels[(r.generator_class, r.fuel_item_id)] = FuelSpec(
+            producer_class=r.generator_class,
+            fuel=r.fuel_item_id,
+            burn_per_min=r.burn_rate_per_min,
+            supplemental=r.supplemental_item_id,
+            supplemental_per_min=r.supplemental_rate_per_min,
         )
 
     extractors: dict[ProducerClass, float] = {}
-    for r in rows("extraction_buildings.csv"):
-        mw = float(r["base_power_mw"])
-        if extractors.get(r["extractor_class"], mw) != mw:
+    for r in load_extraction_building_rows(repo_root):
+        mw = r.base_power_mw
+        if extractors.get(r.extractor_class, mw) != mw:
             raise PowerLedgerError(
-                f"{r['extractor_class']}: two base power figures in "
+                f"{r.extractor_class}: two base power figures in "
                 "extraction_buildings.csv; refused rather than picked"
             )
-        extractors[r["extractor_class"]] = mw
+        extractors[r.extractor_class] = mw
 
     return PowerTables(generators, fuels, extractors, frozenset(variable))
 

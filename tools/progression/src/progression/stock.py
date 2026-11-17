@@ -71,7 +71,10 @@ import pathlib
 from dataclasses import dataclass
 
 from production_adapter.contracts import ItemId, ProducerClass
-from production_adapter.gamedata import ConstructionData, ReferenceData
+from production_adapter.gamedata import (
+    ConstructionData, ReferenceData, ReferenceDataError,
+    load_project_assembly as _load_project_assembly,
+)
 from realization.contracts import BillTerm, WithdrawalBasis, WithdrawalBill
 
 from .unlocks import SchematicId
@@ -198,45 +201,28 @@ def load_project_assembly(
     repo_root: str | pathlib.Path,
     data: ReferenceData,
 ) -> tuple[ProjectAssemblyRequirement, ...]:
-    """Read project_assembly_requirements.csv, resolving names to item ids.
+    """project_assembly_requirements.csv, names resolved to item ids.
 
     Quantities are the table's `quantity_default_1x` and are NOT scaled here —
     `project_assembly_cost` applies the multiplier, so the scaling happens once
     and at the point where the scenario is in hand.
+
+    Since R1 (2026-11-17) this delegates to `gamedata.load_project_assembly`,
+    which it had duplicated line for line, and keeps this module's narrower row
+    type and error class for its callers. The display-name refusal (zero or
+    several matches) is gamedata's, unchanged.
     """
-    import csv
-
-    path = (
-        pathlib.Path(repo_root)
-        / "planning_data" / "game" / "reference"
-        / "project_assembly_requirements.csv"
+    try:
+        rows = _load_project_assembly(repo_root, data)
+    except ReferenceDataError as e:
+        raise StockPassError(str(e)) from e
+    return tuple(
+        ProjectAssemblyRequirement(
+            phase=r.phase, phase_name=r.phase_name, item_id=r.item_id,
+            quantity_1x=r.quantity_1x,
+        )
+        for r in rows
     )
-    if not path.is_file():
-        raise StockPassError(f"missing reference table: {path}")
-
-    by_name: dict[str, list[ItemId]] = {}
-    for item_id, item in data.items.items():
-        by_name.setdefault(item.display_name, []).append(item_id)
-
-    out: list[ProjectAssemblyRequirement] = []
-    with path.open(encoding="utf-8") as fh:
-        for row in csv.DictReader(fh):
-            name = row["item_name"]
-            hits = by_name.get(name, [])
-            if len(hits) != 1:
-                raise StockPassError(
-                    f"project assembly row names {name!r}, which matches "
-                    f"{len(hits)} items in items.csv. The table carries no "
-                    "item_id, so an ambiguous or absent display name cannot be "
-                    "resolved and is refused rather than picked."
-                )
-            out.append(ProjectAssemblyRequirement(
-                phase=int(row["phase"]),
-                phase_name=row["phase_name"],
-                item_id=hits[0],
-                quantity_1x=float(row["quantity_default_1x"]),
-            ))
-    return tuple(out)
 
 
 def cost_of(
