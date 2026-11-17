@@ -4,7 +4,11 @@ D4 P5, goal_run_driver.md amendments 4 and 5. Greg's locks, 2026-09-24:
 
     (c)  no default for generators: each standing generator is declared base
          or reserve, and fed or not
-    (d)  generator fuel and water appear here only, never in the solve
+    (d)  generator fuel and water appear here only, never in the solve.
+         SUPERSEDED for the district and portfolio solves by crossover A25.3 P1
+         and site-planner reframe A3 (generators are solve columns there; noted
+         2026-11-17, reconciliation R2). It still holds for this ledger, which
+         sizes nothing, and for `LpBackend.solve`.
     S2   extractors at NAMEPLATE (100% clock), labelled so. Demand is then
          overstated, which makes base - demand the conservative figure
     A5   bootstrap generators still OWED (not yet standing) are PLANNED

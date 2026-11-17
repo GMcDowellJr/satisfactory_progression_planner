@@ -12,7 +12,7 @@ root like district_run.py and site_card.py, whose site composition it reuses:
 
     sites     site_card.site_caps per declared SiteSpec: closed caps
     bill      Project Assembly phases (scenario-scaled) + milestone costs of
-              the declared tiers, summed by progression.district.bill_units
+              the declared tiers, composed by progression.district.compose_bill
               (A31), the same composition district_run.py makes
     reach     discover() over the POOLED caps (with free transfers the sites
               reach together what any of them reaches); a bill item no site
@@ -117,11 +117,11 @@ from production_adapter import (  # noqa: E402
 from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    at_tier, available_at, bill_units, discover, generators_at_tier, nameplate_mw, pumped_caps,
+    at_tier, available_at, discover, generators_at_tier, nameplate_mw, pumped_caps,
     recipe_ids_by_name, site_extraction, unlocks,
 )
+from progression import district  # noqa: E402
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
-from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 
 import shadow_text  # noqa: E402
@@ -236,24 +236,13 @@ class PortfolioRun:
 
 def compose_bill(repo: pathlib.Path, data: ReferenceData, phases: tuple[int, ...],
                  tiers: tuple[int, ...]) -> dict:
-    """Project Assembly phases (scenario-scaled) + milestone costs of `tiers`,
-    as district_run.py composes them (A31)."""
-    pa = stock.load_project_assembly(repo, data)
-    known = {r.phase for r in pa}
-    stray = [ph for ph in phases if ph not in known]
-    if stray:
-        raise PortfolioRunError(f"no Project Assembly phase {stray}")
-    costs = unlocks.schematic_costs(repo)
-    sources = [
-        (f"project assembly phase {ph}", tuple(
-            (r.item_id, data.scenario.apply_project_assembly_quantity(r.quantity_1x))
-            for r in pa if r.phase == ph
-        ))
-        for ph in phases
-    ] + [
-        (sid, costs[sid]) for sid in unlocks.schematics_in_tiers(repo, tiers) if sid in costs
-    ]
-    return bill_units(tuple(sources))
+    """Project Assembly phases (scenario-scaled) + milestone costs of `tiers`:
+    `progression.district.compose_bill` (A31; shared with district_run since R2,
+    2026-11-17), with its refusals raised as this tool's error."""
+    try:
+        return district.compose_bill(repo, data, phases, tiers)
+    except district.DistrictError as e:
+        raise PortfolioRunError(str(e)) from e
 
 
 def pooled(caps_by_site: tuple[tuple[ResourceCap, ...], ...]) -> tuple[ResourceCap, ...]:

@@ -25,8 +25,11 @@ constructor arguments rather than baked in:
          inherit a choice nobody made. Every producer in the current validation
          set is fixed-power, so min == mean == max there and the cases stay
          D2-independent by construction.
-    D1   unconsumed output. `disposal` is blocked on P5 (no AWESOME Sink or
-         generator exists in the reference layer), so the implementable default
+    D1   unconsumed output. `disposal` is blocked on P5 (no AWESOME Sink exists
+         in the reference layer; generators have since been loaded by
+         `gamedata.load_generators` and enter the district and portfolio
+         solves as columns, crossover A25.3/A29, so only the sink is still
+         missing. Corrected 2026-11-17, R2), so the implementable default
          is `free` with every leftover named in `warnings` — the stopgap recorded
          at section 2.7. `forbid` is available; `disposal` raises.
     7.5  `canonical_mw` re-evaluates the selected recipe mix at canonical power
@@ -34,7 +37,9 @@ constructor arguments rather than baked in:
          contract's wording implies; the record flags the alternative as open and
          a warning says which one this is.
 
-Power excludes extraction throughout (D5).
+Power excludes extraction in `solve` (D5). `solve_district` and `solve_portfolio`
+charge extraction by the draw on their power row (site-planner reframe A4/A6/A7;
+noted 2026-11-17, R2).
 """
 from __future__ import annotations
 

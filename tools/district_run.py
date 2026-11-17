@@ -7,7 +7,7 @@ layer returns, and adds no arithmetic of its own:
 
     caps      progression.district.resource_caps(definition, extraction_rates)
     recipes   progression.at_tier(RECIPE_TIER, declared=<names resolved>)
-    bill      progression.district.bill_units over the declaration's
+    bill      progression.district.compose_bill over the declaration's
               BILL_PHASES (Project Assembly rows, scenario-scaled) and
               BILL_TIERS (schematic costs); BILL_TARGETS take their units
               from it and are refused when the bill has none (A31)
@@ -79,12 +79,12 @@ from production_adapter.gamedata import load_generators, load_logistics  # noqa:
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from production_adapter import DistrictTarget  # noqa: E402
 from progression import (  # noqa: E402
-    DistrictDefinition, StandingSupply, at_tier, bill_units, caps_less_draws, discover,
+    DistrictDefinition, StandingSupply, at_tier, caps_less_draws, discover,
     extraction_at_share, nameplate_mw, partition_recipes, pumped_caps,
     recipe_ids_by_name, resource_caps, site_extraction,
-    resources_in_reference_order, standing_generation, unlocks,
+    resources_in_reference_order, standing_generation,
 )
-from progression import stock  # noqa: E402
+from progression.district import compose_bill  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 from realization import NodeDeclaration, RealizationRequest, realize  # noqa: E402
 
@@ -201,19 +201,7 @@ def run(decl, *, case: str, goal: str = "balanced", baseline: bool = False,
     standing = standing_generation(load_generators(repo), decl.STANDING_GENERATORS)
     caps = caps_less_draws(gross_caps, standing.draws) if decl.STANDING_FED_FROM_DISTRICT else gross_caps
 
-    pa = stock.load_project_assembly(repo, data)
-    costs = unlocks.schematic_costs(repo)
-    sources = [
-        (f"project assembly phase {ph}", tuple(
-            (r.item_id, data.scenario.apply_project_assembly_quantity(r.quantity_1x))
-            for r in pa if r.phase == ph
-        ))
-        for ph in decl.BILL_PHASES
-    ] + [
-        (sid, costs[sid])
-        for sid in unlocks.schematics_in_tiers(repo, decl.BILL_TIERS) if sid in costs
-    ]
-    bill = bill_units(tuple(sources))
+    bill = compose_bill(repo, data, decl.BILL_PHASES, decl.BILL_TIERS)  # shared since R2
     reach = discover(data, recipe_ids, caps, tuple(bill))
     stray = [i for i in decl.BILL_EXCLUDED if i not in bill]
     if stray:
