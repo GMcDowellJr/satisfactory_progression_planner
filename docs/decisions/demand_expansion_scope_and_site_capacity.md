@@ -1350,3 +1350,10 @@ those items scale. So the milestone share of factory time falls as R rises
 
 Still open: the fluid floor's unit (A5.2). The 0.25x Plastic read has not
 been taken.
+
+## Amendment 7 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: §3.2.4–3.2.5 and A2 (rounding reads). A5 and A6 are post-reframe and remain governing.

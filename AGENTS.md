@@ -1,16 +1,18 @@
 # AGENTS.md
 
-Instructions for coding agents working in this repository. Read this first;
-then read the decision record that governs whatever you are about to touch.
+Instructions for coding agents working in this repository. Read this first,
+then `docs/ARCHITECTURE.md` (the current specification: tracks, layers,
+calculation authority, approved exceptions), then the governing decision it
+names for whatever you are about to touch.
 
 ## What this repo is
 
 A Satisfactory **world-analysis and progression planner**, not a machine-count
 calculator. Production solving is a subordinate capability; the product lives
 above it (scenario modifiers, Project Assembly pacing, unlock awareness, stock
-and power accounting, later world/district integration). See `README.md`,
-`planning_data/ARCHITECTURE.md` and
-`docs/plans/progression_optimizer_implementation_plan.md`.
+and power accounting, site portfolios). Three tracks share one core: site
+portfolio, run planner (demand side) and factory planner (supply side). See
+`docs/ARCHITECTURE.md`; `planning_data/ARCHITECTURE.md` covers the data layout.
 
 Build **502094 / Satisfactory 1.2.4.0** is the default-world *test fixture*,
 not the architecture. Don't write anything that only works for that map.
@@ -24,21 +26,26 @@ not the architecture. Don't write anything that only works for that map.
       analysis/             derived analyses; analysis/derived/ is gitignored
     tools/
       production_adapter/   the only seam to the solver; gamedata.py is the ONLY
-                            code that knows CSV filenames/columns
+                            code that knows CSV filenames/columns (AST-enforced)
       realization/          buses, residuals, realize(); may not become a solver
       progression/          unlocks, stock pass, power, schedule, lag, pool
       busmodel/             the oracle: reproduces published tables, checks realization
+      demand_expansion/     quantity datasets (declared routes, exact fractions)
       phases/phase<N>.py    phase declarations (data, not logic)
-      *.py at tools/ root   cross-package joints/CLIs: goal_run, phase_run,
-                            production_cli, rate_sheet, chain_view, storage_view,
-                            regenerate_manifests, check_game_docs_provenance
+      site_planner_web/     picker/index pages + Pyodide worker running this Python
+      *.py at tools/ root   cross-package joints/CLIs: portfolio_run, neighborhoods,
+                            production_cli, goal_run, rate_sheet, chain_view,
+                            storage_view, regenerate_manifests, ...; deprecated:
+                            phase_run, district_run, site_card (CLI)
       build_surface_tool/, corridor_tool/, multisurface_tool/,
       satisfactory_route_tool/, world_viewer/   world-analysis tools (spatial)
     scripts/                orchestration wrappers for the spatial tools
     tests/                  cross-package tests + conftest that wires sys.path
-    docs/decisions/         decision records (immutable, amended forward)
-    docs/plans/             the source implementation plan
-    research/               solver evaluation scratch, kept for provenance
+    docs/ARCHITECTURE.md    the current specification (corrected in place)
+    docs/decisions/         decision records (immutable, amended forward);
+                            README.md indexes current vs archived
+    docs/plans/, docs/product/  archived proposals (historical evidence)
+    research/               scratch that breaks repo rules on purpose; never imported
     Claude outputs/         agent-session artefacts (design notes, handoffs)
 
 ## Running things
@@ -53,8 +60,8 @@ conftest put the `src/` trees on `sys.path`.
     uv run python tools/goal_run.py ...
     python tools/regenerate_manifests.py               # --check (default)
 
-Baseline on a clean clone, Linux container, 2026-09-24: **925 passed,
-1 skipped**. Don't quote a suite count you didn't collect. `@parametrize`
+Baseline on a clean clone, cloud container, 2026-11-17 (after reconciliation
+R3): **1444 passed, 1 skipped**. Don't quote a suite count you didn't collect. `@parametrize`
 cases count separately, and predictions have been wrong before.
 
 `pytest` only collects the `testpaths` in `pyproject.toml`: `tests/`,
@@ -87,7 +94,10 @@ If one fails, your design is wrong. Don't fix it by editing the test.
 
 `production_adapter/gamedata.py` is the only code that knows CSV filenames and
 column names. Don't read `planning_data/game/reference/*.csv` anywhere else. Go
-through `gamedata.load(repo_root)`.
+through `gamedata.load(repo_root)` or one of its typed row loaders.
+`tests/test_one_loader.py` enforces it over `tools/`; its two exceptions carry
+reasons (docs/ARCHITECTURE.md §7). `gamedata` reads; meaning (tiers, pool,
+ledgers) stays in `progression`.
 
 ### Canonical data is not scenario data
 
@@ -159,12 +169,16 @@ root, only the files listed in `root_files` are covered.
 
 ## Decision records and docs
 
+- `docs/ARCHITECTURE.md` is the one current specification. Records that
+  `docs/decisions/README.md` lists as **archived** are historical evidence:
+  cite them for why, not as current requirements (reframe A15.2, Greg
+  2026-11-17).
 - `docs/decisions/*.md` are **immutable decision records, amended forward**.
   Never rewrite a past section. Add an amendment
   (`## Amendment N — <date>. <title>`, with `AN.1` sub-sections) and supersede
-  explicitly. Crossover amendments (A13, A14, ... A22) live in
-  `bus_level_recompute_and_alternate_crossover.md`, and commit subjects cite
-  them.
+  explicitly. New architecture and product amendments go in
+  `site_planner_reframe.md` (A15 onward), and commit subjects cite them. The
+  crossover record's A1–A36 are archived; older commits cite them by number.
 - Design notes (for example in `Claude outputs/`) are current-state and may
   be corrected in place.
 - Every figure should say where and when it was measured (machine, date,

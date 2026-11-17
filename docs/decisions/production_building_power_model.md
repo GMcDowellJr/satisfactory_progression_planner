@@ -135,3 +135,10 @@ Every producer carries `mPowerConsumptionExponent = 1.321929`. Power does not sc
 speed. The plan's section 15 policy allows underclocking and presents "2 Assemblers at 68.5% each" —
 those draw `0.685 ^ 1.321929 = 0.60` of base, not 0.685. Roughly a 12% error in the wrong direction on
 any underclocked build. Presentation-layer concern, flagged for whenever section 15 gets implemented.
+
+## Amendment 1 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: the producer and variable-power facts, as data.

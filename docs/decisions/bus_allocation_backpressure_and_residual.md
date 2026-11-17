@@ -277,3 +277,10 @@ observed by this tool. If any is wrong, the affected section falls.
                 overflow figures. Named as owed in §3 and not performed
     unread      whether progression/unlocks.py resolves a capability to a
                 numeric tier. That store has not been checked
+
+## Amendment 1 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: none (the round-robin splitter mechanic is cited as evidence by A15.2 B3).

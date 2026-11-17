@@ -1,5 +1,9 @@
 # Factory Design Integration — Repository Specification (Proposed)
 
+> **Archived 2026-11-17** (`docs/decisions/site_planner_reframe.md` A15.2, A15.3):
+> a proposal kept as historical evidence. Nothing here binds. The current
+> specification is `docs/ARCHITECTURE.md`.
+
 **Repository:** `GMcDowellJr/satisfactory_progression_planner` (default branch `master`)  
 **Prepared:** 2026-11-10; **decision-record reconciliation:** 2026-11-10  
 **Status:** **PROPOSED / UNDER CONSIDERATION** — not an adopted decision, implementation, or repository commit. This revision incorporates decision-record reconciliation; the precedence notes in §2A supersede any conflicting shorthand elsewhere in this draft.  

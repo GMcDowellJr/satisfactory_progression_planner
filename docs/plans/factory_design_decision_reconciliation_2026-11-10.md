@@ -1,5 +1,9 @@
 # Factory Design Integration — Decision Record Reconciliation
 
+> **Archived 2026-11-17** (`docs/decisions/site_planner_reframe.md` A15.2, A15.3):
+> a proposal kept as historical evidence. Nothing here binds. The current
+> specification is `docs/ARCHITECTURE.md`.
+
 **Date:** 2026-11-10  
 **Status:** Review of proposal; **not** a new adopted decision or a repository edit.  
 **Primary artifact:** `factory_design_repository_integration_spec_reconciled_2026-11-10.md`

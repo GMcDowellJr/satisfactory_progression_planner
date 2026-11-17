@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Run a declared district: compose its caps, solve supply-side, print, export.
 
+DEPRECATED (site-planner reframe A15.2 A3, decided by Greg 2026-11-17): kept as
+background and as a numerical regression fixture; new supply-side work goes to the
+factory track (docs/ARCHITECTURE.md §5). No new features here.
+
 Crossover A26/A27. A joint above several packages, so it lives at tools/ root
 like goal_run.py. It composes what the declaration states with what each
 layer returns, and adds no arithmetic of its own:
@@ -511,6 +515,8 @@ def _names(dr: DistrictRun, data) -> dict:
 
 
 def main(argv=None) -> int:
+    print("district_run.py is deprecated (reframe A15.2 A3); see docs/ARCHITECTURE.md §5",
+          file=sys.stderr)
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--declaration", default="district_phase2",
                     help="module name under tools/phases/ (default district_phase2)")

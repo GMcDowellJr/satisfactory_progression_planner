@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """The site card: what can be made at a site, and what limits it.
 
+DEPRECATED as a CLI (site-planner reframe A15.2 A3, decided by Greg 2026-11-17).
+Its socket readers (`load_sockets`, `sockets_within`, ...) stay in use by
+portfolio_run, neighborhoods and the browser bundle; only the card itself is
+background (docs/ARCHITECTURE.md §5). No new features here.
+
 First slice of the site-planner reframe (docs/decisions/site_planner_reframe.md;
 spec v1.0 proposed, F2 "local manufacturing opportunity"). Status under the
 reframe's vocabulary: UNDER CONSIDERATION (handoff 2026-10-19 12:35, action 1),
@@ -743,6 +748,8 @@ def _supply_arg(text: str) -> tuple[str, float]:
 
 
 def main(argv=None) -> int:
+    print("site_card.py is deprecated (reframe A15.2 A3); see docs/ARCHITECTURE.md §5",
+          file=sys.stderr)
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     where = ap.add_mutually_exclusive_group(required=True)
     where.add_argument("--sockets", help="comma-separated socket ids")

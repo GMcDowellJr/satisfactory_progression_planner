@@ -1,5 +1,9 @@
 # Satisfactory Progression Optimizer — Implementation Plan
 
+> **Archived 2026-11-17** (`docs/decisions/site_planner_reframe.md` A15.2, A15.3):
+> a proposal kept as historical evidence. Nothing here binds. The current
+> specification is `docs/ARCHITECTURE.md`.
+
 Status: source plan, captured 2026-09-18. Phase 0 outcome recorded separately in
 `docs/decisions/production_solver_selection.md`.
 

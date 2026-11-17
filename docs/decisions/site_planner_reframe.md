@@ -839,3 +839,154 @@ late-game sites should not be spent early.
 - Water access is not assessed beyond resource-well water.
 - Nothing yet warns when a picked site is one of the few places a later
   phase could use (the scarcity badge proposed in this session).
+
+## Amendment 15 — 2026-11-17. Architecture reconciliation: two planning tracks, one current specification
+
+### A15.1 What raised it
+
+Greg asked, 2026-11-17, for the architecture to be reconciled with the
+accumulated decision records before new planning capabilities are added. A
+functional audit of the same date was used as a starting hypothesis, not as
+authority.
+
+Discovery was run in a cloud container at `2d6ccfe`: 1435 passed, 1 skipped.
+The checkpoint notes are in `Claude outputs/`. Discovery found:
+
+- six modules reading the game-reference CSVs directly;
+- a second planning model in `research/step_planner` (phase-index miner and
+  belt tables);
+- no implementation of staged upgrades, storage-priority banks,
+  eligibility-vs-ownership, or PA duration from modelled production.
+
+It also found that the new direction (supply-constrained individual factories)
+sat outside §2's working direction ("never says exactly what to do and when"),
+so it needed recording here. Those findings did not decide anything. Greg
+decided the items below at checkpoints 1 and 2.
+
+### A15.2 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+- **A1 Tracks.** Individual-factory planning is in scope as a sibling track.
+  One scope plans the run. Another takes that plan as input, or takes a
+  per-factory plan at run time, where the user lists what is available and the
+  goals. Site portfolio planning (A1–A14) continues unchanged beside them.
+- **A2 One current specification.** `docs/ARCHITECTURE.md` is the current
+  specification. Everything else goes to the archive and is referred to only
+  as historical evidence, not in general discussion (Q4). Mechanism: records
+  stay at their paths (21 files cite them). Each archived record gets a
+  one-line forward amendment, and `docs/decisions/README.md` indexes current
+  vs archived.
+- **A3 Older workflows.** Kept as deprecated background; their ideas are
+  ported into tooling. Exactly (Q5):
+  - deprecated CLIs: `district_run.py`, `phase_run.py` and `site_card.py`;
+  - libraries still in use: `goal_run`, `schedule`, `stock`, and
+    `site_card`'s socket readers;
+  - not deprecated: `portfolio_run`, `neighborhoods`, `site_planner_web` and
+    `demand_expansion`;
+  - `research/*` is background.
+- **B1 Supply vs demand.** Supply-side is the preferred method for the
+  current factory. Demand-side is needed to estimate what's next and what
+  reaching a target takes. The deployed prototype at
+  `eloquent-pothos-3073ca.netlify.app` points to the target determination:
+  rate = PA bill × E ÷ horizon, with the horizon bounded by one machine of the
+  slowest part. Its arithmetic is not carried (it ceils solid inputs, so at
+  R = 1.25 an input of 1 becomes 2, against the §3.2.4 read of 1). Neither
+  track invents a mix or a target: both are declared.
+- **B2 Extractor and belt marks.** Which marks are considered follows what is
+  unlocked: no Mk.4 belts in phase 2; at the start of phase 2 and steel, no
+  Mk.2 miner and no Mk.3 belt yet. To maximise supply, use the highest mark
+  available, and work back to a lower mark where the higher one does not help.
+  "Does not help" (Q1):
+  - same delivered rate, at lower power;
+  - for belts, the lowest mark that carries the lane's actual flow (a lane
+    that never carries more than 60/min takes Mk.1, not Mk.2);
+  - build cost is not a criterion.
+- **Q2 Availability.** Availability follows the milestones owned. "Phase N"
+  or "tier N" is a shortcut for every milestone up to N. Milestones within a
+  phase need not be taken in order, or at all, so a declared set is the
+  input. Checked 2026-11-17: Miner Mk.2 comes from *Advanced Steel
+  Production* and Belt Mk.3 from *Logistics Mk.3*, both tier 4, through
+  `schematic_recipe_unlocks` × `building_recipes`.
+- **B3 Storage-priority bank.** This is a practice from Greg's 50× and 100×
+  elevator-part runs. Maximising Smart Plating worked, but left no
+  construction inventory for other builds.
+  - Bleeding storage off a PA lane failed: the lane's single Iron Plate
+    constructor was either split between Smart Plating and storage, or
+    starved Smart Plating until storage filled.
+  - Current practice:
+    - a smart splitter sends all product to a dedicated set of machines
+      optimised for storage parts (example: 4 underclocked constructors,
+      73 Iron Plate/min);
+    - when storage fills, backpressure flips the splitter to overflow, which
+      feeds the PA lanes;
+    - as stock is drawn down, the splitter sends resources to refill storage
+      first.
+  - Observed working in game (Greg). It needs smart splitters, and a
+    standard splitter works as a bootstrap. Likely less useful at lower E.
+- **Q6 Storage capacity.** The storage container determines fill time.
+  Container type is gated by tier, and choosing regular or industrial depends
+  on how much the stock is used and how likely it is to be drawn down quickly
+  enough to matter. The first version therefore reports fill time per
+  available container option and the PA rate while filling and when full.
+  Withdrawals are not declared yet.
+- **B4 Rounding floor.** Solids have a floor of 1 at sub-1× R (A5.1 of the
+  demand record, now the code default from R4). The fluid floor still needs
+  the in-game read at R = 0.25 (demand A5.2) and stays declared.
+- **B5 / Q3 Alternates.** "Eligible" and "accessible" collapse to the
+  **pool**. Recipe status is owned / in pool / MAM research / locked.
+  Resource accessibility is a separate, site-level axis. Scanned-but-unclaimed
+  hard-drive offers are not modelled now. A future option takes them from
+  game data or a declared list and removes them from the pool for the next
+  scan (selecting one of the two returns the other to the pool), which bears
+  on the odds of finding an alternate.
+
+### A15.3 §2 amended, forward only
+
+§2's working direction stands with one change. The tool now also computes
+what a **declared** goal or target takes in the factory and run tracks: rates,
+machines, marks, storage fill. It still never chooses the goal, the target,
+the mix or the order, and it still never says exactly what to do and when.
+The v1.0 product spec and the capability inventory named in §2 stay ideas, as
+§2 said, and are archived as proposals. So is the 2026-11-10 factory-design
+specification. Nothing in them binds unless brought forward here or in a
+later amendment.
+
+### A15.4 Brought forward explicitly (§3), as evidence and contracts
+
+These are brought forward as observed facts and implemented contracts, not as
+product mandates:
+
+- `resource_authority.md` (P3);
+- demand §3.2.4–3.2.5 and A2 (rounding reads);
+- crossover A1 (tie rounding read) and A7 (idle draw, shard ceilings,
+  container `slots × stack`);
+- LP formulation §18 (tier rule, measured) and §19 (pool by automatic entry);
+- `production_building_power_model.md` (producer facts);
+- `extraction_wiring_and_provenance_stamp.md` (provenance stamp).
+
+Demand A5 and A6 are post-reframe in-game reads and already govern.
+
+### A15.5 Approved exceptions recorded
+
+`docs/ARCHITECTURE.md` §7 lists them:
+- two direct readers of game/reference, with reasons, enforced by
+  `tests/test_one_loader.py`;
+- raw reads in `tests/` (independent oracles);
+- `research/` scratch;
+- `demand_expansion`'s own expansion beside the LP, with its role to be
+  settled when the run track is built.
+
+### A15.6 Built so far (cloud container, branch `claude/practical-rubin-m3ard7`)
+
+- R0 `0cceff4`: manifest header repaired; malformed manifests refused by name.
+- R1 `5e6ca9c`: one loader; AST guard.
+- R2 `e265739`: shared `compose_bill`; stale power notes.
+- R3: `docs/ARCHITECTURE.md`, this amendment, the archive index and
+  deprecation notices.
+
+No figure changed in R0–R3. Container: 1444 passed, 1 skipped after R2.
+
+### A15.7 Not changed, said so
+
+- The portfolio solve, its schemas (`portfolio-inputs/2`, `portfolio-plan/1`)
+  and power modes are unchanged. A11.2's open question on grid mode stands.
+- A8.5 (by-product mechanism) stays open.

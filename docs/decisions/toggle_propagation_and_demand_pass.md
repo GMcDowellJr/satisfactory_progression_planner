@@ -242,3 +242,10 @@ relies on, that its demand depends only on its consumers.
 One clarification the bus model forces: section 2's reduction to the integer
 vector m in N^L is now indexed by BUSES, not lanes, and D_L is the bus's total
 consumer draw. The argument is unchanged; the index set is renamed.
+
+## Amendment 2 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: none.

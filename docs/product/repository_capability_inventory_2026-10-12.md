@@ -1,3 +1,7 @@
+> **Archived 2026-11-17** (`docs/decisions/site_planner_reframe.md` A15.2, A15.3):
+> a proposal kept as historical evidence. Nothing here binds. The current
+> specification is `docs/ARCHITECTURE.md`.
+
 Satisfactory Site & Logistics Planner — Repository Capability Inventory
 
 Date: 2026-10-12

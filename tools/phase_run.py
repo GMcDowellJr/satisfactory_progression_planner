@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Run one declared phase at a player's anchor rate, and print its rate sheet.
 
+DEPRECATED (site-planner reframe A15.2 A3, decided by Greg 2026-11-17): kept as
+background; its ideas are ported into the run track (docs/ARCHITECTURE.md §5).
+`goal_run`, `schedule` and `stock` remain in use as libraries. No new features here.
+
 Greg, 2026-09-24 ("Python module + CLI"). The declaration lives in
 `tools/phases/phase<N>.py`; this module composes it with the layers exactly as
 tests/test_phase_two_run.py did, and nothing more:
@@ -310,6 +314,8 @@ def standing_of(pr: PhaseRun):
 
 
 def main(argv: list[str] | None = None) -> int:
+    print("phase_run.py is deprecated (reframe A15.2 A3); see docs/ARCHITECTURE.md §5",
+          file=sys.stderr)
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--phase", type=int, required=True)
     ap.add_argument("--anchor-rate", type=float, default=1.0,
