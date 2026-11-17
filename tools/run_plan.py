@@ -109,6 +109,9 @@ class PhasePlan:
     power_stack: PowerStack | None             # None when a part is blocked
     availability_report: str
     power_statistic: PowerStatistic
+    #: declared generators already built (reframe A18), carried into the
+    #: factory hand-off; never replaced by an empty set (Codex on PR #15)
+    standing_generators: dict
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
 
 
@@ -203,7 +206,8 @@ def plan_phase(
 
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
                      blocked, response, stack, avail.report(),
-                     PowerStatistic(power_statistic), byproducts)
+                     PowerStatistic(power_statistic), dict(standing_generators or {}),
+                     byproducts)
 
 
 def to_factory_inputs(
@@ -250,7 +254,7 @@ def to_factory_inputs(
         "target_scale": (largest / plan.horizon_min) if fixed_rate else None,
         "infrastructure_policy": infrastructure_policy,
         "fuel_byproducts": fuel_byproducts,
-        "standing_generators": {},
+        "standing_generators": dict(plan.standing_generators),
     }
 
 
@@ -271,6 +275,7 @@ def record(plan: PhasePlan) -> dict:
         "machines": [] if r is None else [dataclasses.asdict(x) for x in r.machines],
         "power_mw": None if r is None else r.power.scenario_mw,
         "power_statistic": plan.power_statistic.value,
+        "standing_generators": dict(plan.standing_generators),
         "power_stack": None if plan.power_stack is None else dataclasses.asdict(plan.power_stack),
         "byproducts": [dataclasses.asdict(b) for b in plan.byproducts],
         "notes": [power_note(plan.power_statistic)],

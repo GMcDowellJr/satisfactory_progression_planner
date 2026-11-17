@@ -196,3 +196,22 @@ def test_a_part_with_no_owned_recipe_needs_itself():
     plan = _plan(phase=2, tier=3, horizon_fraction=0.25)
     (aw,) = plan.blocked
     assert [item for item, _ in aw.needs] == [AW]
+
+
+def test_standing_generators_survive_the_factory_hand_off():
+    """Codex on PR #15: six standing burners in the run plan must reach the
+    factory's power stack, not be replaced by an empty set."""
+    from production_adapter.lp_backend import PowerStatistic
+    F = _module("factory_run")
+    bio = "Build_GeneratorBiomass_Automated_C"
+    state = playthrough(REPO, through_tier=4)
+    plan = R.plan_phase(REPO, state=state, scenario=Scenario(), phase=1, horizon_fraction=1.0,
+                        power_statistic=PowerStatistic.MEAN, fuel_byproducts="power",
+                        standing_generators={bio: 6})
+    doc = R.to_factory_inputs(plan, world_config_id="default_502094", label="rocky",
+                              socket_ids=ROCKY_A, power_mode="report_need",
+                              power_statistic="mean", fuel_byproducts="power")
+    assert doc["standing_generators"] == {bio: 6}
+    run = F.run_inputs(doc)
+    backup = next(l for l in run.power_stack.lines if l.generator_class == bio)
+    assert (backup.role, backup.output_mw) == ("backup", 180.0)
