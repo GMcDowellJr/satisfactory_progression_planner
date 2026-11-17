@@ -43,6 +43,17 @@ FLUID_ROUNDING_VARIANTS: tuple[str | None, ...] = (FLUID_UNIT, "mL", None)
 
 _ML_PER_M3 = 1000
 
+#: The floor on a positive SOLID input below 1x. **OBSERVED 2026-10-26**
+#: (demand-expansion record A5.1, Greg on a 0.25x save, 1.2.4.0 CL#502094):
+#: Iron Rod's 1 Iron Ingot reads 1 at 0.25x, where rounding alone gives 0. Not a
+#: field: the game fixes it, so no scenario may declare another (reframe A15.2
+#: B4, decided by Greg 2026-11-17; the code default since reconciliation R4).
+SOLID_INPUT_FLOOR = 1
+
+
+class FluidFloorUndeclared(ValueError):
+    """Below 1x the fluid floor's unit is unobserved (demand A5.2), so it is declared."""
+
 
 def _round_half_away_from_zero(value: Decimal) -> Decimal:
     """Nearest integer, halves away from zero (record 3.2.5).
@@ -78,13 +89,24 @@ class Scenario:
         None (identical on this build), or "m3" (ruled out by the 2026-10-10
         read; selectable only to reproduce figures computed under it before
         then). Demand-expansion record Amendments 1 and 2.
+    fluid_input_floor
+        The minimum, in m3, a positive FLUID input may round down to below 1x.
+        **Unobserved** (demand A5.2): if the game's floor is one internal unit
+        (1 mL) it never binds on this build (the smallest scaled fluid is
+        250 mL), and 0 states that; if it is one stated unit, 1 holds 0.75 m3 of
+        Plastic's Crude Oil at 1. The two disagree on 31 fluid inputs at 0.25x
+        and 6 at 0.50x/0.75x, so below 1x it is REQUIRED and construction
+        refuses without it. The discriminating read is Plastic's Crude Oil on a
+        0.25x save. Solids need no declaration: their floor is observed
+        (`SOLID_INPUT_FLOOR`, A5.1).
     input_amount_floor
-        The minimum a positive input may round down to. **Unresolved** (record
-        3.2.3): patch 1.2.3.0 fixed the 1.75x setting zeroing liquid costs, which
-        establishes that no floor was universal before it, and no floor has been
-        observed since. It cannot bind at multipliers >= 1x, so it is required
-        only below 1x — where it is declared by the caller rather than assumed,
-        and construction refuses without it.
+        LEGACY (portfolio-inputs/2 and earlier callers), kept so a /2 document
+        keeps its meaning. It used to floor solids and fluids alike. Since R4
+        (2026-11-17) solids are floored at 1 by observation, so only 1 still
+        means what it meant: it sets `fluid_input_floor` to 1 m3 and every
+        figure computed under it is unchanged. 0 (solids allowed to reach zero)
+        contradicts A5.1 and any other value never had a reading; both are
+        refused by name. New callers declare `fluid_input_floor`.
     """
 
     recipe_input_multiplier: float = 1.0
@@ -92,6 +114,7 @@ class Scenario:
     project_assembly_requirement_multiplier: float = 1.0
     input_amount_floor: float | None = None
     fluid_rounding_unit: str | None = FLUID_ROUNDING_UNIT
+    fluid_input_floor: float | None = None
 
     def __post_init__(self) -> None:
         if self.fluid_rounding_unit not in FLUID_ROUNDING_VARIANTS:
@@ -109,19 +132,39 @@ class Scenario:
                 raise TypeError(f"{name} must be numeric")
             if v <= 0:
                 raise ValueError(f"{name} must be positive, got {v}")
-        floor = self.input_amount_floor
-        if floor is not None:
-            if not isinstance(floor, (int, float)) or isinstance(floor, bool):
-                raise TypeError("input_amount_floor must be numeric or None")
-            if floor < 0:
-                raise ValueError(f"input_amount_floor must not be negative, got {floor}")
-        elif self.recipe_input_multiplier < 1.0:
-            raise ValueError(
-                f"recipe_input_multiplier {self.recipe_input_multiplier} is below 1x, "
-                "where an input can round to zero. The game's floor rule is "
-                "unobserved (record 3.2.3), so it is declared, not assumed: pass "
-                "input_amount_floor=1 to hold positive inputs at one unit, or "
-                "input_amount_floor=0 to allow zero."
+        for name in ("input_amount_floor", "fluid_input_floor"):
+            v = getattr(self, name)
+            if v is None:
+                continue
+            if not isinstance(v, (int, float)) or isinstance(v, bool):
+                raise TypeError(f"{name} must be numeric or None")
+            if v < 0:
+                raise ValueError(f"{name} must not be negative, got {v}")
+        legacy = self.input_amount_floor
+        if legacy is not None:
+            if legacy != SOLID_INPUT_FLOOR:
+                raise ValueError(
+                    f"input_amount_floor={legacy:g} would floor solid inputs at "
+                    f"{legacy:g}, but the solid floor is observed to be "
+                    f"{SOLID_INPUT_FLOOR} (demand record A5.1). Declare the fluid "
+                    "floor alone with fluid_input_floor (0 or 1, in m3)."
+                )
+            if self.fluid_input_floor is None:
+                object.__setattr__(self, "fluid_input_floor", float(legacy))
+            elif self.fluid_input_floor != legacy:
+                raise ValueError(
+                    f"input_amount_floor={legacy:g} (legacy: fluids at 1 m3) "
+                    f"contradicts fluid_input_floor={self.fluid_input_floor:g}; "
+                    "declare one of them"
+                )
+        if self.recipe_input_multiplier < 1.0 and self.fluid_input_floor is None:
+            raise FluidFloorUndeclared(
+                f"recipe_input_multiplier {self.recipe_input_multiplier} is below 1x. "
+                f"Solid inputs are floored at {SOLID_INPUT_FLOOR} (observed, demand "
+                "A5.1); the FLUID floor's unit is unobserved (A5.2), so declare "
+                "fluid_input_floor: 0 if the game floors at one internal unit "
+                "(never binds here), 1 if at one m3. The read that decides it: "
+                "Plastic's Crude Oil on a 0.25x save (0.75 or 1)."
             )
 
     @property
@@ -159,8 +202,13 @@ class Scenario:
         else:
             scaled = _round_half_away_from_zero(amount * factor)
 
-        if self.input_amount_floor is not None and amount > 0:
-            floor = Decimal(repr(self.input_amount_floor))
+        if amount > 0 and multiplier < 1.0:
+            # Floors exist only below 1x: at or above it no positive input can
+            # round below its own canonical unit. Solids by observation (A5.1),
+            # fluids by declaration (A5.2); construction refuses the latter
+            # undeclared, so it is set here.
+            floor = Decimal(SOLID_INPUT_FLOOR) if unit != FLUID_UNIT else \
+                Decimal(repr(self.fluid_input_floor))
             if scaled < floor:
                 scaled = floor
         return float(scaled)
@@ -188,10 +236,10 @@ class Scenario:
         1x is the identity, for the reason `apply_input_amount` has one: the
         game states canonical quantities when no multiplier is set.
 
-        `input_amount_floor` is NOT applied here. It is the unresolved sub-1x
-        question for recipe INPUTS, and deliveries never reach it — the
-        smallest 1x quantity is 50 and the smallest multiplier is 0.25.
-        Pinned by test rather than left as a reading.
+        No input floor is applied here: the floors (`SOLID_INPUT_FLOOR`,
+        `fluid_input_floor`) are about recipe INPUTS, and deliveries never
+        reach one — the smallest 1x quantity is 50 and the smallest
+        multiplier is 0.25. Pinned by test rather than left as a reading.
         """
         multiplier = self.project_assembly_requirement_multiplier
         if multiplier == 1.0:

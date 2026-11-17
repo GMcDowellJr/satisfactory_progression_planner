@@ -96,7 +96,7 @@ module is not built yet.
 |---|---|---|
 | Item, recipe, building identity | `gamedata` | resource_authority (carried, A15.4) |
 | R / P / E transforms, rounding | `scenario.Scenario` | demand §3.2.4–3.2.5, A2, A5, A6; reframe A7 |
-| Sub-1× floor | `scenario` | A15.2 (B4): solids 1 (R4 implements it); fluid floor declared, open until the 0.25× read |
+| Sub-1× floor | `scenario` | A15.2 (B4): solids fixed at 1 (`SOLID_INPUT_FLOOR`, R4); fluid floor declared (`fluid_input_floor`), open until the 0.25× Plastic read |
 | Recipe set at a tier | `progression.unlocks.at_tier` | LP §18 rule (carried) |
 | Availability from milestones owned | planned `progression.availability` (R5) | A15.2 (Q2) |
 | Recipe status (owned / in pool / MAM research / locked) | planned `progression.availability` (R5) | A15.2 (B5, Q3) |
@@ -120,8 +120,8 @@ module is not built yet.
 
 | Record | Producer | Status |
 |---|---|---|
-| `portfolio-inputs/2` | picker, `portfolio_run --inputs` | current (`/1` refused by name, reframe A11.3) |
-| `portfolio-plan/1` | `portfolio_run --export`, worker | current |
+| `portfolio-inputs/2` | picker, `portfolio_run --inputs` | current (`/1` refused by name, reframe A11.3). Scenario keys pinned (`SCENARIO_KEYS_V2`); `input_amount_floor` null or 1 only (R4) |
+| `portfolio-plan/1` | `portfolio_run --export`, worker | current; its echoed scenario gained `fluid_input_floor` (additive, R4) |
 | `neighborhoods/1` | `neighborhoods.py` | current |
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
 | `run-plan/1`, `factory-inputs/1`, `factory-plan/1` | planned (R7, R9) | — |
@@ -210,7 +210,7 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | R1 | one loader + AST guard | done |
 | R2 | shared `compose_bill`; stale power notes | done |
 | R3 | this document, A15, archive index, deprecations | done |
-| R4 | solid floor 1 at sub-1× R; fluid floor declared | planned (changes published behaviour) |
+| R4 | solid floor 1 at sub-1× R; fluid floor declared | done (behaviour change recorded in its commit) |
 | R5 | playthrough + availability (milestone-level) | planned |
 | R6 | infrastructure marks + step-down policy | planned |
 | R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | planned |

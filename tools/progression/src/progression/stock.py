@@ -306,9 +306,9 @@ def project_assembly_cost(
     could not have been observed there and cannot affect a bill computed
     there. The scenario of record uses 2.0x and no figure on it moves.
 
-    No row falls below 1 at any multiplier, so `Scenario.input_amount_floor` —
-    the unresolved sub-1x question for recipe INPUTS — does not arise for
-    deliveries. Asserted in the tests rather than left as a reading.
+    No row falls below 1 at any multiplier, so the sub-1x input floors
+    (`SOLID_INPUT_FLOOR`, `Scenario.fluid_input_floor`; recipe INPUTS only) do
+    not arise for deliveries. Asserted in the tests rather than left as a reading.
     """
     wanted = set(phases)
     total: dict[ItemId, float] = {}

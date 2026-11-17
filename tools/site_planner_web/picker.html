@@ -363,7 +363,7 @@ const FIELDS = [
   ["spare_mw", "Spare held above draw, MW", "number", "num"], ["world_config_id", "World configuration", "text", "text"],
   ["recipe_input_multiplier", "Recipe input ×", "number", "num"], ["machine_power_multiplier", "Machine power ×", "number", "num"],
   ["project_assembly_requirement_multiplier", "Project Assembly ×", "number", "num"],
-  ["input_amount_floor", "Input floor (blank = none; needed below 1×)", "text", "numornull"],
+  ["input_amount_floor", "Input floor below 1× (blank, or 1 = fluids at 1 m³; solids are always 1)", "text", "numornull"],
   ["fluid_rounding_unit", "Fluid rounding unit", FLUID_ROUNDING.map(v => v === null ? "none" : v), "choice"],
   ["declared_recipes", "Declared recipes (display names, ; separated; blank = none)", "text", "names"],
 ];

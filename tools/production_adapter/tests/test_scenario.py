@@ -87,19 +87,65 @@ def test_project_assembly_multiplier_is_separate():
     assert s.apply_input_amount(3.0) == pytest.approx(3.0)
 
 
-def test_sub_1x_refuses_without_a_declared_floor():
-    """Record 3.2.3: the floor rule is unobserved, so it is declared, not assumed."""
-    with pytest.raises(ValueError, match="input_amount_floor"):
+# --- sub-1x floors (demand A5; reframe A15.2 B4; reconciliation R4) ---------
+# Until 2026-11-17 one declared `input_amount_floor` floored solids and fluids
+# alike, and sub-1x refused without it (record 3.2.3: unobserved). A5.1 then
+# observed the solid floor (1) and Greg decided it is the default (A15.2 B4);
+# the fluid floor's unit is still open (A5.2), so only it is declared now.
+
+def test_sub_1x_refuses_without_a_declared_fluid_floor():
+    """A5.2: the fluid floor's unit is unobserved, so it is declared, not assumed."""
+    from production_adapter.scenario import FluidFloorUndeclared
+
+    with pytest.raises(FluidFloorUndeclared, match="fluid_input_floor"):
         Scenario(recipe_input_multiplier=0.75)
 
 
-def test_a_declared_floor_admits_sub_1x():
-    held = Scenario(recipe_input_multiplier=0.25, input_amount_floor=1)
-    assert held.apply_input_amount(1.0) == pytest.approx(1.0)   # 0.25 -> 0, held at 1
-    assert held.apply_input_amount(12.0) == pytest.approx(3.0)
+@pytest.mark.parametrize("fluid_floor", [0, 1])
+def test_the_solid_floor_is_the_observed_one_whatever_the_fluid_floor(fluid_floor):
+    """A5.1, Greg 2026-10-26 on a 0.25x save: Iron Rod's 1 Iron Ingot reads 1
+    (0.25 rounds to 0); the earlier read 3 Iron Ingot -> 0.75 -> 1 agrees."""
+    s = Scenario(recipe_input_multiplier=0.25, fluid_input_floor=fluid_floor)
+    assert s.apply_input_amount(1.0) == pytest.approx(1.0)    # the floor read
+    assert s.apply_input_amount(3.0) == pytest.approx(1.0)    # 0.75 -> 1, rounding alone
+    assert s.apply_input_amount(12.0) == pytest.approx(3.0)   # above the floor, untouched
 
-    allowed = Scenario(recipe_input_multiplier=0.25, input_amount_floor=0)
-    assert allowed.apply_input_amount(1.0) == pytest.approx(0.0)
+
+def test_the_fluid_floor_is_what_was_declared():
+    """A5.2's discriminating case: Plastic's 3 m3 Crude Oil at 0.25x is 0.75
+    if the floor is one internal unit, 1 if it is one m3."""
+    internal = Scenario(recipe_input_multiplier=0.25, fluid_input_floor=0)
+    stated = Scenario(recipe_input_multiplier=0.25, fluid_input_floor=1)
+    assert internal.apply_input_amount(3.0, FLUID_UNIT) == pytest.approx(0.75)
+    assert stated.apply_input_amount(3.0, FLUID_UNIT) == pytest.approx(1.0)
+    assert stated.apply_input_amount(1.0, ITEM_UNIT) == pytest.approx(1.0)
+
+
+def test_the_legacy_floor_of_one_keeps_its_meaning():
+    """portfolio-inputs/2 carries input_amount_floor; 1 meant solids and
+    fluids at 1, and still computes exactly that."""
+    legacy = Scenario(recipe_input_multiplier=0.25, input_amount_floor=1)
+    assert legacy.fluid_input_floor == 1
+    assert legacy.apply_input_amount(1.0) == pytest.approx(1.0)
+    assert legacy.apply_input_amount(3.0, FLUID_UNIT) == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("kw, match", [
+    ({"input_amount_floor": 0}, "observed to be 1"),          # solids to 0: contradicts A5.1
+    ({"input_amount_floor": 2}, "observed to be 1"),
+    ({"input_amount_floor": 1, "fluid_input_floor": 0}, "contradicts"),
+    ({"fluid_input_floor": -1}, "negative"),
+])
+def test_floors_that_contradict_the_read_are_refused(kw, match):
+    with pytest.raises(ValueError, match=match):
+        Scenario(recipe_input_multiplier=0.25, **kw)
+
+
+def test_no_floor_binds_at_or_above_1x():
+    """At >= 1x no positive canonical input can round below its own unit."""
+    s = Scenario(recipe_input_multiplier=1.25, fluid_input_floor=1)
+    assert s.apply_input_amount(1.0) == pytest.approx(1.0)
+    assert s.apply_input_amount(2.5, FLUID_UNIT) == pytest.approx(3.125)
 
 
 @pytest.mark.parametrize("kw", [
@@ -132,7 +178,8 @@ def test_fluid_rounding_defaults_to_the_adapter_constant():
 @pytest.mark.parametrize("unit, expected", [("m3", 4.0), ("mL", 3.75), (None, 3.75)])
 def test_fluid_rounding_variants(unit, expected):
     """3 m3 x 1.25: 4 in the displayed unit, 3.75 in the game's internal one.
-    Unobserved in game; the Plastic recipe on a 1.25x save shows which."""
+    Observed 3.75 on a 1.25x save (demand A2, 2026-10-10), so "mL" is the
+    default; the other two stay selectable to reproduce older figures."""
     s = Scenario(recipe_input_multiplier=1.25, fluid_rounding_unit=unit)
     assert s.apply_input_amount(3.0, FLUID_UNIT) == pytest.approx(expected)
     assert s.apply_input_amount(3.0, ITEM_UNIT) == pytest.approx(4.0)   # solids unaffected

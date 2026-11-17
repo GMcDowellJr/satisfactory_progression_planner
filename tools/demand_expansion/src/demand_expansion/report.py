@@ -23,7 +23,7 @@ from fractions import Fraction
 
 from production_adapter.contracts import ItemId
 from production_adapter.gamedata import GameBuild, ProjectAssemblyRequirement
-from production_adapter.scenario import Scenario
+from production_adapter.scenario import SOLID_INPUT_FLOOR, Scenario
 
 from .aggregate import PhaseDemand, aggregate
 from .contracts import AmbiguousRoute, CycleDetected, RouteTable, UnproducibleItem
@@ -60,11 +60,15 @@ def config_id(routes: RouteTable, scenario: Scenario, fluid_rounding_unit: str |
         f"/pa{scenario.project_assembly_requirement_multiplier:g}"
         f"/fluid-{fluid_rounding_unit or 'none'}"
     )
-    if scenario.input_amount_floor is not None:
-        # Declared only below 1x (scenario.py refuses sub-1x without it), and
-        # material there: 0.25x Smart Plating is 0 Iron Ore at floor 0 and
-        # 17/4 at floor 1. Part of the identity whenever declared.
-        base += f"/floor{scenario.input_amount_floor:g}"
+    if scenario.fluid_input_floor is not None:
+        # The fluid floor (Scenario.fluid_input_floor, R4 2026-11-17): declared
+        # only below 1x, where it is material (0.25x Plastic: 0.75 or 1 m3 Crude
+        # Oil per cycle). The solid floor is fixed at 1 by observation (demand
+        # A5.1) and so is not part of the identity. Until R4 this suffix was
+        # "/floor<n>" over a floor applied to solids too; renamed so an old
+        # "/floor0" dataset (solids allowed to 0) cannot share an id with a new
+        # one.
+        base += f"/fluidfloor{scenario.fluid_input_floor:g}"
     if routes.alternates:
         # `with_alternate` already suffixes the name; a hand-built table may
         # not, so the enabled alternates are named here regardless.
@@ -211,7 +215,8 @@ def build_dataset(
             "recipe_input_multiplier": scenario.recipe_input_multiplier,
             "project_assembly_requirement_multiplier": scenario.project_assembly_requirement_multiplier,
             "fluid_rounding_unit": fluid_unit,
-            "input_amount_floor": scenario.input_amount_floor,
+            "solid_input_floor": SOLID_INPUT_FLOOR if scenario.recipe_input_multiplier < 1 else None,
+            "fluid_input_floor": scenario.fluid_input_floor,
         },
         "coproduct_leaves": sorted(graph.coproduct_leaves),
         "counts": {
