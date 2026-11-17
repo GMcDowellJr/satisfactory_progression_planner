@@ -122,8 +122,10 @@ def plan_phase(
     repo: pathlib.Path, *, state: PlaythroughState, scenario: Scenario, phase: int,
     horizon_min: float | None = None, horizon_fraction: float | None = None,
     power_statistic: PowerStatistic,
+    fuel_byproducts: str,
 ) -> PhasePlan:
-    """`power_statistic` is required (AGENTS.md: no default; LP D2 deferred)."""
+    """`power_statistic` is required (AGENTS.md: no default; LP D2 deferred).
+    `fuel_byproducts` is "power" or "package" (reframe A18), required."""
     if (horizon_min is None) == (horizon_fraction is None):
         raise RunPlanError("declare exactly one of horizon_min and horizon_fraction")
     if horizon_min is not None and not horizon_min > 0:
@@ -208,7 +210,7 @@ def plan_phase(
             for g in rows_g if g.generator_class in open_classes and g.power_mw > 0)
         byproducts = ledger(repo, data, state, response.items,
                             {p.item_id: p.rate_per_min for p in parts},
-                            owned_recipes=avail.recipe_ids)
+                            owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts)
 
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
                      blocked, response, power_options, avail.report(),
@@ -217,7 +219,8 @@ def plan_phase(
 
 def to_factory_inputs(
     plan: PhasePlan, *, world_config_id: str, label: str, socket_ids: tuple[str, ...],
-    power_mode: str, power_statistic: PowerStatistic, goal: str = "balanced", supply: tuple = (), pumps_water: bool = False,
+    power_mode: str, power_statistic: PowerStatistic, fuel_byproducts: str,
+    goal: str = "balanced", supply: tuple = (), pumps_water: bool = False,
     grid_mw: float = 0.0, spare_mw: float = 0.0,
     infrastructure_policy: str = "highest_then_step_down", fixed_rate: bool = True,
 ) -> dict:
@@ -257,6 +260,7 @@ def to_factory_inputs(
         "grid_mw": grid_mw, "spare_mw": spare_mw,
         "target_scale": (largest / plan.horizon_min) if fixed_rate else None,
         "infrastructure_policy": infrastructure_policy,
+        "fuel_byproducts": fuel_byproducts,
     }
 
 
@@ -327,6 +331,8 @@ def main(argv=None) -> int:
     ap.add_argument("--power-statistic", required=True,
                     choices=[s.value for s in PowerStatistic],
                     help="which end of a variable-power recipe's range (no default: LP D2)")
+    ap.add_argument("--fuel-byproducts", required=True, choices=["power", "package"],
+                    help="leftover fuel to generators, or packaged (reframe A18)")
     ap.add_argument("--export", type=pathlib.Path)
     args = ap.parse_args(argv)
     state = playthrough(REPO, through_tier=args.through_tier, milestones=args.milestone,
@@ -337,7 +343,8 @@ def main(argv=None) -> int:
                         fluid_input_floor=args.fluid_input_floor)
     plan = plan_phase(REPO, state=state, scenario=scenario, phase=args.phase,
                       horizon_min=args.horizon_min, horizon_fraction=args.horizon_fraction,
-                      power_statistic=PowerStatistic(args.power_statistic))
+                      power_statistic=PowerStatistic(args.power_statistic),
+                      fuel_byproducts=args.fuel_byproducts)
     print(report(plan))
     if args.export:
         args.export.write_text(json.dumps(record(plan), indent=1, default=str) + "\n",

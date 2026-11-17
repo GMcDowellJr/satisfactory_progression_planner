@@ -60,7 +60,9 @@ from progression import (  # noqa: E402
     availability, discover, generators_available, nameplate_mw, playthrough, pumped_caps,
     resource_caps, resources_in_reference_order, site_extraction,
 )
-from progression.byproducts import Byproduct, ledger, report_lines, with_generators  # noqa: E402
+from progression.byproducts import (  # noqa: E402
+    FUEL_ROUTES, Byproduct, ledger, report_lines, with_generators,
+)
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
 from progression.infrastructure import (  # noqa: E402
     POLICIES, BeltChoice, MarkChoice, belt_for, extractor_options, highest_extractor,
@@ -74,7 +76,7 @@ INPUTS_SCHEMA = "factory-inputs/1"
 PLAN_SCHEMA = "factory-plan/1"
 INPUT_KEYS = ("schema", "world_config_id", "playthrough", "scenario", "site", "goal_mix",
               "goal", "power_mode", "power_statistic", "grid_mw", "spare_mw", "target_scale",
-              "infrastructure_policy")
+              "infrastructure_policy", "fuel_byproducts")
 PLAYTHROUGH_KEYS = ("through_tier", "milestones", "research", "alternates")
 SITE_KEYS = ("label", "socket_ids", "supply", "pumps_water")
 SCENARIO_KEYS = ("recipe_input_multiplier", "machine_power_multiplier",
@@ -154,6 +156,9 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> FactoryRun:
     except ValueError:
         raise FactoryRunError(f"power_statistic {doc['power_statistic']!r}; known: "
                               f"{[s.value for s in PowerStatistic]}") from None
+    if doc["fuel_byproducts"] not in FUEL_ROUTES:
+        raise FactoryRunError(f"fuel_byproducts {doc['fuel_byproducts']!r}; known: "
+                              f"{list(FUEL_ROUTES)} (reframe A18: generator, or packaged)")
     if doc["goal"] not in site_card.GOALS:
         raise FactoryRunError(f"goal {doc['goal']!r}; known: {list(site_card.GOALS)}")
     mix = doc["goal_mix"]
@@ -175,7 +180,7 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> FactoryRun:
         goal_mix=tuple((m["item_id"], m["units"]) for m in mix), goal=doc["goal"],
         power_mode=doc["power_mode"], grid_mw=doc["grid_mw"], spare_mw=doc["spare_mw"],
         target_scale=doc["target_scale"], policy=doc["infrastructure_policy"],
-        power_statistic=power_statistic, inputs=doc,
+        power_statistic=power_statistic, fuel_byproducts=doc["fuel_byproducts"], inputs=doc,
     )
 
 
@@ -184,7 +189,7 @@ def run_factory(
     socket_ids: tuple[str, ...], supply: tuple[tuple[str, float], ...], pumps_water: bool,
     goal_mix: tuple[tuple[str, float], ...], goal: str, power_mode: str, grid_mw: float,
     spare_mw: float, target_scale: float | None, policy: str,
-    power_statistic: PowerStatistic, inputs: dict | None = None,
+    power_statistic: PowerStatistic, fuel_byproducts: str, inputs: dict | None = None,
 ) -> FactoryRun:
     if policy not in POLICIES:
         raise FactoryRunError(f"infrastructure policy {policy!r}; known: {list(POLICIES)}")
@@ -337,7 +342,7 @@ def run_factory(
         byproducts=ledger(repo, data, state,
                           with_generators(plan.plan.items, plan.generators, generators),
                           {i: units * response.scale for i, units in goal_mix},
-                          owned_recipes=avail.recipe_ids),
+                          owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts),
     )
 
 

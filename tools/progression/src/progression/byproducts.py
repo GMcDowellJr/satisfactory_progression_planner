@@ -14,9 +14,12 @@ that serves its objective (reframe A8.2 measured Polymer Resin going to
 Residual Plastic). This module disposes of what is STILL left over, as a
 chain:
 
-    power        a fluid an owned generator burns. Fuel by Greg's ruling; the
-                 other generator fluids (Turbofuel, Liquid Biofuel) follow the
-                 same rule, which is Claude's reading of it (A17.2)
+    power        a fuel an owned generator burns (fuel_route "power")
+    package      a fuel packaged for recipes that unpack it, or for storage
+                 for the jetpack and vehicles, with the overflow to the sink
+                 (fuel_route "package"; A18, Greg 2026-11-17: "all fuel goes to
+                 generator or gets packaged"). Which route is the caller's
+                 declaration; there is no default
     convert      a fluid with a declared conversion (CONVERSIONS: Heavy Oil
                  Residue -> Residual Fuel). The products are disposed of in
                  turn: Fuel to power, any solid to the sink
@@ -52,6 +55,19 @@ SINK_NOT_UNLOCKED = "sink_not_unlocked"
 UNSINKABLE = "unsinkable"
 POWER = "power"
 POWER_NOT_OWNED = "power_not_owned"
+PACKAGE = "package"
+PACKAGE_NOT_OWNED = "package_not_owned"
+STORE_OVERFLOW_SINK = "store_overflow_sink"
+FUEL_ROUTES = (POWER, PACKAGE)
+
+#: A18: the packager recipe for each generator fuel. Each takes one Empty
+#: Canister per unit, reported; where the canisters come from is not modelled.
+PACKAGING: dict[ItemId, RecipeId] = {
+    "Desc_LiquidFuel_C": "Recipe_Fuel_C",
+    "Desc_LiquidTurboFuel_C": "Recipe_PackagedTurboFuel_C",
+    "Desc_LiquidBiofuel_C": "Recipe_PackagedBiofuel_C",
+}
+CANISTER = "Desc_FluidCanister_C"
 CONVERT = "convert"
 CONVERT_NOT_OWNED = "convert_not_owned"
 NEEDS_PACKAGING = "needs_packaging"
@@ -77,8 +93,9 @@ class Byproduct:
     power_mw: float | None = None                  # POWER: generated
     recipe_id: RecipeId | None = None              # CONVERT
     machines: float | None = None                  # CONVERT: at 100 %
-    machine_mw: float | None = None                # CONVERT: drawn, P-scaled
-    downstream: tuple["Byproduct", ...] = ()       # CONVERT: its products
+    machine_mw: float | None = None                # CONVERT/PACKAGE: drawn, P-scaled
+    canisters_per_min: float | None = None         # PACKAGE: Empty Canisters taken
+    downstream: tuple["Byproduct", ...] = ()       # CONVERT/PACKAGE: its products
 
 
 def sink_unlocked(repo_root: str | pathlib.Path, state: PlaythroughState) -> bool:
@@ -93,11 +110,16 @@ def ledger(
     state: PlaythroughState,
     items: tuple[ItemFlow, ...],
     delivered: dict[ItemId, float],
-    owned_recipes: tuple[RecipeId, ...] = (),
+    owned_recipes: tuple[RecipeId, ...],
+    *,
+    fuel_route: str,
 ) -> tuple[Byproduct, ...]:
     """Every item a plan makes beyond what it consumes and delivers, disposed
     of as A16/A17 say. `owned_recipes` gates a conversion (availability's
-    owned set); generators and the sink are gated by the state's buildings."""
+    owned set); generators and the sink are gated by the state's buildings.
+    `fuel_route` is "power" or "package" (A18), required."""
+    if fuel_route not in FUEL_ROUTES:
+        raise ValueError(f"fuel_route {fuel_route!r}; known: {list(FUEL_ROUTES)}")
     owned = state.owned_schematics
     open_buildings, _ = buildings_unlocked(repo_root, lambda s: s.schematic_id in owned)
     ctx = _Ctx(
@@ -106,6 +128,7 @@ def ledger(
         can_sink=SINK_BUILDING in open_buildings,
         burners={},
         owned_recipes=frozenset(owned_recipes),
+        fuel_route=fuel_route,
     )
     for g in load_generators(repo_root):
         built = "Desc_" + g.generator_class[len("Build_"):] in open_buildings
@@ -125,6 +148,7 @@ class _Ctx:
     can_sink: bool
     burners: dict
     owned_recipes: frozenset
+    fuel_route: str = POWER
 
 
 def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
@@ -136,6 +160,20 @@ def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
         if ctx.can_sink:
             return Byproduct(item, rate, SINK, sink_points_per_min=rate * ctx.points.get(item, 0))
         return Byproduct(item, rate, SINK_NOT_UNLOCKED)
+    if ctx.fuel_route == PACKAGE and item in PACKAGING:
+        recipe_id = PACKAGING[item]
+        if recipe_id not in ctx.owned_recipes:
+            return Byproduct(item, rate, PACKAGE_NOT_OWNED, recipe_id=recipe_id)
+        recipe = ctx.data.recipes[recipe_id]
+        machines = rate / dict(recipe.inputs)[item]
+        (packed, per_machine), = recipe.outputs
+        out_rate = machines * per_machine
+        stored = Byproduct(packed, out_rate, STORE_OVERFLOW_SINK,
+                           sink_points_per_min=out_rate * ctx.points.get(packed, 0))
+        return Byproduct(item, rate, PACKAGE, recipe_id=recipe_id, machines=machines,
+                         machine_mw=machines * recipe.power.mean_mw,
+                         canisters_per_min=machines * dict(recipe.inputs).get(CANISTER, 0.0),
+                         downstream=(stored,))
     burners = ctx.burners.get(item, [])
     if burners:
         built = [g for g, ok in burners if ok]
@@ -210,8 +248,11 @@ def report_lines(byproducts: tuple[Byproduct, ...]) -> list[str]:
             how = f"{b.generators:.3g} x {b.generator_class}, {b.power_mw:.4g} MW"
         elif b.disposition == CONVERT:
             how = f"{b.machines:.3g} x {b.recipe_id}, {b.machine_mw:.3g} MW drawn"
-        elif b.disposition == SINK:
-            how = f"{b.sink_points_per_min:.4g} points/min"
+        elif b.disposition == PACKAGE:
+            how = (f"{b.machines:.3g} x {b.recipe_id}, {b.machine_mw:.3g} MW drawn, "
+                   f"{b.canisters_per_min:.4g} Empty Canisters/min")
+        elif b.disposition in (SINK, STORE_OVERFLOW_SINK):
+            how = f"{b.sink_points_per_min:.4g} points/min if all sunk"
         else:
             how = ""
         lines.append(f"{indent}by-product {b.item_id}: {b.rate_per_min:.4g}/min -> "

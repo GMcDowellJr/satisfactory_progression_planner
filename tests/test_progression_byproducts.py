@@ -44,11 +44,11 @@ def _owned(tier):
 
 def test_solids_go_to_the_sink_once_it_is_owned(data):
     state, owned = _owned(5)
-    (resin,) = ledger(REPO, data, state, (ItemFlow(RESIN, 30.0, 10.0),), {}, owned)
+    (resin,) = ledger(REPO, data, state, (ItemFlow(RESIN, 30.0, 10.0),), {}, owned, fuel_route="power")
     assert (resin.rate_per_min, resin.disposition) == (20.0, SINK)
     assert resin.sink_points_per_min == pytest.approx(20.0 * 12)
     early, owned1 = _owned(1)
-    (resin,) = ledger(REPO, data, early, (ItemFlow(RESIN, 30.0, 10.0),), {}, owned1)
+    (resin,) = ledger(REPO, data, early, (ItemFlow(RESIN, 30.0, 10.0),), {}, owned1, fuel_route="power")
     assert resin.disposition == SINK_NOT_UNLOCKED
 
 
@@ -56,7 +56,7 @@ def test_heavy_oil_residue_is_converted_to_fuel_and_the_fuel_burned(data):
     """A17 (Greg, 2026-11-17): HOR -> Residual Fuel (60 -> 40 per refinery),
     and Fuel goes to power (Fuel Generator, 20/min for 250 MW)."""
     state, owned = _owned(5)
-    (hor,) = ledger(REPO, data, state, (ItemFlow(HOR, 120.0, 0.0),), {}, owned)
+    (hor,) = ledger(REPO, data, state, (ItemFlow(HOR, 120.0, 0.0),), {}, owned, fuel_route="power")
     assert (hor.disposition, hor.recipe_id, hor.machines) == \
         (CONVERT, "Recipe_ResidualFuel_C", pytest.approx(2.0))
     (fuel,) = hor.downstream
@@ -67,21 +67,21 @@ def test_heavy_oil_residue_is_converted_to_fuel_and_the_fuel_burned(data):
 
 def test_leftover_fuel_is_burned_directly(data):
     state, owned = _owned(5)
-    (fuel,) = ledger(REPO, data, state, (ItemFlow(FUEL, 40.0, 0.0),), {}, owned)
+    (fuel,) = ledger(REPO, data, state, (ItemFlow(FUEL, 40.0, 0.0),), {}, owned, fuel_route="power")
     assert (fuel.disposition, fuel.generator_class) == (POWER, "Build_GeneratorFuel_C")
 
 
 def test_before_the_chain_is_unlocked_it_is_named(data):
     state, owned = _owned(3)
-    (hor,) = ledger(REPO, data, state, (ItemFlow(HOR, 60.0, 0.0),), {}, owned)
+    (hor,) = ledger(REPO, data, state, (ItemFlow(HOR, 60.0, 0.0),), {}, owned, fuel_route="power")
     assert hor.disposition == CONVERT_NOT_OWNED
-    (fuel,) = ledger(REPO, data, state, (ItemFlow(FUEL, 20.0, 0.0),), {}, owned)
+    (fuel,) = ledger(REPO, data, state, (ItemFlow(FUEL, 20.0, 0.0),), {}, owned, fuel_route="power")
     assert fuel.disposition == POWER_NOT_OWNED
 
 
 def test_any_other_fluid_needs_packaging(data):
     state, owned = _owned(5)
-    (water,) = ledger(REPO, data, state, (ItemFlow(WATER, 10.0, 0.0),), {}, owned)
+    (water,) = ledger(REPO, data, state, (ItemFlow(WATER, 10.0, 0.0),), {}, owned, fuel_route="power")
     assert water.disposition == NEEDS_PACKAGING
     assert [b.item_id for b in flatten((water,))] == [WATER]
 
@@ -89,7 +89,7 @@ def test_any_other_fluid_needs_packaging(data):
 def test_what_is_consumed_or_delivered_is_not_a_by_product(data):
     flows = (ItemFlow(RESIN, 10.0, 10.0), ItemFlow(PLASTIC, 40.0, 0.0))
     state, owned = _owned(5)
-    assert ledger(REPO, data, state, flows, {PLASTIC: 40.0}, owned) == ()
+    assert ledger(REPO, data, state, flows, {PLASTIC: 40.0}, owned, fuel_route="power") == ()
 
 
 def test_the_factory_track_reports_its_by_products():
@@ -109,6 +109,7 @@ def test_the_factory_track_reports_its_by_products():
         "goal_mix": [{"item_id": PLASTIC, "units": 1}], "goal": "balanced",
         "power_mode": "report_need", "power_statistic": "mean", "grid_mw": 0.0, "spare_mw": 0.0, "target_scale": None,
         "infrastructure_policy": "highest_then_step_down",
+        "fuel_byproducts": "power",
     }
     run = F.run_inputs(doc)
     (hor,) = run.byproducts
@@ -123,7 +124,8 @@ def test_a_solid_with_no_sink_points_is_unsinkable(data):
     """Uranium Waste has 0 sink points: storage or processing, never the sink."""
     from progression.byproducts import UNSINKABLE
     state, owned = _owned(9)
-    (waste,) = ledger(REPO, data, state, (ItemFlow("Desc_NuclearWaste_C", 10.0, 0.0),), {}, owned)
+    (waste,) = ledger(REPO, data, state, (ItemFlow("Desc_NuclearWaste_C", 10.0, 0.0),), {},
+                      owned, fuel_route="power")
     assert waste.disposition == UNSINKABLE and waste.sink_points_per_min is None
 
 
@@ -164,6 +166,7 @@ def test_in_grid_mode_burned_fuel_is_not_a_leftover():
         "goal_mix": [{"item_id": PLASTIC, "units": 1}], "goal": "balanced",
         "power_mode": "grid", "power_statistic": "mean", "grid_mw": 0.0, "spare_mw": 0.0,
         "target_scale": None, "infrastructure_policy": "highest_then_step_down",
+        "fuel_byproducts": "power",
     }
     run = F.run_inputs(doc)
     # measured 2026-11-17: the site makes Fuel and burns ~27/min of it
@@ -171,3 +174,37 @@ def test_in_grid_mode_burned_fuel_is_not_a_leftover():
     # so Fuel is no top-level leftover; it appears only downstream of the
     # residue's conversion (before the fix it was also listed on its own)
     assert FUEL not in {b.item_id for b in run.byproducts}
+
+
+# --- reframe A18 (Greg, 2026-11-17): fuel to a generator, or packaged ----------
+
+def test_packaged_fuel_goes_to_storage_with_overflow_to_the_sink(data):
+    """'all fuel goes to generator or gets packaged for use [in] recipes that
+    require unpacking or storage (with overflow to sink) for jet-pack and
+    vehicles'. Packaged Fuel: 40 Fuel + 40 Empty Canisters -> 40 Packaged Fuel
+    per Packager."""
+    from progression.byproducts import PACKAGE, STORE_OVERFLOW_SINK
+    state, owned = _owned(5)
+    (fuel,) = ledger(REPO, data, state, (ItemFlow(FUEL, 80.0, 0.0),), {}, owned,
+                     fuel_route="package")
+    assert (fuel.disposition, fuel.recipe_id) == (PACKAGE, "Recipe_Fuel_C")
+    assert fuel.machines == pytest.approx(2.0) and fuel.canisters_per_min == pytest.approx(80.0)
+    (stored,) = fuel.downstream
+    assert (stored.item_id, stored.disposition) == ("Desc_Fuel_C", STORE_OVERFLOW_SINK)
+    assert stored.sink_points_per_min == pytest.approx(80.0 * 270)
+
+
+def test_converted_residue_follows_the_declared_fuel_route(data):
+    from progression.byproducts import PACKAGE
+    state, owned = _owned(5)
+    (hor,) = ledger(REPO, data, state, (ItemFlow(HOR, 60.0, 0.0),), {}, owned,
+                    fuel_route="package")
+    assert hor.disposition == CONVERT and hor.downstream[0].disposition == PACKAGE
+
+
+def test_the_fuel_route_has_no_default(data):
+    import inspect
+    assert inspect.signature(ledger).parameters["fuel_route"].default is inspect.Parameter.empty
+    state, owned = _owned(5)
+    with pytest.raises(ValueError, match="fuel_route"):
+        ledger(REPO, data, state, (), {}, owned, fuel_route="burn")

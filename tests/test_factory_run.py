@@ -51,6 +51,7 @@ def _doc(*, tier=3, milestones=(), sockets=ROCKY_A, mix=MIX, target=None, mode="
         "goal": "balanced", "power_mode": mode, "power_statistic": "mean",
         "grid_mw": 0.0, "spare_mw": 0.0,
         "target_scale": target, "infrastructure_policy": "highest_then_step_down",
+        "fuel_byproducts": "power",
     }
 
 
@@ -175,6 +176,7 @@ def _broken(path, value):
     (_broken(("schema",), "factory-inputs/0"), "this reads"),
     (_broken(("power_mode",), "magic"), "power_mode"),
     (_broken(("power_statistic",), "typical"), "power_statistic"),
+    (_broken(("fuel_byproducts",), "burn"), "fuel_byproducts"),
     (_broken(("grid_mw",), 100.0), "report_need"),
     (_broken(("site", "supply"), [{"item_id": "Desc_Water_C", "rate_per_min": 10}]), "never free"),
 ])
