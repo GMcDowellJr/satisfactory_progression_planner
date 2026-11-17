@@ -105,7 +105,7 @@ module is not built yet.
 | Resource supply and socket claims | `site_card.load_sockets` (reader), `portfolio_run` (no double claim) | reframe A9, A10 |
 | Extractor and belt marks per socket and link | `progression.infrastructure` (R6): policy `highest_then_step_down` | A15.2 (B2, Q1) |
 | Production solve | `lp_backend` | reframe A2, A3, A6, A13; LP record (carried as implementation) |
-| Byproducts | used by the solve where useful; leftovers disposed of by `progression.byproducts`: solids → AWESOME Sink, Fuel → power, HOR → Residual Fuel → power, other fluids `needs_packaging` | reframe A8.3, **A16**, **A17** |
+| Byproducts | used by the solve where useful; leftovers disposed of by `progression.byproducts`: solids with sink points → AWESOME Sink, solids without (nuclear waste) `unsinkable`, Fuel → power, HOR → Residual Fuel → power, other fluids `needs_packaging`; generator fuel, water and waste folded in first | reframe A8.3, **A16**, **A17** |
 | Whole machines, clocks, belts | `realization` | carried as implementation |
 | Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11; staged generation ledger **proposed** for the run and factory tracks (A16.3, questions P1–P4) |
 | Power, report side | `progression.power.ledger` | tests only; candidate for retirement (open) |
@@ -124,7 +124,7 @@ module is not built yet.
 | `portfolio-plan/1` | `portfolio_run --export`, worker | current; its echoed scenario gained `fluid_input_floor` (additive, R4) |
 | `neighborhoods/1` | `neighborhoods.py` | current |
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
-| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused |
+| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused; `power_statistic` declared (no default, AGENTS.md) |
 | `factory-plan/1` | `factory_run.py --export` | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
 | `run-plan/1` | `run_plan.py --export` | current (R9): horizon, one-machine ceiling, parts, blocked parts with their unlocks, plan, power diagnostic |
 

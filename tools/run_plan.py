@@ -112,8 +112,9 @@ class PhasePlan:
 def plan_phase(
     repo: pathlib.Path, *, state: PlaythroughState, scenario: Scenario, phase: int,
     horizon_min: float | None = None, horizon_fraction: float | None = None,
-    power_statistic: PowerStatistic = PowerStatistic.MEAN,
+    power_statistic: PowerStatistic,
 ) -> PhasePlan:
+    """`power_statistic` is required (AGENTS.md: no default; LP D2 deferred)."""
     if (horizon_min is None) == (horizon_fraction is None):
         raise RunPlanError("declare exactly one of horizon_min and horizon_fraction")
     if horizon_min is not None and not horizon_min > 0:
@@ -183,7 +184,7 @@ def plan_phase(
 
 def to_factory_inputs(
     plan: PhasePlan, *, world_config_id: str, label: str, socket_ids: tuple[str, ...],
-    power_mode: str, goal: str = "balanced", supply: tuple = (), pumps_water: bool = False,
+    power_mode: str, power_statistic: PowerStatistic, goal: str = "balanced", supply: tuple = (), pumps_water: bool = False,
     grid_mw: float = 0.0, spare_mw: float = 0.0,
     infrastructure_policy: str = "highest_then_step_down", fixed_rate: bool = True,
 ) -> dict:
@@ -218,7 +219,9 @@ def to_factory_inputs(
                  "supply": [{"item_id": i, "rate_per_min": r} for i, r in supply],
                  "pumps_water": pumps_water},
         "goal_mix": [{"item_id": p.item_id, "units": p.bill_units / largest} for p in plan.parts],
-        "goal": goal, "power_mode": power_mode, "grid_mw": grid_mw, "spare_mw": spare_mw,
+        "goal": goal, "power_mode": power_mode,
+        "power_statistic": PowerStatistic(power_statistic).value,
+        "grid_mw": grid_mw, "spare_mw": spare_mw,
         "target_scale": (largest / plan.horizon_min) if fixed_rate else None,
         "infrastructure_policy": infrastructure_policy,
     }
@@ -284,6 +287,9 @@ def main(argv=None) -> int:
     ap.add_argument("--power-multiplier", type=float, default=1.0)
     ap.add_argument("--pa-multiplier", type=float, default=1.0)
     ap.add_argument("--fluid-input-floor", type=float, default=None)
+    ap.add_argument("--power-statistic", required=True,
+                    choices=[s.value for s in PowerStatistic],
+                    help="which end of a variable-power recipe's range (no default: LP D2)")
     ap.add_argument("--export", type=pathlib.Path)
     args = ap.parse_args(argv)
     state = playthrough(REPO, through_tier=args.through_tier, milestones=args.milestone,
@@ -293,7 +299,8 @@ def main(argv=None) -> int:
                         project_assembly_requirement_multiplier=args.pa_multiplier,
                         fluid_input_floor=args.fluid_input_floor)
     plan = plan_phase(REPO, state=state, scenario=scenario, phase=args.phase,
-                      horizon_min=args.horizon_min, horizon_fraction=args.horizon_fraction)
+                      horizon_min=args.horizon_min, horizon_fraction=args.horizon_fraction,
+                      power_statistic=PowerStatistic(args.power_statistic))
     print(report(plan))
     if args.export:
         args.export.write_text(json.dumps(record(plan), indent=1, default=str) + "\n",

@@ -60,7 +60,7 @@ from progression import (  # noqa: E402
     availability, discover, generators_available, nameplate_mw, playthrough, pumped_caps,
     site_extraction,
 )
-from progression.byproducts import Byproduct, ledger, report_lines  # noqa: E402
+from progression.byproducts import Byproduct, ledger, report_lines, with_generators  # noqa: E402
 from progression.district import WATER  # noqa: E402
 from progression.infrastructure import (  # noqa: E402
     POLICIES, BeltChoice, MarkChoice, belt_for, extractor_options, highest_extractor,
@@ -73,7 +73,7 @@ import site_card  # noqa: E402
 INPUTS_SCHEMA = "factory-inputs/1"
 PLAN_SCHEMA = "factory-plan/1"
 INPUT_KEYS = ("schema", "world_config_id", "playthrough", "scenario", "site", "goal_mix",
-              "goal", "power_mode", "grid_mw", "spare_mw", "target_scale",
+              "goal", "power_mode", "power_statistic", "grid_mw", "spare_mw", "target_scale",
               "infrastructure_policy")
 PLAYTHROUGH_KEYS = ("through_tier", "milestones", "research", "alternates")
 SITE_KEYS = ("label", "socket_ids", "supply", "pumps_water")
@@ -134,8 +134,7 @@ def _keys(where: str, doc, keys) -> None:
         raise FactoryRunError(f"{where}: missing {missing}, not known {extra}")
 
 
-def run_inputs(doc: dict, repo: pathlib.Path = REPO,
-               power_statistic: PowerStatistic = PowerStatistic.MEAN) -> FactoryRun:
+def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> FactoryRun:
     """Run a factory-inputs/1 document. Shape checked here; content where it is owned."""
     _keys("inputs", doc, INPUT_KEYS)
     if doc["schema"] != INPUTS_SCHEMA:
@@ -148,6 +147,13 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO,
                               f"known: {list(POLICIES)}")
     if doc["power_mode"] not in POWER_MODES:
         raise FactoryRunError(f"power_mode {doc['power_mode']!r}; known: {list(POWER_MODES)}")
+    # AGENTS.md: no default for power_statistic (LP D2, deferred by Greg). A
+    # variable-power recipe's draw depends on it, so the document declares it.
+    try:
+        power_statistic = PowerStatistic(doc["power_statistic"])
+    except ValueError:
+        raise FactoryRunError(f"power_statistic {doc['power_statistic']!r}; known: "
+                              f"{[s.value for s in PowerStatistic]}") from None
     if doc["goal"] not in site_card.GOALS:
         raise FactoryRunError(f"goal {doc['goal']!r}; known: {list(site_card.GOALS)}")
     mix = doc["goal_mix"]
@@ -178,7 +184,7 @@ def run_factory(
     socket_ids: tuple[str, ...], supply: tuple[tuple[str, float], ...], pumps_water: bool,
     goal_mix: tuple[tuple[str, float], ...], goal: str, power_mode: str, grid_mw: float,
     spare_mw: float, target_scale: float | None, policy: str,
-    power_statistic: PowerStatistic = PowerStatistic.MEAN, inputs: dict | None = None,
+    power_statistic: PowerStatistic, inputs: dict | None = None,
 ) -> FactoryRun:
     if policy not in POLICIES:
         raise FactoryRunError(f"infrastructure policy {policy!r}; known: {list(POLICIES)}")
@@ -298,7 +304,8 @@ def run_factory(
         power=response.power,
         availability_report=avail.report(),
         warnings=plan.plan.warnings + (SHARE_NOTE,),
-        byproducts=ledger(repo, data, state, plan.plan.items,
+        byproducts=ledger(repo, data, state,
+                          with_generators(plan.plan.items, plan.generators, generators),
                           {i: units * response.scale for i, units in goal_mix},
                           owned_recipes=avail.recipe_ids),
     )

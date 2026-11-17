@@ -48,7 +48,8 @@ def _doc(*, tier=3, milestones=(), sockets=ROCKY_A, mix=MIX, target=None, mode="
                      "fluid_rounding_unit": "mL"},
         "site": {"label": "rocky", "socket_ids": list(sockets), "supply": [], "pumps_water": False},
         "goal_mix": [{"item_id": i, "units": 1} for i in mix],
-        "goal": "balanced", "power_mode": mode, "grid_mw": 0.0, "spare_mw": 0.0,
+        "goal": "balanced", "power_mode": mode, "power_statistic": "mean",
+        "grid_mw": 0.0, "spare_mw": 0.0,
         "target_scale": target, "infrastructure_policy": "highest_then_step_down",
     }
 
@@ -173,6 +174,7 @@ def _broken(path, value):
     (_broken(("infrastructure_policy",), "lowest"), "infrastructure_policy"),
     (_broken(("schema",), "factory-inputs/0"), "this reads"),
     (_broken(("power_mode",), "magic"), "power_mode"),
+    (_broken(("power_statistic",), "typical"), "power_statistic"),
     (_broken(("grid_mw",), 100.0), "report_need"),
     (_broken(("site", "supply"), [{"item_id": "Desc_Water_C", "rate_per_min": 10}]), "never free"),
 ])

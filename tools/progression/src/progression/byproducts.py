@@ -20,7 +20,10 @@ chain:
     convert      a fluid with a declared conversion (CONVERSIONS: Heavy Oil
                  Residue -> Residual Fuel). The products are disposed of in
                  turn: Fuel to power, any solid to the sink
-    sink         a solid, AWESOME Sink owned (points per minute from items.csv)
+    sink         a solid with sink points, AWESOME Sink owned (points per
+                 minute from items.csv)
+    unsinkable   a solid with no sink points (Uranium and Plutonium Waste):
+                 storage or further processing, not modelled (Codex on PR #15)
     *_not_owned  the generator, recipe or sink is not unlocked yet; named
     needs_packaging  any other fluid. Packaging (canisters) is not modelled
 
@@ -34,7 +37,9 @@ from __future__ import annotations
 import pathlib
 from dataclasses import dataclass
 
-from production_adapter.contracts import ItemFlow, ItemId, ProducerClass, RecipeId
+from production_adapter.contracts import (
+    GeneratorFuel, GeneratorUse, ItemFlow, ItemId, ProducerClass, RecipeId,
+)
 from production_adapter.gamedata import ReferenceData, load_generators, load_sink_points
 
 from .playthrough import PlaythroughState
@@ -44,6 +49,7 @@ SINK_BUILDING = "Desc_ResourceSink_C"
 
 SINK = "sink"
 SINK_NOT_UNLOCKED = "sink_not_unlocked"
+UNSINKABLE = "unsinkable"
 POWER = "power"
 POWER_NOT_OWNED = "power_not_owned"
 CONVERT = "convert"
@@ -125,6 +131,8 @@ def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
     if depth > 4:
         raise ValueError(f"{item}: disposal chain deeper than 4; CONVERSIONS loops")
     if ctx.data.items[item].form == "solid":
+        if ctx.points.get(item, 0) <= 0:
+            return Byproduct(item, rate, UNSINKABLE)
         if ctx.can_sink:
             return Byproduct(item, rate, SINK, sink_points_per_min=rate * ctx.points.get(item, 0))
         return Byproduct(item, rate, SINK_NOT_UNLOCKED)
@@ -157,6 +165,31 @@ def _dispose(ctx: _Ctx, item: ItemId, rate: float, depth: int) -> Byproduct:
                          machine_mw=machines * recipe.power.mean_mw,
                          downstream=downstream)
     return Byproduct(item, rate, NEEDS_PACKAGING)
+
+
+def with_generators(
+    items: tuple[ItemFlow, ...],
+    generators: tuple[GeneratorUse, ...],
+    rows: tuple[GeneratorFuel, ...],
+) -> tuple[ItemFlow, ...]:
+    """A plan's item flows with its generators folded in: fuel and
+    supplemental (Water) consumed, by-products (nuclear waste) produced. A
+    solve's `items` are recipe and raw flows only; without this, fuel burned
+    for power would read as left over (Codex on PR #15, 2026-11-17)."""
+    by_key = {(g.generator_class, g.fuel_item_id): g for g in rows}
+    produced = {f.item_id: f.produced_per_min for f in items}
+    consumed = {f.item_id: f.consumed_per_min for f in items}
+    for use in generators:
+        consumed[use.fuel_item_id] = consumed.get(use.fuel_item_id, 0.0) + use.fuel_per_min
+        for item, rate in use.supplemental_per_min:
+            consumed[item] = consumed.get(item, 0.0) + rate
+        row = by_key.get((use.generator_class, use.fuel_item_id))
+        if row is None:
+            raise ValueError(f"{use.generator_class} on {use.fuel_item_id}: no generator row")
+        for item, rate in row.byproduct:
+            produced[item] = produced.get(item, 0.0) + rate * use.count
+    keys = list(dict.fromkeys([f.item_id for f in items] + list(consumed) + list(produced)))
+    return tuple(ItemFlow(i, produced.get(i, 0.0), consumed.get(i, 0.0)) for i in keys)
 
 
 def flatten(byproducts: tuple[Byproduct, ...]) -> tuple[Byproduct, ...]:

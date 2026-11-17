@@ -40,7 +40,9 @@ R = _module("run_plan")
 
 def _plan(phase=1, tier=2, milestones=(), scenario=Scenario(), **horizon):
     state = playthrough(REPO, through_tier=tier, milestones=list(milestones))
-    return R.plan_phase(REPO, state=state, scenario=scenario, phase=phase, **horizon)
+    from production_adapter.lp_backend import PowerStatistic
+    return R.plan_phase(REPO, state=state, scenario=scenario, phase=phase,
+                        power_statistic=PowerStatistic.MEAN, **horizon)
 
 
 # --- the prototype's target determination, with the repo's arithmetic --------
@@ -117,7 +119,8 @@ def test_a_run_step_becomes_factory_inputs():
     F = _module("factory_run")
     plan = _plan(horizon_fraction=1.0)          # 2 Smart Plating/min
     doc = R.to_factory_inputs(plan, world_config_id="default_502094", label="rocky",
-                              socket_ids=ROCKY_A, power_mode="report_need")
+                              socket_ids=ROCKY_A, power_mode="report_need",
+                              power_statistic="mean")
     assert max(m["units"] for m in doc["goal_mix"]) == 1.0      # proportions
     run = F.run_inputs(doc)
     assert run.scale == pytest.approx(50.0 / plan.horizon_min)
@@ -133,8 +136,17 @@ def test_the_record_and_the_cli(tmp_path):
     assert rec["schema"] == "run-plan/1" and rec["parts"][0]["item_id"] == SP
     out = tmp_path / "plan.json"
     assert R.main(["--phase", "1", "--through-tier", "2", "--horizon-fraction", "0.5",
-                   "--export", str(out)]) == 0
+                   "--power-statistic", "mean", "--export", str(out)]) == 0
     assert json.loads(out.read_text(encoding="utf-8"))["horizon_fraction"] == pytest.approx(0.5)
+
+
+def test_the_power_statistic_has_no_default():
+    """AGENTS.md: no default for power_statistic (LP D2). Codex on PR #15."""
+    import inspect
+    sig = inspect.signature(R.plan_phase).parameters["power_statistic"]
+    assert sig.default is inspect.Parameter.empty
+    with pytest.raises(SystemExit):
+        R.main(["--phase", "1", "--through-tier", "2", "--horizon-fraction", "0.5"])
 
 
 @pytest.mark.parametrize("kw, match", [
