@@ -58,7 +58,7 @@ from production_adapter.gamedata import load_generators, load_logistics  # noqa:
 from production_adapter.lp_backend import LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
     availability, discover, generators_available, nameplate_mw, playthrough, pumped_caps,
-    site_extraction,
+    resource_caps, resources_in_reference_order, site_extraction,
 )
 from progression.byproducts import Byproduct, ledger, report_lines, with_generators  # noqa: E402
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
@@ -229,6 +229,30 @@ def run_factory(
                               extractors=tuple(sorted(highest.items())), extraction_clock=1.0,
                               supply=supply)
     chosen, _, skipped, definition, caps = site_card.site_caps(spec, data, rates, sockets)
+
+    # One extractor has ONE output: its rate is capped by the fastest belt (or
+    # pipe) the playthrough owns (Codex on PR #15, 2026-11-17: a pure node's
+    # Miner Mk.1 makes 120/min but a Mk.1 belt carries 60). Each node is
+    # clocked down to that lane, as a player would underclock it, and the caps
+    # are recomputed from the clocked nodes.
+    extracted = [s for s in chosen if s.socket_id in options_of]
+    if len(extracted) != len(definition.nodes):
+        raise FactoryRunError("sockets and nodes do not line up; site_card changed shape")
+    clock_of: dict[str, float] = {}
+    nodes = []
+    for s, node in zip(extracted, definition.nodes):
+        kind = "belt" if data.items[s.item_id].form == FORM_SOLID else "pipeline"
+        lanes = avail.capabilities(kind)
+        if not lanes:
+            raise FactoryRunError(f"{s.socket_id}: no {kind} is unlocked to carry its "
+                                  f"{s.item_id} out")
+        rate = highest_extractor(options_of[s.socket_id]).nominal_rate_min
+        clock = min(1.0, lanes[-1].capacity_per_min / rate)
+        clock_of[s.socket_id] = clock
+        nodes.append(dataclasses.replace(node, extraction_clock=clock))
+    definition = dataclasses.replace(definition, nodes=tuple(nodes))
+    caps = site_card.with_supply(
+        resource_caps(definition, rates, resources_in_reference_order(data)), supply)
     segments = site_extraction(definition, rates, tables.extractors, scenario=data.scenario,
                                supply=supply, water=pumps_water)
     if pumps_water:
@@ -281,7 +305,8 @@ def run_factory(
         top = highest_extractor(opts)
         total = cap_of.get(s.item_id) or 0.0
         share = (draw.get(s.item_id, 0.0) / total) if total > 0 else 0.0
-        socket_draw = min(top.nominal_rate_min, share * top.nominal_rate_min)
+        socket_cap = top.nominal_rate_min * clock_of[s.socket_id]   # lane-limited
+        socket_draw = min(socket_cap, share * socket_cap)
         mark = step_down_extractor(s.socket_id, s.item_id, s.purity, socket_draw, opts)
         lane = None
         if mark.chosen is not None:

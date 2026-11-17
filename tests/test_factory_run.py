@@ -202,3 +202,21 @@ def test_pumped_water_needs_the_water_extractor():
     d["power_mode"] = "grid"
     with pytest.raises(F.FactoryRunError, match="Build_WaterPump_C is not unlocked"):
         F.run_inputs(d)
+
+
+@pytest.mark.parametrize("tier, milestones, rate, miner, belt", [
+    (1, [], 60.0, "Build_MinerMk1_C", "Mk.1"),                       # Mk.1 belt only
+    (3, [ADVANCED_STEEL], 120.0, "Build_MinerMk1_C", "Mk.2"),        # no Logistics Mk.3
+    (3, [ADVANCED_STEEL, "Schematic_5-3_C"], 240.0, "Build_MinerMk2_C", "Mk.3"),
+])
+def test_a_socket_is_capped_by_the_lane_it_can_feed(tier, milestones, rate, miner, belt):
+    """One extractor has one output, so a pure node's supply is capped by the
+    fastest belt owned (Codex on PR #15, 2026-11-17). With Advanced Steel but
+    no Logistics Mk.3, the 120/min belt binds and a pure Mk.1 already fills
+    it, so the step-down keeps Mk.1 (Q1)."""
+    d = _doc(tier=tier, milestones=milestones, sockets=("BP_ResourceNode114",),
+             mix=("Desc_IronIngot_C",))
+    run = F.run_inputs(d)
+    (p,) = run.sockets
+    assert run.scale == pytest.approx(rate)
+    assert (p.mark.chosen.extractor_class, p.lane.lanes, p.lane.mark.mark) == (miner, 1, belt)
