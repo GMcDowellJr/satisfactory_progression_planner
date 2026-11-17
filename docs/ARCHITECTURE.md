@@ -203,13 +203,12 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 - Scanned-but-unclaimed hard-drive offers and pool odds (A15.2 B5): deferred.
 - Storage withdrawals as declared events or rates (A15.2 Q6): deferred.
 - Physical layout, SFMD import, cross-district opportunity cost: deferred.
-- **Defect found in R9 (2026-11-17), not fixed:** `LpBackend.solve_portfolio` with a
-  declared `target_scale` (reframe A13) returns Infeasible from its fourth stage when
-  bill units are 5 or more, while units of 3 or less solve. Measured: Rocky district A,
-  tier 2, one Smart Plating line, `report_need` and `grid`. Maximise mode is unaffected.
-  The stage pins' 1e-9 relative tolerance does not scale with the bill coefficients.
-  Fixing it changes the core solver's tie-break tolerance, so it is Greg's call.
-  `run_plan.to_factory_inputs` sends proportions (largest unit 1), which avoids it.
+- **Fixed 2026-11-17 (decided by Greg):** `solve_portfolio` with a declared
+  `target_scale` (reframe A13) and bill units of 5 or more came back Infeasible from
+  its fourth stage. HiGHS presolve was rejecting a pinned stage that is feasible by
+  construction. `LpBackend._run` now re-solves such a stage once without presolve.
+  Only a stage that already failed takes that path, so no prior result moves.
+  Regression: `tests/test_factory_run.py`.
 
 ---
 

@@ -78,6 +78,18 @@ def test_a_declared_target_is_delivered_exactly_or_refused(tier3):
         F.run_inputs(_doc(target=tier3.scale * 2))
 
 
+@pytest.mark.parametrize("units", [5, 50, 1000])
+def test_a_fixed_rate_solves_at_any_bill_scale(units):
+    """Until 2026-11-17 a declared target_scale with bill units >= 5 came back
+    Infeasible from solve_portfolio's fourth stage (HiGHS presolve on a pinned,
+    feasible-by-construction stage). Fixed by Greg's decision: a pinned stage
+    that presolve calls infeasible is re-solved once without presolve."""
+    doc = _doc(tier=2, mix=("Desc_SpaceElevatorPart_1_C",), target=2.0 / units)
+    doc["goal_mix"][0]["units"] = units
+    run = F.run_inputs(doc)
+    assert dict(run.delivered)["Desc_SpaceElevatorPart_1_C"] == pytest.approx(2.0)
+
+
 # --- B2: supply at the highest mark the playthrough owns ----------------------
 
 def test_tier_three_has_only_mk1_miners(tier3):

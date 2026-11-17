@@ -433,6 +433,10 @@ class LpBackend:
     # -- solve ------------------------------------------------------------
 
     def _run(self, c, p: _Problem, extra_ub=None, extra_b=None, on_unbounded: str | None = None):
+        # A lexicographic stage carries pins (`extra_ub`) from earlier stages'
+        # optima, so it is feasible by construction: the previous optimum
+        # satisfies every pin within its slack.
+        pinned = extra_ub is not None
         # The power row, when present, is ALWAYS row 0 of A_ub, so its dual
         # is at a known index; stage constraints stack beneath it.
         if p.a_ub is not None:
@@ -442,6 +446,20 @@ class LpBackend:
             c, A_ub=extra_ub, b_ub=extra_b, A_eq=p.a_eq, b_eq=p.b_eq,
             bounds=p.bounds, method="highs",
         )
+        if result.status == 2 and pinned:
+            # HiGHS presolve can declare such a stage infeasible: measured
+            # 2026-11-17 on solve_portfolio with a declared target_scale
+            # (reframe A13) and bill units >= 5, stage 4 after a pinned stage 3
+            # (the same LP solves with presolve off, or with a tighter primal
+            # tolerance). Decided by Greg 2026-11-17 ("fix internal tie
+            # break"): retry once without presolve. Only a stage that already
+            # failed takes this path, so every plan that solved before solves
+            # identically; a first stage is never retried, so a genuinely
+            # infeasible request still raises.
+            result = linprog(
+                c, A_ub=extra_ub, b_ub=extra_b, A_eq=p.a_eq, b_eq=p.b_eq,
+                bounds=p.bounds, method="highs", options={"presolve": False},
+            )
         if result.status == 3 and on_unbounded:
             raise Unbounded(on_unbounded)
         if result.status == 2:

@@ -190,12 +190,10 @@ def to_factory_inputs(
     and the horizon it implies. The site, power mode and policy are the
     caller's declaration; nothing here picks a site.
 
-    Why proportions and not the raw bill: measured 2026-11-17, a fixed
-    `target_scale` with mix units of 5 or more comes back Infeasible from
-    `solve_portfolio`'s fourth stage while units of 3 or less solve (same
-    site, same rates; maximise mode is unaffected). That is a numerical
-    defect in the A13 path, recorded in docs/ARCHITECTURE.md §8 for Greg; it
-    is not worked around in the solver here."""
+    Proportions keep the scale readable (largest part = 1 unit). Until
+    2026-11-17 they also avoided a solve_portfolio defect with large bill
+    units under a fixed target (fixed in lp_backend._run that day).
+    """
     s = plan.scenario
     if s.input_amount_floor is not None:
         raise RunPlanError("factory-inputs/1 carries fluid_input_floor, not the legacy floor")
