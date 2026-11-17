@@ -23,7 +23,7 @@ kinds of question, in three tracks over one shared core:
 | Track | Question | Method | Status |
 |---|---|---|---|
 | **Site portfolio** | What can be made where, and how do the sites connect? | Supply-bounded LP over declared sites and claimed sockets | Built (`portfolio_run.py`, `site_planner_web/`) |
-| **Run planner** | What is next, and what would reaching a declared target take? | Demand-driven: a declared target and horizon give the rates, then the LP gives the plan | Planned (R9). Pieces exist (`schedule`, `goal_run`, `LpBackend.solve`) |
+| **Run planner** | What is next, and what would reaching a declared target take? | Demand-driven: a declared target and horizon give the rates, then the LP gives the plan | Built (R9: `run_plan.py` → `run-plan/1`; `to_factory_inputs` hands a step to the factory planner) |
 | **Factory planner** | What can this factory deliver from what it has? | Supply-driven, the default for the current factory: maximise a **declared** goal mix within available supply | Built (R7: `factory_run.py`, `factory-inputs/1` → `factory-plan/1`; R8: `progression.timeline`) |
 
 How the tracks connect:
@@ -126,7 +126,7 @@ module is not built yet.
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
 | `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused |
 | `factory-plan/1` | `factory_run.py --export` | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
-| `run-plan/1` | planned (R9) | — |
+| `run-plan/1` | `run_plan.py --export` | current (R9): horizon, one-machine ceiling, parts, blocked parts with their unlocks, plan, power diagnostic |
 
 Breaking changes bump the major version. Older versions are refused by name or
 migrated explicitly, never read as something else.
@@ -139,6 +139,7 @@ migrated explicitly, never read as something else.
 |---|---|---|
 | `portfolio_run.py`, `site_planner_web/`, `neighborhoods.py` | site portfolio | current |
 | `factory_run.py` | factory planner (supply side) | current (R7) |
+| `run_plan.py` | run planner (demand side) | current (R9) |
 | `production_cli.py` | core inspection (tiers, solve, compare) | current |
 | `demand_expansion_cli.py` (+ Netlify viewer, `netlify.toml`) | quantity datasets | current |
 | `phase_run.py` | demand-side phase pacing (goal-paced T) | **deprecated** (A15.3). Ideas ported into the run planner. Library pieces `goal_run`, `schedule`, `stock` stay in use |
@@ -186,7 +187,7 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | `satisfactory_route_tool/poi.py` reads `crash_site_requirements.csv` via its planner package | standalone spatial engine; POI scoring, no production maths | `tests/test_one_loader.py` |
 | `tests/` read reference tables raw | an independent oracle must not share the loader it checks | `tests/test_one_loader.py` docstring |
 | `research/` breaks repo rules | self-declared scratch; nothing in `tools/` imports it | `research/*/README.md` |
-| `demand_expansion` keeps its own recursive expansion beside the LP | different question (quantity totals, exact fractions, declared routes); role to be settled in R9 | A15.5 |
+| `demand_expansion` keeps its own recursive expansion beside the LP | different question (quantity totals, exact fractions, declared routes). The run planner uses the LP, not it (R9). Whether it stays beyond the Netlify viewer is Greg's call | A15.5 |
 
 ---
 
@@ -202,6 +203,13 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 - Scanned-but-unclaimed hard-drive offers and pool odds (A15.2 B5): deferred.
 - Storage withdrawals as declared events or rates (A15.2 Q6): deferred.
 - Physical layout, SFMD import, cross-district opportunity cost: deferred.
+- **Defect found in R9 (2026-11-17), not fixed:** `LpBackend.solve_portfolio` with a
+  declared `target_scale` (reframe A13) returns Infeasible from its fourth stage when
+  bill units are 5 or more, while units of 3 or less solve. Measured: Rocky district A,
+  tier 2, one Smart Plating line, `report_need` and `grid`. Maximise mode is unaffected.
+  The stage pins' 1e-9 relative tolerance does not scale with the bill coefficients.
+  Fixing it changes the core solver's tie-break tolerance, so it is Greg's call.
+  `run_plan.to_factory_inputs` sends proportions (largest unit 1), which avoids it.
 
 ---
 
@@ -218,4 +226,4 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | R6 | infrastructure marks + step-down policy | done |
 | R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | done |
 | R8 | timeline: storage-priority banks, PA duration | done |
-| R9 | run track (`run_plan`, `run-plan/1`) | planned |
+| R9 | run track (`run_plan`, `run-plan/1`) | done |
