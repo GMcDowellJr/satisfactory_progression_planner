@@ -51,7 +51,7 @@ factory-design specification is archived as a proposal.
 CLIENTS        site_planner_web (Pyodide: runs this repo's Python; no maths in JS)
 TRACKS         tools/*.py root joints, one versioned record each
 PROGRESSION    tools/progression      unlocks, pool, schedule, lag, stock, power, district
-                                      playthrough, availability (R5); planned: infrastructure, timeline
+                                      playthrough, availability (R5), infrastructure (R6); planned: timeline
 REALIZATION    tools/realization      buses, residual, realize: whole machines, clocks, belts
                                       (steady state per bus; may not become a solver)
 CORE           tools/production_adapter
@@ -103,7 +103,7 @@ module is not built yet.
 | Hard-drive pool | `progression.pool` (automatic entry) | LP §19 (carried) |
 | Playthrough state (milestones, research and alternates owned) | `progression.playthrough` (R5) | A15.2 |
 | Resource supply and socket claims | `site_card.load_sockets` (reader), `portfolio_run` (no double claim) | reframe A9, A10 |
-| Extractor and belt marks per socket and link | planned `progression.infrastructure` (R6) | A15.2 (B2, Q1) |
+| Extractor and belt marks per socket and link | `progression.infrastructure` (R6): policy `highest_then_step_down` | A15.2 (B2, Q1) |
 | Production solve | `lp_backend` | reframe A2, A3, A6, A13; LP record (carried as implementation) |
 | Byproducts | `lp_backend` FREE stopgap plus warnings | reframe A8.3 (used, not free overflow); mechanism **open** (A8.5) |
 | Whole machines, clocks, belts | `realization` | carried as implementation |
@@ -212,7 +212,7 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | R3 | this document, A15, archive index, deprecations | done |
 | R4 | solid floor 1 at sub-1× R; fluid floor declared | done (behaviour change recorded in its commit) |
 | R5 | playthrough + availability (milestone-level) | done |
-| R6 | infrastructure marks + step-down policy | planned |
+| R6 | infrastructure marks + step-down policy | done |
 | R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | planned |
 | R8 | timeline: storage-priority banks, PA duration | planned |
 | R9 | run track (`run_plan`, `run-plan/1`) | planned |

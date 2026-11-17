@@ -74,6 +74,7 @@ def test_the_scan_sees_every_module():
         "district.py",   # crossover A26/A27, 2026-10-08
         "playthrough.py",   # reframe A15.2 Q2, reconciliation R5, 2026-11-17
         "availability.py",  # reframe A15.2 Q2/B2/B5, reconciliation R5, 2026-11-17
+        "infrastructure.py",  # reframe A15.2 B2/Q1, reconciliation R6, 2026-11-17
     }
 
 
