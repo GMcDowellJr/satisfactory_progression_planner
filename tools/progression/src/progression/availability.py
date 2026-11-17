@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from production_adapter.contracts import AllowedRecipes, ItemId, ProducerClass, RecipeId, RecipeMode
 from production_adapter.gamedata import Capability, load_logistics, load_schematic_rows
 
-from .playthrough import PlaythroughState
+from .playthrough import RESEARCH_TYPE, PlaythroughState
 from .pool import PoolAvailability, available_at
 from .unlocks import (
     PROGRESSION_TYPES, UnlockDataError, extractors_open, generators_open, recipe_grants,
@@ -107,9 +107,13 @@ def availability(repo_root: str | pathlib.Path, state: PlaythroughState) -> Avai
         return s.schematic_id in owned
 
     research_owned = frozenset(state.research)
-    recipes, by_progression, by_research = recipe_grants(
+    recipes, by_progression, _ = recipe_grants(
         repo_root, lambda s: s.schematic_id in progression_owned)
     _, by_owned_research, _ = recipe_grants(repo_root, lambda s: s.schematic_id in research_owned)
+    # What SOME MAM schematic unlocks. Not recipe_grants' third set, which also
+    # holds hard-drive (EST_Alternate) grants: a later-band drive alternate is
+    # LOCKED (progression first), not MAM_RESEARCH (PR #15 review, 2026-11-17).
+    _, by_mam, _ = recipe_grants(repo_root, lambda s: s.schematic_type == RESEARCH_TYPE)
     base = {r for r, alt in recipes.items() if not alt}
     # Progression-type schematics grant base recipes only (the at_tier rule,
     # LP §18). Completed MAM research grants what it unlocks, alternate or not:
@@ -131,7 +135,7 @@ def availability(repo_root: str | pathlib.Path, state: PlaythroughState) -> Avai
             status[recipe_id] = RecipeStatus.OWNED
         elif is_alternate and recipe_id in in_pool:
             status[recipe_id] = RecipeStatus.IN_POOL
-        elif recipe_id in by_research or (is_alternate and recipe_id in pool.research_gated):
+        elif recipe_id in by_mam or (is_alternate and recipe_id in pool.research_gated):
             status[recipe_id] = RecipeStatus.MAM_RESEARCH
         else:
             status[recipe_id] = RecipeStatus.LOCKED

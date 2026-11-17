@@ -128,6 +128,16 @@ def test_research_recipes_are_owned_only_once_researched():
     assert after.status[COMPACTED_COAL] is RecipeStatus.OWNED
 
 
+def test_a_later_band_drive_alternate_is_locked_not_mam_research():
+    """Adhered Iron Plate is unlocked only by a hard-drive (EST_Alternate)
+    schematic and sits in a later pool band: progression comes first, so it is
+    LOCKED at tier 0 (Codex review on PR #15, 2026-11-17)."""
+    adhered = "Recipe_Alternate_AdheredIronPlate_C"
+    a = availability(REPO, playthrough(REPO, through_tier=0))
+    assert adhered in a.pool.not_yet
+    assert a.status[adhered] is RecipeStatus.LOCKED
+
+
 def test_late_recipes_are_locked_early_unless_research_reaches_them():
     """Tier-9 base recipes at tier 0: LOCKED, or MAM_RESEARCH where some MAM
     schematic also unlocks them (several converter recipes are). Never owned."""
