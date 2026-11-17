@@ -77,6 +77,7 @@ def test_the_scan_sees_every_module():
         "infrastructure.py",  # reframe A15.2 B2/Q1, reconciliation R6, 2026-11-17
         "timeline.py",  # reframe A15.2 B3/Q6, reconciliation R8, 2026-11-17
         "byproducts.py",  # reframe A16 (sink by default), 2026-11-17
+        "power_stack.py",  # reframe A18 (staged generation ledger), 2026-11-17
     }
 
 

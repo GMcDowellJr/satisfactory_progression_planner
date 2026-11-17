@@ -52,20 +52,22 @@ if str(REPO / "tools") not in sys.path:
 
 from production_adapter import OutputTarget, ResourceCap, Scenario, SolveRequest, load  # noqa: E402
 from production_adapter.gamedata import (  # noqa: E402
-    load_generators, load_project_assembly, load_schematic_rows, load_schematic_unlock_rows,
+    load_project_assembly, load_schematic_rows, load_schematic_unlock_rows,
 )
 from production_adapter.lp_backend import LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    PlaythroughState, RecipeStatus, availability, discover, generators_available, playthrough,
+    PlaythroughState, RecipeStatus, availability, discover, playthrough,
 )
 from progression.byproducts import Byproduct, ledger, report_lines  # noqa: E402
+from progression.power_stack import PowerStack, power_stack  # noqa: E402
+from progression.power_stack import report_lines as stack_lines  # noqa: E402
 
 PLAN_SCHEMA = "run-plan/1"
 
 def power_note(statistic: PowerStatistic) -> str:
-    return (f"power diagnostic: each generator and fuel alone covering the plan's machine power "
-            f"({PowerStatistic(statistic).value}, as declared); a fuel's own production power and "
-            "the extractors are not included")
+    return (f"power stack (reframe A18): the plan's machine power ({PowerStatistic(statistic).value}, "
+            "as declared), carried by the generator class obtained last, earlier classes as "
+            "backup; extractors and the fuel chains' own power are not in the need")
 
 
 class RunPlanError(ValueError):
@@ -94,14 +96,6 @@ class BlockedPart:
 
 
 @dataclass(frozen=True)
-class PowerOption:
-    generator_class: str
-    fuel_item_id: str
-    units: float
-    fuel_per_min: float
-
-
-@dataclass(frozen=True)
 class PhasePlan:
     phase: int
     state: PlaythroughState
@@ -112,7 +106,7 @@ class PhasePlan:
     parts: tuple[PartTarget, ...]
     blocked: tuple[BlockedPart, ...]
     response: object | None      # SolveResponse; None when a part is blocked
-    power_options: tuple[PowerOption, ...]
+    power_stack: PowerStack | None             # None when a part is blocked
     availability_report: str
     power_statistic: PowerStatistic
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
@@ -123,6 +117,7 @@ def plan_phase(
     horizon_min: float | None = None, horizon_fraction: float | None = None,
     power_statistic: PowerStatistic,
     fuel_byproducts: str,
+    standing_generators: dict[str, int] | None = None,
 ) -> PhasePlan:
     """`power_statistic` is required (AGENTS.md: no default; LP D2 deferred).
     `fuel_byproducts` is "power" or "package" (reframe A18), required."""
@@ -193,27 +188,21 @@ def plan_phase(
         for x in reach if not x.makeable)
 
     response = None
-    power_options: tuple[PowerOption, ...] = ()
+    stack: PowerStack | None = None
     byproducts: tuple[Byproduct, ...] = ()
     if not blocked:
         response = LpBackend(power_statistic=power_statistic).solve(SolveRequest(
             outputs=tuple(OutputTarget(p.item_id, p.rate_per_min) for p in parts),
             allowed_recipes=avail.allowed_recipes,
         ), data)
-        need = response.power.scenario_mw
-        rows_g = load_generators(repo)
-        classes = tuple(dict.fromkeys(g.generator_class for g in rows_g))
-        open_classes = generators_available(repo, state, classes)
-        power_options = tuple(
-            PowerOption(g.generator_class, g.fuel_item_id, need / g.power_mw,
-                        need / g.power_mw * g.burn_rate_per_min)
-            for g in rows_g if g.generator_class in open_classes and g.power_mw > 0)
+        stack = power_stack(repo, data, state, response.power.scenario_mw,
+                            avail.recipe_ids, standing_generators)
         byproducts = ledger(repo, data, state, response.items,
                             {p.item_id: p.rate_per_min for p in parts},
                             owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts)
 
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
-                     blocked, response, power_options, avail.report(),
+                     blocked, response, stack, avail.report(),
                      PowerStatistic(power_statistic), byproducts)
 
 
@@ -261,6 +250,7 @@ def to_factory_inputs(
         "target_scale": (largest / plan.horizon_min) if fixed_rate else None,
         "infrastructure_policy": infrastructure_policy,
         "fuel_byproducts": fuel_byproducts,
+        "standing_generators": {},
     }
 
 
@@ -281,7 +271,7 @@ def record(plan: PhasePlan) -> dict:
         "machines": [] if r is None else [dataclasses.asdict(x) for x in r.machines],
         "power_mw": None if r is None else r.power.scenario_mw,
         "power_statistic": plan.power_statistic.value,
-        "power_options": [dataclasses.asdict(o) for o in plan.power_options],
+        "power_stack": None if plan.power_stack is None else dataclasses.asdict(plan.power_stack),
         "byproducts": [dataclasses.asdict(b) for b in plan.byproducts],
         "notes": [power_note(plan.power_statistic)],
     }
@@ -305,9 +295,7 @@ def report(plan: PhasePlan) -> str:
                      f"({plan.power_statistic.value})")
         for x in plan.response.raw_inputs:
             lines.append(f"  raw {x.item_id}: {x.rate_per_min:.4g}/min")
-        for o in plan.power_options:
-            lines.append(f"  power alone: {o.units:.2f} x {o.generator_class} on "
-                         f"{o.fuel_item_id} at {o.fuel_per_min:.4g}/min")
+        lines += stack_lines(plan.power_stack)
         lines.append(f"  note: {power_note(plan.power_statistic)}")
     lines += report_lines(plan.byproducts)
     lines.append("  " + plan.availability_report.replace("\n", "\n  "))
@@ -333,6 +321,8 @@ def main(argv=None) -> int:
                     help="which end of a variable-power recipe's range (no default: LP D2)")
     ap.add_argument("--fuel-byproducts", required=True, choices=["power", "package"],
                     help="leftover fuel to generators, or packaged (reframe A18)")
+    ap.add_argument("--standing", action="append", default=[], metavar="CLASS=N",
+                    help="generators already built, by class (backup capacity, reframe A18)")
     ap.add_argument("--export", type=pathlib.Path)
     args = ap.parse_args(argv)
     state = playthrough(REPO, through_tier=args.through_tier, milestones=args.milestone,
@@ -344,7 +334,9 @@ def main(argv=None) -> int:
     plan = plan_phase(REPO, state=state, scenario=scenario, phase=args.phase,
                       horizon_min=args.horizon_min, horizon_fraction=args.horizon_fraction,
                       power_statistic=PowerStatistic(args.power_statistic),
-                      fuel_byproducts=args.fuel_byproducts)
+                      fuel_byproducts=args.fuel_byproducts,
+                      standing_generators={k: int(v) for k, v in
+                                           (s.split("=", 1) for s in args.standing)})
     print(report(plan))
     if args.export:
         args.export.write_text(json.dumps(record(plan), indent=1, default=str) + "\n",

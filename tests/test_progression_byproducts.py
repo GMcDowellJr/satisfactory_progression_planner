@@ -109,7 +109,7 @@ def test_the_factory_track_reports_its_by_products():
         "goal_mix": [{"item_id": PLASTIC, "units": 1}], "goal": "balanced",
         "power_mode": "report_need", "power_statistic": "mean", "grid_mw": 0.0, "spare_mw": 0.0, "target_scale": None,
         "infrastructure_policy": "highest_then_step_down",
-        "fuel_byproducts": "power",
+        "fuel_byproducts": "power", "standing_generators": {},
     }
     run = F.run_inputs(doc)
     (hor,) = run.byproducts
@@ -166,7 +166,7 @@ def test_in_grid_mode_burned_fuel_is_not_a_leftover():
         "goal_mix": [{"item_id": PLASTIC, "units": 1}], "goal": "balanced",
         "power_mode": "grid", "power_statistic": "mean", "grid_mw": 0.0, "spare_mw": 0.0,
         "target_scale": None, "infrastructure_policy": "highest_then_step_down",
-        "fuel_byproducts": "power",
+        "fuel_byproducts": "power", "standing_generators": {},
     }
     run = F.run_inputs(doc)
     # measured 2026-11-17: the site makes Fuel and burns ~27/min of it

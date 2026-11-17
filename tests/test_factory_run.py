@@ -51,7 +51,7 @@ def _doc(*, tier=3, milestones=(), sockets=ROCKY_A, mix=MIX, target=None, mode="
         "goal": "balanced", "power_mode": mode, "power_statistic": "mean",
         "grid_mw": 0.0, "spare_mw": 0.0,
         "target_scale": target, "infrastructure_policy": "highest_then_step_down",
-        "fuel_byproducts": "power",
+        "fuel_byproducts": "power", "standing_generators": {},
     }
 
 
@@ -222,3 +222,16 @@ def test_a_socket_is_capped_by_the_lane_it_can_feed(tier, milestones, rate, mine
     (p,) = run.sockets
     assert run.scale == pytest.approx(rate)
     assert (p.mark.chosen.extractor_class, p.lane.lanes, p.lane.mark.mark) == (miner, 1, belt)
+
+
+def test_report_need_carries_the_power_stack_and_grid_does_not(tier3):
+    """Reframe A18: in report_need the stack covers the factory's need; in grid
+    mode the solve already chose its generators (A3)."""
+    stack = tier3.power_stack
+    assert stack is not None and stack.need_mw == pytest.approx(tier3.power.need_mw)
+    assert [l.role for l in stack.lines][-1] == "primary"
+    assert F.record(tier3)["power_stack"]["need_mw"] == pytest.approx(stack.need_mw)
+    d = _doc(tier=4)
+    d["power_mode"] = "grid"
+    d["grid_mw"] = 10000.0
+    assert F.run_inputs(d).power_stack is None

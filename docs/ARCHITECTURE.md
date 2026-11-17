@@ -3,7 +3,7 @@
 - Status: **current.** This file is corrected in place when the architecture
   changes. Decision records stay immutable and are amended forward; this
   document says which of them govern.
-- Adopted: site-planner reframe Amendments 15–17 (decided by Greg, 2026-11-17).
+- Adopted: site-planner reframe Amendments 15–18 (decided by Greg, 2026-11-17).
 - Last revised: 2026-11-17 (architecture reconciliation R3).
 - Scope: the whole repository. `planning_data/ARCHITECTURE.md` covers the data
   layout only.
@@ -107,7 +107,8 @@ module is not built yet.
 | Production solve | `lp_backend` | reframe A2, A3, A6, A13; LP record (carried as implementation) |
 | Byproducts | used by the solve where useful; leftovers disposed of by `progression.byproducts`: solids with sink points → AWESOME Sink, solids without (nuclear waste) `unsinkable`, Fuel → generators or packaged for storage with overflow to the sink (declared `fuel_byproducts`, A18), HOR → Residual Fuel → that route, other fluids `needs_packaging`; generator fuel, water and waste folded in first | reframe A8.3, **A16**, **A17** |
 | Whole machines, clocks, belts | `realization` | carried as implementation |
-| Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11; staged generation ledger **proposed** for the run and factory tracks (A16.3, questions P1–P4) |
+| Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11 |
+| Power stack (run and factory tracks) | `progression.power_stack`: generators in the order obtained, last obtained is primary, earlier classes backup up to their declared standing units, hand-gathered biofuel chain | reframe **A18** |
 | Power, report side | `progression.power.ledger` | tests only; candidate for retirement (open) |
 | PA demand | `gamedata.load_project_assembly` → `district.compose_bill` / `stock` | demand A1 |
 | PA pacing (bill ÷ T) | `progression.schedule` | carried as implementation, demand-side only |
@@ -124,7 +125,7 @@ module is not built yet.
 | `portfolio-plan/1` | `portfolio_run --export`, worker | current; its echoed scenario gained `fluid_input_floor` (additive, R4) |
 | `neighborhoods/1` | `neighborhoods.py` | current |
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
-| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused; `power_statistic` and `fuel_byproducts` declared (no default) |
+| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused; `power_statistic`, `fuel_byproducts` and `standing_generators` declared |
 | `factory-plan/1` | `factory_run.py --export` | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
 | `run-plan/1` | `run_plan.py --export` | current (R9): horizon, one-machine ceiling, parts, blocked parts with their unlocks, plan, power diagnostic |
 
@@ -165,6 +166,7 @@ Current, in force:
   - **A16** (2026-11-17: tie-break fix, by-products to the sink, withdrawals ignored,
     viewers are tests; power ledger proposed);
   - **A17** (2026-11-17: fluid by-products converted or burned before the sink);
+  - **A18** (2026-11-17: fuel routes, disposal never offsets the need, power stack);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).
@@ -196,11 +198,9 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 
 ## 8. Open questions (Greg's to decide; nothing in code settles them)
 
-- Power: the staged generation ledger proposed in reframe A16.3 needs answers to
-  P1–P4. Separately, whether `power.ledger` is retired.
-- By-products (reframe A17.2): which by-product of the HOR conversion was meant
-  (Residual Fuel has none), and whether the disposal power should offset the plan's
-  need (it belongs with the power ledger).
+- Power: whether the primary's fuel should be checked against the factory's supply
+  (A18.2), and whether `power.ledger` is retired.
+- By-products: settled by A16–A18. Packaging canisters' source is not modelled.
 - The fluid floor unit at sub-1× R (demand A5.2): needs the 0.25× Plastic read.
 - Milestone ordering inside a phase (A15.2 Q2): milestones need not be taken in
   order, or at all. Availability takes a declared set, so this is a UI

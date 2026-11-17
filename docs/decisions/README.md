@@ -14,7 +14,7 @@ forward.
 
 | Record | What governs |
 |---|---|
-| `site_planner_reframe.md` | §1–§5; A1–A11, A13, A14; **A15** (tracks, one specification, B1–B5, Q1–Q6); **A16** (tie-break, by-products to the sink, withdrawals ignored, viewers are tests; power proposed); **A17** (fluid by-products converted or burned). A12: Greg's stated facts in A12.2 only; A12.3 is a proposal |
+| `site_planner_reframe.md` | §1–§5; A1–A11, A13, A14; **A15** (tracks, one specification, B1–B5, Q1–Q6); **A16** (tie-break, by-products to the sink, withdrawals ignored, viewers are tests; power proposed); **A17** (fluid by-products converted or burned); **A18** (fuel routes, no offset, power stack). A12: Greg's stated facts in A12.2 only; A12.3 is a proposal |
 | `demand_expansion_scope_and_site_capacity.md` | A5 (sub-1× floor reads) and A6 (R does not scale milestone or MAM costs) only; the rest is archived |
 
 ## Archived (historical evidence)

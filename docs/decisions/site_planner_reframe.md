@@ -1122,3 +1122,65 @@ Measured (container): oil nodes 100 and 14_609, tier 5.
 - **Disposal is a report**, not part of the solve. The power it yields does
   not yet offset the plan's own need. Doing that would put the fuel loop in
   the solve, and it belongs with the power-ledger proposal (A16.3).
+
+## Amendment 18 — 2026-11-17. Fuel routes; disposal never offsets the need; the power stack
+
+### A18.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+- **Fuel.** "all fuel goes to generator or gets packaged for use [in]
+  recipes that require unpacking or storage (with overflow to sink) for
+  jet-pack and vehicles."
+  - Built as a declared route, `fuel_byproducts` = `power` | `package`,
+    required in factory-inputs/1 and run_plan.
+  - `package` uses the packager recipe per fuel and reports the Empty
+    Canisters it takes (their source is not modelled).
+  - The packaged fuel is then stored, with the overflow to the sink.
+- **Disposal and the plan's need.** "let's not have it reduce the plans own
+  power need." Disposal power and the power stack are reports; neither nets
+  the plan's need. This answers A17.2's third point.
+- **Heavy Oil Residue and resin.** Greg thought every HOR recipe made resin
+  as a by-product. Read 2026-11-17: Polymer Resin comes from the crude
+  recipes that make HOR or Fuel (the Fuel recipe, and the Heavy Oil Residue
+  and Polymer Resin alternates), not from the HOR conversions (Residual Fuel
+  60 HOR → 40 Fuel, no by-product). That resin is a solid with sink points,
+  so it already goes to the sink. Nothing changed.
+- **Power: answers to A16.3's questions.**
+  - **P1:** "generator order in order obtained per tier/phase."
+  - **P2:** "backup means if power demand spikes above what coal or other
+    provides the bioburners turn [on and] produce power to compensate up to
+    its max before the power grid turns off."
+  - **P3:** "leaves/wood gathered by hand - converted to biomass then biofuel
+    through constructors."
+
+### A18.2 Built: `progression.power_stack` (Claude's reading; Greg may reverse it)
+
+- **The order** comes from the data: the tier of the schematic that unlocks
+  each generator's build recipe.
+
+  | Generator | Unlocked by | Tier |
+  |---|---|---|
+  | Biomass Burner | HUB Upgrade 6 | 0 |
+  | Coal | Coal Power | 3 |
+  | Fuel | Petroleum Power | 5 |
+  | Nuclear | Nuclear Power | 8 |
+
+- **The class obtained last is primary.** It carries the need in whole units,
+  with each fuel's feed and its Water listed; none is chosen.
+- **Every earlier class is backup.**
+  - Its units are the declared `standing_generators`, the ones built in
+    earlier phases.
+  - Its full output is the spike headroom before the grid trips.
+- **Solid Biofuel** gives, per hand-gathered source (Leaves, Wood), the
+  amount by hand per minute and the Biomass and Biofuel constructors, with
+  their P-scaled draw. That draw is not added to the need.
+- **Reports:** run_plan always reports the stack; factory_run reports it in
+  report_need mode. In grid mode the solve's own generators stand (A3). The
+  old "each generator alone" diagnostic in run_plan is removed; there is one
+  power view.
+- **P4 (the 5× case)** follows: with P = 5 the need is five times larger, so
+  more primary units are built and the backup headroom is a smaller share
+  of it.
+- **Not modelled:**
+  - whether the primary's fuel is available at the factory;
+  - Mycelia and Alien Protein biomass;
+  - clocking burners down.

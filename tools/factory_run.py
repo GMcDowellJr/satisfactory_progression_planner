@@ -64,6 +64,8 @@ from progression.byproducts import (  # noqa: E402
     FUEL_ROUTES, Byproduct, ledger, report_lines, with_generators,
 )
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
+from progression.power_stack import PowerStack, power_stack  # noqa: E402
+from progression.power_stack import report_lines as stack_lines  # noqa: E402
 from progression.infrastructure import (  # noqa: E402
     POLICIES, BeltChoice, MarkChoice, belt_for, extractor_options, highest_extractor,
     step_down_extractor,
@@ -76,7 +78,7 @@ INPUTS_SCHEMA = "factory-inputs/1"
 PLAN_SCHEMA = "factory-plan/1"
 INPUT_KEYS = ("schema", "world_config_id", "playthrough", "scenario", "site", "goal_mix",
               "goal", "power_mode", "power_statistic", "grid_mw", "spare_mw", "target_scale",
-              "infrastructure_policy", "fuel_byproducts")
+              "infrastructure_policy", "fuel_byproducts", "standing_generators")
 PLAYTHROUGH_KEYS = ("through_tier", "milestones", "research", "alternates")
 SITE_KEYS = ("label", "socket_ids", "supply", "pumps_water")
 SCENARIO_KEYS = ("recipe_input_multiplier", "machine_power_multiplier",
@@ -125,6 +127,7 @@ class FactoryRun:
     availability_report: str
     warnings: tuple[str, ...]
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
+    power_stack: PowerStack | None = None    # reframe A18; report_need mode only
 
 
 def _keys(where: str, doc, keys) -> None:
@@ -180,7 +183,8 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> FactoryRun:
         goal_mix=tuple((m["item_id"], m["units"]) for m in mix), goal=doc["goal"],
         power_mode=doc["power_mode"], grid_mw=doc["grid_mw"], spare_mw=doc["spare_mw"],
         target_scale=doc["target_scale"], policy=doc["infrastructure_policy"],
-        power_statistic=power_statistic, fuel_byproducts=doc["fuel_byproducts"], inputs=doc,
+        power_statistic=power_statistic, fuel_byproducts=doc["fuel_byproducts"],
+        standing_generators=doc["standing_generators"], inputs=doc,
     )
 
 
@@ -189,7 +193,8 @@ def run_factory(
     socket_ids: tuple[str, ...], supply: tuple[tuple[str, float], ...], pumps_water: bool,
     goal_mix: tuple[tuple[str, float], ...], goal: str, power_mode: str, grid_mw: float,
     spare_mw: float, target_scale: float | None, policy: str,
-    power_statistic: PowerStatistic, fuel_byproducts: str, inputs: dict | None = None,
+    power_statistic: PowerStatistic, fuel_byproducts: str,
+    standing_generators: dict[str, int] | None = None, inputs: dict | None = None,
 ) -> FactoryRun:
     if policy not in POLICIES:
         raise FactoryRunError(f"infrastructure policy {policy!r}; known: {list(POLICIES)}")
@@ -343,6 +348,10 @@ def run_factory(
                           with_generators(plan.plan.items, plan.generators, generators),
                           {i: units * response.scale for i, units in goal_mix},
                           owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts),
+        # A18: in report_need the need is the plan's (machines + extraction by
+        # the draw); in grid mode the solve already chose its generators (A3)
+        power_stack=(power_stack(repo, data, state, response.power.need_mw, avail.recipe_ids,
+                                 standing_generators) if need else None),
     )
 
 
@@ -372,6 +381,7 @@ def record(run: FactoryRun) -> dict:
         "power_mode": run.power_mode,
         "power": None if run.power is None else dataclasses.asdict(run.power),
         "byproducts": [dataclasses.asdict(b) for b in run.byproducts],
+        "power_stack": None if run.power_stack is None else dataclasses.asdict(run.power_stack),
         "warnings": list(run.warnings),
     }
 
@@ -389,6 +399,8 @@ def report(run: FactoryRun) -> str:
     lines.append(f"  extraction {run.extraction_mw_chosen:.4g} MW after step-down "
                  f"({run.extraction_mw_highest:.4g} MW at the highest marks), by the draw")
     lines += report_lines(run.byproducts)
+    if run.power_stack is not None:
+        lines += stack_lines(run.power_stack)
     lines.append("  " + run.availability_report.replace("\n", "\n  "))
     lines += [f"  note: {w}" for w in run.warnings]
     return "\n".join(lines)

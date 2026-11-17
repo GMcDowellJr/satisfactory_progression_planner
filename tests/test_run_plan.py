@@ -110,7 +110,10 @@ def test_a_blocked_part_names_the_unlock_it_waits_on():
 def test_buying_the_milestone_unblocks_it():
     plan = _plan(phase=2, tier=3, milestones=["Schematic_4-1_C"], horizon_fraction=0.25)
     assert not plan.blocked and plan.response is not None
-    assert plan.power_options   # a labelled diagnostic, one row per open (generator, fuel)
+    # reframe A18: coal (obtained last) carries the need; the burner is backup
+    roles = [(l.generator_class, l.role) for l in plan.power_stack.lines]
+    assert roles == [("Build_GeneratorBiomass_Automated_C", "backup"),
+                     ("Build_GeneratorCoal_C", "primary")]
 
 
 # --- the hand-off to the factory track (A1) ------------------------------------
