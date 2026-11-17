@@ -62,8 +62,10 @@ from progression.byproducts import Byproduct, ledger, report_lines  # noqa: E402
 
 PLAN_SCHEMA = "run-plan/1"
 
-POWER_NOTE = ("power diagnostic: each generator and fuel alone covering the plan's machine power "
-              "(mean); a fuel's own production power and the extractors are not included")
+def power_note(statistic: PowerStatistic) -> str:
+    return (f"power diagnostic: each generator and fuel alone covering the plan's machine power "
+            f"({PowerStatistic(statistic).value}, as declared); a fuel's own production power and "
+            "the extractors are not included")
 
 
 class RunPlanError(ValueError):
@@ -106,6 +108,7 @@ class PhasePlan:
     response: object | None      # SolveResponse; None when a part is blocked
     power_options: tuple[PowerOption, ...]
     availability_report: str
+    power_statistic: PowerStatistic
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
 
 
@@ -179,7 +182,8 @@ def plan_phase(
                             owned_recipes=avail.recipe_ids)
 
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
-                     blocked, response, power_options, avail.report(), byproducts)
+                     blocked, response, power_options, avail.report(),
+                     PowerStatistic(power_statistic), byproducts)
 
 
 def to_factory_inputs(
@@ -243,9 +247,10 @@ def record(plan: PhasePlan) -> dict:
         "raw_inputs": [] if r is None else [dataclasses.asdict(x) for x in r.raw_inputs],
         "machines": [] if r is None else [dataclasses.asdict(x) for x in r.machines],
         "power_mw": None if r is None else r.power.scenario_mw,
+        "power_statistic": plan.power_statistic.value,
         "power_options": [dataclasses.asdict(o) for o in plan.power_options],
         "byproducts": [dataclasses.asdict(b) for b in plan.byproducts],
-        "notes": [POWER_NOTE],
+        "notes": [power_note(plan.power_statistic)],
     }
 
 
@@ -261,13 +266,14 @@ def report(plan: PhasePlan) -> str:
                         for rid, st, via in b.producers)
         lines.append(f"  BLOCKED {b.item_id}: {how}")
     if plan.response is not None:
-        lines.append(f"  machines' power {plan.response.power.scenario_mw:.4g} MW (mean)")
+        lines.append(f"  machines' power {plan.response.power.scenario_mw:.4g} MW "
+                     f"({plan.power_statistic.value})")
         for x in plan.response.raw_inputs:
             lines.append(f"  raw {x.item_id}: {x.rate_per_min:.4g}/min")
         for o in plan.power_options:
             lines.append(f"  power alone: {o.units:.2f} x {o.generator_class} on "
                          f"{o.fuel_item_id} at {o.fuel_per_min:.4g}/min")
-        lines.append(f"  note: {POWER_NOTE}")
+        lines.append(f"  note: {power_note(plan.power_statistic)}")
     lines += report_lines(plan.byproducts)
     lines.append("  " + plan.availability_report.replace("\n", "\n  "))
     return "\n".join(lines)

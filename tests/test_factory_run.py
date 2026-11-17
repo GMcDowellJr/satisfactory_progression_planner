@@ -192,3 +192,13 @@ def test_missing_and_unknown_keys_are_refused():
     d["extra"] = 1
     with pytest.raises(F.FactoryRunError, match="not known"):
         F.run_inputs(d)
+
+
+def test_pumped_water_needs_the_water_extractor():
+    """Codex on PR #15: Water Extractors come with Coal Power (tier 3); a
+    state without it cannot pump Water."""
+    d = _doc(tier=2)
+    d["site"]["pumps_water"] = True
+    d["power_mode"] = "grid"
+    with pytest.raises(F.FactoryRunError, match="Build_WaterPump_C is not unlocked"):
+        F.run_inputs(d)

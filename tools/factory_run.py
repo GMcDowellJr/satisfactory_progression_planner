@@ -61,7 +61,7 @@ from progression import (  # noqa: E402
     site_extraction,
 )
 from progression.byproducts import Byproduct, ledger, report_lines, with_generators  # noqa: E402
-from progression.district import WATER  # noqa: E402
+from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
 from progression.infrastructure import (  # noqa: E402
     POLICIES, BeltChoice, MarkChoice, belt_for, extractor_options, highest_extractor,
     step_down_extractor,
@@ -198,6 +198,11 @@ def run_factory(
 
     data = load(repo, scenario)
     avail = availability(repo, state)
+    if pumps_water and WATER_EXTRACTOR not in avail.extractors.get(WATER, ()):
+        # Codex on PR #15: pumped Water is charged as Water Extractors (reframe
+        # A4), so the state must own one; it comes with Coal Power.
+        raise FactoryRunError(f"pumps_water: {WATER_EXTRACTOR} is not unlocked in this "
+                              "playthrough state; the plan could not be built")
     _, rates = load_logistics(repo)
     tables = load_power_tables(repo)
     sockets = site_card.load_sockets(repo, world_config_id)

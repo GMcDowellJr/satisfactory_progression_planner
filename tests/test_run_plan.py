@@ -159,3 +159,15 @@ def test_the_power_statistic_has_no_default():
 def test_a_bad_target_is_refused(kw, match):
     with pytest.raises(R.RunPlanError, match=match):
         _plan(**kw)
+
+
+def test_the_declared_statistic_is_kept_and_labelled():
+    """Codex on PR #15: a max-statistic plan was labelled "mean"."""
+    from production_adapter.lp_backend import PowerStatistic
+    state = playthrough(REPO, through_tier=2)
+    plan = R.plan_phase(REPO, state=state, scenario=Scenario(), phase=1,
+                        horizon_fraction=1.0, power_statistic=PowerStatistic.MAX)
+    assert plan.power_statistic is PowerStatistic.MAX
+    rec = R.record(plan)
+    assert rec["power_statistic"] == "max" and "(max, as declared)" in rec["notes"][0]
+    assert "MW (max)" in R.report(plan) and "(mean)" not in R.report(plan)
