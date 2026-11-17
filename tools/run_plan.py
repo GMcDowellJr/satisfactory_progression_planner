@@ -58,7 +58,7 @@ from production_adapter.lp_backend import LpBackend, PowerStatistic  # noqa: E40
 from progression import (  # noqa: E402
     PlaythroughState, RecipeStatus, availability, discover, generators_available, playthrough,
 )
-from progression.byproducts import Byproduct, ledger  # noqa: E402
+from progression.byproducts import Byproduct, ledger, report_lines  # noqa: E402
 
 PLAN_SCHEMA = "run-plan/1"
 
@@ -174,7 +174,8 @@ def plan_phase(
                         need / g.power_mw * g.burn_rate_per_min)
             for g in rows_g if g.generator_class in open_classes and g.power_mw > 0)
         byproducts = ledger(repo, data, state, response.items,
-                            {p.item_id: p.rate_per_min for p in parts})
+                            {p.item_id: p.rate_per_min for p in parts},
+                            owned_recipes=avail.recipe_ids)
 
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
                      blocked, response, power_options, avail.report(), byproducts)
@@ -264,8 +265,7 @@ def report(plan: PhasePlan) -> str:
             lines.append(f"  power alone: {o.units:.2f} x {o.generator_class} on "
                          f"{o.fuel_item_id} at {o.fuel_per_min:.4g}/min")
         lines.append(f"  note: {POWER_NOTE}")
-    for b in plan.byproducts:
-        lines.append(f"  by-product {b.item_id}: {b.rate_per_min:.4g}/min -> {b.disposition}")
+    lines += report_lines(plan.byproducts)
     lines.append("  " + plan.availability_report.replace("\n", "\n  "))
     return "\n".join(lines)
 

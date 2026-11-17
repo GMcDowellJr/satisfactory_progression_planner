@@ -3,7 +3,7 @@
 - Status: **current.** This file is corrected in place when the architecture
   changes. Decision records stay immutable and are amended forward; this
   document says which of them govern.
-- Adopted: site-planner reframe Amendments 15 and 16 (decided by Greg, 2026-11-17).
+- Adopted: site-planner reframe Amendments 15–17 (decided by Greg, 2026-11-17).
 - Last revised: 2026-11-17 (architecture reconciliation R3).
 - Scope: the whole repository. `planning_data/ARCHITECTURE.md` covers the data
   layout only.
@@ -105,7 +105,7 @@ module is not built yet.
 | Resource supply and socket claims | `site_card.load_sockets` (reader), `portfolio_run` (no double claim) | reframe A9, A10 |
 | Extractor and belt marks per socket and link | `progression.infrastructure` (R6): policy `highest_then_step_down` | A15.2 (B2, Q1) |
 | Production solve | `lp_backend` | reframe A2, A3, A6, A13; LP record (carried as implementation) |
-| Byproducts | used by the solve where useful; leftovers reported by `progression.byproducts` (solids → AWESOME Sink, fluids named) | reframe A8.3, **A16** (sink by default); fluid leftovers **open** (A16.2) |
+| Byproducts | used by the solve where useful; leftovers disposed of by `progression.byproducts`: solids → AWESOME Sink, Fuel → power, HOR → Residual Fuel → power, other fluids `needs_packaging` | reframe A8.3, **A16**, **A17** |
 | Whole machines, clocks, belts | `realization` | carried as implementation |
 | Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11; staged generation ledger **proposed** for the run and factory tracks (A16.3, questions P1–P4) |
 | Power, report side | `progression.power.ledger` | tests only; candidate for retirement (open) |
@@ -164,6 +164,7 @@ Current, in force:
   - **A15** (2026-11-17: this architecture, the two tracks, B1–B5, Q1–Q6);
   - **A16** (2026-11-17: tie-break fix, by-products to the sink, withdrawals ignored,
     viewers are tests; power ledger proposed);
+  - **A17** (2026-11-17: fluid by-products converted or burned before the sink);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).
@@ -197,8 +198,9 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 
 - Power: the staged generation ledger proposed in reframe A16.3 needs answers to
   P1–P4. Separately, whether `power.ledger` is retired.
-- Fluid by-products (reframe A16.2): package and sink, refuse, or keep naming them.
-  Solids go to the AWESOME Sink by default (A16.1).
+- By-products (reframe A17.2): which by-product of the HOR conversion was meant
+  (Residual Fuel has none), and whether the disposal power should offset the plan's
+  need (it belongs with the power ledger).
 - The fluid floor unit at sub-1× R (demand A5.2): needs the 0.25× Plastic read.
 - Milestone ordering inside a phase (A15.2 Q2): milestones need not be taken in
   order, or at all. Availability takes a declared set, so this is a UI

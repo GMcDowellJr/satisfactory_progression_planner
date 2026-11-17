@@ -1083,3 +1083,42 @@ Questions this proposal needs answered before it is built:
   claimed nodes (charged against its caps) or a declared external supply?
 - **P4.** Is the 5P reading right? With P = 5, coal is not enough on its
   own, so biomass carries load instead of standing by.
+
+## Amendment 17 — 2026-11-17. Fluid by-products: converted or burned before the sink
+
+### A17.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+"Fluids need to be converted or packaged before they can go to sink. Fuel gets
+used for power. Heavy oil residue gets converted to fuel and the byproduct of
+that conversion goes to sink." This answers A16.2's open fluid question.
+
+Built in `progression.byproducts`. The ledger is now a chain:
+- **Fuel** goes to power: Fuel Generators, units and MW.
+- **Heavy Oil Residue** converts through `Recipe_ResidualFuel_C` (one Oil
+  Refinery takes 60 and makes 40 Fuel), and its products are disposed of in
+  turn: Fuel to power, any solid to the AWESOME Sink.
+- **A step whose recipe, generator or sink is not unlocked** is named
+  `*_not_owned` / `sink_not_unlocked`.
+- **Any other fluid** is `needs_packaging`. Packaging is not modelled.
+
+Conversion refineries are reported with their machine count and P-scaled MW
+drawn. Generators are reported with units and MW generated.
+
+Measured (container): oil nodes 100 and 14_609, tier 5.
+- Plastic: 80 HOR/min → 1.33 Residual Fuel refineries (40 MW) → 53.3
+  Fuel/min → 2.67 Fuel Generators, 666.7 MW.
+- Rubber: twice those figures.
+
+### A17.2 Claude's reading (Greg may reverse any of it)
+
+- **Residual Fuel has no by-product** in the reference layer (60 HOR → 40
+  Fuel). So "the byproduct of that conversion goes to sink" sends nothing
+  from that step. The rule stays general: any solid a declared conversion
+  makes goes to the sink. The by-product Greg had in mind may be something
+  else, for example Polymer Resin from the Fuel recipe on Crude, or Petroleum
+  Coke from HOR. That is to confirm.
+- **"Fuel gets used for power" is applied to every fluid an owned generator
+  burns**: Fuel, Turbofuel, Liquid Biofuel.
+- **Disposal is a report**, not part of the solve. The power it yields does
+  not yet offset the plan's own need. Doing that would put the fuel loop in
+  the solve, and it belongs with the power-ledger proposal (A16.3).
