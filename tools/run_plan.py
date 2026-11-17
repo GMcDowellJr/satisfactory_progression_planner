@@ -58,6 +58,7 @@ from production_adapter.lp_backend import LpBackend, PowerStatistic  # noqa: E40
 from progression import (  # noqa: E402
     PlaythroughState, RecipeStatus, availability, discover, generators_available, playthrough,
 )
+from progression.byproducts import Byproduct, ledger  # noqa: E402
 
 PLAN_SCHEMA = "run-plan/1"
 
@@ -105,6 +106,7 @@ class PhasePlan:
     response: object | None      # SolveResponse; None when a part is blocked
     power_options: tuple[PowerOption, ...]
     availability_report: str
+    byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
 
 
 def plan_phase(
@@ -157,6 +159,7 @@ def plan_phase(
 
     response = None
     power_options: tuple[PowerOption, ...] = ()
+    byproducts: tuple[Byproduct, ...] = ()
     if not blocked:
         response = LpBackend(power_statistic=power_statistic).solve(SolveRequest(
             outputs=tuple(OutputTarget(p.item_id, p.rate_per_min) for p in parts),
@@ -170,9 +173,11 @@ def plan_phase(
             PowerOption(g.generator_class, g.fuel_item_id, need / g.power_mw,
                         need / g.power_mw * g.burn_rate_per_min)
             for g in rows_g if g.generator_class in open_classes and g.power_mw > 0)
+        byproducts = ledger(repo, data, state, response.items,
+                            {p.item_id: p.rate_per_min for p in parts})
 
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
-                     blocked, response, power_options, avail.report())
+                     blocked, response, power_options, avail.report(), byproducts)
 
 
 def to_factory_inputs(
@@ -235,6 +240,7 @@ def record(plan: PhasePlan) -> dict:
         "machines": [] if r is None else [dataclasses.asdict(x) for x in r.machines],
         "power_mw": None if r is None else r.power.scenario_mw,
         "power_options": [dataclasses.asdict(o) for o in plan.power_options],
+        "byproducts": [dataclasses.asdict(b) for b in plan.byproducts],
         "notes": [POWER_NOTE],
     }
 
@@ -258,6 +264,8 @@ def report(plan: PhasePlan) -> str:
             lines.append(f"  power alone: {o.units:.2f} x {o.generator_class} on "
                          f"{o.fuel_item_id} at {o.fuel_per_min:.4g}/min")
         lines.append(f"  note: {POWER_NOTE}")
+    for b in plan.byproducts:
+        lines.append(f"  by-product {b.item_id}: {b.rate_per_min:.4g}/min -> {b.disposition}")
     lines.append("  " + plan.availability_report.replace("\n", "\n  "))
     return "\n".join(lines)
 

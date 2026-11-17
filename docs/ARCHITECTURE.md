@@ -3,7 +3,7 @@
 - Status: **current.** This file is corrected in place when the architecture
   changes. Decision records stay immutable and are amended forward; this
   document says which of them govern.
-- Adopted: site-planner reframe Amendment 15 (decided by Greg, 2026-11-17).
+- Adopted: site-planner reframe Amendments 15 and 16 (decided by Greg, 2026-11-17).
 - Last revised: 2026-11-17 (architecture reconciliation R3).
 - Scope: the whole repository. `planning_data/ARCHITECTURE.md` covers the data
   layout only.
@@ -105,9 +105,9 @@ module is not built yet.
 | Resource supply and socket claims | `site_card.load_sockets` (reader), `portfolio_run` (no double claim) | reframe A9, A10 |
 | Extractor and belt marks per socket and link | `progression.infrastructure` (R6): policy `highest_then_step_down` | A15.2 (B2, Q1) |
 | Production solve | `lp_backend` | reframe A2, A3, A6, A13; LP record (carried as implementation) |
-| Byproducts | `lp_backend` FREE stopgap plus warnings | reframe A8.3 (used, not free overflow); mechanism **open** (A8.5) |
+| Byproducts | used by the solve where useful; leftovers reported by `progression.byproducts` (solids → AWESOME Sink, fluids named) | reframe A8.3, **A16** (sink by default); fluid leftovers **open** (A16.2) |
 | Whole machines, clocks, belts | `realization` | carried as implementation |
-| Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11; grid mode **open** (A11.2) |
+| Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11; staged generation ledger **proposed** for the run and factory tracks (A16.3, questions P1–P4) |
 | Power, report side | `progression.power.ledger` | tests only; candidate for retirement (open) |
 | PA demand | `gamedata.load_project_assembly` → `district.compose_bill` / `stock` | demand A1 |
 | PA pacing (bill ÷ T) | `progression.schedule` | carried as implementation, demand-side only |
@@ -162,6 +162,8 @@ Current, in force:
   - §1–§5;
   - A1–A11, A13, A14, each "holds until proven wrong";
   - **A15** (2026-11-17: this architecture, the two tracks, B1–B5, Q1–Q6);
+  - **A16** (2026-11-17: tie-break fix, by-products to the sink, withdrawals ignored,
+    viewers are tests; power ledger proposed);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).
@@ -187,21 +189,22 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | `satisfactory_route_tool/poi.py` reads `crash_site_requirements.csv` via its planner package | standalone spatial engine; POI scoring, no production maths | `tests/test_one_loader.py` |
 | `tests/` read reference tables raw | an independent oracle must not share the loader it checks | `tests/test_one_loader.py` docstring |
 | `research/` breaks repo rules | self-declared scratch; nothing in `tools/` imports it | `research/*/README.md` |
-| `demand_expansion` keeps its own recursive expansion beside the LP | different question (quantity totals, exact fractions, declared routes). The run planner uses the LP, not it (R9). Whether it stays beyond the Netlify viewer is Greg's call | A15.5 |
+| `demand_expansion` keeps its own recursive expansion beside the LP | different question (quantity totals, exact fractions, declared routes). The run planner uses the LP, not it (R9). Viewers are tests (A16.1), so the viewer is no reason to keep it | A15.5, A16.1 |
 
 ---
 
 ## 8. Open questions (Greg's to decide; nothing in code settles them)
 
-- Power: what grid mode means to the player (reframe A11.2), and whether
-  `power.ledger` is retired.
-- Byproduct mechanism (reframe A8.5): refuse, sink solids, or report only.
+- Power: the staged generation ledger proposed in reframe A16.3 needs answers to
+  P1–P4. Separately, whether `power.ledger` is retired.
+- Fluid by-products (reframe A16.2): package and sink, refuse, or keep naming them.
+  Solids go to the AWESOME Sink by default (A16.1).
 - The fluid floor unit at sub-1× R (demand A5.2): needs the 0.25× Plastic read.
 - Milestone ordering inside a phase (A15.2 Q2): milestones need not be taken in
   order, or at all. Availability takes a declared set, so this is a UI
   question.
 - Scanned-but-unclaimed hard-drive offers and pool odds (A15.2 B5): deferred.
-- Storage withdrawals as declared events or rates (A15.2 Q6): deferred.
+- Storage withdrawals: ignored (A16.1).
 - Physical layout, SFMD import, cross-district opportunity cost: deferred.
 - **Fixed 2026-11-17 (decided by Greg):** `solve_portfolio` with a declared
   `target_scale` (reframe A13) and bill units of 5 or more came back Infeasible from

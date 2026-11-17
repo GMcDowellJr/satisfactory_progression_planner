@@ -896,3 +896,15 @@ def load_stack_sizes(repo_root: str | pathlib.Path) -> dict[ItemId, int]:
         r["item_id"]: int(r["cached_stack_size"])
         for r in _rows(_ref(repo_root) / "items.csv") if r["cached_stack_size"]
     }
+
+
+def load_sink_points(repo_root: str | pathlib.Path) -> dict[ItemId, int]:
+    """items.csv `sink_points`: AWESOME Sink points per item, where the table
+    states a positive figure. The table lists points for fluids too (Water 5);
+    whether an item can be sunk is decided by `form`, not by this column."""
+    out: dict[ItemId, int] = {}
+    for r in _rows(_ref(repo_root) / "items.csv"):
+        v = r["sink_points"].strip()
+        if v and int(float(v)) > 0:
+            out[r["item_id"]] = int(float(v))
+    return out

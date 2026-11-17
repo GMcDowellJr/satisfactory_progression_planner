@@ -60,6 +60,7 @@ from progression import (  # noqa: E402
     availability, discover, generators_available, nameplate_mw, playthrough, pumped_caps,
     site_extraction,
 )
+from progression.byproducts import Byproduct, ledger  # noqa: E402
 from progression.district import WATER  # noqa: E402
 from progression.infrastructure import (  # noqa: E402
     POLICIES, BeltChoice, MarkChoice, belt_for, extractor_options, highest_extractor,
@@ -121,6 +122,7 @@ class FactoryRun:
     power: object                                  # DistrictPower
     availability_report: str
     warnings: tuple[str, ...]
+    byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
 
 
 def _keys(where: str, doc, keys) -> None:
@@ -296,6 +298,8 @@ def run_factory(
         power=response.power,
         availability_report=avail.report(),
         warnings=plan.plan.warnings + (SHARE_NOTE,),
+        byproducts=ledger(repo, data, state, plan.plan.items,
+                          {i: units * response.scale for i, units in goal_mix}),
     )
 
 
@@ -324,6 +328,7 @@ def record(run: FactoryRun) -> dict:
         "lane_mw": run.lane_mw,
         "power_mode": run.power_mode,
         "power": None if run.power is None else dataclasses.asdict(run.power),
+        "byproducts": [dataclasses.asdict(b) for b in run.byproducts],
         "warnings": list(run.warnings),
     }
 
@@ -340,6 +345,9 @@ def report(run: FactoryRun) -> str:
                      f"(highest {m.highest.extractor_class}){lane}")
     lines.append(f"  extraction {run.extraction_mw_chosen:.4g} MW after step-down "
                  f"({run.extraction_mw_highest:.4g} MW at the highest marks), by the draw")
+    for b in run.byproducts:
+        pts = "" if b.sink_points_per_min is None else f", {b.sink_points_per_min:.4g} points/min"
+        lines.append(f"  by-product {b.item_id}: {b.rate_per_min:.4g}/min -> {b.disposition}{pts}")
     lines.append("  " + run.availability_report.replace("\n", "\n  "))
     lines += [f"  note: {w}" for w in run.warnings]
     return "\n".join(lines)

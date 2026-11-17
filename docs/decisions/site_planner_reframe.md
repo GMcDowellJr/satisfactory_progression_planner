@@ -990,3 +990,96 @@ No figure changed in R0–R3. Container: 1444 passed, 1 skipped after R2.
 - The portfolio solve, its schemas (`portfolio-inputs/2`, `portfolio-plan/1`)
   and power modes are unchanged. A11.2's open question on grid mode stands.
 - A8.5 (by-product mechanism) stays open.
+
+## Amendment 16 — 2026-11-17. Tie-break fixed; by-products to the sink; withdrawals ignored; viewers are tests; power proposal
+
+### A16.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+Greg's words: "Fix internal tie break", "By products can be sent to AWESOME
+sink by default for now but should participate in production when available
+and appropriate to supply", "Storage withdrawals ignored", "Netlify and other
+viewers are tests. Nothing needs to stay in them".
+
+- **Tie-break.** The A13 `target_scale` defect found in R9 is fixed.
+  - Symptom: Infeasible from `solve_portfolio`'s fourth stage at bill units
+    of 5 or more.
+  - Cause: HiGHS presolve rejected a pinned stage that is feasible by
+    construction.
+  - Fix: `LpBackend._run` re-solves such a stage once without presolve. Only
+    a stage that already failed takes that path, so no prior result moves.
+  - Commit `c5ebdaa`.
+- **By-products.** They feed production where the solve finds that useful;
+  this is unchanged and was measured in A8.2. What is left over goes to the
+  AWESOME Sink by default, solids only. This settles A8.5 for now, as option 2
+  plus 3 (sink solids, report every leftover).
+  - Built in `progression.byproducts`.
+  - Each leftover is reported as `sink` (with sink points/min),
+    `sink_not_unlocked` (before *Schematic_2-5_C*), or `fluid_no_sink`.
+  - The factory and run tracks report this.
+  - The solve still runs with unconsumed output FREE (LP D1 stopgap), so a
+    fluid leftover is named, not refused.
+- **Storage withdrawals** are ignored; `progression.timeline` already
+  ignores them (A15.2 Q6).
+- **Viewers** are tests: the Netlify demand-expansion viewer and the
+  prototype pages. Nothing in them is a contract to keep. `demand_expansion`
+  is not kept for the viewer's sake.
+
+### A16.2 Open, said so
+
+- **Fluid by-products.** The sink takes solids only; Heavy Oil Residue left
+  over from Plastic is the measured case. Options:
+  - package and sink (the packager's own power and its Empty Canisters
+    loop);
+  - refuse a plan with an unconsumed fluid;
+  - keep naming them, as now.
+
+  Greg's call.
+- **Sink power.** It is not in the reference layer and is not charged.
+
+### A16.3 Proposed, not adopted: how power should work (Greg's direction, 2026-11-17)
+
+Greg: power was the number of generators required of each type, phase-aware.
+Once coal power is in use, biomass burners are typically backup, unless the
+available coal alone is enough, "possible on 5P".
+
+Proposal: a **staged generation ledger** for the run and factory tracks. It
+replaces neither A3's in-solve grid nor A11's report_need for the portfolio
+track.
+
+1. **Need.** The plan's machines plus extractors by the draw, P-scaled
+   (A7), plus a declared spare. This is the A11 figure.
+2. **Classes available.** From the milestones owned (`availability`): Biomass
+   from the start, Coal with *Coal Power*, Fuel and Nuclear later.
+   Geothermal only with its MAM research.
+3. **A declared power stack per phase.** An ordered list of generator
+   classes, for example phase 1 `[biomass]` and phase 2 onward
+   `[coal, biomass]`. It is never inferred from tier. A preset matching
+   Greg's practice is offered and named, not defaulted silently.
+4. **Fill in order.** The first class covers the need up to what its fuel
+   supply allows: coal from claimed nodes or a declared supply, with the coal
+   generators' water pumped and charged. The next class covers the
+   remainder.
+5. **Report per class.**
+   - whole generators (ceiling) and the load they carry;
+   - fuel per minute and water per minute;
+   - **backup units**: a class later in the stack sized to the need it
+     would cover if the earlier class fell short, reported as idle
+     capacity.
+
+   On a 5× power save the machines draw five times more, so coal alone
+   often cannot cover the need and biomass carries the rest as load, not
+   backup.
+6. **Fuel loops stay visible.** A fuel made in the factory (Solid Biofuel,
+   packaged fuels) draws power of its own. The ledger names that loop
+   rather than hiding it (A11.5).
+
+Questions this proposal needs answered before it is built:
+
+- **P1.** Is the stack declared per phase, or one stack with classes
+  dropping in as they unlock?
+- **P2.** Does "backup" mean built and idle (counted) or not built (only
+  reported as available)?
+- **P3.** Where does generator fuel come from by default: the factory's own
+  claimed nodes (charged against its caps) or a declared external supply?
+- **P4.** Is the 5P reading right? With P = 5, coal is not enough on its
+  own, so biomass carries load instead of standing by.
