@@ -733,6 +733,9 @@ class ExtractionMapRow:
 
     item_id: ItemId
     extractor_class: ProducerClass
+    #: The building that must activate it ("" when none): resource-well
+    #: extractors need a pressurizer; node extractors need nothing.
+    requires_activator: str = ""
 
 
 @dataclass(frozen=True)
@@ -826,7 +829,7 @@ def load_building_recipe_rows(repo_root: str | pathlib.Path) -> tuple[BuildingRe
 def load_extraction_map_rows(repo_root: str | pathlib.Path) -> tuple[ExtractionMapRow, ...]:
     """In table order, which `extractors_open_at_tier` returns classes in."""
     return tuple(
-        ExtractionMapRow(r["item_id"], r["extractor_class"])
+        ExtractionMapRow(r["item_id"], r["extractor_class"], r["requires_activator"])
         for r in _rows(_ref(repo_root) / "resource_extraction_map.csv")
     )
 

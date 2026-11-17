@@ -24,7 +24,7 @@ kinds of question, in three tracks over one shared core:
 |---|---|---|---|
 | **Site portfolio** | What can be made where, and how do the sites connect? | Supply-bounded LP over declared sites and claimed sockets | Built (`portfolio_run.py`, `site_planner_web/`) |
 | **Run planner** | What is next, and what would reaching a declared target take? | Demand-driven: a declared target and horizon give the rates, then the LP gives the plan | Planned (R9). Pieces exist (`schedule`, `goal_run`, `LpBackend.solve`) |
-| **Factory planner** | What can this factory deliver from what it has? | Supply-driven, the default for the current factory: maximise a **declared** goal mix within available supply | Planned (R7, R8). Pieces exist (`solve_portfolio`, realization) |
+| **Factory planner** | What can this factory deliver from what it has? | Supply-driven, the default for the current factory: maximise a **declared** goal mix within available supply | Built (R7: `factory_run.py`, `factory-inputs/1` → `factory-plan/1`); timeline planned (R8) |
 
 How the tracks connect:
 - The run planner's output (`run-plan/1`, ordered steps) can feed the factory
@@ -124,7 +124,9 @@ module is not built yet.
 | `portfolio-plan/1` | `portfolio_run --export`, worker | current; its echoed scenario gained `fluid_input_floor` (additive, R4) |
 | `neighborhoods/1` | `neighborhoods.py` | current |
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
-| `run-plan/1`, `factory-inputs/1`, `factory-plan/1` | planned (R7, R9) | — |
+| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused |
+| `factory-plan/1` | `factory_run.py --export` | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
+| `run-plan/1` | planned (R9) | — |
 
 Breaking changes bump the major version. Older versions are refused by name or
 migrated explicitly, never read as something else.
@@ -136,6 +138,7 @@ migrated explicitly, never read as something else.
 | Entry | Track | Status |
 |---|---|---|
 | `portfolio_run.py`, `site_planner_web/`, `neighborhoods.py` | site portfolio | current |
+| `factory_run.py` | factory planner (supply side) | current (R7) |
 | `production_cli.py` | core inspection (tiers, solve, compare) | current |
 | `demand_expansion_cli.py` (+ Netlify viewer, `netlify.toml`) | quantity datasets | current |
 | `phase_run.py` | demand-side phase pacing (goal-paced T) | **deprecated** (A15.3). Ideas ported into the run planner. Library pieces `goal_run`, `schedule`, `stock` stay in use |
@@ -213,6 +216,6 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | R4 | solid floor 1 at sub-1× R; fluid floor declared | done (behaviour change recorded in its commit) |
 | R5 | playthrough + availability (milestone-level) | done |
 | R6 | infrastructure marks + step-down policy | done |
-| R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | planned |
+| R7 | factory track (`factory_run`, `factory-inputs/1`, `factory-plan/1`) | done |
 | R8 | timeline: storage-priority banks, PA duration | planned |
 | R9 | run track (`run_plan`, `run-plan/1`) | planned |

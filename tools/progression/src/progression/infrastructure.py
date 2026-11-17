@@ -41,7 +41,7 @@ import math
 from dataclasses import dataclass
 
 from production_adapter.contracts import ItemId, ProducerClass
-from production_adapter.gamedata import Capability, ExtractionRate
+from production_adapter.gamedata import Capability, ExtractionRate, load_extraction_map_rows
 from production_adapter.scenario import Scenario
 
 from .availability import Availability
@@ -73,13 +73,31 @@ def extractor_options(
     rates: tuple[ExtractionRate, ...],
     base_mw: dict[ProducerClass, float],
     scenario: Scenario,
+    *,
+    repo_root=None,
+    activated: bool | None = None,
 ) -> tuple[ExtractorOption, ...]:
     """The extractors the playthrough can build for this socket, lowest
     capacity first. Refuses when none is open, or when an open class has no
-    (class, purity) rate row or no base power."""
+    (class, purity) rate row or no base power.
+
+    `activated` restricts to one socket kind's family, from
+    resource_extraction_map.csv's `requires_activator`: True for a resource
+    well satellite (its extractor needs a pressurizer), False for a node.
+    Without it, Crude Oil's Oil Extractor and Resource Well Extractor would be
+    ranked against each other, and "highest" would name an extractor the
+    socket cannot take. Needs `repo_root`. None: no restriction."""
     classes = availability.extractors.get(item_id, ())
+    if activated is not None:
+        if repo_root is None:
+            raise InfrastructureError("activated= needs repo_root to read the extraction map")
+        family = {r.extractor_class for r in load_extraction_map_rows(repo_root)
+                  if r.item_id == item_id and bool(r.requires_activator) == activated}
+        classes = tuple(c for c in classes if c in family)
     if not classes:
-        raise InfrastructureError(f"{item_id}: no extractor is unlocked in this playthrough state")
+        raise InfrastructureError(f"{item_id}: no extractor is unlocked in this playthrough state"
+                                  + ("" if activated is None else
+                                     f" for a {'well' if activated else 'node'} socket"))
     out = []
     for cls in classes:
         hits = [r for r in rates if r.extractor_class == cls and r.purity == purity]

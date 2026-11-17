@@ -33,7 +33,7 @@ not the architecture. Don't write anything that only works for that map.
       demand_expansion/     quantity datasets (declared routes, exact fractions)
       phases/phase<N>.py    phase declarations (data, not logic)
       site_planner_web/     picker/index pages + Pyodide worker running this Python
-      *.py at tools/ root   cross-package joints/CLIs: portfolio_run, neighborhoods,
+      *.py at tools/ root   cross-package joints/CLIs: portfolio_run, factory_run, neighborhoods,
                             production_cli, goal_run, rate_sheet, chain_view,
                             storage_view, regenerate_manifests, ...; deprecated:
                             phase_run, district_run, site_card (CLI)
