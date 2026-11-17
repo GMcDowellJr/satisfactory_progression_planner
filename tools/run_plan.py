@@ -85,6 +85,12 @@ class BlockedPart:
     item_id: str
     #: (recipe making the part, its status, schematics that unlock it)
     producers: tuple[tuple[str, str, tuple[str, ...]], ...]
+    #: what actually blocks it: the deepest items on its owned chains that no
+    #: owned recipe makes, each with its producers as above. The part itself
+    #: when no owned recipe makes it (Codex on PR #15, 2026-11-17: an owned
+    #: Automated Wiring recipe was reported while Basic Steel Production was
+    #: what was missing).
+    needs: tuple[tuple[str, tuple[tuple[str, str, tuple[str, ...]], ...]], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -154,11 +160,34 @@ def plan_phase(
     names = {s.schematic_id: s.display_name for s in load_schematic_rows(repo)}
     for u in load_schematic_unlock_rows(repo):
         unlocks_of.setdefault(u.recipe_id, []).append(names.get(u.schematic_id, u.schematic_id))
-    blocked = tuple(
-        BlockedPart(x.item_id, tuple(
+    def producers_of(item):
+        return tuple(
             (rc.recipe_id, avail.status.get(rc.recipe_id, RecipeStatus.LOCKED).value,
              tuple(sorted(unlocks_of.get(rc.recipe_id, ()))))
-            for rc in data.recipes.values() if any(i == x.item_id for i, _ in rc.outputs)))
+            for rc in data.recipes.values() if any(i == item for i, _ in rc.outputs))
+
+    owned = set(avail.recipe_ids)
+    reachable = {x.item_id for x in discover(data, avail.recipe_ids, open_caps, tuple(data.items))
+                 if x.makeable} | set(data.resource_items)
+
+    def roots(item, trail):
+        """The deepest unreachable items under `item` along owned recipes."""
+        if item in reachable:
+            return []
+        made_by = [rc for rc in data.recipes.values()
+                   if rc.recipe_id in owned and any(i == item for i, _ in rc.outputs)]
+        if not made_by:
+            return [item]
+        out = []
+        for rc in made_by:
+            for i, _ in rc.inputs:
+                if i not in trail:
+                    out += [r for r in roots(i, trail | {item}) if r not in out]
+        return out or [item]
+
+    blocked = tuple(
+        BlockedPart(x.item_id, producers_of(x.item_id),
+                    tuple((r, producers_of(r)) for r in roots(x.item_id, frozenset())))
         for x in reach if not x.makeable)
 
     response = None
@@ -262,9 +291,11 @@ def report(plan: PhasePlan) -> str:
         lines.append(f"  {p.item_id}: {p.bill_units:g} at {p.rate_per_min:.4g}/min "
                      f"(one machine: {p.one_machine_min:.1f} min)")
     for b in plan.blocked:
-        how = "; ".join(f"{rid} {st} via {', '.join(via) or 'nothing listed'}"
-                        for rid, st, via in b.producers)
-        lines.append(f"  BLOCKED {b.item_id}: {how}")
+        for item, producers in b.needs:
+            how = "; ".join(f"{rid} {st} via {', '.join(via) or 'nothing listed'}"
+                            for rid, st, via in producers)
+            head = "" if item == b.item_id else f"needs {item}: "
+            lines.append(f"  BLOCKED {b.item_id}: {head}{how}")
     if plan.response is not None:
         lines.append(f"  machines' power {plan.response.power.scenario_mw:.4g} MW "
                      f"({plan.power_statistic.value})")

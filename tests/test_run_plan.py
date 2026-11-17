@@ -171,3 +171,22 @@ def test_the_declared_statistic_is_kept_and_labelled():
     rec = R.record(plan)
     assert rec["power_statistic"] == "max" and "(max, as declared)" in rec["notes"][0]
     assert "MW (max)" in R.report(plan) and "(mean)" not in R.report(plan)
+
+
+def test_a_blocked_part_is_traced_to_the_ingredient_that_blocks_it():
+    """Codex on PR #15: with Advanced Steel but not Basic Steel, Automated
+    Wiring's own recipe is owned; what blocks it is Steel Pipe, which comes
+    with Basic Steel Production."""
+    plan = _plan(phase=2, tier=2, milestones=["Schematic_4-1_C"], horizon_fraction=0.25)
+    aw = next(b for b in plan.blocked if b.item_id == AW)
+    needs = dict(aw.needs)
+    assert "Desc_SteelPipe_C" in needs and AW not in needs
+    base = {rid: via for rid, _, via in needs["Desc_SteelPipe_C"]}["Recipe_SteelPipe_C"]
+    assert base == ("Basic Steel Production",)
+    assert "needs Desc_SteelPipe_C" in R.report(plan)
+
+
+def test_a_part_with_no_owned_recipe_needs_itself():
+    plan = _plan(phase=2, tier=3, horizon_fraction=0.25)
+    (aw,) = plan.blocked
+    assert [item for item, _ in aw.needs] == [AW]
