@@ -68,3 +68,29 @@ def test_raw_patterns_come_from_gitattributes():
     assert rm.is_raw("planning_data/game/source_snapshots/502094/en-US.json")
     assert not rm.is_raw("planning_data/game/reference/items.csv")
     assert not rm.is_raw("docs/manifest.csv")  # anchored pattern, not a name match
+
+
+# --- the committed manifests are well formed (R0, 2026-11-17) ----------------
+# A manifest's sync with the tree is NOT tested: the convention puts the
+# regeneration in a separate commit after each content commit, so the content
+# commit itself is expected to drift. Its shape is always testable.
+
+def test_the_committed_manifests_are_well_formed():
+    for m in rm.MANIFESTS:
+        assert rm.read_existing(m.out), m.out  # raises ManifestFormatError if not
+
+
+def test_a_header_sorted_into_the_body_is_refused_by_name(tmp_path):
+    p = tmp_path / "REPO_MANIFEST.csv"
+    p.write_bytes(b"a.txt,1,x\r\npath,bytes,sha256\r\nz.txt,1,y\r\n")
+    import pytest
+    with pytest.raises(rm.ManifestFormatError, match="first row"):
+        rm.read_existing(p)
+
+
+def test_an_unsorted_manifest_is_refused(tmp_path):
+    p = tmp_path / "m.csv"
+    p.write_bytes(b"path,bytes,sha256\r\nz.txt,1,y\r\na.txt,1,x\r\n")
+    import pytest
+    with pytest.raises(rm.ManifestFormatError, match="sorted"):
+        rm.read_existing(p)
