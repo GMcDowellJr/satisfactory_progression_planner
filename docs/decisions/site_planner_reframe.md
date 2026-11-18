@@ -1362,3 +1362,25 @@ saved `portfolio-inputs/2`, adding or removing single sockets on the map) are
 not ruled out. They are not built, and which of them comes next is open and
 Greg's to decide. The page is unchanged: it offers the neighborhood export,
 as built.
+
+### A20.7 Hosting, decided by Greg 2026-11-18
+
+"Set up Netlify with a deploy preview and GitHub pages."
+
+- **Netlify.** `netlify.toml` builds the demand-expansion viewer into
+  `dist/index.html` as before. It then runs `tools/site_planner_web/publish.py
+  --out dist`, which copies the site planner pages and exactly the files in
+  `bundle_files.json` at their repo paths, and refuses a missing one by name.
+  A pull request's deploy preview builds the same way. The pages are at
+  `/tools/site_planner_web/planner.html` and `picker.html`.
+- **GitHub Pages** serves the repository from a branch, with no build. A root
+  `.nojekyll` keeps Jekyll from dropping the files named `_*` (the bundle's
+  `__init__.py`). The branch is chosen in the repository's Pages settings, by
+  Greg.
+- Measured in the container, 2026-11-18: the Netlify build command run locally
+  gives 53 files and 2.7 MB beside the viewer. The planner smoke test passed on
+  that tree, and under a `/satisfactory_progression_planner/` path prefix as
+  Pages serves it. Neither host was reachable from the container, so the first
+  live check is Greg's.
+- `.nojekyll` is not added to the manifests' `root_files`. The integrity scope
+  is unchanged.
