@@ -123,6 +123,37 @@ ul.list li.on { border-color: var(--flow); border-left-width: 4px; }
 .goalrow { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 6px; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
+/* Visual refinement: keep the four-step workflow, but make its controls and
+   results read as a focused planning workspace on desktop and mobile. */
+.wrap { max-width: 1180px; gap: 18px; }
+.wrap > header { padding: 22px 24px; border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: 12px; background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--flow) 5%, var(--surface))); }
+h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
+section.panel { border-radius: 10px; padding: 18px 20px; gap: 12px; box-shadow: 0 3px 14px color-mix(in srgb, var(--fg) 6%, transparent); }
+.tabs { position: sticky; top: 0; z-index: 5; gap: 8px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); }
+.tabs button { flex: 1 0 auto; border: 1px solid transparent; border-radius: 7px; padding: 10px 14px; }
+.tabs button[aria-selected="true"] { border-color: color-mix(in srgb, var(--flow) 35%, var(--line));
+  background: color-mix(in srgb, var(--flow) 12%, var(--surface)); color: var(--fg); margin-bottom: 0; }
+.tabs button:hover:not([aria-selected="true"]) { background: color-mix(in srgb, var(--flow) 6%, var(--surface)); color: var(--fg); }
+button, input[type=text], input[type=number], input[type=search], select { min-height: 38px; }
+button { border-radius: 7px; padding: 7px 12px; font-weight: 500; }
+button.primary { box-shadow: 0 2px 6px color-mix(in srgb, var(--flow) 22%, transparent); }
+input[type=text], input[type=number], input[type=search], select, textarea { border-radius: 7px; padding: 7px 10px; }
+fieldset { border-radius: 8px; padding: 10px 12px; }
+.form { gap: 12px; }
+.form label, .field { font-size: .82rem; }
+.kpi { border-radius: 8px; padding: 12px 14px; background: color-mix(in srgb, var(--flow) 4%, var(--surface)); }
+details.tier, ul.list li { border-radius: 8px; }
+@media (max-width: 640px) {
+  .wrap { gap: 12px; padding-block: 10px 28px; }
+  .wrap > header { padding: 16px; }
+  section.panel { padding: 14px; }
+  .tabs { top: 0; overflow-x: auto; }
+  .tabs button { flex: 0 0 auto; padding: 9px 11px; }
+  .form { grid-template-columns: minmax(0, 1fr); }
+  .row > button { min-height: 42px; }
+}
 </style>
 </head>
 <body>
