@@ -22,7 +22,7 @@ their figures. The description stands.
                 AMENDED (A20, Greg 2026-09-24 12:30): plus the DECLARED Mk1
                 coal step (2 miners, 4 coal generators, 2 water extractors)
                 by addition per class -> 4 miners. (The power ledger once
-                reported over the paced pass; retired, reframe A19.4)
+                reported over the paced pass; retired, reframe A19.1 item 4)
     standing    none declared; on hand none declared
 
 Measured in the agent container 2026-09-24, 1x scenario, LpBackend MEAN.

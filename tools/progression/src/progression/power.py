@@ -3,7 +3,7 @@
 What is left of the D4 P5 power ledger (goal_run_driver.md amendments 4 and
 5, 2026-09-24). The ledger itself (`ledger`, `PowerLedger`, `GeneratorReading`,
 `Role` and their lines) was used by tests only and was RETIRED, decided by
-Greg 2026-11-17 (site-planner reframe A19.4); its job, which generators carry
+Greg 2026-11-17 (site-planner reframe A19.1 item 4); its job, which generators carry
 a need and what they burn, is `progression.power_stack`'s (A18, A19). The
 tables stay: portfolio_run, district_run, site_card, factory_run and the
 extraction-draw arithmetic read `extractors` from them.

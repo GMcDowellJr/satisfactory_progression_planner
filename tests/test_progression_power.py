@@ -1,5 +1,5 @@
 """The power tables (what remains of the D4 P5 ledger; the ledger itself was
-retired, decided by Greg 2026-11-17, site-planner reframe A19.4).
+retired, decided by Greg 2026-11-17, site-planner reframe A19.1 item 4).
 
 Figures are read from the reference tables through `load_power_tables` and
 checked against the arithmetic: Coal-Powered Generator 75 MW, 15 coal + 45 m3
@@ -36,7 +36,7 @@ def test_the_tables_carry_the_game_figures(tables):
 
 
 def test_the_ledger_is_retired():
-    """A19.4: the report side is progression.power_stack."""
+    """A19.1 item 4: the report side is progression.power_stack."""
     for name in ("ledger", "PowerLedger", "GeneratorReading", "Role", "SupplyLine",
                  "DemandLine", "FuelDraw"):
         assert not hasattr(power, name), name

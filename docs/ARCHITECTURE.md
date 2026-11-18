@@ -108,12 +108,12 @@ module is not built yet.
 | Byproducts | used by the solve where useful; leftovers disposed of by `progression.byproducts`: solids with sink points → AWESOME Sink, solids without (nuclear waste) `unsinkable`, Fuel → generators or packaged for storage with overflow to the sink (declared `fuel_byproducts`, A18), HOR → Residual Fuel → that route, other fluids `needs_packaging`; generator fuel, water and waste folded in first | reframe A8.3, **A16**, **A17** |
 | Whole machines, clocks, belts | `realization` | carried as implementation |
 | Power, solve side | `lp_backend` power row + `progression.district` composers | reframe A3–A7, A11 |
-| Power stack (run and factory tracks) | `progression.power_stack`: generators in the order obtained, last obtained is primary, earlier classes backup up to their declared standing units, hand-gathered biofuel chain | reframe **A18** |
-| Power, report side | `progression.power.ledger` | tests only; candidate for retirement (open) |
+| Power stack (run and factory tracks) | `progression.power_stack`: generators in the order obtained; each type alone (demonstrates the need); standing generators carry load, Biomass Burners backup once another class is owned, the rest by the declared generation mix or the class obtained last; hand-gathered biofuel chain; `supply_check` against the site's leftovers when the factory is declared a power site | reframe **A18**, **A19** |
+| Power tables (generator, fuel, extractor figures) | `progression.power.load_power_tables` (the ledger it once served was retired) | reframe A19.1 item 4 |
 | PA demand | `gamedata.load_project_assembly` → `district.compose_bill` / `stock` | demand A1 |
 | PA pacing (bill ÷ T) | `progression.schedule` | carried as implementation, demand-side only |
 | Storage-priority banks, PA duration | `progression.timeline` (R8): FILLING then FULL segments, smart or standard splitter, container options by unlock | A15.2 (B3, Q6) |
-| Recipe expansion to quantities | `demand_expansion` (tier-blind, primary outputs) | demand A1–A4; its role beside the LP is decided in R9 |
+| Recipe expansion to quantities | `demand_expansion` (tier-blind, primary outputs): whole-run quantity totals | demand A1–A4; kept for whole-run totals, A19.1 |
 
 ---
 
@@ -125,7 +125,7 @@ module is not built yet.
 | `portfolio-plan/1` | `portfolio_run --export`, worker | current; its echoed scenario gained `fluid_input_floor` (additive, R4) |
 | `neighborhoods/1` | `neighborhoods.py` | current |
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
-| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused; `power_statistic`, `fuel_byproducts` and `standing_generators` declared |
+| `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused; `power_statistic`, `fuel_byproducts`, `standing_generators`, `generation_mix` and `power_from_site` declared |
 | `factory-plan/1` | `factory_run.py --export` | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
 | `run-plan/1` | `run_plan.py --export` | current (R9): horizon, one-machine ceiling, parts, blocked parts with their unlocks, plan, power diagnostic |
 
@@ -167,6 +167,8 @@ Current, in force:
     viewers are tests; power ledger proposed);
   - **A17** (2026-11-17: fluid by-products converted or burned before the sink);
   - **A18** (2026-11-17: fuel routes, disposal never offsets the need, power stack);
+  - **A19** (2026-11-17: power through later phases, each type alone, declared mix,
+    the power-site check, ledger retired, `demand_expansion` kept for whole-run totals);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).
@@ -192,16 +194,18 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 | `satisfactory_route_tool/poi.py` reads `crash_site_requirements.csv` via its planner package | standalone spatial engine; POI scoring, no production maths | `tests/test_one_loader.py` |
 | `tests/` read reference tables raw | an independent oracle must not share the loader it checks | `tests/test_one_loader.py` docstring |
 | `research/` breaks repo rules | self-declared scratch; nothing in `tools/` imports it | `research/*/README.md` |
-| `demand_expansion` keeps its own recursive expansion beside the LP | different question (quantity totals, exact fractions, declared routes). The run planner uses the LP, not it (R9). Viewers are tests (A16.1), so the viewer is no reason to keep it | A15.5, A16.1 |
+| `demand_expansion` keeps its own recursive expansion beside the LP | different question (whole-run quantity totals, exact fractions, declared routes); kept for that, decided by Greg (A19.1). The run planner uses the LP, not it (R9) | A15.5, A16.1, A19.1 |
 
 ---
 
 ## 8. Open questions (Greg's to decide; nothing in code settles them)
 
-- Power: whether the primary's fuel should be checked against the factory's supply
-  (A18.2), and whether `power.ledger` is retired.
-- By-products: settled by A16–A18. Packaging canisters' source is not modelled.
-- The fluid floor unit at sub-1× R (demand A5.2): needs the 0.25× Plastic read.
+- Power: settled by A19 (later phases, each type alone, declared mix, the power-site
+  check; the ledger retired). Not modelled: fuels the state cannot make yet are still
+  listed, and the pumped Water's extractors are not added to the need (A19.3).
+- By-products: settled by A16–A18. Packaging containers left as reported (A19.1).
+- The fluid floor unit at sub-1× R (demand A5.2): needs the 0.25× Plastic read
+  (still waiting, A19.1).
 - Milestone ordering inside a phase (A15.2 Q2): milestones need not be taken in
   order, or at all. Availability takes a declared set, so this is a UI
   question.

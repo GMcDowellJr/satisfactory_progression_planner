@@ -687,7 +687,7 @@ def test_standing_keeps_the_floor_argument(record_coal_standing):
         assert b.machines >= floor[b.bus_id], b.bus_id
 
 
-# Amendment 5's power ledger was retired (reframe A19.4, Greg 2026-11-17);
+# Amendment 5's power ledger was retired (reframe A19.1 item 4, Greg 2026-11-17);
 # its tests went with it. The power report is progression.power_stack.
 
 

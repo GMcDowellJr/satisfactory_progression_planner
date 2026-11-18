@@ -1184,3 +1184,87 @@ Measured (container): oil nodes 100 and 14_609, tier 5.
   - whether the primary's fuel is available at the factory;
   - Mycelia and Alien Protein biomass;
   - clocking burners down.
+
+## Amendment 19 — 2026-11-17. Power through later phases; the power-site check; the ledger retired
+
+### A19.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+Answers to the open questions after A18:
+
+1. **Power through later phases.** "power generation continues into future
+   phases - bioburners act as backup because they only burn fuel/generate
+   power when needed -- previous approach that looked to work reported how
+   many of each type would be required by way of demonstrating needs and a
+   separate ratio system for how to supply the power".
+2. **When to check the stack's fuel.** "power stack should check supply if
+   intent of factory is fuel -- coal/water combination is typically for
+   power, coal/iron combination is typically for steel (rarely make steel at
+   same site as power) -- oil almost always includes power generation unless
+   specifically excluded or not needed (low P values may not need any power
+   from fuel)".
+3. **The fluid floor at sub-1× R:** still waiting on the in-game reading of
+   Plastic from the 0.25× R run. Demand A5.2 stays open.
+4. **`progression.power.ledger`:** "retire".
+5. **`demand_expansion`:** "keep for whole-run quantity totals".
+6. **Packaging containers:** "leave as reported for now -- there are multiple
+   options depending on the recipe (plastic vs steel)".
+
+### A19.2 Built (Claude's reading; Greg may reverse any of it)
+
+- **`progression.power_stack` reports in two parts.** This supersedes
+  A18.2's "every earlier class is backup".
+  - **Each type alone.** For every owned class: the units needed to cover the
+    whole need by itself, and every fuel option's feed. This part
+    demonstrates the need.
+  - **Supply.**
+    - Standing generators run first, in the order obtained. These are the
+      declared `standing_generators`, built in earlier phases.
+    - Biomass Burners are **backup** once another class is owned. They are
+      built but idle at steady state, and their full output is spike
+      headroom. While they are the only class, they carry the load.
+    - Whatever load the standing units leave goes to the **declared
+      generation mix** (class → share, with the shares summing to 1). With
+      no mix declared, it goes to the class obtained last.
+    - New units are whole, after netting against that class's standing units.
+    - A class named in the mix carries its share, even Biomass Burners.
+- **The intent is declared, never inferred.** `factory-inputs/1` gains
+  `power_from_site` (bool, required) and `generation_mix` (null or an object,
+  required). Greg's pairings, "coal/water typically power" and "oil almost
+  always", are typical, not rules. So the document says whether this factory
+  powers itself; nothing reads it off the resources.
+- **`power_stack.supply_check`** runs when `power_from_site` is true. It is
+  report_need only: in grid mode the solve already burns the site's fuel
+  (A3), so the check is refused there.
+  - **Which lines it checks:** for every line carrying load, each fuel option
+    and its supplemental fluids, against the site's leftovers. Backup lines
+    are not checked, because they burn only on a spike.
+  - **Leftover** is each cap less the solve's draw, plus fuel by-products
+    routed to generators. Delivered goal-mix items leave the site and are not
+    counted.
+  - **Statuses:**
+    - `covered` or `short`;
+    - `pumped`, for Water with a Water Extractor owned;
+    - `no_water_extractor`, for Water without one;
+    - `by_hand`, for a Biomass Burner fuel the site does not make.
+  - **`fed_by`** lists every fed fuel option per line. None is picked.
+- **`run_plan`** takes `--mix CLASS=SHARE` and forwards the mix.
+  `to_factory_inputs` requires `power_from_site`.
+- **The ledger is retired (A19.1 item 4).** `ledger`, `PowerLedger`,
+  `GeneratorReading`, `Role` and their line types are gone. The power tables
+  stay (`load_power_tables`), because five callers read extractor power from
+  them. As a side effect, the picker's browser bundle no longer ships
+  `progression.stock` or the realization package (44 → 37 files).
+- **`demand_expansion` stays (A19.1 item 5)** for whole-run quantity totals,
+  beside the LP. The run planner still uses the LP (R9).
+
+### A19.3 Not modelled, said so
+
+- **Fuel availability:**
+  - The stack lists every fuel a generator class can burn, including fuels
+    the state cannot make yet (for example Ionized Fuel at tier 6).
+  - When two lines would burn the same item, the check reads them one at a
+    time and does not add their draws together. Today only Water is shared,
+    and it is pumped.
+- **Water Extractors beside coal generators:** the check names Water as
+  pumped but does not add those extractors' count or power to the need.
+- **Packaging containers' source:** left as reported (A19.1 item 6).
