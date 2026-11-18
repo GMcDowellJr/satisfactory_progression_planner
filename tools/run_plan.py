@@ -112,6 +112,9 @@ class PhasePlan:
     #: declared generators already built (reframe A18), carried into the
     #: factory hand-off; never replaced by an empty set (Codex on PR #15)
     standing_generators: dict
+    #: declared generation mix (reframe A19): class -> share of what standing
+    #: units leave; None: the class obtained last carries it
+    generation_mix: dict | None
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
 
 
@@ -121,6 +124,7 @@ def plan_phase(
     power_statistic: PowerStatistic,
     fuel_byproducts: str,
     standing_generators: dict[str, int] | None = None,
+    generation_mix: dict[str, float] | None = None,
 ) -> PhasePlan:
     """`power_statistic` is required (AGENTS.md: no default; LP D2 deferred).
     `fuel_byproducts` is "power" or "package" (reframe A18), required."""
@@ -199,7 +203,7 @@ def plan_phase(
             allowed_recipes=avail.allowed_recipes,
         ), data)
         stack = power_stack(repo, data, state, response.power.scenario_mw,
-                            avail.recipe_ids, standing_generators)
+                            avail.recipe_ids, standing_generators, generation_mix)
         byproducts = ledger(repo, data, state, response.items,
                             {p.item_id: p.rate_per_min for p in parts},
                             owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts)
@@ -207,13 +211,14 @@ def plan_phase(
     return PhasePlan(phase, state, data.scenario, ceiling, horizon, horizon / ceiling, parts,
                      blocked, response, stack, avail.report(),
                      PowerStatistic(power_statistic), dict(standing_generators or {}),
+                     dict(generation_mix) if generation_mix else None,
                      byproducts)
 
 
 def to_factory_inputs(
     plan: PhasePlan, *, world_config_id: str, label: str, socket_ids: tuple[str, ...],
     power_mode: str, power_statistic: PowerStatistic, fuel_byproducts: str,
-    goal: str = "balanced", supply: tuple = (), pumps_water: bool = False,
+    power_from_site: bool, goal: str = "balanced", supply: tuple = (), pumps_water: bool = False,
     grid_mw: float = 0.0, spare_mw: float = 0.0,
     infrastructure_policy: str = "highest_then_step_down", fixed_rate: bool = True,
 ) -> dict:
@@ -255,6 +260,8 @@ def to_factory_inputs(
         "infrastructure_policy": infrastructure_policy,
         "fuel_byproducts": fuel_byproducts,
         "standing_generators": dict(plan.standing_generators),
+        "generation_mix": None if plan.generation_mix is None else dict(plan.generation_mix),
+        "power_from_site": power_from_site,
     }
 
 
@@ -276,6 +283,7 @@ def record(plan: PhasePlan) -> dict:
         "power_mw": None if r is None else r.power.scenario_mw,
         "power_statistic": plan.power_statistic.value,
         "standing_generators": dict(plan.standing_generators),
+        "generation_mix": plan.generation_mix,
         "power_stack": None if plan.power_stack is None else dataclasses.asdict(plan.power_stack),
         "byproducts": [dataclasses.asdict(b) for b in plan.byproducts],
         "notes": [power_note(plan.power_statistic)],
@@ -327,7 +335,11 @@ def main(argv=None) -> int:
     ap.add_argument("--fuel-byproducts", required=True, choices=["power", "package"],
                     help="leftover fuel to generators, or packaged (reframe A18)")
     ap.add_argument("--standing", action="append", default=[], metavar="CLASS=N",
-                    help="generators already built, by class (backup capacity, reframe A18)")
+                    help="generators already built, by class; they keep carrying load "
+                         "(burners are backup), reframe A19")
+    ap.add_argument("--mix", action="append", default=[], metavar="CLASS=SHARE",
+                    help="how what standing units leave is supplied (shares sum to 1); "
+                         "omitted: the class obtained last (reframe A19)")
     ap.add_argument("--export", type=pathlib.Path)
     args = ap.parse_args(argv)
     state = playthrough(REPO, through_tier=args.through_tier, milestones=args.milestone,
@@ -341,7 +353,9 @@ def main(argv=None) -> int:
                       power_statistic=PowerStatistic(args.power_statistic),
                       fuel_byproducts=args.fuel_byproducts,
                       standing_generators={k: int(v) for k, v in
-                                           (s.split("=", 1) for s in args.standing)})
+                                           (s.split("=", 1) for s in args.standing)},
+                      generation_mix={k: float(v) for k, v in
+                                      (s.split("=", 1) for s in args.mix)} or None)
     print(report(plan))
     if args.export:
         args.export.write_text(json.dumps(record(plan), indent=1, default=str) + "\n",

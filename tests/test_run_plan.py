@@ -123,7 +123,8 @@ def test_a_run_step_becomes_factory_inputs():
     plan = _plan(horizon_fraction=1.0)          # 2 Smart Plating/min
     doc = R.to_factory_inputs(plan, world_config_id="default_502094", label="rocky",
                               socket_ids=ROCKY_A, power_mode="report_need",
-                              power_statistic="mean", fuel_byproducts="power")
+                              power_statistic="mean", fuel_byproducts="power",
+                              power_from_site=False)
     assert max(m["units"] for m in doc["goal_mix"]) == 1.0      # proportions
     run = F.run_inputs(doc)
     assert run.scale == pytest.approx(50.0 / plan.horizon_min)
@@ -210,8 +211,9 @@ def test_standing_generators_survive_the_factory_hand_off():
                         standing_generators={bio: 6})
     doc = R.to_factory_inputs(plan, world_config_id="default_502094", label="rocky",
                               socket_ids=ROCKY_A, power_mode="report_need",
-                              power_statistic="mean", fuel_byproducts="power")
+                              power_statistic="mean", fuel_byproducts="power",
+                              power_from_site=False)
     assert doc["standing_generators"] == {bio: 6}
     run = F.run_inputs(doc)
     backup = next(l for l in run.power_stack.lines if l.generator_class == bio)
-    assert (backup.role, backup.output_mw) == ("backup", 180.0)
+    assert (backup.role, backup.capacity_mw) == ("backup", 180.0)

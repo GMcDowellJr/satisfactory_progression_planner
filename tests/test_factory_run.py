@@ -51,7 +51,8 @@ def _doc(*, tier=3, milestones=(), sockets=ROCKY_A, mix=MIX, target=None, mode="
         "goal": "balanced", "power_mode": mode, "power_statistic": "mean",
         "grid_mw": 0.0, "spare_mw": 0.0,
         "target_scale": target, "infrastructure_policy": "highest_then_step_down",
-        "fuel_byproducts": "power", "standing_generators": {},
+        "fuel_byproducts": "power", "standing_generators": {}, "generation_mix": None,
+        "power_from_site": False,
     }
 
 
@@ -248,3 +249,61 @@ def test_the_socket_plan_carries_the_solves_extraction_power():
     assert draws["BP_ResourceNode114"] == pytest.approx(60.0)
     assert draws["BP_ResourceNode109"] == pytest.approx(0.0)
     assert run.extraction_mw_highest == pytest.approx(run.power.extraction_mw)
+
+
+# --- reframe A19: a declared power site checks its own fuel --------------------
+
+def _power_site(coal):
+    d = _doc(tier=4)
+    d["power_from_site"] = True
+    d["site"]["supply"] = [{"item_id": "Desc_Coal_C", "rate_per_min": coal}]
+    return F.run_inputs(d)
+
+
+def test_a_declared_power_site_is_checked_against_its_leftover_fuel():
+    """A19 (Greg): "power stack should check supply if intent of factory is
+    fuel". Coal declared at the site and not drawn by the solve feeds the coal
+    generators; Water is pumped beside them (the extractor comes with Coal
+    Power)."""
+    run = _power_site(1000.0)
+    need = run.power.need_mw
+    fed = dict(run.supply_check.fed_by)
+    assert "Desc_Coal_C" in fed["Build_GeneratorCoal_C"]
+    coal = next(c for c in run.supply_check.checks
+                if c.fuel_item_id == c.item_id == "Desc_Coal_C")
+    assert coal.need_per_min == pytest.approx(need / 75 * 15)
+    assert coal.available_per_min == pytest.approx(1000.0 - dict(run.raw_draw).get("Desc_Coal_C", 0))
+    water = next(c for c in run.supply_check.checks
+                 if c.fuel_item_id == "Desc_Coal_C" and c.item_id == "Desc_Water_C")
+    assert water.status == "pumped"
+    assert F.record(run)["supply_check"]["fed_by"][0][0] == "Build_GeneratorCoal_C"
+    assert "power from the site (declared)" in F.report(run)
+
+
+def test_a_power_site_short_of_fuel_says_so():
+    run = _power_site(0.5)
+    assert dict(run.supply_check.fed_by)["Build_GeneratorCoal_C"] == ()
+    assert "NO fuel option is fed" in F.report(run)
+
+
+def test_no_check_unless_declared(tier3):
+    assert tier3.supply_check is None and F.record(tier3)["supply_check"] is None
+
+
+@pytest.mark.parametrize("key, value, match", [
+    ("power_from_site", "yes", "true or false"),
+    ("generation_mix", [], "null"),
+    ("generation_mix", {"Build_GeneratorFuel_C": 1.0}, "not unlocked"),
+])
+def test_bad_power_declarations_are_refused(key, value, match):
+    d = _doc()
+    d[key] = value
+    with pytest.raises(F.FactoryRunError, match=match):
+        F.run_inputs(d)
+
+
+def test_grid_mode_takes_no_power_site_check():
+    d = _doc(tier=4, mode="grid")
+    d["grid_mw"], d["power_from_site"] = 10000.0, True
+    with pytest.raises(F.FactoryRunError, match="grid mode"):
+        F.run_inputs(d)

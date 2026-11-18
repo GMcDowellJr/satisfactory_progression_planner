@@ -62,11 +62,15 @@ from progression import (  # noqa: E402
     availability, discover, generators_available, nameplate_mw, playthrough, pumped_caps,
     resource_caps, resources_in_reference_order, site_extraction,
 )
+from progression.byproducts import POWER as BYPRODUCT_POWER  # noqa: E402
+from progression.byproducts import flatten as flatten_byproducts  # noqa: E402
 from progression.byproducts import (  # noqa: E402
     FUEL_ROUTES, Byproduct, ledger, report_lines, with_generators,
 )
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
-from progression.power_stack import PowerStack, power_stack  # noqa: E402
+from progression.power_stack import (  # noqa: E402
+    PowerStack, PowerStackError, SupplyCheck, power_stack, supply_check, supply_lines,
+)
 from progression.power_stack import report_lines as stack_lines  # noqa: E402
 from progression.infrastructure import (  # noqa: E402
     POLICIES, BeltChoice, MarkChoice, belt_for, extractor_options, highest_extractor,
@@ -80,7 +84,8 @@ INPUTS_SCHEMA = "factory-inputs/1"
 PLAN_SCHEMA = "factory-plan/1"
 INPUT_KEYS = ("schema", "world_config_id", "playthrough", "scenario", "site", "goal_mix",
               "goal", "power_mode", "power_statistic", "grid_mw", "spare_mw", "target_scale",
-              "infrastructure_policy", "fuel_byproducts", "standing_generators")
+              "infrastructure_policy", "fuel_byproducts", "standing_generators",
+              "generation_mix", "power_from_site")
 PLAYTHROUGH_KEYS = ("through_tier", "milestones", "research", "alternates")
 SITE_KEYS = ("label", "socket_ids", "supply", "pumps_water")
 SCENARIO_KEYS = ("recipe_input_multiplier", "machine_power_multiplier",
@@ -131,6 +136,7 @@ class FactoryRun:
     warnings: tuple[str, ...]
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
     power_stack: PowerStack | None = None    # reframe A18; report_need mode only
+    supply_check: SupplyCheck | None = None  # reframe A19; declared power site only
 
 
 def _keys(where: str, doc, keys) -> None:
@@ -167,6 +173,13 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> FactoryRun:
                               f"{list(FUEL_ROUTES)} (reframe A18: generator, or packaged)")
     if doc["goal"] not in site_card.GOALS:
         raise FactoryRunError(f"goal {doc['goal']!r}; known: {list(site_card.GOALS)}")
+    if not isinstance(doc["power_from_site"], bool):
+        raise FactoryRunError("power_from_site: true or false; whether this factory powers "
+                              "itself from its own fuel is declared, never inferred (A19)")
+    gen_mix = doc["generation_mix"]
+    if gen_mix is not None and (not isinstance(gen_mix, dict) or not gen_mix):
+        raise FactoryRunError("generation_mix: null (the class obtained last carries the "
+                              "rest) or an object of generator class -> share (A19)")
     mix = doc["goal_mix"]
     if not isinstance(mix, list) or not mix:
         raise FactoryRunError("goal_mix: declare at least one item; a mix is never invented (B1)")
@@ -187,7 +200,8 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> FactoryRun:
         power_mode=doc["power_mode"], grid_mw=doc["grid_mw"], spare_mw=doc["spare_mw"],
         target_scale=doc["target_scale"], policy=doc["infrastructure_policy"],
         power_statistic=power_statistic, fuel_byproducts=doc["fuel_byproducts"],
-        standing_generators=doc["standing_generators"], inputs=doc,
+        standing_generators=doc["standing_generators"], generation_mix=gen_mix,
+        power_from_site=doc["power_from_site"], inputs=doc,
     )
 
 
@@ -197,7 +211,9 @@ def run_factory(
     goal_mix: tuple[tuple[str, float], ...], goal: str, power_mode: str, grid_mw: float,
     spare_mw: float, target_scale: float | None, policy: str,
     power_statistic: PowerStatistic, fuel_byproducts: str,
-    standing_generators: dict[str, int] | None = None, inputs: dict | None = None,
+    power_from_site: bool,
+    standing_generators: dict[str, int] | None = None,
+    generation_mix: dict[str, float] | None = None, inputs: dict | None = None,
 ) -> FactoryRun:
     if policy not in POLICIES:
         raise FactoryRunError(f"infrastructure policy {policy!r}; known: {list(POLICIES)}")
@@ -205,6 +221,10 @@ def run_factory(
     if need and (grid_mw != 0.0 or pumps_water):
         raise FactoryRunError("report_need reports the whole need: no standing grid and no "
                               "pumped Water beside it (reframe A11)")
+    if power_from_site and not need:
+        raise FactoryRunError("power_from_site checks the power stack against the site's "
+                              "leftovers, and the stack is report_need's (A19); in grid mode "
+                              "the solve already burns the site's fuel (A3)")
     if any(item == WATER for item, _ in supply):
         raise FactoryRunError("declared Water supply: Water is never free (reframe A4); "
                               "declare the site able to pump it")
@@ -343,6 +363,30 @@ def run_factory(
             lane = belt_for(socket_draw, avail, kind)
         socket_plans.append(SocketPlan(s.socket_id, s.source_kind, mark, lane))
 
+    byproducts = ledger(repo, data, state,
+                        with_generators(plan.plan.items, plan.generators, generators),
+                        {i: units * response.scale for i, units in goal_mix},
+                        owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts)
+    # A18: in report_need the need is the plan's (machines + extraction by the
+    # draw); in grid mode the solve already chose its generators (A3)
+    stack = check = None
+    if need:
+        try:
+            stack = power_stack(repo, data, state, response.power.need_mw, avail.recipe_ids,
+                                standing_generators, generation_mix)
+        except PowerStackError as e:
+            raise FactoryRunError(f"power stack: {e}") from None
+    if power_from_site:
+        # A19: what the site has left at the generators' feed
+        left: dict[str, float | None] = {
+            c.item_id: None if c.rate_per_min is None
+            else max(0.0, c.rate_per_min - draw.get(c.item_id, 0.0)) for c in caps}
+        for b in flatten_byproducts(byproducts):
+            if b.disposition == BYPRODUCT_POWER and left.get(b.item_id, 0.0) is not None:
+                left[b.item_id] = left.get(b.item_id, 0.0) + b.rate_per_min
+        check = supply_check(stack, left, water_extractor_owned=WATER_EXTRACTOR
+                             in avail.extractors.get(WATER, ()), water_item_id=WATER)
+
     mw_top = sum(p.mark.highest.mw_at(p.mark.draw_per_min) for p in socket_plans)
     mw_kept = sum(p.mark.chosen.mw_at(p.mark.draw_per_min) for p in socket_plans
                   if p.mark.chosen is not None)
@@ -362,14 +406,9 @@ def run_factory(
         power=response.power,
         availability_report=avail.report(),
         warnings=plan.plan.warnings + (SHARE_NOTE,),
-        byproducts=ledger(repo, data, state,
-                          with_generators(plan.plan.items, plan.generators, generators),
-                          {i: units * response.scale for i, units in goal_mix},
-                          owned_recipes=avail.recipe_ids, fuel_route=fuel_byproducts),
-        # A18: in report_need the need is the plan's (machines + extraction by
-        # the draw); in grid mode the solve already chose its generators (A3)
-        power_stack=(power_stack(repo, data, state, response.power.need_mw, avail.recipe_ids,
-                                 standing_generators) if need else None),
+        byproducts=byproducts,
+        power_stack=stack,
+        supply_check=check,
     )
 
 
@@ -400,6 +439,7 @@ def record(run: FactoryRun) -> dict:
         "power": None if run.power is None else dataclasses.asdict(run.power),
         "byproducts": [dataclasses.asdict(b) for b in run.byproducts],
         "power_stack": None if run.power_stack is None else dataclasses.asdict(run.power_stack),
+        "supply_check": None if run.supply_check is None else dataclasses.asdict(run.supply_check),
         "warnings": list(run.warnings),
     }
 
@@ -419,6 +459,8 @@ def report(run: FactoryRun) -> str:
     lines += report_lines(run.byproducts)
     if run.power_stack is not None:
         lines += stack_lines(run.power_stack)
+    if run.supply_check is not None:
+        lines += supply_lines(run.supply_check)
     lines.append("  " + run.availability_report.replace("\n", "\n  "))
     lines += [f"  note: {w}" for w in run.warnings]
     return "\n".join(lines)
