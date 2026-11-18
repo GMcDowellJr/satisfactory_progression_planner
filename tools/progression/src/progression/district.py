@@ -47,10 +47,12 @@ from dataclasses import dataclass
 from production_adapter.contracts import (
     ExtractionSegment, GeneratorFuel, ItemId, ProducerClass, RecipeId, ResourceCap,
 )
-from production_adapter.gamedata import ExtractionRate, ReferenceData, load_generators
+from production_adapter.gamedata import (
+    ExtractionRate, ReferenceData, load_generators, load_project_assembly,
+)
 from production_adapter.scenario import Scenario
 
-from .unlocks import generators_open_at_tier
+from .unlocks import generators_open_at_tier, schematic_costs, schematics_in_tiers
 
 #: The game's overclock ceiling, as extraction_rates.csv's max_250 column states it.
 MAX_CLOCK = 2.5
@@ -333,6 +335,38 @@ def bill_units(
                 raise DistrictError(f"bill source {label!r}: {item} at {units!r} units")
             out[item] = out.get(item, 0.0) + units
     return out
+
+
+def compose_bill(
+    repo_root,
+    data: ReferenceData,
+    phases: tuple[int, ...],
+    tiers: tuple[int, ...],
+) -> dict[ItemId, float]:
+    """Project Assembly phases (E-scaled) + the milestone costs of `tiers` (A31).
+
+    The one composition district_run and portfolio_run both use. Until R2 of the
+    architecture reconciliation (2026-11-17) each held its own copy, and
+    portfolio_run's docstring said "as district_run.py composes them". Phases
+    and tiers are the caller's declaration; this refuses a phase the Project
+    Assembly table does not have and otherwise only sums (`bill_units`).
+    Milestone costs are not scaled by R (demand record A6).
+    """
+    pa = load_project_assembly(repo_root, data)
+    stray = [ph for ph in phases if ph not in {r.phase for r in pa}]
+    if stray:
+        raise DistrictError(f"no Project Assembly phase {stray}")
+    costs = schematic_costs(repo_root)
+    sources = [
+        (f"project assembly phase {ph}", tuple(
+            (r.item_id, data.scenario.apply_project_assembly_quantity(r.quantity_1x))
+            for r in pa if r.phase == ph
+        ))
+        for ph in phases
+    ] + [
+        (sid, costs[sid]) for sid in schematics_in_tiers(repo_root, tiers) if sid in costs
+    ]
+    return bill_units(tuple(sources))
 
 
 @dataclass(frozen=True)

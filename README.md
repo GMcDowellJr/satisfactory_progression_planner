@@ -6,6 +6,12 @@ This repository is organized around a deliberate boundary between **world extrac
 
 The foundational question is: **what is this world configuration naturally suited to, given resource placement, terrain, water, build surfaces, and logistics friction?** Progression planning then asks what to build, at what scale, and when. Presentation can later be mobile-first, desktop/web, or an in-game mod without changing the core data model.
 
+## Where to start
+
+`docs/ARCHITECTURE.md` is the current specification: the three planning tracks
+(site portfolio, run planner, factory planner), layers, calculation authority
+and governing decisions. `AGENTS.md` has the working rules.
+
 ## Repository layout
 
 ```text

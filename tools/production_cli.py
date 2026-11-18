@@ -127,14 +127,12 @@ def _backend(args, statistic=None):
 
 def cmd_tiers(args) -> int:
     if args.find:
-        import csv
+        from production_adapter.gamedata import load_recipe_rows
 
         needle = args.find.lower()
-        path = REPO / "planning_data" / "game" / "reference" / "recipes.csv"
-        with open(path, encoding="utf-8") as f:
-            hits = [r for r in csv.DictReader(f) if needle in r["display_name"].lower()]
-        for row in sorted(hits, key=lambda r: r["display_name"]):
-            print(f"{row['recipe_id']:46s} {row['display_name']}")
+        hits = [r for r in load_recipe_rows(REPO) if needle in r.display_name.lower()]
+        for row in sorted(hits, key=lambda r: r.display_name):
+            print(f"{row.recipe_id:46s} {row.display_name}")
         if not hits:
             print(f"no recipe display name contains {args.find!r}")
         return 0

@@ -21,8 +21,8 @@ their figures. The description stands.
                 stator, AW). Power is outside the rule: no coal step here
                 AMENDED (A20, Greg 2026-09-24 12:30): plus the DECLARED Mk1
                 coal step (2 miners, 4 coal generators, 2 water extractors)
-                by addition per class -> 4 miners. The power ledger is
-                reported over the paced pass
+                by addition per class -> 4 miners. (The power ledger once
+                reported over the paced pass; retired, reframe A19.1 item 4)
     standing    none declared; on hand none declared
 
 Measured in the agent container 2026-09-24, 1x scenario, LpBackend MEAN.
@@ -35,7 +35,7 @@ import sys
 
 import pytest
 
-from progression import lag, power
+from progression import lag
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location("phase_run", REPO / "tools" / "phase_run.py")
@@ -134,22 +134,6 @@ def test_phase2_bootstrap_adds_the_coal_step(phase2):
     _, _, bootstrap, _ = phase2
     assert bootstrap.buildings == (
         (MINER, 4), (FDY, 1), (ASM, 3), (CON_, 2), (COAL_GEN, 4), (WATER, 2))
-
-
-def test_phase2_ledger_plans_the_coal_step(phase2):
-    """Nothing standing: base 0, the step is 300 MW PLANNED. Known demand is
-    the paced lines plus the bootstrap's extractors at nameplate: all 4 miners
-    (2 derived for steel, 2 for coal) x 5 + 2 water extractors x 20 = 60."""
-    _, _, bootstrap, r = phase2
-    led = power.ledger(
-        power.load_power_tables(REPO), production_mw=r.paced.realization.total_power_mw,
-        bootstrap=bootstrap, standing_net=r.paced.stock.standing_net, generators=(),
-    )
-    assert (led.base_mw, led.planned_mw) == (0.0, 300.0)
-    assert [(p.producer_class, p.count) for p in led.planned] == [(COAL_GEN, 4)]
-    assert led.known_demand_mw == pytest.approx(127.3149, abs=5e-5)
-    assert led.base_and_planned_less_demand_mw == pytest.approx(172.6851, abs=5e-5)
-    assert led.ore_extraction_mw is None
 
 
 # --------------------------------------------------------------------------

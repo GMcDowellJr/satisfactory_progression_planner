@@ -39,14 +39,14 @@ defect at section 19 of the formulation record; not read here.
 """
 from __future__ import annotations
 
-import csv
 import pathlib
 import re
 from dataclasses import dataclass
 
 from production_adapter.contracts import RecipeId
-
-REFERENCE_SUBPATH = pathlib.Path("planning_data") / "game" / "reference"
+from production_adapter.gamedata import (
+    load_alternate_unlock_rows, load_progression_cluster_rows, load_recipe_rows,
+)
 
 #: The only eligibility this module models. Anything else needs research.
 AUTOMATIC_ELIGIBILITY = "automatic_hub"
@@ -58,13 +58,6 @@ class PoolDataError(RuntimeError):
 
 def _normalise(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower().replace("alternate:", ""))
-
-
-def _rows(path: pathlib.Path) -> list[dict[str, str]]:
-    if not path.is_file():
-        raise PoolDataError(f"missing reference table: {path}")
-    with open(path, encoding="utf-8") as f:
-        return list(csv.DictReader(f))
 
 
 def _band_max_tier(cluster_id: str) -> int:
@@ -84,10 +77,10 @@ def _band_max_tier(cluster_id: str) -> int:
 
 def resolve_clusters(repo_root: str | pathlib.Path) -> dict[str, int]:
     """Cluster id -> the highest tech tier in its band."""
-    rows = _rows(pathlib.Path(repo_root) / REFERENCE_SUBPATH / "progression_clusters.csv")
-    bands = {r["progression_cluster_id"]: _band_max_tier(r["progression_cluster_id"]) for r in rows}
-    ordered = sorted(rows, key=lambda r: int(r["sort_order"]))
-    tiers = [bands[r["progression_cluster_id"]] for r in ordered]
+    rows = load_progression_cluster_rows(repo_root)
+    bands = {r.progression_cluster_id: _band_max_tier(r.progression_cluster_id) for r in rows}
+    ordered = sorted(rows, key=lambda r: r.sort_order)
+    tiers = [bands[r.progression_cluster_id] for r in ordered]
     if tiers != sorted(tiers):
         raise PoolDataError(
             f"tier bands read from cluster ids are not monotonic in sort_order: {tiers}"
@@ -97,20 +90,19 @@ def resolve_clusters(repo_root: str | pathlib.Path) -> dict[str, int]:
 
 def resolve_slugs(repo_root: str | pathlib.Path) -> dict[str, RecipeId]:
     """The P4 join: unlock-table slug -> `Recipe_*_C`. Raises on any failure."""
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
     by_name: dict[str, list[RecipeId]] = {}
-    for row in _rows(ref / "recipes.csv"):
-        by_name.setdefault(_normalise(row["display_name"]), []).append(row["recipe_id"])
+    for row in load_recipe_rows(repo_root):
+        by_name.setdefault(_normalise(row.display_name), []).append(row.recipe_id)
 
     resolved: dict[str, RecipeId] = {}
-    for row in _rows(ref / "alternate_recipe_unlocks.csv"):
-        candidates = by_name.get(_normalise(row["recipe_name"]), [])
+    for row in load_alternate_unlock_rows(repo_root):
+        candidates = by_name.get(_normalise(row.recipe_name), [])
         if len(candidates) != 1:
             raise PoolDataError(
-                f"slug {row['recipe_id']!r} ({row['recipe_name']!r}) matched "
+                f"slug {row.slug!r} ({row.recipe_name!r}) matched "
                 f"{len(candidates)} recipes: {candidates}"
             )
-        resolved[row["recipe_id"]] = candidates[0]
+        resolved[row.slug] = candidates[0]
     return resolved
 
 
@@ -139,24 +131,20 @@ def available_at(repo_root: str | pathlib.Path, tier: int) -> PoolAvailability:
     """Alternates in the hard-drive pool at `tier`, by automatic entry only."""
     if tier < 0:
         raise ValueError(f"tier must be non-negative, got {tier}")
-    ref = pathlib.Path(repo_root) / REFERENCE_SUBPATH
-
     bands = resolve_clusters(repo_root)
     slugs = resolve_slugs(repo_root)
-    alternates = {
-        row["recipe_id"] for row in _rows(ref / "recipes.csv") if row["is_alternate"] == "true"
-    }
+    alternates = {row.recipe_id for row in load_recipe_rows(repo_root) if row.is_alternate}
 
     available: set[RecipeId] = set()
     later: set[RecipeId] = set()
     by_cluster: dict[str, set[RecipeId]] = {}
     automatic: set[RecipeId] = set()
 
-    for row in _rows(ref / "alternate_recipe_unlocks.csv"):
-        if row["eligibility_type"] != AUTOMATIC_ELIGIBILITY:
+    for row in load_alternate_unlock_rows(repo_root):
+        if row.eligibility_type != AUTOMATIC_ELIGIBILITY:
             continue
-        recipe_id = slugs[row["recipe_id"]]
-        cluster = row["progression_cluster_id"]
+        recipe_id = slugs[row.slug]
+        cluster = row.progression_cluster_id
         if cluster not in bands:
             raise PoolDataError(f"unknown progression cluster {cluster!r}")
         automatic.add(recipe_id)

@@ -212,18 +212,41 @@ def digest(path: pathlib.Path, repo_rel: str | None = None,
     return n, h.hexdigest()
 
 
+HEADER = ["path", "bytes", "sha256"]
+
+
+class ManifestFormatError(ValueError):
+    """A committed manifest is not in the shape `render` writes."""
+
+
 def read_existing(path: pathlib.Path) -> dict[str, tuple[str, str]]:
+    """Read a committed manifest, refusing one `render` could not have written.
+
+    2d6ccfe (2026-11-10) was a hand edit that sorted the header row into line 36,
+    and `--check` then died on a bare KeyError. A manifest is only ever written
+    by `render`, so anything else is named as malformed rather than half-read.
+    """
     if not path.is_file():
         return {}
     with open(path, encoding="utf-8", newline="") as f:
-        return {r["path"]: (r["bytes"], r["sha256"]) for r in csv.DictReader(f)}
+        rows = list(csv.reader(f))
+    if not rows or rows[0] != HEADER:
+        raise ManifestFormatError(f"{path.name}: first row must be {','.join(HEADER)}")
+    body = rows[1:]
+    bad = [i + 2 for i, r in enumerate(body) if len(r) != 3 or r == HEADER]
+    if bad:
+        raise ManifestFormatError(f"{path.name}: malformed row(s) at line {bad[:5]}")
+    paths = [r[0] for r in body]
+    if paths != sorted(paths) or len(set(paths)) != len(paths):
+        raise ManifestFormatError(f"{path.name}: rows must be unique and sorted by path")
+    return {p: (b, h) for p, b, h in body}
 
 
 def render(rows: list[tuple[str, int, str]]) -> bytes:
     """CRLF, trailing newline, matching the committed files byte for byte."""
     buf = io.StringIO(newline="")
     w = csv.writer(buf, lineterminator="\r\n")
-    w.writerow(["path", "bytes", "sha256"])
+    w.writerow(HEADER)
     for path, size, sha in rows:
         w.writerow([path, size, sha])
     return buf.getvalue().encode("utf-8")
@@ -231,7 +254,13 @@ def render(rows: list[tuple[str, int, str]]) -> bytes:
 
 def process(m: Manifest, write: bool, verbose: bool) -> bool:
     """Returns True if the manifest was already in sync."""
-    old = read_existing(m.out)
+    try:
+        old = read_existing(m.out)
+    except ManifestFormatError as e:
+        if not write:
+            raise
+        print(f"\n{e}; rewriting it whole")
+        old = {}
     rows = []
     for rel in m.targets():
         path = m.root / rel
@@ -276,7 +305,7 @@ def main() -> int:
     selected = [m for m in MANIFESTS if not args.only or m.name == args.only]
     try:
         results = [process(m, args.write, args.verbose) for m in selected]
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ManifestFormatError) as e:
         print(f"\nERROR: {e}")
         return 2
 

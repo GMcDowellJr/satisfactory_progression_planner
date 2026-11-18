@@ -3313,3 +3313,10 @@ installed feels like a different tool".
          (ARCHITECTURE "Client boundary"); a `clients/` directory here
          would put it under the manifests and the LF rule. Greg's call
     O45  Pyodide (A27.4 O24) would remove the file hop; not started
+
+## Amendment 37 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: A1 (tie rounding read) and A7 (idle draw, shard ceilings, container `slots × stack`) as observed facts.

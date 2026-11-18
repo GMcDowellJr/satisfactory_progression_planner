@@ -31,7 +31,6 @@ Location: `tools/` root beside `chain_view.py`, for the same reason (C7).
 """
 from __future__ import annotations
 
-import csv
 import math
 import pathlib
 import sys
@@ -44,6 +43,7 @@ for _src in ("production_adapter", "realization"):
         sys.path.insert(0, _path)
 
 from production_adapter.contracts import ItemId  # noqa: E402
+from production_adapter.gamedata import load_stack_sizes  # noqa: E402
 from realization import Bus, BusId, RealizationReport  # noqa: E402
 
 #: A7.3, stated by Greg: slots per container. Convenience only; the caller
@@ -92,13 +92,8 @@ class StorageView:
 
 
 def stack_sizes(repo_root: str | pathlib.Path = REPO) -> dict[ItemId, int]:
-    """`cached_stack_size` per item, from items.csv."""
-    path = pathlib.Path(repo_root) / "planning_data" / "game" / "reference" / "items.csv"
-    with path.open(encoding="utf-8") as fh:
-        return {
-            r["item_id"]: int(r["cached_stack_size"])
-            for r in csv.DictReader(fh) if r["cached_stack_size"]
-        }
+    """`cached_stack_size` per item, through `gamedata.load_stack_sizes` (R1)."""
+    return load_stack_sizes(repo_root)
 
 
 def view(

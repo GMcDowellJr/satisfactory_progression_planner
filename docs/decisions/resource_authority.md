@@ -43,3 +43,10 @@ on all 625 rows, derived from the installed world default. Extracted from there:
 rather than a naming inconsistency, and it matters — the two are extracted by
 different buildings at different rates, per `resource_extraction_map.csv`. Left
 alone; it belongs to the Phase 5 world integration, not to P3.
+
+## Amendment 1 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: the whole record (P3: items.csv is the authority for resource identity).

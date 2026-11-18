@@ -457,3 +457,10 @@ answer. But the Python-native path is now the expected outcome rather than the
 fallback, and guardrail 1.1's "documented gap" is documented above: no permissively
 licensed, actively maintained, Python-native production solver was found, and the
 two TypeScript candidates each carry an integration cost or a licence defect.
+
+## Amendment 1 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: F1 (HiGHS via scipy) as the implemented backend.

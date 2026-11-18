@@ -12,7 +12,7 @@ root like district_run.py and site_card.py, whose site composition it reuses:
 
     sites     site_card.site_caps per declared SiteSpec: closed caps
     bill      Project Assembly phases (scenario-scaled) + milestone costs of
-              the declared tiers, summed by progression.district.bill_units
+              the declared tiers, composed by progression.district.compose_bill
               (A31), the same composition district_run.py makes
     reach     discover() over the POOLED caps (with free transfers the sites
               reach together what any of them reaches); a bill item no site
@@ -117,11 +117,11 @@ from production_adapter import (  # noqa: E402
 from production_adapter.gamedata import ReferenceData, load_logistics  # noqa: E402
 from production_adapter.lp_backend import Infeasible, LpBackend, PowerStatistic  # noqa: E402
 from progression import (  # noqa: E402
-    at_tier, available_at, bill_units, discover, generators_at_tier, nameplate_mw, pumped_caps,
+    at_tier, available_at, discover, generators_at_tier, nameplate_mw, pumped_caps,
     recipe_ids_by_name, site_extraction, unlocks,
 )
+from progression import district  # noqa: E402
 from progression.district import WATER, WATER_EXTRACTOR  # noqa: E402
-from progression import stock  # noqa: E402
 from progression.power import load_power_tables  # noqa: E402
 
 import shadow_text  # noqa: E402
@@ -236,24 +236,13 @@ class PortfolioRun:
 
 def compose_bill(repo: pathlib.Path, data: ReferenceData, phases: tuple[int, ...],
                  tiers: tuple[int, ...]) -> dict:
-    """Project Assembly phases (scenario-scaled) + milestone costs of `tiers`,
-    as district_run.py composes them (A31)."""
-    pa = stock.load_project_assembly(repo, data)
-    known = {r.phase for r in pa}
-    stray = [ph for ph in phases if ph not in known]
-    if stray:
-        raise PortfolioRunError(f"no Project Assembly phase {stray}")
-    costs = unlocks.schematic_costs(repo)
-    sources = [
-        (f"project assembly phase {ph}", tuple(
-            (r.item_id, data.scenario.apply_project_assembly_quantity(r.quantity_1x))
-            for r in pa if r.phase == ph
-        ))
-        for ph in phases
-    ] + [
-        (sid, costs[sid]) for sid in unlocks.schematics_in_tiers(repo, tiers) if sid in costs
-    ]
-    return bill_units(tuple(sources))
+    """Project Assembly phases (scenario-scaled) + milestone costs of `tiers`:
+    `progression.district.compose_bill` (A31; shared with district_run since R2,
+    2026-11-17), with its refusals raised as this tool's error."""
+    try:
+        return district.compose_bill(repo, data, phases, tiers)
+    except district.DistrictError as e:
+        raise PortfolioRunError(str(e)) from e
 
 
 def pooled(caps_by_site: tuple[tuple[ResourceCap, ...], ...]) -> tuple[ResourceCap, ...]:
@@ -792,6 +781,14 @@ def export(pr: PortfolioRun, data: ReferenceData, path: pathlib.Path,
 #: the inputs document's schema tag (handoff 2026-10-23 14:48 action 2: the
 #: picker hands a run to portfolio_run as sites by socket id)
 INPUTS_SCHEMA = "portfolio-inputs/2"
+#: The scenario keys a /2 document carries: fixed, so the wire format does not
+#: follow `Scenario`'s fields. R4 (2026-11-17, reframe A15.2 B4) added
+#: `Scenario.fluid_input_floor`; /2 still carries the legacy
+#: `input_amount_floor`, where null or 1 keep their meaning (1 = fluids at 1 m3;
+#: solids are floored at 1 below 1x by observation) and 0 is refused by Scenario.
+SCENARIO_KEYS_V2 = ("recipe_input_multiplier", "machine_power_multiplier",
+                    "project_assembly_requirement_multiplier", "input_amount_floor",
+                    "fluid_rounding_unit")
 #: A11 added power_mode; a /1 document is refused by name (no default read in)
 PAST_INPUTS = {"portfolio-inputs/1": "it has no power_mode (A11); add \"power_mode\": \"grid\" to run it "
                                      "as before, or \"report_need\", and set schema " + "portfolio-inputs/2"}
@@ -822,8 +819,7 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> tuple[PortfolioRun, Scen
     if doc["schema"] != INPUTS_SCHEMA:
         raise PortfolioRunError(f"inputs schema {doc['schema']!r}, this reads {INPUTS_SCHEMA}")
     _keys("inputs.bill", doc["bill"], ("phases", "tiers"))
-    scenario_keys = tuple(f.name for f in dataclasses.fields(Scenario))
-    _keys("inputs.scenario", doc["scenario"], scenario_keys)
+    _keys("inputs.scenario", doc["scenario"], SCENARIO_KEYS_V2)
     if not isinstance(doc["extractors"], list) or not isinstance(doc["sites"], list):
         raise PortfolioRunError("inputs: extractors and sites are lists")
     for n, e in enumerate(doc["extractors"]):
@@ -851,6 +847,17 @@ def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> tuple[PortfolioRun, Scen
     return pr, scenario
 
 
+def _scenario_v2(scenario: Scenario) -> dict:
+    """The /2 scenario object. A fluid floor declared other than through the
+    legacy key has no /2 spelling, so it is refused rather than dropped."""
+    if scenario.fluid_input_floor is not None and scenario.input_amount_floor is None:
+        raise PortfolioRunError(
+            "portfolio-inputs/2 cannot carry fluid_input_floor; declare "
+            "input_amount_floor=1 (fluids at 1 m3) or run at 1x and above"
+        )
+    return {k: getattr(scenario, k) for k in SCENARIO_KEYS_V2}
+
+
 def inputs_doc(specs: tuple[site_card.SiteSpec, ...], *, world_config_id: str, tier: int,
                declared_recipes: tuple[str, ...], scenario: Scenario, goal: str,
                bill_phases: tuple[int, ...], bill_tiers: tuple[int, ...], grid_mw: float,
@@ -862,7 +869,7 @@ def inputs_doc(specs: tuple[site_card.SiteSpec, ...], *, world_config_id: str, t
     first = specs[0]
     return {
         "schema": INPUTS_SCHEMA, "world_config_id": world_config_id, "tier": tier,
-        "declared_recipes": list(declared_recipes), "scenario": dataclasses.asdict(scenario),
+        "declared_recipes": list(declared_recipes), "scenario": _scenario_v2(scenario),
         "goal": goal, "bill": {"phases": list(bill_phases), "tiers": list(bill_tiers)},
         "extraction_clock": first.extraction_clock,
         "extractors": [{"source_kind": k, "item_id": i, "extractor_class": c}

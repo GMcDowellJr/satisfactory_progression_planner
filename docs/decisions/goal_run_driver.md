@@ -389,3 +389,10 @@ into the solve under a power balance, because one resource cap is contested
 between power and production. The ledger code is unchanged until that work
 lands; whether a report-only view of the solved balance survives is a build
 choice, not decided here.
+
+## Amendment 7 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: none; `goal_run` survives as a library for the run track.

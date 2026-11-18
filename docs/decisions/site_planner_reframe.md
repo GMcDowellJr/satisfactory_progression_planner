@@ -839,3 +839,432 @@ late-game sites should not be spent early.
 - Water access is not assessed beyond resource-well water.
 - Nothing yet warns when a picked site is one of the few places a later
   phase could use (the scarcity badge proposed in this session).
+
+## Amendment 15 — 2026-11-17. Architecture reconciliation: two planning tracks, one current specification
+
+### A15.1 What raised it
+
+Greg asked, 2026-11-17, for the architecture to be reconciled with the
+accumulated decision records before new planning capabilities are added. A
+functional audit of the same date was used as a starting hypothesis, not as
+authority.
+
+Discovery was run in a cloud container at `2d6ccfe`: 1435 passed, 1 skipped.
+The checkpoint notes are in `Claude outputs/`. Discovery found:
+
+- six modules reading the game-reference CSVs directly;
+- a second planning model in `research/step_planner` (phase-index miner and
+  belt tables);
+- no implementation of staged upgrades, storage-priority banks,
+  eligibility-vs-ownership, or PA duration from modelled production.
+
+It also found that the new direction (supply-constrained individual factories)
+sat outside §2's working direction ("never says exactly what to do and when"),
+so it needed recording here. Those findings did not decide anything. Greg
+decided the items below at checkpoints 1 and 2.
+
+### A15.2 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+- **A1 Tracks.** Individual-factory planning is in scope as a sibling track.
+  One scope plans the run. Another takes that plan as input, or takes a
+  per-factory plan at run time, where the user lists what is available and the
+  goals. Site portfolio planning (A1–A14) continues unchanged beside them.
+- **A2 One current specification.** `docs/ARCHITECTURE.md` is the current
+  specification. Everything else goes to the archive and is referred to only
+  as historical evidence, not in general discussion (Q4). Mechanism: records
+  stay at their paths (21 files cite them). Each archived record gets a
+  one-line forward amendment, and `docs/decisions/README.md` indexes current
+  vs archived.
+- **A3 Older workflows.** Kept as deprecated background; their ideas are
+  ported into tooling. Exactly (Q5):
+  - deprecated CLIs: `district_run.py`, `phase_run.py` and `site_card.py`;
+  - libraries still in use: `goal_run`, `schedule`, `stock`, and
+    `site_card`'s socket readers;
+  - not deprecated: `portfolio_run`, `neighborhoods`, `site_planner_web` and
+    `demand_expansion`;
+  - `research/*` is background.
+- **B1 Supply vs demand.** Supply-side is the preferred method for the
+  current factory. Demand-side is needed to estimate what's next and what
+  reaching a target takes. The deployed prototype at
+  `eloquent-pothos-3073ca.netlify.app` points to the target determination:
+  rate = PA bill × E ÷ horizon, with the horizon bounded by one machine of the
+  slowest part. Its arithmetic is not carried (it ceils solid inputs, so at
+  R = 1.25 an input of 1 becomes 2, against the §3.2.4 read of 1). Neither
+  track invents a mix or a target: both are declared.
+- **B2 Extractor and belt marks.** Which marks are considered follows what is
+  unlocked: no Mk.4 belts in phase 2; at the start of phase 2 and steel, no
+  Mk.2 miner and no Mk.3 belt yet. To maximise supply, use the highest mark
+  available, and work back to a lower mark where the higher one does not help.
+  "Does not help" (Q1):
+  - same delivered rate, at lower power;
+  - for belts, the lowest mark that carries the lane's actual flow (a lane
+    that never carries more than 60/min takes Mk.1, not Mk.2);
+  - build cost is not a criterion.
+- **Q2 Availability.** Availability follows the milestones owned. "Phase N"
+  or "tier N" is a shortcut for every milestone up to N. Milestones within a
+  phase need not be taken in order, or at all, so a declared set is the
+  input. Checked 2026-11-17: Miner Mk.2 comes from *Advanced Steel
+  Production* and Belt Mk.3 from *Logistics Mk.3*, both tier 4, through
+  `schematic_recipe_unlocks` × `building_recipes`.
+- **B3 Storage-priority bank.** This is a practice from Greg's 50× and 100×
+  elevator-part runs. Maximising Smart Plating worked, but left no
+  construction inventory for other builds.
+  - Bleeding storage off a PA lane failed: the lane's single Iron Plate
+    constructor was either split between Smart Plating and storage, or
+    starved Smart Plating until storage filled.
+  - Current practice:
+    - a smart splitter sends all product to a dedicated set of machines
+      optimised for storage parts (example: 4 underclocked constructors,
+      73 Iron Plate/min);
+    - when storage fills, backpressure flips the splitter to overflow, which
+      feeds the PA lanes;
+    - as stock is drawn down, the splitter sends resources to refill storage
+      first.
+  - Observed working in game (Greg). It needs smart splitters, and a
+    standard splitter works as a bootstrap. Likely less useful at lower E.
+- **Q6 Storage capacity.** The storage container determines fill time.
+  Container type is gated by tier, and choosing regular or industrial depends
+  on how much the stock is used and how likely it is to be drawn down quickly
+  enough to matter. The first version therefore reports fill time per
+  available container option and the PA rate while filling and when full.
+  Withdrawals are not declared yet.
+- **B4 Rounding floor.** Solids have a floor of 1 at sub-1× R (A5.1 of the
+  demand record, now the code default from R4). The fluid floor still needs
+  the in-game read at R = 0.25 (demand A5.2) and stays declared.
+- **B5 / Q3 Alternates.** "Eligible" and "accessible" collapse to the
+  **pool**. Recipe status is owned / in pool / MAM research / locked.
+  Resource accessibility is a separate, site-level axis. Scanned-but-unclaimed
+  hard-drive offers are not modelled now. A future option takes them from
+  game data or a declared list and removes them from the pool for the next
+  scan (selecting one of the two returns the other to the pool), which bears
+  on the odds of finding an alternate.
+
+### A15.3 §2 amended, forward only
+
+§2's working direction stands with one change. The tool now also computes
+what a **declared** goal or target takes in the factory and run tracks: rates,
+machines, marks, storage fill. It still never chooses the goal, the target,
+the mix or the order, and it still never says exactly what to do and when.
+The v1.0 product spec and the capability inventory named in §2 stay ideas, as
+§2 said, and are archived as proposals. So is the 2026-11-10 factory-design
+specification. Nothing in them binds unless brought forward here or in a
+later amendment.
+
+### A15.4 Brought forward explicitly (§3), as evidence and contracts
+
+These are brought forward as observed facts and implemented contracts, not as
+product mandates:
+
+- `resource_authority.md` (P3);
+- demand §3.2.4–3.2.5 and A2 (rounding reads);
+- crossover A1 (tie rounding read) and A7 (idle draw, shard ceilings,
+  container `slots × stack`);
+- LP formulation §18 (tier rule, measured) and §19 (pool by automatic entry);
+- `production_building_power_model.md` (producer facts);
+- `extraction_wiring_and_provenance_stamp.md` (provenance stamp).
+
+Demand A5 and A6 are post-reframe in-game reads and already govern.
+
+### A15.5 Approved exceptions recorded
+
+`docs/ARCHITECTURE.md` §7 lists them:
+- two direct readers of game/reference, with reasons, enforced by
+  `tests/test_one_loader.py`;
+- raw reads in `tests/` (independent oracles);
+- `research/` scratch;
+- `demand_expansion`'s own expansion beside the LP, with its role to be
+  settled when the run track is built.
+
+### A15.6 Built so far (cloud container, branch `claude/practical-rubin-m3ard7`)
+
+- R0 `0cceff4`: manifest header repaired; malformed manifests refused by name.
+- R1 `5e6ca9c`: one loader; AST guard.
+- R2 `e265739`: shared `compose_bill`; stale power notes.
+- R3: `docs/ARCHITECTURE.md`, this amendment, the archive index and
+  deprecation notices.
+
+No figure changed in R0–R3. Container: 1444 passed, 1 skipped after R2.
+
+### A15.7 Not changed, said so
+
+- The portfolio solve, its schemas (`portfolio-inputs/2`, `portfolio-plan/1`)
+  and power modes are unchanged. A11.2's open question on grid mode stands.
+- A8.5 (by-product mechanism) stays open.
+
+## Amendment 16 — 2026-11-17. Tie-break fixed; by-products to the sink; withdrawals ignored; viewers are tests; power proposal
+
+### A16.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+Greg's words: "Fix internal tie break", "By products can be sent to AWESOME
+sink by default for now but should participate in production when available
+and appropriate to supply", "Storage withdrawals ignored", "Netlify and other
+viewers are tests. Nothing needs to stay in them".
+
+- **Tie-break.** The A13 `target_scale` defect found in R9 is fixed.
+  - Symptom: Infeasible from `solve_portfolio`'s fourth stage at bill units
+    of 5 or more.
+  - Cause: HiGHS presolve rejected a pinned stage that is feasible by
+    construction.
+  - Fix: `LpBackend._run` re-solves such a stage once without presolve. Only
+    a stage that already failed takes that path, so no prior result moves.
+  - Commit `c5ebdaa`.
+- **By-products.** They feed production where the solve finds that useful;
+  this is unchanged and was measured in A8.2. What is left over goes to the
+  AWESOME Sink by default, solids only. This settles A8.5 for now, as option 2
+  plus 3 (sink solids, report every leftover).
+  - Built in `progression.byproducts`.
+  - Each leftover is reported as `sink` (with sink points/min),
+    `sink_not_unlocked` (before *Schematic_2-5_C*), or `fluid_no_sink`.
+  - The factory and run tracks report this.
+  - The solve still runs with unconsumed output FREE (LP D1 stopgap), so a
+    fluid leftover is named, not refused.
+- **Storage withdrawals** are ignored; `progression.timeline` already
+  ignores them (A15.2 Q6).
+- **Viewers** are tests: the Netlify demand-expansion viewer and the
+  prototype pages. Nothing in them is a contract to keep. `demand_expansion`
+  is not kept for the viewer's sake.
+
+### A16.2 Open, said so
+
+- **Fluid by-products.** The sink takes solids only; Heavy Oil Residue left
+  over from Plastic is the measured case. Options:
+  - package and sink (the packager's own power and its Empty Canisters
+    loop);
+  - refuse a plan with an unconsumed fluid;
+  - keep naming them, as now.
+
+  Greg's call.
+- **Sink power.** It is not in the reference layer and is not charged.
+
+### A16.3 Proposed, not adopted: how power should work (Greg's direction, 2026-11-17)
+
+Greg: power was the number of generators required of each type, phase-aware.
+Once coal power is in use, biomass burners are typically backup, unless the
+available coal alone is enough, "possible on 5P".
+
+Proposal: a **staged generation ledger** for the run and factory tracks. It
+replaces neither A3's in-solve grid nor A11's report_need for the portfolio
+track.
+
+1. **Need.** The plan's machines plus extractors by the draw, P-scaled
+   (A7), plus a declared spare. This is the A11 figure.
+2. **Classes available.** From the milestones owned (`availability`): Biomass
+   from the start, Coal with *Coal Power*, Fuel and Nuclear later.
+   Geothermal only with its MAM research.
+3. **A declared power stack per phase.** An ordered list of generator
+   classes, for example phase 1 `[biomass]` and phase 2 onward
+   `[coal, biomass]`. It is never inferred from tier. A preset matching
+   Greg's practice is offered and named, not defaulted silently.
+4. **Fill in order.** The first class covers the need up to what its fuel
+   supply allows: coal from claimed nodes or a declared supply, with the coal
+   generators' water pumped and charged. The next class covers the
+   remainder.
+5. **Report per class.**
+   - whole generators (ceiling) and the load they carry;
+   - fuel per minute and water per minute;
+   - **backup units**: a class later in the stack sized to the need it
+     would cover if the earlier class fell short, reported as idle
+     capacity.
+
+   On a 5× power save the machines draw five times more, so coal alone
+   often cannot cover the need and biomass carries the rest as load, not
+   backup.
+6. **Fuel loops stay visible.** A fuel made in the factory (Solid Biofuel,
+   packaged fuels) draws power of its own. The ledger names that loop
+   rather than hiding it (A11.5).
+
+Questions this proposal needs answered before it is built:
+
+- **P1.** Is the stack declared per phase, or one stack with classes
+  dropping in as they unlock?
+- **P2.** Does "backup" mean built and idle (counted) or not built (only
+  reported as available)?
+- **P3.** Where does generator fuel come from by default: the factory's own
+  claimed nodes (charged against its caps) or a declared external supply?
+- **P4.** Is the 5P reading right? With P = 5, coal is not enough on its
+  own, so biomass carries load instead of standing by.
+
+## Amendment 17 — 2026-11-17. Fluid by-products: converted or burned before the sink
+
+### A17.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+"Fluids need to be converted or packaged before they can go to sink. Fuel gets
+used for power. Heavy oil residue gets converted to fuel and the byproduct of
+that conversion goes to sink." This answers A16.2's open fluid question.
+
+Built in `progression.byproducts`. The ledger is now a chain:
+- **Fuel** goes to power: Fuel Generators, units and MW.
+- **Heavy Oil Residue** converts through `Recipe_ResidualFuel_C` (one Oil
+  Refinery takes 60 and makes 40 Fuel), and its products are disposed of in
+  turn: Fuel to power, any solid to the AWESOME Sink.
+- **A step whose recipe, generator or sink is not unlocked** is named
+  `*_not_owned` / `sink_not_unlocked`.
+- **Any other fluid** is `needs_packaging`. Packaging is not modelled.
+
+Conversion refineries are reported with their machine count and P-scaled MW
+drawn. Generators are reported with units and MW generated.
+
+Measured (container): oil nodes 100 and 14_609, tier 5.
+- Plastic: 80 HOR/min → 1.33 Residual Fuel refineries (40 MW) → 53.3
+  Fuel/min → 2.67 Fuel Generators, 666.7 MW.
+- Rubber: twice those figures.
+
+### A17.2 Claude's reading (Greg may reverse any of it)
+
+- **Residual Fuel has no by-product** in the reference layer (60 HOR → 40
+  Fuel). So "the byproduct of that conversion goes to sink" sends nothing
+  from that step. The rule stays general: any solid a declared conversion
+  makes goes to the sink. The by-product Greg had in mind may be something
+  else, for example Polymer Resin from the Fuel recipe on Crude, or Petroleum
+  Coke from HOR. That is to confirm.
+- **"Fuel gets used for power" is applied to every fluid an owned generator
+  burns**: Fuel, Turbofuel, Liquid Biofuel.
+- **Disposal is a report**, not part of the solve. The power it yields does
+  not yet offset the plan's own need. Doing that would put the fuel loop in
+  the solve, and it belongs with the power-ledger proposal (A16.3).
+
+## Amendment 18 — 2026-11-17. Fuel routes; disposal never offsets the need; the power stack
+
+### A18.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+- **Fuel.** "all fuel goes to generator or gets packaged for use [in]
+  recipes that require unpacking or storage (with overflow to sink) for
+  jet-pack and vehicles."
+  - Built as a declared route, `fuel_byproducts` = `power` | `package`,
+    required in factory-inputs/1 and run_plan.
+  - `package` uses the packager recipe per fuel and reports the Empty
+    Canisters it takes (their source is not modelled).
+  - The packaged fuel is then stored, with the overflow to the sink.
+- **Disposal and the plan's need.** "let's not have it reduce the plans own
+  power need." Disposal power and the power stack are reports; neither nets
+  the plan's need. This answers A17.2's third point.
+- **Heavy Oil Residue and resin.** Greg thought every HOR recipe made resin
+  as a by-product. Read 2026-11-17: Polymer Resin comes from the crude
+  recipes that make HOR or Fuel (the Fuel recipe, and the Heavy Oil Residue
+  and Polymer Resin alternates), not from the HOR conversions (Residual Fuel
+  60 HOR → 40 Fuel, no by-product). That resin is a solid with sink points,
+  so it already goes to the sink. Nothing changed.
+- **Power: answers to A16.3's questions.**
+  - **P1:** "generator order in order obtained per tier/phase."
+  - **P2:** "backup means if power demand spikes above what coal or other
+    provides the bioburners turn [on and] produce power to compensate up to
+    its max before the power grid turns off."
+  - **P3:** "leaves/wood gathered by hand - converted to biomass then biofuel
+    through constructors."
+
+### A18.2 Built: `progression.power_stack` (Claude's reading; Greg may reverse it)
+
+- **The order** comes from the data: the tier of the schematic that unlocks
+  each generator's build recipe.
+
+  | Generator | Unlocked by | Tier |
+  |---|---|---|
+  | Biomass Burner | HUB Upgrade 6 | 0 |
+  | Coal | Coal Power | 3 |
+  | Fuel | Petroleum Power | 5 |
+  | Nuclear | Nuclear Power | 8 |
+
+- **The class obtained last is primary.** It carries the need in whole units,
+  with each fuel's feed and its Water listed; none is chosen.
+- **Every earlier class is backup.**
+  - Its units are the declared `standing_generators`, the ones built in
+    earlier phases.
+  - Its full output is the spike headroom before the grid trips.
+- **Solid Biofuel** gives, per hand-gathered source (Leaves, Wood), the
+  amount by hand per minute and the Biomass and Biofuel constructors, with
+  their P-scaled draw. That draw is not added to the need.
+- **Reports:** run_plan always reports the stack; factory_run reports it in
+  report_need mode. In grid mode the solve's own generators stand (A3). The
+  old "each generator alone" diagnostic in run_plan is removed; there is one
+  power view.
+- **P4 (the 5× case)** follows: with P = 5 the need is five times larger, so
+  more primary units are built and the backup headroom is a smaller share
+  of it.
+- **Not modelled:**
+  - whether the primary's fuel is available at the factory;
+  - Mycelia and Alien Protein biomass;
+  - clocking burners down.
+
+## Amendment 19 — 2026-11-17. Power through later phases; the power-site check; the ledger retired
+
+### A19.1 Decided by Greg, 2026-11-17 (holds until proven wrong)
+
+Answers to the open questions after A18:
+
+1. **Power through later phases.** "power generation continues into future
+   phases - bioburners act as backup because they only burn fuel/generate
+   power when needed -- previous approach that looked to work reported how
+   many of each type would be required by way of demonstrating needs and a
+   separate ratio system for how to supply the power".
+2. **When to check the stack's fuel.** "power stack should check supply if
+   intent of factory is fuel -- coal/water combination is typically for
+   power, coal/iron combination is typically for steel (rarely make steel at
+   same site as power) -- oil almost always includes power generation unless
+   specifically excluded or not needed (low P values may not need any power
+   from fuel)".
+3. **The fluid floor at sub-1× R:** still waiting on the in-game reading of
+   Plastic from the 0.25× R run. Demand A5.2 stays open.
+4. **`progression.power.ledger`:** "retire".
+5. **`demand_expansion`:** "keep for whole-run quantity totals".
+6. **Packaging containers:** "leave as reported for now -- there are multiple
+   options depending on the recipe (plastic vs steel)".
+
+### A19.2 Built (Claude's reading; Greg may reverse any of it)
+
+- **`progression.power_stack` reports in two parts.** This supersedes
+  A18.2's "every earlier class is backup".
+  - **Each type alone.** For every owned class: the units needed to cover the
+    whole need by itself, and every fuel option's feed. This part
+    demonstrates the need.
+  - **Supply.**
+    - Standing generators run first, in the order obtained. These are the
+      declared `standing_generators`, built in earlier phases.
+    - Biomass Burners are **backup** once another class is owned. They are
+      built but idle at steady state, and their full output is spike
+      headroom. While they are the only class, they carry the load.
+    - Whatever load the standing units leave goes to the **declared
+      generation mix** (class → share, with the shares summing to 1). With
+      no mix declared, it goes to the class obtained last.
+    - New units are whole, after netting against that class's standing units.
+    - A class named in the mix carries its share, even Biomass Burners.
+- **The intent is declared, never inferred.** `factory-inputs/1` gains
+  `power_from_site` (bool, required) and `generation_mix` (null or an object,
+  required). Greg's pairings, "coal/water typically power" and "oil almost
+  always", are typical, not rules. So the document says whether this factory
+  powers itself; nothing reads it off the resources.
+- **`power_stack.supply_check`** runs when `power_from_site` is true. It is
+  report_need only: in grid mode the solve already burns the site's fuel
+  (A3), so the check is refused there.
+  - **Which lines it checks:** for every line carrying load, each fuel option
+    and its supplemental fluids, against the site's leftovers. Backup lines
+    are not checked, because they burn only on a spike.
+  - **Leftover** is each cap less the solve's draw, plus fuel by-products
+    routed to generators. Delivered goal-mix items leave the site and are not
+    counted.
+  - **Statuses:**
+    - `covered` or `short`;
+    - `pumped`, for Water with a Water Extractor owned;
+    - `no_water_extractor`, for Water without one;
+    - `by_hand`, for a Biomass Burner fuel the site does not make.
+  - **`fed_by`** lists every fed fuel option per line. None is picked.
+- **`run_plan`** takes `--mix CLASS=SHARE` and forwards the mix.
+  `to_factory_inputs` requires `power_from_site`.
+- **The ledger is retired (A19.1 item 4).** `ledger`, `PowerLedger`,
+  `GeneratorReading`, `Role` and their line types are gone. The power tables
+  stay (`load_power_tables`), because five callers read extractor power from
+  them. As a side effect, the picker's browser bundle no longer ships
+  `progression.stock` or the realization package (44 → 37 files).
+- **`demand_expansion` stays (A19.1 item 5)** for whole-run quantity totals,
+  beside the LP. The run planner still uses the LP (R9).
+
+### A19.3 Not modelled, said so
+
+- **Fuel availability:**
+  - The stack lists every fuel a generator class can burn, including fuels
+    the state cannot make yet (for example Ionized Fuel at tier 6).
+  - When two lines would burn the same item, the check reads them one at a
+    time and does not add their draws together. Today only Water is shared,
+    and it is pumped.
+- **Water Extractors beside coal generators:** the check names Water as
+  pumped but does not add those extractors' count or power to the need.
+- **Packaging containers' source:** left as reported (A19.1 item 6).

@@ -1840,3 +1840,10 @@ added machine. It cannot know site space or the player's threshold.
 - The normalisation reference (single-goal optimum, or another).
 - Whether the browser front end keeps a max-clock setting as the bound.
 - "simple" metric (21.5, unchanged).
+
+## Amendment 1 — 2026-11-17. Archived
+
+Historical evidence only, per `site_planner_reframe.md` A15.2 (A2, decided by
+Greg 2026-11-17): cite it for why something is the way it is, not as a current
+requirement. The current specification is `docs/ARCHITECTURE.md`; the index is
+`docs/decisions/README.md`. Brought forward by reframe A15.4: §18 (tier rule, measured) and §19 (pool by automatic entry); the rest describes the implemented LP and is evidence, not mandate.

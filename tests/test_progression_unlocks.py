@@ -245,13 +245,17 @@ def test_the_tier_filter_resolves_schematics_and_recipes_from_one_predicate():
     """Extracted so the filter exists ONCE. Two copies of a filter is how the
     provenance work's three-lists defect started, and the fix there was to make
     the lists one list."""
+    from production_adapter.gamedata import SchematicRow
     from progression import unlocks as U
 
-    assert U._reached_at_tier({"schematic_type": "EST_Milestone", "tech_tier": "3"}, 3)
-    assert U._reached_at_tier({"schematic_type": "EST_Milestone", "tech_tier": "1"}, 3)
-    assert not U._reached_at_tier({"schematic_type": "EST_Milestone", "tech_tier": "4"}, 3)
-    assert not U._reached_at_tier({"schematic_type": "EST_MAM", "tech_tier": "1"}, 3)
-    assert not U._reached_at_tier({"schematic_type": "EST_Alternate", "tech_tier": "1"}, 3)
+    def row(kind: str, tier: int) -> SchematicRow:  # rows are typed since R1 (2026-11-17)
+        return SchematicRow("Schematic_X_C", "x", kind, tier)
+
+    assert U._reached_at_tier(row("EST_Milestone", 3), 3)
+    assert U._reached_at_tier(row("EST_Milestone", 1), 3)
+    assert not U._reached_at_tier(row("EST_Milestone", 4), 3)
+    assert not U._reached_at_tier(row("EST_MAM", 1), 3)
+    assert not U._reached_at_tier(row("EST_Alternate", 1), 3)
 
 
 def test_schematics_at_tier_is_cumulative():

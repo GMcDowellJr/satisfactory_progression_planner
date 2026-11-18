@@ -93,7 +93,12 @@ def test_picker_scenario_fields_and_fluid_rounding():
 
     from production_adapter import FLUID_ROUNDING_VARIANTS, Scenario
 
-    assert _picker("SCENARIO_KEYS") == [f.name for f in dataclasses.fields(Scenario)]
+    # The picker writes portfolio-inputs/2, whose scenario keys are pinned in
+    # portfolio_run (R4, 2026-11-17: Scenario gained fluid_input_floor, /2 did
+    # not); each of them is still a Scenario field.
+    keys = _picker("SCENARIO_KEYS")
+    assert keys == list(_module("portfolio_run").SCENARIO_KEYS_V2)
+    assert set(keys) <= {f.name for f in dataclasses.fields(Scenario)}
     assert _picker("FLUID_ROUNDING") == list(FLUID_ROUNDING_VARIANTS)
 
 

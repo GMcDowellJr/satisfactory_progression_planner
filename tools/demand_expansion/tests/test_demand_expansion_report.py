@@ -109,7 +109,10 @@ def test_config_id_and_table_hash():
     s = Scenario(recipe_input_multiplier=1.25, project_assembly_requirement_multiplier=2.0)
     assert config_id(DEFAULT_ROUTES, s, None) == "default-2026-10-10/recipe1.25/pa2/fluid-none"
     low = Scenario(recipe_input_multiplier=0.25, input_amount_floor=1)
-    assert config_id(DEFAULT_ROUTES, low, "mL") == "default-2026-10-10/recipe0.25/pa1/fluid-mL/floor1"
+    # R4 (2026-11-17): the suffix names the FLUID floor; solids are 1 by observation
+    assert config_id(DEFAULT_ROUTES, low, "mL") == "default-2026-10-10/recipe0.25/pa1/fluid-mL/fluidfloor1"
+    none = Scenario(recipe_input_multiplier=0.25, fluid_input_floor=0)
+    assert config_id(DEFAULT_ROUTES, none, "mL") == "default-2026-10-10/recipe0.25/pa1/fluid-mL/fluidfloor0"
     other = RouteTable(
         DEFAULT_ROUTES.name, DEFAULT_ROUTES.exclusions,
         DEFAULT_ROUTES.pins + (RoutePin("Desc_FicsiteIngot_C", "Recipe_FicsiteIngot_Iron_C", "iron"),),
