@@ -18,7 +18,7 @@
 //            (classes a playthrough owns) | "run_plan" (run-inputs/1) |
 //            "handoff" ({run, decl} -> factory-inputs/1) | "factory" (factory-inputs/1)
 // A Python refusal is passed back as Python worded it (its last line).
-// Messages out: {id, ok: true, result, ms} | {id, ok: false, error}
+// Messages out: {id, ok: true, result, ms} | {id, ok: false, error, boot}
 //               {status: "..."} while booting
 "use strict";
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
@@ -28,7 +28,10 @@ const ROOT = new URL("../../", self.location.href);  // tools/site_planner_web/ 
 // planner.html's ops: each answers with the Python's JSON text, parsed by the page
 const PLANNER_OPS = new Set(["catalog", "tier", "generators", "run_plan", "handoff", "factory"]);
 
+const PACKAGES = ["numpy", "scipy"];
+
 let ready = null;
+let started = false;  // true once boot has finished: later errors are the Python's own
 function boot() {
   if (ready) return ready;
   ready = (async () => {
@@ -36,11 +39,22 @@ function boot() {
     postMessage({ status: "loading Python" });
     const py = await loadPyodide({ indexURL: PYODIDE });
     postMessage({ status: "loading numpy, scipy" });
-    await py.loadPackage(["numpy", "scipy"]);
+    // Pyodide 0.27's loadPackage logs a failed package and resolves anyway; the
+    // failure then surfaces later as a ModuleNotFoundError whose last line is a
+    // generic note (seen on iOS Safari, 2026-11-18). Check, and say which.
+    const loadErrors = [];
+    await py.loadPackage(PACKAGES, { errorCallback: m => loadErrors.push(String(m)) });
+    const missing = PACKAGES.filter(p => !(p in py.loadedPackages));
+    if (missing.length) {
+      throw new Error(`${missing.join(", ")} did not load in this browser` +
+        (loadErrors.length ? `: ${loadErrors.join(" | ")}` : " (Pyodide gave no message)"));
+    }
     const list = await (await fetch(new URL("bundle_files.json", self.location.href))).json();
     postMessage({ status: `fetching ${list.length} repo files` });
     const bodies = await Promise.all(list.map(async path => {
-      const r = await fetch(new URL(path, ROOT));
+      let r;
+      try { r = await fetch(new URL(path, ROOT)); }
+      catch (e) { throw new Error(`bundle file ${path} could not be fetched (${e.message})`); }
       if (!r.ok) throw new Error(`bundle file missing: ${path} (HTTP ${r.status}); serve the page from the repo root`);
       return [path, new Uint8Array(await r.arrayBuffer())];
     }));
@@ -106,6 +120,7 @@ def _factory(arg):
                        "report": factory_run.report(run)})
 `);
     postMessage({ status: `ready (${Math.round(performance.now() - t0)} ms to start)` });
+    started = true;
     return py;
   })();
   ready.catch(() => { ready = null; });  // let a later message retry
@@ -113,8 +128,16 @@ def _factory(arg):
 }
 
 function pyError(e) {
-  // a Python exception's message ends with "ErrorName: message"; keep that line
-  const lines = String(e && e.message || e).trim().split("\n");
+  // A Python exception's message is a traceback ending "ErrorName: message",
+  // possibly followed by notes (Pyodide adds one to ModuleNotFoundError). Keep
+  // the exception line and every line after it. A JavaScript error (Pyodide
+  // failing to start, a missing bundle file) is kept whole.
+  const text = String(e && e.message || e).trim();
+  if (!text.includes("Traceback (most recent call last)")) return text;
+  const lines = text.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (/^[A-Za-z_][\w.]*(Error|Exception|Exit|Interrupt)\b/.test(lines[i])) return lines.slice(i).join("\n");
+  }
   return lines[lines.length - 1];
 }
 
@@ -133,6 +156,7 @@ onmessage = async ev => {
     else if (op !== "boot") throw new Error(`no op ${op}`);
     postMessage({ id, ok: true, result, ms: Math.round(performance.now() - t0) });
   } catch (e) {
-    postMessage({ id, ok: false, error: pyError(e) });
+    // boot: Python never started, so this is not a refusal by the Python
+    postMessage({ id, ok: false, error: pyError(e), boot: !started });
   }
 };

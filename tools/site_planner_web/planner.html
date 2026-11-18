@@ -59,7 +59,7 @@ a { color: var(--flow); }
 .muted { color: var(--muted); } .small { font-size: .85rem; }
 section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
 .error { border-left: 3px solid var(--bind); padding: 6px 10px; background: color-mix(in srgb, var(--bind) 8%, transparent); font-size: .88rem; overflow-wrap: anywhere; }
-.error .mono { font-size: .82rem; }
+.error .mono { font-size: .82rem; white-space: pre-wrap; }
 .ok { border-left: 3px solid var(--ok); padding: 6px 10px; background: color-mix(in srgb, var(--ok) 8%, transparent); font-size: .88rem; }
 .note { border-left: 3px solid var(--line); padding: 4px 10px; font-size: .85rem; color: var(--muted); }
 button, input, select, textarea { font: inherit; font-size: .9rem; color: var(--fg); }
@@ -347,7 +347,8 @@ function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* unavai
 function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function msg(host, kind, text) { const d = el("div", kind); d.textContent = text; $(host).replaceChildren(d); return d; }
 function refusal(host, e) {
-  const d = el("div", "error"); d.append(el("b", null, "Refused by Python: ")); d.append(el("span", "mono", e.message));
+  // a start-up failure is not a refusal: say which, and keep the whole message
+  const d = el("div", "error"); d.append(el("b", null, e.boot ? "Python did not start: " : "Refused by Python: ")); d.append(el("span", "mono", e.message));
   $(host).replaceChildren(d);
 }
 // display only: a figure as Python gave it, shortened for reading
@@ -384,7 +385,7 @@ function py(op, arg) {
       const m = ev.data;
       if (m.status) { $("pystatus").textContent = "Python: " + m.status; return; }
       const p = pending[m.id]; if (!p) return; delete pending[m.id];
-      m.ok ? p.resolve(m) : p.reject(new Error(m.error));
+      if (m.ok) p.resolve(m); else { const e = new Error(m.error); e.boot = !!m.boot; p.reject(e); }
     };
     worker.onerror = ev => { $("pystatus").textContent = "Python: failed to start (" + (ev.message || "worker error") + ")"; };
   }

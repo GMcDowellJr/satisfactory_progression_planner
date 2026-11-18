@@ -491,7 +491,7 @@ function py(op, arg) {
       const m = ev.data;
       if (m.status) { $("pystatus").textContent = "Python: " + m.status; return; }
       const p = pending[m.id]; if (!p) return; delete pending[m.id];
-      m.ok ? p.resolve(m) : p.reject(new Error(m.error));
+      m.ok ? p.resolve(m) : p.reject(new Error(m.boot ? "Python did not start: " + m.error : m.error));
     };
     worker.onerror = ev => { $("pystatus").textContent = "Python: failed to start (" + (ev.message || "worker error") + ")"; };
   }
