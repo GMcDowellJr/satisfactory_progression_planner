@@ -173,7 +173,7 @@ Current, in force:
   - **A19** (2026-11-17: power through later phases, each type alone, declared mix,
     the power-site check, ledger retired, `demand_expansion` kept for whole-run totals);
   - **A20** (2026-11-18: the planner page, tabs; `run-inputs/1`; milestones as a
-    checklist with the tier as a button; the hand-off's site from the neighborhood export);
+    checklist with the tier as a button; the hand-off's site from the neighborhood export, as a start, A20.6);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).

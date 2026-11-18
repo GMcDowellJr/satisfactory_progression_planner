@@ -1350,3 +1350,15 @@ Greg may reverse either.
 - The factory's power statistic and fuel route are declared again in the
   Hand-off tab, not copied from the run, so each document says what it was
   given.
+
+### A20.6 Correction, 2026-11-18: the neighborhood export is a start, not the only source
+
+Greg, 2026-11-18: "Socket source using neighborhoods is a start -- suggesting
+-only- is overstating (only for now)". A20.2's "the neighborhood export
+only" and A20.5's "(Greg chose the export only)" overstate his decision. What
+he decided is that a neighborhood from the export is the **first** socket
+source the hand-off offers. Other sources (typed socket ids, a site from a
+saved `portfolio-inputs/2`, adding or removing single sockets on the map) are
+not ruled out. They are not built, and which of them comes next is open and
+Greg's to decide. The page is unchanged: it offers the neighborhood export,
+as built.
