@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Run and Factory Planner</title>
+<!--
+  Reframe A20 (2026-11-18): the run and factory tracks in the browser, beside
+  the portfolio picker. One page, four tabs (decided by Greg, 2026-11-18):
+
+    Playthrough  milestones owned (a checklist; "through tier N" ticks the set
+                 Python means by it, Q2), research, alternates, the scenario
+                 (R, P, E, fluid floor, fluid rounding), and the generators
+                 already built with the generation mix (shared by both tracks)
+    Run          run-inputs/1 -> run_plan.run_inputs -> run-plan/1
+    Hand-off     a neighborhood from the neighborhoods/1 export as the site, and
+                 every factory-inputs/1 declaration; the goal mix from the run
+                 step (run_plan.handoff) or declared here
+    Factory      factory-inputs/1 (from the hand-off or a file) ->
+                 factory_run.run_inputs -> factory-plan/1
+
+  Every figure comes from the repo's Python through worker.js; this page does
+  no production maths. Nothing is pre-filled: an undeclared key is left OUT of
+  the document, so Python refuses it by name ("missing [...]"), and every
+  refusal is shown as Python worded it. Choices offered come from
+  tools/planner_catalog.py (the one loader), never from a list in this file.
+  Pinned by tests/test_site_planner_web.py: RUN_SCHEMA, FACTORY_SCHEMA,
+  RUN_PLAN_SCHEMA, FACTORY_PLAN_SCHEMA, CATALOG_SCHEMA, NB_SCHEMA.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #eceff2; --surface: #ffffff; --fg: #1a2229; --muted: #5a6773; --line: #cdd5dc;
+  --flow: #2d6a8a; --accent: #b8650f; --bind: #b03e1c; --ok: #2f7448; --dot: #2e3a45; --sea: #c9d6e0;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #d5dde3; --sea: #1b2731; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
+  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #d5dde3; --sea: #1b2731; color-scheme: dark }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: .01em; margin: 0; }
+h1 { font-size: 2rem; line-height: 1.05; } h2 { font-size: 1.35rem; } h3 { font-size: 1.08rem; }
+p { margin: 0; max-width: 70ch; }
+a { color: var(--flow); }
+.eyebrow { font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .small { font-size: .85rem; }
+section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.error { border-left: 3px solid var(--bind); padding: 6px 10px; background: color-mix(in srgb, var(--bind) 8%, transparent); font-size: .88rem; overflow-wrap: anywhere; }
+.error .mono { font-size: .82rem; }
+.ok { border-left: 3px solid var(--ok); padding: 6px 10px; background: color-mix(in srgb, var(--ok) 8%, transparent); font-size: .88rem; }
+.note { border-left: 3px solid var(--line); padding: 4px 10px; font-size: .85rem; color: var(--muted); }
+button, input, select, textarea { font: inherit; font-size: .9rem; color: var(--fg); }
+button { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+button.primary { background: var(--flow); color: #fff; border-color: var(--flow); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+input[type=text], input[type=number], input[type=search], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; min-width: 0; }
+textarea { font-family: var(--f-mono); font-size: .8rem; width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.form label, .field { display: grid; gap: 3px; font-size: .78rem; color: var(--muted); align-content: start; }
+.undeclared > span:first-child::after, label.undeclared > span::after { content: " · not declared"; color: var(--bind); }
+fieldset { border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px 8px; margin: 0; min-width: 0; }
+fieldset legend { font-size: .78rem; color: var(--muted); padding: 0 4px; }
+fieldset.undeclared legend::after { content: " · not declared"; color: var(--bind); }
+fieldset label, .form fieldset label { display: flex; gap: 6px; align-items: baseline; color: var(--fg); font-size: .88rem; }
+/* tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; padding-top: 4px; }
+.tabs button { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; background: transparent; padding: 8px 14px; white-space: nowrap;
+  font-family: var(--f-display); font-size: 1.08rem; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--fg); margin-bottom: -1px; }
+.tabs .badge { font-family: var(--f-mono); font-size: .66rem; margin-left: 6px; padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; vertical-align: 2px; }
+.tabs .badge.b-ok { color: var(--ok); }
+.tabs .badge.b-bad { color: var(--bind); }
+.tabs .badge:empty { display: none; }
+[role=tabpanel] { display: grid; gap: 16px; }
+[role=tabpanel][hidden] { display: none; }
+/* checklists */
+details.tier { border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; }
+details.tier > summary { cursor: pointer; font-size: .9rem; }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px; padding: 6px 0; }
+.checks label { display: flex; gap: 6px; align-items: baseline; font-size: .86rem; color: var(--fg); }
+.checks label .mono { font-size: .68rem; color: var(--muted); }
+.scroll { max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; }
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; }
+td.n, th.n { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.id { font-family: var(--f-mono); font-size: .7rem; color: var(--muted); display: block; }
+.chip { font-family: var(--f-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.bind { color: var(--bind); } .chip.ok { color: var(--ok); } .chip.flow { color: var(--flow); } .chip.acc { color: var(--accent); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: grid; gap: 2px; }
+.kpi b { font-family: var(--f-mono); font-size: 1.15rem; font-weight: 500; }
+pre.report { font-family: var(--f-mono); font-size: .76rem; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+/* map */
+.map-wrap { position: relative; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--bg); touch-action: none; }
+svg.map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; max-height: 520px; cursor: grab; }
+svg.map .basemap { pointer-events: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) svg.map image.basemap { filter: brightness(.55); } }
+:root[data-theme="dark"] svg.map image.basemap { filter: brightness(.55); }
+.map-tools { position: absolute; right: 6px; top: 6px; display: grid; gap: 4px; }
+.map-tools button { width: 34px; height: 34px; padding: 0; background: var(--surface); }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.list li { border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: grid; gap: 4px; }
+ul.list li.on { border-color: var(--flow); border-left-width: 4px; }
+.mixrow { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; align-items: center; font-size: .88rem; }
+.goalrow { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 6px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <div class="eyebrow">Site Planner · run and factory tracks</div>
+    <h1>Plan a phase, then a factory</h1>
+    <p class="small muted">Declare the playthrough, plan a Project Assembly phase (run-inputs/1 → run-plan/1), hand a step to one site, and run the factory (factory-inputs/1 → factory-plan/1). Every figure is computed by this repo's Python in your browser. The site portfolio is on the <a href="picker.html">picker</a>.</p>
+    <div class="small muted mono" id="pystatus">Python: not started</div>
+    <div id="boot-err"></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Planner steps">
+    <button role="tab" id="t-play" aria-controls="p-play" aria-selected="true">Playthrough<span class="badge" id="b-play"></span></button>
+    <button role="tab" id="t-run" aria-controls="p-run" aria-selected="false">Run<span class="badge" id="b-run"></span></button>
+    <button role="tab" id="t-hand" aria-controls="p-hand" aria-selected="false">Hand-off<span class="badge" id="b-hand"></span></button>
+    <button role="tab" id="t-fac" aria-controls="p-fac" aria-selected="false">Factory<span class="badge" id="b-fac"></span></button>
+  </nav>
+
+  <!-- ============================ PLAYTHROUGH ============================ -->
+  <div role="tabpanel" id="p-play" aria-labelledby="t-play">
+    <section class="panel" aria-labelledby="h-ms">
+      <div class="eyebrow">Milestones owned · A15.2 Q2: a declared set, in any order</div>
+      <h2 id="h-ms">Milestones</h2>
+      <div class="row">
+        <label class="small">Tick everything through tier <input id="tier-n" type="number" min="0" step="1" style="width:5em"></label>
+        <button id="tier-go">Tick</button>
+        <button id="ms-clear">Untick all</button>
+        <span class="small muted" id="ms-count"></span>
+      </div>
+      <p class="small muted">The tier button ticks exactly the set Python means by "through tier N" (<span class="mono">playthrough(through_tier=N)</span>); untick anything not bought. The document carries the list, with <span class="mono">through_tier</span> null.</p>
+      <div id="ms-list" class="small muted">Loads with Python (first use takes a few seconds).</div>
+    </section>
+
+    <div class="two">
+      <section class="panel" aria-labelledby="h-rs">
+        <div class="eyebrow">MAM research completed</div>
+        <h2 id="h-rs">Research</h2>
+        <input type="search" id="rs-find" placeholder="Filter research" aria-label="Filter research">
+        <div id="rs-list" class="scroll checks" style="grid-template-columns:1fr"></div>
+      </section>
+      <section class="panel" aria-labelledby="h-alt">
+        <div class="eyebrow">Hard-drive alternates selected</div>
+        <h2 id="h-alt">Alternates</h2>
+        <input type="search" id="alt-find" placeholder="Filter alternates" aria-label="Filter alternates">
+        <div id="alt-list" class="scroll checks" style="grid-template-columns:1fr"></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="h-sc">
+      <div class="eyebrow">Scenario · applied at run time by production_adapter.scenario</div>
+      <h2 id="h-sc">Multipliers</h2>
+      <div class="form">
+        <label data-key="recipe_input_multiplier"><span>Recipe input × (R)</span><input id="sc-r" type="number" step="any" min="0"></label>
+        <label data-key="machine_power_multiplier"><span>Machine power × (P)</span><input id="sc-p" type="number" step="any" min="0"></label>
+        <label data-key="project_assembly_requirement_multiplier"><span>Project Assembly × (E)</span><input id="sc-e" type="number" step="any" min="0"></label>
+        <div class="field" data-key="fluid_input_floor"><span>Fluid input floor below 1× R (demand A5.2, open)</span>
+          <div class="row"><select id="sc-ff-kind"><option value="">—</option><option value="none">none</option><option value="value">a value</option></select>
+          <input id="sc-ff" type="number" step="any" min="0" style="width:7em" aria-label="Fluid input floor value" hidden></div></div>
+        <label data-key="fluid_rounding_unit"><span>Fluid rounding unit</span><select id="sc-fr"></select></label>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-gen">
+      <div class="eyebrow">Power · shared by the run and the factory (reframe A18, A19)</div>
+      <h2 id="h-gen">Generators built, and the generation mix</h2>
+      <p class="small muted">Classes this state owns, in the order obtained (Python's reading). Standing units were built in earlier phases and keep carrying load; Biomass Burners are backup once another class is owned. What standing units leave goes to the declared mix, or, if you declare none, to the class obtained last.</p>
+      <div id="gen-err"></div>
+      <div id="gen-standing" style="display:grid;gap:6px"></div>
+      <fieldset id="mix-fs"><legend>Generation mix</legend>
+        <label><input type="radio" name="mix-kind" value="none"> None declared: the class obtained last carries what standing units leave (<span class="mono">generation_mix: null</span>)</label>
+        <label><input type="radio" name="mix-kind" value="shares"> Declared shares (sum to 1; a blank class is not in the mix)</label>
+        <div id="mix-shares" style="display:grid;gap:6px;margin-top:6px" hidden></div>
+      </fieldset>
+    </section>
+
+    <section class="panel">
+      <div class="eyebrow">Documents</div>
+      <div class="row">
+        <label class="small">Open a run-inputs/1 or factory-inputs/1 file to fill this tab <input id="pt-file" type="file" accept=".json,application/json"></label>
+      </div>
+      <div id="pt-msg"></div>
+    </section>
+  </div>
+
+  <!-- ================================ RUN ================================ -->
+  <div role="tabpanel" id="p-run" aria-labelledby="t-run" hidden>
+    <section class="panel" aria-labelledby="h-runin">
+      <div class="eyebrow">run-inputs/1 · the playthrough and power from the Playthrough tab</div>
+      <h2 id="h-runin">Phase and horizon</h2>
+      <div class="form">
+        <label data-key="phase"><span>Project Assembly phase</span><select id="run-phase"></select></label>
+        <fieldset id="hz-fs"><legend>Horizon</legend>
+          <label><input type="radio" name="hz-kind" value="fraction"> fraction of the one-machine ceiling</label>
+          <label><input type="radio" name="hz-kind" value="minutes"> minutes</label>
+          <input id="hz-val" type="number" step="any" min="0" aria-label="Horizon value" style="margin-top:4px;width:9em">
+        </fieldset>
+        <label data-key="power_statistic"><span>Power statistic (variable-power recipes; no default, LP D2)</span><select id="run-stat"></select></label>
+        <label data-key="fuel_byproducts"><span>Leftover fuel (A18): to generators, or packaged</span><select id="run-fuel"></select></label>
+      </div>
+      <p class="small muted">The ceiling is the longest any part takes on one machine of its base recipe at 100 % (the prototype's bound, B1). An undeclared field is left out of the document and Python refuses it by name.</p>
+      <div class="row">
+        <button class="primary" id="run-go">Plan the phase</button>
+        <button id="run-save">Save run-inputs/1</button>
+        <label class="small">Open run-inputs/1 <input id="run-file" type="file" accept=".json,application/json"></label>
+      </div>
+      <details><summary class="small">The document sent</summary><pre class="report" id="run-doc"></pre></details>
+      <div id="run-msg"></div>
+    </section>
+    <div id="run-out" style="display:grid;gap:16px"></div>
+  </div>
+
+  <!-- ============================== HAND-OFF ============================== -->
+  <div role="tabpanel" id="p-hand" aria-labelledby="t-hand" hidden>
+    <section class="panel" aria-labelledby="h-site">
+      <div class="eyebrow" id="nb-src">Site · one neighborhood from the neighborhoods/1 export</div>
+      <h2 id="h-site">Pick the factory's site</h2>
+      <div class="map-wrap">
+        <svg class="map" id="map" role="img" aria-label="Socket map"></svg>
+        <div class="map-tools">
+          <button id="zin" aria-label="Zoom in">+</button>
+          <button id="zout" aria-label="Zoom out">−</button>
+          <button id="zall" aria-label="Show all">⤢</button>
+        </div>
+      </div>
+      <div class="row">
+        <input id="find" type="text" placeholder="Socket id, e.g. BP_ResourceNode103" aria-label="Find socket" style="flex:1">
+        <button id="findgo">Find</button>
+        <label class="small">Another export <input id="nbfile" type="file" accept=".json,application/json"></label>
+      </div>
+      <p class="small muted" id="basenote"></p>
+      <p class="small muted">Tap a socket, or find one by id, to list the neighborhoods that contain it (export order). The site in use is drawn in colour. The picker's last export is used if it kept one; recompute the policy there.</p>
+      <div id="nb-err"></div>
+      <ul class="list" id="nblist"></ul>
+      <div id="site-box"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-decl">
+      <div class="eyebrow">factory-inputs/1 · every key declared here; playthrough, scenario, standing units and mix from the Playthrough tab</div>
+      <h2 id="h-decl">Factory declarations</h2>
+      <div class="form">
+        <label data-key="label"><span>Site label</span><input id="d-label" type="text"></label>
+        <fieldset id="fs-pumps"><legend>Pumps Water at the site</legend>
+          <label><input type="radio" name="d-pumps" value="true"> yes (Water Extractors, charged)</label>
+          <label><input type="radio" name="d-pumps" value="false"> no</label></fieldset>
+        <fieldset id="fs-supply"><legend>Declared supply beside the sockets</legend>
+          <label><input type="radio" name="d-supply" value="none"> none</label>
+          <label><input type="radio" name="d-supply" value="rows"> declared below</label>
+          <div id="supply-rows" style="display:grid;gap:6px;margin-top:4px" hidden></div>
+          <button id="supply-add" hidden>Add supply</button></fieldset>
+        <label data-key="power_mode"><span>Power mode: grid = supply limits the plan; report_need = report the need and the stack</span><select id="d-mode"></select></label>
+        <label data-key="grid_mw"><span>Standing grid, MW (0 with report_need)</span><input id="d-grid" type="number" step="any"></label>
+        <label data-key="spare_mw"><span>Spare held above draw, MW</span><input id="d-spare" type="number" step="any"></label>
+        <label data-key="power_statistic"><span>Power statistic (no default, LP D2)</span><select id="d-stat"></select></label>
+        <label data-key="fuel_byproducts"><span>Leftover fuel (A18)</span><select id="d-fuel"></select></label>
+        <fieldset id="fs-pfs"><legend>Power from the site (A19: declared, never inferred)</legend>
+          <label><input type="radio" name="d-pfs" value="true"> yes: check the stack against the site's leftover fuel</label>
+          <label><input type="radio" name="d-pfs" value="false"> no</label></fieldset>
+        <label data-key="goal"><span>Goal (breaks ties)</span><select id="d-goal"></select></label>
+        <label data-key="infrastructure_policy"><span>Extractor and belt marks (A15.2 B2)</span><select id="d-policy"></select></label>
+      </div>
+      <fieldset id="fs-src"><legend>Goal mix</legend>
+        <label><input type="radio" name="d-src" value="run"> from the run step (Run tab): the phase bill in proportion</label>
+        <label><input type="radio" name="d-src" value="hand"> declared here</label>
+        <div id="src-run" hidden style="margin-top:6px">
+          <fieldset id="fs-fixed"><legend>Rate</legend>
+            <label><input type="radio" name="d-fixed" value="true"> fixed: deliver the bill over the run's horizon (refused if the site cannot)</label>
+            <label><input type="radio" name="d-fixed" value="false"> the site's maximum, and the horizon it implies</label></fieldset>
+        </div>
+        <div id="src-hand" hidden style="margin-top:6px;display:grid;gap:6px">
+          <div id="goal-rows" style="display:grid;gap:6px"></div>
+          <div><button id="goal-add">Add item</button></div>
+          <fieldset id="fs-target"><legend>Target scale (goal-mix units per minute)</legend>
+            <label><input type="radio" name="d-target" value="max"> none: the site's maximum (<span class="mono">null</span>)</label>
+            <label><input type="radio" name="d-target" value="value"> fixed at <input id="d-target-val" type="number" step="any" min="0" style="width:8em" aria-label="Target scale"></label></fieldset>
+        </div>
+      </fieldset>
+      <div class="row"><button class="primary" id="hand-go">Write factory-inputs/1</button><span class="small muted">From the run step this asks <span class="mono">run_plan.handoff</span>; declared here, the page assembles the document and the factory run checks it.</span></div>
+      <div id="hand-msg"></div>
+    </section>
+  </div>
+
+  <!-- =============================== FACTORY =============================== -->
+  <div role="tabpanel" id="p-fac" aria-labelledby="t-fac" hidden>
+    <section class="panel" aria-labelledby="h-facin">
+      <div class="eyebrow">factory-inputs/1 → factory_run.run_inputs → factory-plan/1</div>
+      <h2 id="h-facin">The document</h2>
+      <div class="row">
+        <span class="small" id="fac-src">No document yet: write one in Hand-off, or open a file.</span>
+        <label class="small">Open factory-inputs/1 <input id="fac-file" type="file" accept=".json,application/json"></label>
+      </div>
+      <details><summary class="small">The document sent</summary><pre class="report" id="fac-doc"></pre></details>
+      <div class="row"><button class="primary" id="fac-go" disabled>Run the factory</button><button id="fac-save" disabled>Save factory-inputs/1</button></div>
+      <div id="fac-msg"></div>
+    </section>
+    <div id="fac-out" style="display:grid;gap:16px"></div>
+  </div>
+
+  <footer>
+    <span>Reframe A15–A20. The tool reports what a declared target takes; it never chooses the phase, the horizon, the site, the mix or the order.</span>
+    <span>Neighborhoods are candidates, not verified build sites (tools/neighborhoods.py).</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+// Pinned by tests/test_site_planner_web.py against the Python side:
+const RUN_SCHEMA = "run-inputs/1";             // run_plan.INPUTS_SCHEMA
+const RUN_PLAN_SCHEMA = "run-plan/1";          // run_plan.PLAN_SCHEMA
+const FACTORY_SCHEMA = "factory-inputs/1";     // factory_run.INPUTS_SCHEMA
+const FACTORY_PLAN_SCHEMA = "factory-plan/1";  // factory_run.PLAN_SCHEMA
+const CATALOG_SCHEMA = "planner-catalog/1";    // planner_catalog.CATALOG_SCHEMA
+const NB_SCHEMA = "neighborhoods/1";           // neighborhoods.EXPORT_SCHEMA
+// the picker's starting export and base maps (reframe A10); the picker's kept export wins
+const DEFAULT_EXPORT = { "path": "precomputed/neighborhoods_v020.json", "label": "precomputed, v0.20 policy" };
+const BASEMAPS = { "default_502094": "precomputed/basemap_502094.json" };
+const STORE = "sp-planner", STORE_NB = "sp-neighborhoods";
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* unavailable */ } }
+function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function msg(host, kind, text) { const d = el("div", kind); d.textContent = text; $(host).replaceChildren(d); return d; }
+function refusal(host, e) {
+  const d = el("div", "error"); d.append(el("b", null, "Refused by Python: ")); d.append(el("span", "mono", e.message));
+  $(host).replaceChildren(d);
+}
+// display only: a figure as Python gave it, shortened for reading
+const fmt = v => v == null ? "—" : typeof v === "number" ? (Number.isInteger(v) ? String(v) : String(+v.toPrecision(4))) : String(v);
+
+// ---- state (everything as typed; nothing defaulted) -------------------------
+let S = {
+  tab: "play",
+  milestones: [], research: [], alternates: [],
+  sc: { r: "", p: "", e: "", ffKind: "", ff: "", fr: "" },
+  standing: {}, mixKind: "", mix: {},
+  run: { phase: "", hzKind: "", hz: "", stat: "", fuel: "" },
+  site: null,  // {from, socket_ids, world_config_id}
+  d: { label: "", pumps: "", supplyKind: "", supply: [], mode: "", grid: "", spare: "", stat: "", fuel: "", pfs: "", goal: "", policy: "", src: "", fixed: "", goals: [], targetKind: "", target: "" },
+  chosen: null,
+};
+try { const s = JSON.parse(recall(STORE) || "null"); if (s) S = { ...S, ...s, sc: { ...S.sc, ...s.sc }, run: { ...S.run, ...s.run }, d: { ...S.d, ...s.d } }; } catch (e) { /* bad saved state */ }
+function save() { store(STORE, JSON.stringify(S)); }
+
+let CAT = null;       // planner-catalog/1
+let GENS = null;      // [{generator_class, obtained_with, tier}] for the current state
+let RUN = null;       // {doc, record, text, report}
+let FAC = { doc: null, source: null, record: null, text: null, report: null };
+const nm = id => (CAT && (CAT.items[id] || CAT.recipes[id] || CAT.producers[id])) || id;
+function named(id) { const f = document.createDocumentFragment(); const n = nm(id); f.append(document.createTextNode(n)); if (n !== id) f.append(el("span", "id", id)); return f; }
+
+// ---- Python (worker.js) ------------------------------------------------------
+let worker = null, seq = 0; const pending = {};
+function py(op, arg) {
+  if (!worker) {
+    try { worker = new Worker("worker.js"); }
+    catch (e) { return Promise.reject(new Error(`no worker (${e.message}); serve the repo over http`)); }
+    worker.onmessage = ev => {
+      const m = ev.data;
+      if (m.status) { $("pystatus").textContent = "Python: " + m.status; return; }
+      const p = pending[m.id]; if (!p) return; delete pending[m.id];
+      m.ok ? p.resolve(m) : p.reject(new Error(m.error));
+    };
+    worker.onerror = ev => { $("pystatus").textContent = "Python: failed to start (" + (ev.message || "worker error") + ")"; };
+  }
+  const id = ++seq;
+  return new Promise((resolve, reject) => { pending[id] = { resolve, reject }; worker.postMessage({ id, op, arg }); });
+}
+const pyJSON = async (op, arg) => { const r = await py(op, arg); return { ...r, value: JSON.parse(r.result.text) }; };
+
+// ---- tabs --------------------------------------------------------------------
+const TABS = ["play", "run", "hand", "fac"];
+const TAB_ID = { play: "t-play", run: "t-run", hand: "t-hand", fac: "t-fac" };
+function showTab(t) {
+  if (!TABS.includes(t)) t = "play";
+  S.tab = t; save();
+  for (const k of TABS) {
+    $(TAB_ID[k]).setAttribute("aria-selected", String(k === t));
+    $(TAB_ID[k]).tabIndex = k === t ? 0 : -1;
+    $("p-" + k).hidden = k !== t;
+  }
+  if (t === "hand") { if (NB) { fit(S.site ? S.site.socket_ids : null); draw(); } }
+  if (location.hash !== "#" + t) history.replaceState(null, "", "#" + t);
+}
+for (const k of TABS) $(TAB_ID[k]).onclick = () => showTab(k);
+$("p-play").parentElement.querySelector(".tabs").addEventListener("keydown", ev => {
+  const i = TABS.indexOf(S.tab);
+  if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+    const j = (i + (ev.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
+    showTab(TABS[j]); $(TAB_ID[TABS[j]]).focus();
+  }
+});
+function badge(id, kind, text) { const b = $(id); b.className = "badge" + (kind ? " b-" + kind : ""); b.textContent = text || ""; }
+
+// ---- selects filled from the catalog -------------------------------------------
+function fillSelect(sel, values, labels) {
+  const cur = sel.value; sel.replaceChildren();
+  const o0 = el("option", null, "—"); o0.value = ""; sel.append(o0);
+  values.forEach((v, i) => { const o = el("option", null, labels ? labels[i] : (v === null ? "none" : String(v))); o.value = v === null ? "null" : String(v); sel.append(o); });
+  sel.value = cur;
+}
+function bindValue(input, get, set) {
+  input.value = get();
+  input.addEventListener(input.tagName === "SELECT" ? "change" : "input", () => { set(input.value); save(); marks(); });
+}
+function bindRadio(name, get, set, after) {
+  for (const r of document.getElementsByName(name)) {
+    r.checked = r.value === get();
+    r.onchange = () => { set(r.value); save(); marks(); if (after) after(); };
+  }
+}
+
+// ---- Playthrough tab -------------------------------------------------------------
+function renderMilestones() {
+  const host = $("ms-list"); host.replaceChildren(); host.className = "";
+  const on = new Set(S.milestones);
+  const byTier = {};
+  for (const m of CAT.milestones) (byTier[m.tier] = byTier[m.tier] || []).push(m);
+  for (const tier of Object.keys(byTier).map(Number).sort((a, b) => a - b)) {
+    const rows = byTier[tier], main = rows.filter(m => m.type === "EST_Milestone"), other = rows.filter(m => m.type !== "EST_Milestone");
+    const d = el("details", "tier"); d.dataset.tier = tier; d.open = OPEN.has(tier);
+    d.ontoggle = () => { d.open ? OPEN.add(tier) : OPEN.delete(tier); };
+    const sum = el("summary"); const n = rows.filter(m => on.has(m.schematic_id)).length;
+    sum.append(el("b", null, `Tier ${tier}`), el("span", "muted", ` · ${n} of ${rows.length} ticked`));
+    d.append(sum);
+    const box = (list) => { const c = el("div", "checks"); for (const m of list) { const l = el("label"); const cb = el("input"); cb.type = "checkbox"; cb.checked = on.has(m.schematic_id); cb.dataset.id = m.schematic_id;
+      cb.onchange = () => { toggle("milestones", m.schematic_id, cb.checked); renderMilestones(); }; l.append(cb, el("span", null, m.name)); l.title = m.schematic_id; c.append(l); } return c; };
+    if (main.length) d.append(box(main));
+    if (other.length) { const o = el("details"); o.append(el("summary", "small muted", `HUB upgrades, tutorials and building or cosmetic unlocks (${other.length})`), box(other)); d.append(o); }
+    host.append(d);
+  }
+  $("ms-count").textContent = `${S.milestones.length} ticked`;
+}
+const OPEN = new Set();  // tiers left open across re-renders
+function toggle(key, id, on) {
+  const set = new Set(S[key]); on ? set.add(id) : set.delete(id); S[key] = [...set]; save(); marks(); stateChanged();
+}
+function renderPicks(host, find, list, key, idKey) {
+  const q = $(find).value.trim().toLowerCase(), on = new Set(S[key]), h = $(host); h.replaceChildren();
+  for (const x of list) {
+    if (q && !x.name.toLowerCase().includes(q) && !x[idKey].toLowerCase().includes(q)) continue;
+    const l = el("label"); const cb = el("input"); cb.type = "checkbox"; cb.checked = on.has(x[idKey]);
+    cb.onchange = () => toggle(key, x[idKey], cb.checked);
+    l.append(cb, el("span", null, x.name), el("span", "mono", x[idKey])); h.append(l);
+  }
+  const n = S[key].length; h.previousElementSibling.placeholder = `Filter (${n} ticked)`;
+}
+$("rs-find").oninput = () => renderPicks("rs-list", "rs-find", CAT.research, "research", "schematic_id");
+$("alt-find").oninput = () => renderPicks("alt-list", "alt-find", CAT.alternates, "alternates", "recipe_id");
+$("tier-go").onclick = async () => {
+  const raw = $("tier-n").value.trim();
+  try {
+    const r = await pyJSON("tier", raw === "" ? null : Number(raw));
+    S.milestones = [...new Set([...S.milestones, ...r.value])]; save(); renderMilestones(); marks(); stateChanged();
+    $("pt-msg").replaceChildren();
+  } catch (e) { refusal("pt-msg", e); }
+};
+$("ms-clear").onclick = () => { S.milestones = []; save(); renderMilestones(); marks(); stateChanged(); };
+
+function bindScenario() {
+  fillSelect($("sc-fr"), CAT.fluid_rounding_units);
+  bindValue($("sc-r"), () => S.sc.r, v => S.sc.r = v);
+  bindValue($("sc-p"), () => S.sc.p, v => S.sc.p = v);
+  bindValue($("sc-e"), () => S.sc.e, v => S.sc.e = v);
+  bindValue($("sc-fr"), () => S.sc.fr, v => S.sc.fr = v);
+  bindValue($("sc-ff"), () => S.sc.ff, v => S.sc.ff = v);
+  bindValue($("sc-ff-kind"), () => S.sc.ffKind, v => { S.sc.ffKind = v; $("sc-ff").hidden = v !== "value"; });
+  $("sc-ff").hidden = S.sc.ffKind !== "value";
+}
+
+// generators the state owns, read by Python whenever the state changes
+let genTimer = null;
+function stateChanged() { clearTimeout(genTimer); genTimer = setTimeout(readGenerators, 350); }
+async function readGenerators() {
+  if (!CAT) return;
+  try {
+    const r = await pyJSON("generators", playthroughDoc());
+    GENS = r.value; $("gen-err").replaceChildren();
+  } catch (e) { GENS = null; refusal("gen-err", e); }
+  renderGenerators(); marks();
+}
+function renderGenerators() {
+  const host = $("gen-standing"); host.replaceChildren();
+  const shares = $("mix-shares"); shares.replaceChildren();
+  if (!GENS) { host.append(el("span", "small muted", "Declare milestones first; the classes owned come from them.")); return; }
+  for (const g of GENS) {
+    const c = g.generator_class;
+    const row = el("label", "mixrow"); row.dataset.gen = c;
+    const t = el("span"); t.append(named(c)); t.append(el("span", "id", `obtained with ${g.obtained_with}, tier ${g.tier}`));
+    const inp = el("input"); inp.type = "number"; inp.min = "0"; inp.step = "1"; inp.value = S.standing[c] ?? ""; inp.setAttribute("aria-label", `Standing ${nm(c)}`); inp.placeholder = "units built";
+    inp.oninput = () => { S.standing[c] = inp.value; save(); marks(); };
+    row.append(t, inp); host.append(row);
+    const sr = el("label", "mixrow"); const sn = el("span"); sn.append(named(c)); sr.append(sn);
+    const si = el("input"); si.type = "number"; si.step = "any"; si.min = "0"; si.value = S.mix[c] ?? ""; si.placeholder = "share"; si.setAttribute("aria-label", `Mix share ${nm(c)}`);
+    si.oninput = () => { S.mix[c] = si.value; save(); };
+    sr.append(si); shares.append(sr);
+  }
+  const stale = Object.keys(S.standing).filter(c => !GENS.some(g => g.generator_class === c) && S.standing[c] !== "");
+  if (stale.length) host.append(el("div", "note", `Also declared, for classes this state does not own (Python will refuse them): ${stale.map(nm).join(", ")}`));
+}
+bindRadio("mix-kind", () => S.mixKind, v => S.mixKind = v, () => { $("mix-shares").hidden = S.mixKind !== "shares"; });
+$("mix-shares").hidden = S.mixKind !== "shares";
+
+// ---- documents (undeclared keys left out: Python names them) ---------------------
+const num = s => (s === "" || s == null) ? undefined : Number(s);
+function put(o, k, v) { if (v !== undefined) o[k] = v; return o; }
+function playthroughDoc() { return { through_tier: null, milestones: [...S.milestones].sort(), research: [...S.research].sort(), alternates: [...S.alternates].sort() }; }
+function scenarioDoc() {
+  const s = {};
+  put(s, "recipe_input_multiplier", num(S.sc.r)); put(s, "machine_power_multiplier", num(S.sc.p));
+  put(s, "project_assembly_requirement_multiplier", num(S.sc.e));
+  put(s, "fluid_input_floor", S.sc.ffKind === "none" ? null : S.sc.ffKind === "value" ? num(S.sc.ff) : undefined);
+  put(s, "fluid_rounding_unit", S.sc.fr === "" ? undefined : S.sc.fr === "null" ? null : S.sc.fr);
+  return s;
+}
+function standingDoc() {
+  // every owned class must be declared (0 is a declaration); a blank one is sent as null for Python to refuse
+  const o = {};
+  for (const c of (GENS || []).map(g => g.generator_class)) { const v = S.standing[c]; o[c] = (v === "" || v == null) ? null : Number(v); }
+  for (const [c, v] of Object.entries(S.standing)) if (!(c in o) && v !== "" && v != null) o[c] = Number(v);
+  return o;
+}
+function mixDoc() {
+  if (S.mixKind === "none") return null;
+  if (S.mixKind !== "shares") return undefined;
+  const o = {}; for (const [c, v] of Object.entries(S.mix)) if (v !== "" && v != null && (!GENS || GENS.some(g => g.generator_class === c))) o[c] = Number(v);
+  return o;
+}
+function runDoc() {
+  const d = { schema: RUN_SCHEMA, playthrough: playthroughDoc(), scenario: scenarioDoc() };
+  put(d, "phase", S.run.phase === "" ? undefined : Number(S.run.phase));
+  if (S.run.hzKind) {
+    d.horizon_min = S.run.hzKind === "minutes" ? (num(S.run.hz) ?? null) : null;
+    d.horizon_fraction = S.run.hzKind === "fraction" ? (num(S.run.hz) ?? null) : null;
+  }
+  put(d, "power_statistic", S.run.stat || undefined); put(d, "fuel_byproducts", S.run.fuel || undefined);
+  if (GENS) d.standing_generators = standingDoc();
+  put(d, "generation_mix", mixDoc());
+  return d;
+}
+const bool = s => s === "true" ? true : s === "false" ? false : undefined;
+function declDoc() {
+  const d = {};
+  if (S.site) { d.world_config_id = S.site.world_config_id; d.socket_ids = [...S.site.socket_ids]; }
+  put(d, "label", S.d.label.trim() || undefined);
+  put(d, "supply", S.d.supplyKind === "none" ? [] : S.d.supplyKind === "rows" ? S.d.supply.map(r => ({ item_id: r.item_id || null, rate_per_min: num(r.rate) ?? null })) : undefined);
+  put(d, "pumps_water", bool(S.d.pumps)); put(d, "power_mode", S.d.mode || undefined);
+  put(d, "power_statistic", S.d.stat || undefined); put(d, "fuel_byproducts", S.d.fuel || undefined);
+  put(d, "power_from_site", bool(S.d.pfs)); put(d, "goal", S.d.goal || undefined);
+  put(d, "grid_mw", num(S.d.grid)); put(d, "spare_mw", num(S.d.spare));
+  put(d, "infrastructure_policy", S.d.policy || undefined);
+  return d;
+}
+function handDoc() {
+  // declared here: the page assembles factory-inputs/1 in the key order factory_run reads
+  const x = declDoc(), d = { schema: FACTORY_SCHEMA };
+  put(d, "world_config_id", x.world_config_id);
+  d.playthrough = playthroughDoc(); d.scenario = scenarioDoc();
+  if (S.site || x.label !== undefined || x.supply !== undefined || x.pumps_water !== undefined) {
+    d.site = {}; put(d.site, "label", x.label); put(d.site, "socket_ids", x.socket_ids); put(d.site, "supply", x.supply); put(d.site, "pumps_water", x.pumps_water);
+  }
+  if (S.d.goals.length) d.goal_mix = S.d.goals.map(g => ({ item_id: g.item_id || null, units: num(g.units) ?? null }));
+  for (const k of ["goal", "power_mode", "power_statistic", "grid_mw", "spare_mw"]) put(d, k, x[k]);
+  put(d, "target_scale", S.d.targetKind === "max" ? null : S.d.targetKind === "value" ? (num(S.d.target) ?? null) : undefined);
+  for (const k of ["infrastructure_policy", "fuel_byproducts"]) put(d, k, x[k]);
+  if (GENS) d.standing_generators = standingDoc();
+  put(d, "generation_mix", mixDoc()); put(d, "power_from_site", x.power_from_site);
+  return d;
+}
+
+// "not declared" marks: visual only, never blocking (Python decides)
+function mark(node, declared) { if (node) node.classList.toggle("undeclared", !declared); }
+function marks() {
+  const q = k => document.querySelector(`#p-play [data-key="${k}"]`);
+  mark(q("recipe_input_multiplier"), S.sc.r !== ""); mark(q("machine_power_multiplier"), S.sc.p !== "");
+  mark(q("project_assembly_requirement_multiplier"), S.sc.e !== "");
+  mark(q("fluid_input_floor"), S.sc.ffKind === "none" || (S.sc.ffKind === "value" && S.sc.ff !== ""));
+  mark(q("fluid_rounding_unit"), S.sc.fr !== ""); mark($("mix-fs"), !!S.mixKind);
+  for (const row of $("gen-standing").querySelectorAll("[data-gen]")) mark(row, (S.standing[row.dataset.gen] ?? "") !== "");
+  const r = k => document.querySelector(`#p-run [data-key="${k}"]`);
+  mark(r("phase"), S.run.phase !== ""); mark($("hz-fs"), !!S.run.hzKind && S.run.hz !== "");
+  mark(r("power_statistic"), !!S.run.stat); mark(r("fuel_byproducts"), !!S.run.fuel);
+  const h = k => document.querySelector(`#p-hand [data-key="${k}"]`);
+  mark(h("label"), !!S.d.label.trim()); mark($("fs-pumps"), !!S.d.pumps); mark($("fs-supply"), !!S.d.supplyKind);
+  mark(h("power_mode"), !!S.d.mode); mark(h("grid_mw"), S.d.grid !== ""); mark(h("spare_mw"), S.d.spare !== "");
+  mark(h("power_statistic"), !!S.d.stat); mark(h("fuel_byproducts"), !!S.d.fuel); mark($("fs-pfs"), !!S.d.pfs);
+  mark(h("goal"), !!S.d.goal); mark(h("infrastructure_policy"), !!S.d.policy); mark($("fs-src"), !!S.d.src);
+  mark($("fs-fixed"), !!S.d.fixed); mark($("fs-target"), S.d.targetKind === "max" || (S.d.targetKind === "value" && S.d.target !== ""));
+  badge("b-play", S.milestones.length ? "ok" : "bad", S.milestones.length ? `${S.milestones.length}` : "none");
+  $("run-doc").textContent = JSON.stringify(runDoc(), null, 1);
+}
+
+// open a run-inputs/1 or factory-inputs/1 to fill the Playthrough tab (and the Run tab for a run)
+async function adopt(doc, src, host) {
+  const pt = doc.playthrough || {}, sc = doc.scenario || {};
+  let ms = Array.isArray(pt.milestones) ? [...pt.milestones] : [];
+  let note = "";
+  if (pt.through_tier != null) {
+    try { const r = await pyJSON("tier", pt.through_tier); ms = [...new Set([...ms, ...r.value])]; }
+    catch (e) { refusal(host, e); return false; }
+    note = ` Its through_tier ${pt.through_tier} was expanded to the milestones it means (Q2); the document now carries the list.`;
+  }
+  S.milestones = ms; S.research = [...(pt.research || [])]; S.alternates = [...(pt.alternates || [])];
+  const str = v => v == null ? "" : String(v);
+  S.sc = { r: str(sc.recipe_input_multiplier), p: str(sc.machine_power_multiplier), e: str(sc.project_assembly_requirement_multiplier),
+           ffKind: !("fluid_input_floor" in sc) ? "" : sc.fluid_input_floor === null ? "none" : "value", ff: str(sc.fluid_input_floor),
+           fr: !("fluid_rounding_unit" in sc) ? "" : sc.fluid_rounding_unit === null ? "null" : sc.fluid_rounding_unit };
+  S.standing = Object.fromEntries(Object.entries(doc.standing_generators || {}).map(([k, v]) => [k, str(v)]));
+  S.mixKind = !("generation_mix" in doc) ? "" : doc.generation_mix === null ? "none" : "shares";
+  S.mix = Object.fromEntries(Object.entries(doc.generation_mix || {}).map(([k, v]) => [k, str(v)]));
+  if (doc.schema === RUN_SCHEMA) {
+    S.run = { phase: str(doc.phase), hzKind: doc.horizon_min != null ? "minutes" : doc.horizon_fraction != null ? "fraction" : "",
+              hz: str(doc.horizon_min ?? doc.horizon_fraction), stat: doc.power_statistic || "", fuel: doc.fuel_byproducts || "" };
+  }
+  save(); paintAll(); stateChanged();
+  msg(host, "ok", `${src}: ${doc.schema} read into the Playthrough${doc.schema === RUN_SCHEMA ? " and Run tabs" : " tab"}.${note}`);
+  return true;
+}
+async function readFile(input) { const f = input.files[0]; if (!f) return null; const t = await f.text(); input.value = ""; return { text: t, name: f.name }; }
+$("pt-file").onchange = async ev => {
+  const f = await readFile(ev.target); if (!f) return;
+  let d; try { d = JSON.parse(f.text); } catch (e) { msg("pt-msg", "error", `${f.name}: not JSON (${e.message})`); return; }
+  if (!d || (d.schema !== RUN_SCHEMA && d.schema !== FACTORY_SCHEMA)) { msg("pt-msg", "error", `${f.name}: schema ${JSON.stringify(d && d.schema)}; this reads ${RUN_SCHEMA} or ${FACTORY_SCHEMA}. Refused.`); return; }
+  adopt(d, f.name, "pt-msg");
+};
+
+// ---- Run tab ---------------------------------------------------------------------
+function bindRun() {
+  fillSelect($("run-phase"), CAT.phases.map(p => p.phase), CAT.phases.map(p => `${p.phase} · ${p.name}`));
+  fillSelect($("run-stat"), CAT.power_statistics); fillSelect($("run-fuel"), CAT.fuel_routes);
+  bindValue($("run-phase"), () => S.run.phase, v => S.run.phase = v);
+  bindValue($("run-stat"), () => S.run.stat, v => S.run.stat = v);
+  bindValue($("run-fuel"), () => S.run.fuel, v => S.run.fuel = v);
+  bindValue($("hz-val"), () => S.run.hz, v => S.run.hz = v);
+  bindRadio("hz-kind", () => S.run.hzKind, v => S.run.hzKind = v);
+}
+$("run-go").onclick = async () => {
+  const doc = runDoc(); $("run-doc").textContent = JSON.stringify(doc, null, 1);
+  msg("run-msg", "note", "Planning…"); $("run-go").disabled = true;
+  try {
+    const r = await pyJSON("run_plan", doc);
+    RUN = { doc, text: r.value.record, record: JSON.parse(r.value.record), report: r.value.report, ms: r.ms };
+    if (RUN.record.schema !== RUN_PLAN_SCHEMA) throw new Error(`record schema ${RUN.record.schema}, this page reads ${RUN_PLAN_SCHEMA}`);
+    $("run-msg").replaceChildren(); renderRun();
+  } catch (e) { RUN = null; refusal("run-msg", e); $("run-out").replaceChildren(); badge("b-run", "bad", "refused"); }
+  $("run-go").disabled = false;
+};
+function download(text, name) {
+  const a = el("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$("run-save").onclick = () => download(JSON.stringify(runDoc(), null, 1) + "\n", "run_inputs.json");
+$("run-file").onchange = async ev => {
+  const f = await readFile(ev.target); if (!f) return;
+  let d; try { d = JSON.parse(f.text); } catch (e) { msg("run-msg", "error", `${f.name}: not JSON`); return; }
+  if (!d || d.schema !== RUN_SCHEMA) { msg("run-msg", "error", `${f.name}: schema ${JSON.stringify(d && d.schema)}, this reads ${RUN_SCHEMA}. Refused.`); return; }
+  adopt(d, f.name, "run-msg");
+};
+
+function table(heads, rows, numeric = []) {
+  const w = el("div", "tbl"), t = el("table"), tr = el("tr");
+  heads.forEach((h, i) => tr.append(el("th", numeric.includes(i) ? "n" : null, h)));
+  t.append(el("thead")); t.firstChild.append(tr);
+  const tb = el("tbody");
+  for (const r of rows) {
+    const row = el("tr");
+    r.forEach((c, i) => { const td = el("td", numeric.includes(i) ? "n" : null); if (c instanceof Node) td.append(c); else td.textContent = c == null ? "—" : c; row.append(td); });
+    tb.append(row);
+  }
+  t.append(tb); w.append(t); return w;
+}
+function panel(eyebrow, title, ...kids) {
+  const s = el("section", "panel"); s.append(el("div", "eyebrow", eyebrow), el("h2", null, title), ...kids.filter(Boolean)); return s;
+}
+function kpis(list) { const k = el("div", "kpis"); for (const [label, value, sub] of list) { const d = el("div", "kpi"); d.append(el("span", "small muted", label), el("b", null, value)); if (sub) d.append(el("span", "small muted", sub)); k.append(d); } return k; }
+function feedsText(feeds) {
+  return feeds.map(f => `${nm(f.fuel_item_id)} ${fmt(f.per_min)}/min` + f.supplemental.map(([i, r]) => ` + ${nm(i)} ${fmt(r)}/min`).join("")).join(" · or ");
+}
+function powerStack(ps) {
+  if (!ps) return null;
+  const wrap = el("div"); wrap.style.display = "grid"; wrap.style.gap = "10px";
+  wrap.append(el("p", "small", `Need ${fmt(ps.need_mw)} MW. Each type alone demonstrates the need (A19); the supply table shows how it is carried.`));
+  wrap.append(el("h3", null, "Each type alone"));
+  wrap.append(table(["Generator", "Units", "MW each", "Fuel, one of"], ps.alone.map(a => [named(a.generator_class), fmt(a.units), fmt(a.unit_mw), feedsText(a.feeds)]), [1, 2]));
+  const how = ps.mix.length ? "declared mix: " + ps.mix.map(([c, s]) => `${nm(c)} ${fmt(s)}`).join(", ") : "no mix declared: the class obtained last carries what standing units leave";
+  wrap.append(el("h3", null, "Supply"), el("p", "small muted", how));
+  const role = r => el("span", "chip " + ({ primary: "flow", mix: "flow", standing: "ok", backup: "acc", idle: "" }[r] || ""), r);
+  wrap.append(table(["Generator", "Role", "Obtained with", "Standing", "New", "MW each", "Load MW", "Fuel at load"],
+    ps.lines.map(l => [named(l.generator_class), role(l.role), `${l.obtained_with} (tier ${l.obtained_tier})`, fmt(l.standing_units), fmt(l.new_units), fmt(l.unit_mw), fmt(l.load_mw),
+      (l.role === "idle" ? "—" : feedsText(l.feeds)) + l.biofuel.map(c => ` · by hand ${fmt(c.by_hand_per_min)} ${nm(c.source_item_id)}/min → ${fmt(c.biomass_constructors)} + ${fmt(c.biofuel_constructors)} constructors, ${fmt(c.constructor_mw)} MW${c.owned ? "" : " (recipes not owned)"}`).join("")]), [3, 4, 5, 6]));
+  return wrap;
+}
+function byproducts(list) {
+  if (!list.length) return el("p", "small muted", "No by-products left over.");
+  const rows = [];
+  const walk = (b, depth) => {
+    const what = [];
+    if (b.sink_points_per_min != null) what.push(`${fmt(b.sink_points_per_min)} sink points/min`);
+    if (b.generator_class) what.push(`${fmt(b.generators)} × ${nm(b.generator_class)}, ${fmt(b.power_mw)} MW`);
+    if (b.recipe_id) what.push(`${fmt(b.machines)} × ${nm(b.recipe_id)}`);
+    if (b.machine_mw != null) what.push(`draws ${fmt(b.machine_mw)} MW`);
+    if (b.container_item_id) what.push(`${fmt(b.containers_per_min)} ${nm(b.container_item_id)}/min taken`);
+    const item = el("span"); item.style.paddingLeft = `${depth * 16}px`; item.append(depth ? "↳ " : "", named(b.item_id));
+    rows.push([item, fmt(b.rate_per_min), el("span", "chip " + (b.disposition.includes("not") || b.disposition.includes("needs") || b.disposition === "unsinkable" ? "bind" : "ok"), b.disposition), what.join(" · ")]);
+    for (const d of b.downstream) walk(d, depth + 1);
+  };
+  list.forEach(b => walk(b, 0));
+  return table(["Item", "Per min", "Disposition", "How"], rows, [1]);
+}
+function reportBlock(text) { const d = el("details"); d.append(el("summary", "small", "Python's report, as the CLI prints it (headroom and capacities included)")); const p = el("pre", "report"); p.textContent = text; d.append(p); return d; }
+
+function renderRun() {
+  const r = RUN.record, out = $("run-out"); out.replaceChildren();
+  const phase = CAT.phases.find(p => p.phase === r.phase);
+  badge("b-run", r.blocked.length ? "bad" : "ok", r.blocked.length ? `${r.blocked.length} blocked` : "planned");
+  const head = panel("run-plan/1 · " + (phase ? `phase ${r.phase}, ${phase.name}` : `phase ${r.phase}`), "Target",
+    kpis([["Horizon", `${fmt(r.horizon_min)} min`, `${fmt(100 * r.horizon_fraction)} % of the ceiling`],
+          ["One-machine ceiling", `${fmt(r.ceiling_min)} min`, "slowest part, one machine"],
+          ["Machines' power", r.power_mw == null ? "—" : `${fmt(r.power_mw)} MW`, `${r.power_statistic}, as declared`]]));
+  const bar = el("div", "row");
+  const ex = el("button", "primary", "Export run-plan/1"); ex.onclick = () => download(RUN.text, `run_plan_phase${r.phase}.json`);
+  const go = el("button", null, "Hand this step to a factory →"); go.onclick = () => showTab("hand");
+  go.disabled = r.blocked.length > 0;
+  bar.append(ex, go, el("span", "small muted", `planned in ${RUN.ms} ms`)); head.append(bar);
+  out.append(head);
+  out.append(panel("E-scaled bill over the horizon", "Parts",
+    table(["Part", "Bill", "Rate / min", "One machine, min"], r.parts.map(p => [named(p.item_id), fmt(p.bill_units), fmt(p.rate_per_min), fmt(p.one_machine_min)]), [1, 2, 3])));
+  if (r.blocked.length) {
+    const ul = el("ul", "list");
+    for (const b of r.blocked) {
+      const li = el("li"); const h = el("div", "row"); h.append(el("span", "chip bind", "blocked"), el("b", null, nm(b.item_id)));
+      li.append(h);
+      for (const [item, producers] of b.needs) {
+        const p = el("div", "small");
+        p.append(el("b", null, item === b.item_id ? "No owned recipe makes it: " : `Needs ${nm(item)}: `));
+        p.append(document.createTextNode(producers.map(([rid, st, via]) => `${nm(rid)} (${st}) via ${via.length ? via.join(", ") : "nothing listed"}`).join("; ")));
+        li.append(p);
+      }
+      ul.append(li);
+    }
+    out.append(panel("What each blocked part waits on", "Blocked", el("p", "small muted", "The deepest items on the owned chains that no owned recipe makes, with the unlocks that grant their recipes. Nothing is planned while a part is blocked."), ul));
+  }
+  if (r.machines.length) {
+    out.append(panel("The LP's plan, every owned recipe", "Machines and raw inputs",
+      table(["Recipe", "Building", "Machines", "Cycles / min"], r.recipes.map(x => [named(x.recipe_id), nm(x.producer_class), fmt(x.machine_equivalents), fmt(x.cycles_per_min)]), [2, 3]),
+      table(["Building", "Machines", "Whole"], r.machines.map(m => [named(m.producer_class), fmt(m.effective_count), fmt(m.physical_count_if_rounded)]), [1, 2]),
+      table(["Raw input", "Per min"], r.raw_inputs.map(x => [named(x.item_id), fmt(x.rate_per_min)]), [1])));
+  }
+  if (r.power_stack) out.append(panel("Reframe A18, A19", "Power stack", powerStack(r.power_stack), ...r.notes.map(n => el("p", "note", n))));
+  if (!r.blocked.length) out.append(panel("Reframe A16–A18: to the sink, to power, or packaged", "By-products", byproducts(r.byproducts)));
+  out.append(reportBlock(RUN.report));
+}
+
+// ---- Hand-off tab: neighborhoods map (as the picker draws it) -------------------------
+let NB = null, byId = {}, BASE = {};
+function acceptNB(text, source) {
+  let doc; try { doc = JSON.parse(text); } catch (e) { msg("nb-err", "error", `${source}: not JSON (${e.message})`); return false; }
+  if (!doc || doc.schema !== NB_SCHEMA) { msg("nb-err", "error", `${source}: schema ${JSON.stringify(doc && doc.schema)}, this page reads ${NB_SCHEMA}. Refused.`); return false; }
+  $("nb-err").replaceChildren();
+  NB = doc; byId = Object.fromEntries(doc.sockets.map(s => [s.socket_id, s]));
+  const p = NB.policy;
+  $("nb-src").textContent = `Site · one neighborhood · ${source} · radius ${p.radius_m} m, ${doc.neighborhoods.length} neighborhoods, world ${doc.world_config_id}`;
+  fit(); loadBase(); listNB(); paintSite();
+  return true;
+}
+$("nbfile").onchange = async ev => { const f = await readFile(ev.target); if (f) acceptNB(f.text, `file ${f.name}`); };
+const svg = $("map"); let view = null, full = null;
+const sx = s => s.east_m, sy = s => -s.north_m;
+function setView() { svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.w}`); }
+function fit(ids) {
+  if (!NB) return;
+  const pts = (ids ? ids.map(i => byId[i]).filter(Boolean) : NB.sockets);
+  if (!pts.length) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of pts) { x0 = Math.min(x0, sx(s)); x1 = Math.max(x1, sx(s)); y0 = Math.min(y0, sy(s)); y1 = Math.max(y1, sy(s)); }
+  const pad = Math.max(NB.policy.radius_m, 0.05 * Math.max(x1 - x0, y1 - y0));
+  const side = Math.max(x1 - x0, y1 - y0) + 2 * pad;
+  view = { x: (x0 + x1) / 2 - side / 2, y: (y0 + y1) / 2 - side / 2, w: side };
+  if (!ids) full = { ...view };
+  setView();
+}
+const NS = "http://www.w3.org/2000/svg";
+function sv(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function drawBase() {
+  const note = $("basenote"), w = NB.world_config_id, b = BASE[w];
+  if (!BASEMAPS[w]) { note.textContent = `No base map for world ${w}: sockets on a plain grid.`; return; }
+  if (!b) { note.textContent = "Base map loading…"; return; }
+  if (b.error) { note.textContent = `Base map for ${w} not loaded (${b.error}): sockets on a plain grid.`; return; }
+  const at = { x: b.x_m, y: b.y_m, width: b.width_m, height: b.height_m };
+  svg.append(sv("rect", { ...at, fill: "var(--sea)", class: "basemap" }));
+  svg.append(sv("image", { ...at, href: b.href, preserveAspectRatio: "none", class: "basemap" }));
+  note.textContent = `Terrain: ${b.source} (game data, ${b.pixel_m} m per pixel).`;
+}
+function loadBase() {
+  const w = NB && NB.world_config_id, path = w && BASEMAPS[w];
+  if (!path || BASE[w]) { draw(); return; }
+  BASE[w] = null;
+  fetch(path).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(b => { if (b.schema !== "basemap/1") throw new Error(`schema ${JSON.stringify(b.schema)}`); BASE[w] = { ...b, href: path.replace(/[^/]*$/, "") + b.image }; })
+    .catch(e => { BASE[w] = { error: e.message }; })
+    .finally(draw);
+}
+function draw() {
+  if (!NB || !view) return;
+  svg.replaceChildren(); drawBase();
+  const r = view.w / 160, mine = new Set(S.site ? S.site.socket_ids : []);
+  if (S.chosen && byId[S.chosen]) { const c = byId[S.chosen]; svg.append(sv("circle", { cx: sx(c), cy: sy(c), r: NB.policy.radius_m, fill: "none", stroke: "var(--accent)", "stroke-width": r / 3, "stroke-dasharray": `${r} ${r}` })); }
+  for (const s of NB.sockets) {
+    const on = mine.has(s.socket_id);
+    const dot = sv("circle", { cx: sx(s), cy: sy(s), r: on ? r * 1.4 : r, fill: on ? "var(--flow)" : "var(--dot)", stroke: s.socket_id === S.chosen ? "var(--accent)" : "none", "stroke-width": r / 2 });
+    dot.dataset.id = s.socket_id;
+    const t = sv("title", {}); t.textContent = `${s.socket_id} · ${nm(s.item_id) || s.item_id} · ${s.purity}`; dot.append(t);
+    svg.append(dot);
+  }
+}
+let drag = null;
+svg.addEventListener("pointerdown", ev => { if (!view) return; drag = { x: ev.clientX, y: ev.clientY, v: { ...view }, moved: false, id: (ev.target.dataset && ev.target.dataset.id) || null }; svg.setPointerCapture(ev.pointerId); });
+svg.addEventListener("pointermove", ev => {
+  if (!drag) return;
+  const k = view.w / svg.clientWidth, dx = (ev.clientX - drag.x) * k, dy = (ev.clientY - drag.y) * k;
+  if (Math.abs(dx) + Math.abs(dy) > 2 * k) drag.moved = true;
+  view.x = drag.v.x - dx; view.y = drag.v.y - dy; setView();
+});
+svg.addEventListener("pointerup", () => { const was = drag; drag = null; if (was && !was.moved && was.id) choose(was.id); });
+function zoom(f) { const cx = view.x + view.w / 2, cy = view.y + view.w / 2; view.w *= f; view.x = cx - view.w / 2; view.y = cy - view.w / 2; setView(); draw(); }
+$("zin").onclick = () => zoom(0.5); $("zout").onclick = () => zoom(2);
+$("zall").onclick = () => { view = { ...full }; setView(); draw(); };
+function choose(id) {
+  if (!byId[id]) { msg("nb-err", "error", `socket ${id} is not in this export (in no neighborhood under its policy)`); return; }
+  $("nb-err").replaceChildren(); S.chosen = id; save(); listNB(); draw();
+}
+$("findgo").onclick = () => { const id = $("find").value.trim(); if (!id) return; choose(id); if (byId[id]) { fit([id]); zoom(1); } };
+$("find").addEventListener("keydown", ev => { if (ev.key === "Enter") $("findgo").click(); });
+function counts(n) {
+  return Object.entries(n.purity_counts).map(([item, per]) => {
+    const total = Object.values(per).reduce((a, b) => a + b, 0);  // a count of sockets for display
+    return `${total} ${nm(item)} (${Object.entries(per).map(([p, k]) => `${k} ${p}`).join(", ")})`;
+  }).join(" · ");
+}
+function listNB() {
+  const ul = $("nblist"); ul.replaceChildren();
+  if (!NB) return;
+  if (!S.chosen) { ul.append(el("li", "small muted", "Choose a socket on the map or by id.")); return; }
+  const hits = NB.neighborhoods.filter(n => n.socket_ids.includes(S.chosen));
+  for (const n of hits) {
+    const li = el("li", S.site && S.site.from === n.seed_socket_id ? "on" : null), head = el("div", "row");
+    head.append(el("b", "mono", n.seed_socket_id), el("span", "small muted", `${n.socket_ids.length} sockets`));
+    const used = S.site && S.site.from === n.seed_socket_id;
+    const btn = el("button", used ? null : "primary", used ? "The site" : "Use as the site"); btn.disabled = used;
+    btn.onclick = () => { S.site = { from: n.seed_socket_id, socket_ids: [...n.socket_ids], world_config_id: NB.world_config_id }; save(); listNB(); draw(); paintSite(); };
+    head.append(btn); li.append(head, el("span", "small", counts(n))); ul.append(li);
+  }
+}
+function paintSite() {
+  const box = $("site-box"); box.replaceChildren();
+  if (!S.site) { box.append(el("div", "note", "No site yet: pick a neighborhood above.")); badge("b-hand", "bad", "no site"); return; }
+  const items = {};
+  for (const id of S.site.socket_ids) { const k = byId[id]; const key = k ? nm(k.item_id) || k.item_id : "not in this export"; items[key] = (items[key] || 0) + 1; }
+  const d = el("div", "ok");
+  d.append(el("b", null, `Site: neighborhood ${S.site.from}`), document.createTextNode(` · ${S.site.socket_ids.length} sockets · ${S.site.world_config_id}: ` + Object.entries(items).map(([k, v]) => `${v} ${k}`).join(" · ")));
+  const rm = el("button", null, "Clear"); rm.style.marginLeft = "8px"; rm.onclick = () => { S.site = null; save(); listNB(); draw(); paintSite(); };
+  d.append(rm); box.append(d); badge("b-hand", "", "");
+}
+
+// ---- Hand-off tab: declarations --------------------------------------------------
+function itemSelect(value, onchange) {
+  const s = el("select"); const o0 = el("option", null, "— item"); o0.value = ""; s.append(o0);
+  for (const [id, n] of Object.entries(CAT.items).sort((a, b) => a[1].localeCompare(b[1]))) { const o = el("option", null, n); o.value = id; s.append(o); }  // alphabetical, for finding
+  s.value = value || ""; s.onchange = () => onchange(s.value); return s;
+}
+function paintSupply() {
+  const host = $("supply-rows"); host.replaceChildren();
+  host.hidden = $("supply-add").hidden = S.d.supplyKind !== "rows";
+  S.d.supply.forEach((r, i) => {
+    const row = el("div", "goalrow");
+    const sel = itemSelect(r.item_id, v => { r.item_id = v; save(); });
+    const rate = el("input"); rate.type = "number"; rate.step = "any"; rate.placeholder = "per min"; rate.value = r.rate ?? ""; rate.setAttribute("aria-label", "Supply rate");
+    rate.oninput = () => { r.rate = rate.value; save(); };
+    const x = el("button", null, "×"); x.setAttribute("aria-label", "Remove supply"); x.onclick = () => { S.d.supply.splice(i, 1); save(); paintSupply(); };
+    row.append(sel, rate, x); host.append(row);
+  });
+}
+$("supply-add").onclick = () => { S.d.supply.push({ item_id: "", rate: "" }); save(); paintSupply(); };
+function paintGoals() {
+  const host = $("goal-rows"); host.replaceChildren();
+  S.d.goals.forEach((g, i) => {
+    const row = el("div", "goalrow");
+    const sel = itemSelect(g.item_id, v => { g.item_id = v; save(); });
+    const u = el("input"); u.type = "number"; u.step = "any"; u.placeholder = "units"; u.value = g.units ?? ""; u.setAttribute("aria-label", "Goal units");
+    u.oninput = () => { g.units = u.value; save(); };
+    const x = el("button", null, "×"); x.setAttribute("aria-label", "Remove goal item"); x.onclick = () => { S.d.goals.splice(i, 1); save(); paintGoals(); };
+    row.append(sel, u, x); host.append(row);
+  });
+  if (!S.d.goals.length) host.append(el("span", "small muted", "No items yet: a goal mix is declared, never invented (B1)."));
+}
+$("goal-add").onclick = () => { S.d.goals.push({ item_id: "", units: "" }); save(); paintGoals(); };
+function paintSrc() { $("src-run").hidden = S.d.src !== "run"; $("src-hand").hidden = S.d.src !== "hand"; }
+function bindHand() {
+  fillSelect($("d-mode"), CAT.power_modes); fillSelect($("d-stat"), CAT.power_statistics); fillSelect($("d-fuel"), CAT.fuel_routes);
+  fillSelect($("d-goal"), CAT.goals); fillSelect($("d-policy"), CAT.infrastructure_policies);
+  bindValue($("d-label"), () => S.d.label, v => S.d.label = v);
+  bindValue($("d-mode"), () => S.d.mode, v => S.d.mode = v);
+  bindValue($("d-grid"), () => S.d.grid, v => S.d.grid = v);
+  bindValue($("d-spare"), () => S.d.spare, v => S.d.spare = v);
+  bindValue($("d-stat"), () => S.d.stat, v => S.d.stat = v);
+  bindValue($("d-fuel"), () => S.d.fuel, v => S.d.fuel = v);
+  bindValue($("d-goal"), () => S.d.goal, v => S.d.goal = v);
+  bindValue($("d-policy"), () => S.d.policy, v => S.d.policy = v);
+  bindValue($("d-target-val"), () => S.d.target, v => S.d.target = v);
+  paintHand();
+}
+function paintHand() {
+  bindRadio("d-pumps", () => S.d.pumps, v => S.d.pumps = v);
+  bindRadio("d-supply", () => S.d.supplyKind, v => S.d.supplyKind = v, paintSupply);
+  bindRadio("d-pfs", () => S.d.pfs, v => S.d.pfs = v);
+  bindRadio("d-src", () => S.d.src, v => S.d.src = v, paintSrc);
+  bindRadio("d-fixed", () => S.d.fixed, v => S.d.fixed = v);
+  bindRadio("d-target", () => S.d.targetKind, v => S.d.targetKind = v);
+  paintSupply(); paintGoals(); paintSrc(); marks();
+}
+$("hand-go").onclick = async () => {
+  if (!S.d.src) { msg("hand-msg", "error", "Declare where the goal mix comes from: the run step, or declared here."); return; }
+  $("hand-go").disabled = true; msg("hand-msg", "note", "Writing…");
+  try {
+    let doc;
+    if (S.d.src === "run") {
+      const decl = declDoc(); put(decl, "fixed_rate", bool(S.d.fixed));
+      doc = (await pyJSON("handoff", { run: runDoc(), decl })).value;
+      setFactory(doc, "written by run_plan.handoff from the Run tab's step");
+    } else {
+      doc = handDoc();
+      setFactory(doc, "assembled from the Hand-off tab's declarations (checked when it runs)");
+    }
+    const d = msg("hand-msg", "ok", "factory-inputs/1 written. ");
+    const go = el("button", "primary", "Open in Factory →"); go.onclick = () => showTab("fac"); d.append(go);
+  } catch (e) { refusal("hand-msg", e); }
+  $("hand-go").disabled = false;
+};
+
+// ---- Factory tab --------------------------------------------------------------------
+function setFactory(doc, source) {
+  FAC = { doc, source, record: null, text: null, report: null };
+  $("fac-src").textContent = `Document ${source}.`;
+  $("fac-doc").textContent = JSON.stringify(doc, null, 1);
+  $("fac-go").disabled = $("fac-save").disabled = false;
+  $("fac-out").replaceChildren(); $("fac-msg").replaceChildren(); badge("b-fac", "", "ready");
+  store(STORE + "-factory", JSON.stringify({ doc, source }));
+}
+$("fac-file").onchange = async ev => {
+  const f = await readFile(ev.target); if (!f) return;
+  let d; try { d = JSON.parse(f.text); } catch (e) { msg("fac-msg", "error", `${f.name}: not JSON (${e.message})`); return; }
+  if (!d || d.schema !== FACTORY_SCHEMA) { msg("fac-msg", "error", `${f.name}: schema ${JSON.stringify(d && d.schema)}, this reads ${FACTORY_SCHEMA}. Refused.`); return; }
+  setFactory(d, `from the file ${f.name}, as written`);
+};
+$("fac-save").onclick = () => FAC.doc && download(JSON.stringify(FAC.doc, null, 1) + "\n", "factory_inputs.json");
+$("fac-go").onclick = async () => {
+  if (!FAC.doc) return;
+  $("fac-go").disabled = true; msg("fac-msg", "note", "Running the factory…");
+  try {
+    const r = await pyJSON("factory", FAC.doc);
+    FAC.text = r.value.record; FAC.record = JSON.parse(FAC.text); FAC.report = r.value.report; FAC.ms = r.ms;
+    if (FAC.record.schema !== FACTORY_PLAN_SCHEMA) throw new Error(`record schema ${FAC.record.schema}, this page reads ${FACTORY_PLAN_SCHEMA}`);
+    $("fac-msg").replaceChildren(); renderFactory(); badge("b-fac", "ok", "run");
+  } catch (e) { refusal("fac-msg", e); $("fac-out").replaceChildren(); badge("b-fac", "bad", "refused"); }
+  $("fac-go").disabled = false;
+};
+function renderFactory() {
+  const r = FAC.record, out = $("fac-out"), inp = r.inputs; out.replaceChildren();
+  const pw = r.power || {};
+  const head = panel(`factory-plan/1 · ${inp.site.label} · ${r.power_mode}`, "Scale and deliveries",
+    kpis([["Scale", `${fmt(r.scale_per_min)}/min`, "goal-mix units per minute"],
+          ["Target", inp.target_scale == null ? "maximum" : `${fmt(inp.target_scale)}/min`, inp.target_scale == null ? "the site's maximum" : "declared, delivered exactly"],
+          ["Extraction", `${fmt(r.extraction_mw.after_step_down)} MW`, `${fmt(r.extraction_mw.at_highest)} MW at the highest marks`],
+          [pw.need_mw != null ? "Power need" : "Generated", pw.need_mw != null ? `${fmt(pw.need_mw)} MW` : `${fmt(pw.generated_mw)} MW`, `lanes ${fmt(r.lane_mw)} MW, ${inp.power_statistic}`]]),
+    table(["Delivers", "Per min"], r.delivered.map(d => [named(d.item_id), fmt(d.rate_per_min)]), [1]));
+  const bar = el("div", "row");
+  const ex = el("button", "primary", "Export factory-plan/1"); ex.onclick = () => download(FAC.text, `factory_plan_${inp.site.label}.json`);
+  bar.append(ex, el("span", "small muted", `solved in ${FAC.ms} ms`)); head.append(bar); out.append(head);
+  if (r.binding.length) out.append(panel("Caps the solve sits on", "Binding", table(["Raw", "Cap / min", "Shadow price"], r.binding.map(b => [named(b.item_id), fmt(b.cap_per_min), b.shadow_price_high != null ? `${fmt(b.shadow_price)}–${fmt(b.shadow_price_high)}` : fmt(b.shadow_price)]), [1, 2])));
+  const socks = r.sockets.map(s => {
+    const k = NB && byId[s.socket_id];
+    const sock = el("span"); sock.append(el("span", "mono", s.socket_id)); if (k) sock.append(el("span", "id", `${nm(k.item_id)} · ${k.purity}`));
+    const kept = el("span"); kept.append(s.chosen ? named(s.chosen) : el("span", "muted", "nothing (not drawn)"));
+    if (s.stepped_down) kept.append(" ", el("span", "chip acc", "stepped down"));
+    const lane = s.lane ? `${s.lane.lanes} × ${s.lane.kind} ${s.lane.mark}${s.lane.mark !== s.lane.highest ? ` (highest ${s.lane.highest})` : ""}` : "—";
+    return [sock, fmt(s.draw_per_min), nm(s.highest), kept, lane, s.reason];
+  });
+  out.append(panel("A15.2 B2: the highest mark owned, stepped down where it does not help", "Socket plan",
+    table(["Socket", "Draw / min", "Highest", "Kept", "Lane", "Why"], socks, [1]),
+    r.not_extracted.length ? table(["Not extracted", "Reason"], r.not_extracted.map(n => [n.socket_id, n.reason])) : null,
+    table(["Raw drawn", "Per min"], r.raw_draw.map(x => [named(x.item_id), fmt(x.rate_per_min)]), [1])));
+  out.append(panel("Recipes the solve uses", "Machines",
+    table(["Recipe", "Building", "Machines", "Cycles / min"], r.recipes.map(x => [named(x.recipe_id), nm(x.producer_class), fmt(x.machine_equivalents), fmt(x.cycles_per_min)]), [2, 3])));
+  const pkids = [table(["Lanes MW", "Extraction MW", "Grid MW", "Spare MW", "Generated MW", "Margin MW", "Need MW"], [[fmt(pw.lane_mw), fmt(pw.extraction_mw), fmt(pw.grid_mw), fmt(pw.spare_mw), fmt(pw.generated_mw), fmt(pw.margin_mw), fmt(pw.need_mw)]], [0, 1, 2, 3, 4, 5, 6])];
+  if (pw.generators && pw.generators.length) pkids.push(table(["Generator (solve, A3)", "Fuel", "Units", "MW", "Fuel / min"], pw.generators.map(g => [named(g.generator_class), nm(g.fuel_item_id), fmt(g.count), fmt(g.mw), fmt(g.fuel_per_min)]), [2, 3, 4]));
+  if (r.power_stack) pkids.push(powerStack(r.power_stack));
+  // need_mw is set when the row was reported, not imposed (DistrictPower, A11)
+  out.append(panel(pw.need_mw == null ? `${r.power_mode}: the solve's own generators (A3)` : `${r.power_mode} (A11): the need, and the stack that carries it (A18, A19)`, "Power", ...pkids));
+  if (r.supply_check) {
+    const sc = r.supply_check;
+    const fed = el("ul", "list");
+    for (const [cls, opts] of sc.fed_by) { const li = el("li"); li.append(el("b", null, nm(cls)), el("span", "small", opts.length ? `fed by ${opts.map(nm).join(", ")}` : "no fuel option is fed")); if (!opts.length) li.prepend(el("span", "chip bind", "short")); fed.append(li); }
+    out.append(panel("A19: declared a power site; each load-carrying line's fuel against the site's leftovers", "Supply check", el("p", "small muted", sc.note), fed,
+      table(["Generator", "Fuel option", "Item", "Need / min", "Left / min", "Status"], sc.checks.map(c => [nm(c.generator_class), nm(c.fuel_item_id), nm(c.item_id), fmt(c.need_per_min), c.available_per_min == null ? "uncapped" : fmt(c.available_per_min),
+        el("span", "chip " + (c.status === "covered" || c.status === "pumped" ? "ok" : c.status === "by_hand" ? "acc" : "bind"), c.status)]), [3, 4])));
+  }
+  out.append(panel("Reframe A16–A18", "By-products", byproducts(r.byproducts)));
+  out.append(panel("As the run reads them", "Notes", ...r.warnings.map(w => el("p", "note", w)), reportBlock(FAC.report)));
+}
+
+// ---- start -------------------------------------------------------------------------
+function paintAll() {
+  if (!CAT) return;
+  renderMilestones();
+  renderPicks("rs-list", "rs-find", CAT.research, "research", "schematic_id");
+  renderPicks("alt-list", "alt-find", CAT.alternates, "alternates", "recipe_id");
+  bindScenario(); bindRadio("mix-kind", () => S.mixKind, v => S.mixKind = v, () => { $("mix-shares").hidden = S.mixKind !== "shares"; });
+  $("mix-shares").hidden = S.mixKind !== "shares";
+  bindRun(); bindHand(); renderGenerators(); marks();
+}
+showTab((location.hash || "#" + S.tab).slice(1));
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+(async () => {
+  try {
+    const r = await pyJSON("catalog", null);
+    if (r.value.schema !== CATALOG_SCHEMA) throw new Error(`catalog schema ${r.value.schema}, this page reads ${CATALOG_SCHEMA}`);
+    CAT = r.value; paintAll(); readGenerators();
+    if (NB) { listNB(); paintSite(); draw(); }
+  } catch (e) { refusal("boot-err", e); $("ms-list").textContent = "Python did not start; serve the repo root over http (python -m http.server) and reload."; }
+})();
+try { const f = JSON.parse(recall(STORE + "-factory") || "null"); if (f && f.doc) setFactory(f.doc, f.source); } catch (e) { /* none kept */ }
+let keptNB = null; try { keptNB = JSON.parse(recall(STORE_NB) || "null"); } catch (e) { keptNB = null; }
+if (keptNB && keptNB.text) acceptNB(keptNB.text, keptNB.source + " (the picker's, kept in this browser)");
+else fetch(DEFAULT_EXPORT.path).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+  .then(text => acceptNB(text, DEFAULT_EXPORT.label))
+  .catch(e => msg("nb-err", "error", `The precomputed neighborhoods could not be fetched (${e.message}). Serve the repo root over http, or open an export above.`));
+</script>
+</body>
+</html>

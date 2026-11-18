@@ -181,3 +181,49 @@ def test_picker_basemaps_exist():
     for world, path in _picker("BASEMAPS").items():
         side = json.loads((WEB / path).read_text(encoding="utf-8"))
         assert side["schema"] == "basemap/1" and (WEB / path).with_name(side["image"]).is_file(), world
+
+
+# -- planner.html (reframe A20, 2026-11-18): run and factory tracks ----------------
+
+PLANNER = WEB / "planner.html"
+
+
+def _planner(name: str):
+    found = re.findall(rf"^const {name} = ([^;]+);", PLANNER.read_text(encoding="utf-8"), re.M)
+    assert len(found) == 1, f"{name}: expected one declaration, found {found}"
+    return json.loads(found[0])
+
+
+def test_planner_schemas_are_the_tools():
+    run_plan, factory_run = _module("run_plan"), _module("factory_run")
+    assert _planner("RUN_SCHEMA") == run_plan.INPUTS_SCHEMA
+    assert _planner("RUN_PLAN_SCHEMA") == run_plan.PLAN_SCHEMA
+    assert _planner("FACTORY_SCHEMA") == factory_run.INPUTS_SCHEMA
+    assert _planner("FACTORY_PLAN_SCHEMA") == factory_run.PLAN_SCHEMA
+    assert _planner("CATALOG_SCHEMA") == _module("planner_catalog").CATALOG_SCHEMA
+    assert _planner("NB_SCHEMA") == _module("neighborhoods").EXPORT_SCHEMA
+
+
+def test_planner_shares_the_pickers_starting_points():
+    assert _planner("DEFAULT_EXPORT") == _picker("DEFAULT_EXPORT")
+    assert _planner("BASEMAPS") == _picker("BASEMAPS")
+
+
+def test_planner_reads_no_reference_files_and_lists_no_vocabulary():
+    """One loader: names and choices come from planner_catalog through the
+    worker. No vocabulary the Python owns is spelled out in the page."""
+    text = PLANNER.read_text(encoding="utf-8")
+    assert ".csv" not in text and "planning_data" not in text
+    for owned in ('"highest_then_step_down"', '"report_need"', '"package"', '"mean"', '"balanced"'):
+        assert owned not in text, owned
+
+
+def test_worker_answers_every_planner_op():
+    """Each op the page sends has a Python function of that name in the worker."""
+    worker = (WEB / "worker.js").read_text(encoding="utf-8")
+    page = PLANNER.read_text(encoding="utf-8")
+    ops = set(re.findall(r'pyJSON\("(\w+)"', page))
+    declared = set(json.loads(re.findall(r"const PLANNER_OPS = new Set\((\[[^\]]*\])\)", worker)[0]))
+    assert ops == declared == {"catalog", "tier", "generators", "run_plan", "handoff", "factory"}
+    for op in ops:
+        assert re.search(rf"^def _{op}\(arg\):", worker, re.M), op

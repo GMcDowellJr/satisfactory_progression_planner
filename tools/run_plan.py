@@ -63,6 +63,23 @@ from progression.power_stack import PowerStack, power_stack  # noqa: E402
 from progression.power_stack import report_lines as stack_lines  # noqa: E402
 
 PLAN_SCHEMA = "run-plan/1"
+#: The declared run (reframe A20, 2026-11-18): what plan_phase takes, as a
+#: document. Every key required and unknown keys refused, like factory-inputs/1,
+#: so a browser form's gaps are refused here by name, not filled in JS.
+INPUTS_SCHEMA = "run-inputs/1"
+INPUT_KEYS = ("schema", "playthrough", "scenario", "phase", "horizon_min", "horizon_fraction",
+              "power_statistic", "fuel_byproducts", "standing_generators", "generation_mix")
+#: the same shapes as factory-inputs/1 (pinned equal by tests/test_run_inputs.py)
+PLAYTHROUGH_KEYS = ("through_tier", "milestones", "research", "alternates")
+SCENARIO_KEYS = ("recipe_input_multiplier", "machine_power_multiplier",
+                 "project_assembly_requirement_multiplier", "fluid_input_floor",
+                 "fluid_rounding_unit")
+#: The factory track's declarations a hand-off needs beyond the run (A20): every
+#: argument of to_factory_inputs, none taken from its keyword defaults.
+HANDOFF_KEYS = ("world_config_id", "label", "socket_ids", "supply", "pumps_water", "power_mode",
+                "power_statistic", "fuel_byproducts", "power_from_site", "goal", "grid_mw",
+                "spare_mw", "infrastructure_policy", "fixed_rate")
+FUEL_ROUTES = ("power", "package")   # progression.byproducts.FUEL_ROUTES (pinned by the test)
 
 def power_note(statistic: PowerStatistic) -> str:
     return (f"power stack (reframe A18): the plan's machine power ({PowerStatistic(statistic).value}, "
@@ -263,6 +280,81 @@ def to_factory_inputs(
         "generation_mix": None if plan.generation_mix is None else dict(plan.generation_mix),
         "power_from_site": power_from_site,
     }
+
+
+def _keys(where: str, doc, keys) -> None:
+    if not isinstance(doc, dict):
+        raise RunPlanError(f"{where}: an object is required")
+    missing = [k for k in keys if k not in doc]
+    extra = sorted(k for k in doc if k not in keys)
+    if missing or extra:
+        raise RunPlanError(f"{where}: missing {missing}, not known {extra}")
+
+
+def run_inputs(doc: dict, repo: pathlib.Path = REPO) -> PhasePlan:
+    """Plan a run-inputs/1 document (A20). Shape is checked here; content where
+    it is owned (playthrough ids, Scenario, horizon, power stack)."""
+    _keys("inputs", doc, INPUT_KEYS)
+    if doc["schema"] != INPUTS_SCHEMA:
+        raise RunPlanError(f"inputs schema {doc['schema']!r}, this reads {INPUTS_SCHEMA}")
+    _keys("inputs.playthrough", doc["playthrough"], PLAYTHROUGH_KEYS)
+    _keys("inputs.scenario", doc["scenario"], SCENARIO_KEYS)
+    phase = doc["phase"]
+    if not isinstance(phase, int) or isinstance(phase, bool):
+        raise RunPlanError(f"phase: a whole number, got {phase!r}")
+    try:
+        statistic = PowerStatistic(doc["power_statistic"])
+    except ValueError:
+        raise RunPlanError(f"power_statistic {doc['power_statistic']!r}; known: "
+                           f"{[s.value for s in PowerStatistic]} (no default: LP D2)") from None
+    if doc["fuel_byproducts"] not in FUEL_ROUTES:
+        raise RunPlanError(f"fuel_byproducts {doc['fuel_byproducts']!r}; known: "
+                           f"{list(FUEL_ROUTES)} (reframe A18: generator, or packaged)")
+    standing = doc["standing_generators"]
+    if not isinstance(standing, dict):
+        raise RunPlanError("standing_generators: an object of generator class -> units built "
+                           "({} declares none built)")
+    mix = doc["generation_mix"]
+    if mix is not None and (not isinstance(mix, dict) or not mix):
+        raise RunPlanError("generation_mix: null (the class obtained last carries the rest) "
+                           "or an object of generator class -> share (A19)")
+    pt = doc["playthrough"]
+    state = playthrough(repo, through_tier=pt["through_tier"], milestones=pt["milestones"],
+                        research=pt["research"], alternates=pt["alternates"])
+    return plan_phase(repo, state=state, scenario=Scenario(**doc["scenario"]), phase=phase,
+                      horizon_min=doc["horizon_min"], horizon_fraction=doc["horizon_fraction"],
+                      power_statistic=statistic, fuel_byproducts=doc["fuel_byproducts"],
+                      standing_generators=standing, generation_mix=mix)
+
+
+def handoff(run_doc: dict, decl: dict, repo: pathlib.Path = REPO) -> dict:
+    """A1 hand-off from documents (A20): plan `run_doc` (run-inputs/1) and write
+    the factory-inputs/1 for it with every factory declaration in `decl`
+    (HANDOFF_KEYS, all required). A step with blocked parts is refused: the
+    factory would refuse its goal mix anyway, and the blocked list says why."""
+    _keys("handoff", decl, HANDOFF_KEYS)
+    for k in ("pumps_water", "power_from_site", "fixed_rate"):
+        if not isinstance(decl[k], bool):
+            raise RunPlanError(f"handoff.{k}: true or false, declared")
+    if not isinstance(decl["socket_ids"], list) or not decl["socket_ids"]:
+        raise RunPlanError("handoff.socket_ids: declare at least one socket; nothing picks a site")
+    if not isinstance(decl["supply"], list):
+        raise RunPlanError("handoff.supply: a list of {item_id, rate_per_min} ([] declares none)")
+    for n, s in enumerate(decl["supply"]):
+        _keys(f"handoff.supply[{n}]", s, ("item_id", "rate_per_min"))
+    plan = run_inputs(run_doc, repo)
+    if plan.blocked:
+        raise RunPlanError(f"phase {plan.phase} has blocked parts "
+                           f"({', '.join(b.item_id for b in plan.blocked)}); a blocked step "
+                           "cannot be handed to the factory track")
+    return to_factory_inputs(
+        plan, world_config_id=decl["world_config_id"], label=decl["label"],
+        socket_ids=tuple(decl["socket_ids"]), power_mode=decl["power_mode"],
+        power_statistic=decl["power_statistic"], fuel_byproducts=decl["fuel_byproducts"],
+        power_from_site=decl["power_from_site"], goal=decl["goal"],
+        supply=tuple((s["item_id"], s["rate_per_min"]) for s in decl["supply"]),
+        pumps_water=decl["pumps_water"], grid_mw=decl["grid_mw"], spare_mw=decl["spare_mw"],
+        infrastructure_policy=decl["infrastructure_policy"], fixed_rate=decl["fixed_rate"])
 
 
 def record(plan: PhasePlan) -> dict:

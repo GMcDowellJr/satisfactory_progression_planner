@@ -1,4 +1,6 @@
-// The picker's Python runtime: this repo's own code, in Pyodide, in a Web Worker.
+// The site planner's Python runtime: this repo's own code, in Pyodide, in a Web Worker.
+// Used by picker.html (portfolio track) and planner.html (run and factory
+// tracks, reframe A20): every figure either page shows comes from here.
 //
 // Decided by Greg: the HTML layer runs the repo's Python in the browser
 // (2026-10-19 16:10); precomputed exports are the starting point and the
@@ -10,13 +12,21 @@
 // served from the repo root over http (file:// cannot fetch). A missing file
 // is reported by its path, never skipped.
 //
-// Messages in:  {id, op: "boot" | "pairs" | "neighborhoods" | "run", arg}
+// Messages in:  {id, op, arg}; op is
+//   picker:  "boot" | "pairs" | "neighborhoods" | "run" (portfolio-inputs/2)
+//   planner: "catalog" | "tier" (milestones through tier N) | "generators"
+//            (classes a playthrough owns) | "run_plan" (run-inputs/1) |
+//            "handoff" ({run, decl} -> factory-inputs/1) | "factory" (factory-inputs/1)
+// A Python refusal is passed back as Python worded it (its last line).
 // Messages out: {id, ok: true, result, ms} | {id, ok: false, error}
 //               {status: "..."} while booting
 "use strict";
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
 importScripts(PYODIDE + "pyodide.js");
 const ROOT = new URL("../../", self.location.href);  // tools/site_planner_web/ -> repo root
+
+// planner.html's ops: each answers with the Python's JSON text, parsed by the page
+const PLANNER_OPS = new Set(["catalog", "tier", "generators", "run_plan", "handoff", "factory"]);
 
 let ready = null;
 function boot() {
@@ -45,6 +55,8 @@ os.chdir("/repo")
 sys.path[:0] = ["/repo/tools", "/repo/tools/production_adapter/src", "/repo/tools/progression/src",
                 "/repo/tools/realization/src"]
 import neighborhoods, portfolio_run, site_card
+import factory_run, planner_catalog, run_plan
+REPO = portfolio_run.REPO
 from production_adapter import load
 
 def _pairs(world):
@@ -66,6 +78,32 @@ def _run(arg):
     data = load(portfolio_run.REPO, scenario)
     # the same text portfolio_run.export writes (indent 1, LF)
     return json.dumps(portfolio_run.record(pr, data, portfolio_run.provenance(), doc), indent=1) + "\\n"
+
+# planner.html (reframe A20); records as their CLIs' --export writes them (indent 1, LF)
+def _catalog(arg):
+    return json.dumps(planner_catalog.catalog(REPO))
+
+def _tier(arg):
+    return json.dumps(planner_catalog.tier_milestones(REPO, json.loads(arg)))
+
+def _generators(arg):
+    return json.dumps(planner_catalog.generators_owned(REPO, json.loads(arg)))
+
+# record: the --export text, byte for byte; report: the CLI's printed report, which
+# carries the figures the record leaves to properties (the stack's headroom)
+def _run_plan(arg):
+    plan = run_plan.run_inputs(json.loads(arg), REPO)
+    return json.dumps({"record": json.dumps(run_plan.record(plan), indent=1, default=str) + "\\n",
+                       "report": run_plan.report(plan)})
+
+def _handoff(arg):
+    a = json.loads(arg)
+    return json.dumps(run_plan.handoff(a["run"], a["decl"], REPO), indent=1) + "\\n"
+
+def _factory(arg):
+    run = factory_run.run_inputs(json.loads(arg), REPO)
+    return json.dumps({"record": json.dumps(factory_run.record(run), indent=1, default=str) + "\\n",
+                       "report": factory_run.report(run)})
 `);
     postMessage({ status: `ready (${Math.round(performance.now() - t0)} ms to start)` });
     return py;
@@ -91,6 +129,7 @@ onmessage = async ev => {
     // the record's own Python JSON text, unparsed: JSON.stringify would rewrite
     // 60.0 as 60, and the record should match a native export byte for byte
     else if (op === "run") result = { text: py.globals.get("_run")(JSON.stringify(arg)) };
+    else if (PLANNER_OPS.has(op)) result = { text: py.globals.get("_" + op)(JSON.stringify(arg ?? null)) };
     else if (op !== "boot") throw new Error(`no op ${op}`);
     postMessage({ id, ok: true, result, ms: Math.round(performance.now() - t0) });
   } catch (e) {
