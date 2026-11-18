@@ -776,7 +776,7 @@ class PowerBuildingRow:
 
 @dataclass(frozen=True)
 class GeneratorFuelRow:
-    """generator_fuels.csv, the columns the power ledger reads."""
+    """generator_fuels.csv, the columns `progression.power.load_power_tables` reads."""
 
     generator_class: ProducerClass
     fuel_item_id: ItemId
