@@ -4,7 +4,7 @@
   changes. Decision records stay immutable and are amended forward; this
   document says which of them govern.
 - Adopted: site-planner reframe Amendments 15–18 (decided by Greg, 2026-11-17).
-- Last revised: 2026-11-17 (architecture reconciliation R3).
+- Last revised: 2026-11-18 (reframe A20: the planner page and `run-inputs/1`).
 - Scope: the whole repository. `planning_data/ARCHITECTURE.md` covers the data
   layout only.
 
@@ -23,7 +23,7 @@ kinds of question, in three tracks over one shared core:
 | Track | Question | Method | Status |
 |---|---|---|---|
 | **Site portfolio** | What can be made where, and how do the sites connect? | Supply-bounded LP over declared sites and claimed sockets | Built (`portfolio_run.py`, `site_planner_web/`) |
-| **Run planner** | What is next, and what would reaching a declared target take? | Demand-driven: a declared target and horizon give the rates, then the LP gives the plan | Built (R9: `run_plan.py` → `run-plan/1`; `to_factory_inputs` hands a step to the factory planner) |
+| **Run planner** | What is next, and what would reaching a declared target take? | Demand-driven: a declared target and horizon give the rates, then the LP gives the plan | Built (R9: `run_plan.py` → `run-plan/1`; `to_factory_inputs` hands a step to the factory planner; A20: `run-inputs/1`, `handoff`, `planner.html`) |
 | **Factory planner** | What can this factory deliver from what it has? | Supply-driven, the default for the current factory: maximise a **declared** goal mix within available supply | Built (R7: `factory_run.py`, `factory-inputs/1` → `factory-plan/1`; R8: `progression.timeline`) |
 
 How the tracks connect:
@@ -126,8 +126,10 @@ module is not built yet.
 | `neighborhoods/1` | `neighborhoods.py` | current |
 | `district-plan/1` | `district_run.py` | deprecated with its CLI; no consumer in the repo |
 | `factory-inputs/1` | hand-written, or the run planner (R9) | current (R7): every key required, unknown keys refused; `power_statistic`, `fuel_byproducts`, `standing_generators`, `generation_mix` and `power_from_site` declared |
-| `factory-plan/1` | `factory_run.py --export` | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
-| `run-plan/1` | `run_plan.py --export` | current (R9): horizon, one-machine ceiling, parts, blocked parts with their unlocks, plan, power diagnostic |
+| `factory-plan/1` | `factory_run.py --export`, worker | current (R7): echoes its inputs; per-socket marks, lanes, power by the draw |
+| `run-inputs/1` | `planner.html`, hand-written | current (A20): every key required, unknown keys refused (`run_plan.run_inputs`); playthrough and scenario shaped as in `factory-inputs/1` |
+| `run-plan/1` | `run_plan.py --export`, worker | current (R9): horizon, one-machine ceiling, parts, blocked parts with their unlocks, plan, power diagnostic |
+| `planner-catalog/1` | `planner_catalog.catalog`, worker | current (A20): the planner page's choices and names; read only by the page |
 
 Breaking changes bump the major version. Older versions are refused by name or
 migrated explicitly, never read as something else.
@@ -141,6 +143,7 @@ migrated explicitly, never read as something else.
 | `portfolio_run.py`, `site_planner_web/`, `neighborhoods.py` | site portfolio | current |
 | `factory_run.py` | factory planner (supply side) | current (R7) |
 | `run_plan.py` | run planner (demand side) | current (R9) |
+| `site_planner_web/planner.html`, `planner_catalog.py` | run and factory tracks in the browser (tabs: Playthrough, Run, Hand-off, Factory) | current (A20) |
 | `production_cli.py` | core inspection (tiers, solve, compare) | current |
 | `demand_expansion_cli.py` (+ Netlify viewer, `netlify.toml`) | quantity datasets | current |
 | `phase_run.py` | demand-side phase pacing (goal-paced T) | **deprecated** (A15.3). Ideas ported into the run planner. Library pieces `goal_run`, `schedule`, `stock` stay in use |
@@ -169,6 +172,8 @@ Current, in force:
   - **A18** (2026-11-17: fuel routes, disposal never offsets the need, power stack);
   - **A19** (2026-11-17: power through later phases, each type alone, declared mix,
     the power-site check, ledger retired, `demand_expansion` kept for whole-run totals);
+  - **A20** (2026-11-18: the planner page, tabs; `run-inputs/1`; milestones as a
+    checklist with the tier as a button; the hand-off's site from the neighborhood export, as a start, A20.6);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).
@@ -207,8 +212,9 @@ Everything else under `docs/decisions/`, `docs/plans/` and `docs/product/` is
 - The fluid floor unit at sub-1× R (demand A5.2): needs the 0.25× Plastic read
   (still waiting, A19.1).
 - Milestone ordering inside a phase (A15.2 Q2): milestones need not be taken in
-  order, or at all. Availability takes a declared set, so this is a UI
-  question.
+  order, or at all. Availability takes a declared set; the planner page
+  declares it as a checklist with the tier as a button (A20.3, Claude's
+  recommendation adopted by Greg).
 - Scanned-but-unclaimed hard-drive offers and pool odds (A15.2 B5): deferred.
 - Storage withdrawals: ignored (A16.1).
 - Physical layout, SFMD import, cross-district opportunity cost: deferred.

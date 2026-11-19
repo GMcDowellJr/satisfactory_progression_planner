@@ -2,8 +2,12 @@
 # The CLI needs only the standard library plus the two in-repo packages it puts
 # on sys.path, so the build installs nothing but a Python the repo supports
 # (>= 3.11). `uv` fetches that Python; the build image's own is older.
+# Then the site planner pages (picker.html, planner.html) with exactly the files
+# their worker fetches, at their repo paths (tools/site_planner_web/publish.py;
+# hosting decided by Greg 2026-11-18, reframe A20.7). Deploy previews of pull
+# requests build the same way.
 [build]
-  command = "pip install uv && uv run --no-project --python 3.12 python tools/demand_expansion_cli.py viewer --out dist/index.html"
+  command = "pip install uv && uv run --no-project --python 3.12 python tools/demand_expansion_cli.py viewer --out dist/index.html && uv run --no-project --python 3.12 python tools/site_planner_web/publish.py --out dist"
   publish = "dist"
 
 [[headers]]

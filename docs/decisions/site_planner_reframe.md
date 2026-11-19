@@ -1268,3 +1268,119 @@ Answers to the open questions after A18:
 - **Water Extractors beside coal generators:** the check names Water as
   pumped but does not add those extractors' count or power to the need.
 - **Packaging containers' source:** left as reported (A19.1 item 6).
+
+## Amendment 20 — 2026-11-18. The run and factory tracks in the browser
+
+### A20.1 What raised it
+
+Greg asked, 2026-11-18, for a browser UI covering the run and factory tracks
+beside the portfolio picker, running the repo's own Python through the Pyodide
+worker (A10), with no production maths in JavaScript and with every required
+`factory-inputs/1` key behind an explicit control with no pre-filled guess.
+
+### A20.2 Decided by Greg, 2026-11-18 (holds until proven wrong)
+
+- **Layout: one page, tabs.** `tools/site_planner_web/planner.html`, with
+  Playthrough, Run, Hand-off and Factory tabs sharing one state and one
+  worker. `picker.html` and `index.html` stay for the portfolio track.
+- **Sockets for the hand-off: the neighborhood export only.** The factory's
+  site is one neighborhood of a `neighborhoods/1` export (the picker's kept
+  export, else the precomputed v0.20 one), picked on the picker's map.
+
+### A20.3 Claude's recommendations, adopted on Greg's "recommend and use" (2026-11-18)
+
+Greg may reverse either.
+
+- **A declared run record, `run-inputs/1`.** `run_plan.run_inputs(doc)` reads
+  it as `factory_run` reads `factory-inputs/1`: every key required, unknown
+  keys refused by name. Keys: `schema`, `playthrough` and `scenario` (the same
+  shapes as `factory-inputs/1`), `phase`, `horizon_min`, `horizon_fraction`
+  (exactly one non-null), `power_statistic`, `fuel_byproducts`,
+  `standing_generators`, `generation_mix`. So a browser form's gaps are
+  refused in Python, by name, never filled in JavaScript. `run-plan/1` is
+  unchanged.
+- **The hand-off from documents.** `run_plan.handoff(run_doc, decl)` plans the
+  run and calls `to_factory_inputs` with every argument taken from `decl`
+  (`HANDOFF_KEYS`), none from its keyword defaults (pinned by a test). A step
+  with blocked parts is refused.
+- **Milestones: a checklist, the tier as a button** (A15.2 Q2 left this to the
+  UI). The page ticks what Python means by "through tier N"
+  (`playthrough(through_tier=N).milestones`), and any box can be unticked. The
+  documents carry the list, with `through_tier` null, as `to_factory_inputs`
+  already wrote. A file with `through_tier` set is expanded to that list on
+  opening, and the page says so.
+
+### A20.4 Built (Claude's reading; Greg may reverse any of it)
+
+- `tools/planner_catalog.py` (a joint at `tools/` root): the page's choices,
+  read through the one loader. These are the milestones, research and
+  alternates with names and tiers, plus names for items, recipes and
+  buildings. It also gives the Project Assembly phases and each declared key's
+  vocabulary, taken from the module that owns it. `tier_milestones` serves the
+  tier button, and `generators_owned` gives the classes the state owns, in the
+  order obtained.
+- **Standing generators and the generation mix live in the Playthrough tab**,
+  shared by the run and the factory, because they describe what the
+  playthrough has built (A18, A19). `power_statistic` and `fuel_byproducts`
+  are declared separately in the Run and Hand-off tabs, because
+  `to_factory_inputs` takes them separately.
+- **Undeclared means absent.** An undeclared key is left out of the document,
+  so Python says `missing [...]`. A blank standing count for an owned class is
+  sent as null, so `power_stack` refuses it. The page marks undeclared fields
+  but never blocks a run.
+- **The goal mix** comes from the run step (`run_plan.handoff`), or is
+  declared in the Hand-off tab, where the page assembles `factory-inputs/1`
+  and `factory_run` checks it. The Factory tab also runs a hand-written
+  `factory-inputs/1` file as written.
+- **The worker** gains the ops `catalog`, `tier`, `generators`, `run_plan`,
+  `handoff` and `factory`. The `run-plan/1` and `factory-plan/1` texts are the
+  CLIs' `--export` texts. The page also shows each CLI's printed report,
+  because some figures exist only there, for example the power stack's
+  headroom, which is a property and not in the record. The page computes
+  none of them.
+- **The bundle** grows from 37 to 44 files (`bundle.py` traces the planner's
+  runs). The picker fetches them too, because the worker imports them at boot.
+
+### A20.5 Not done, said so
+
+- `run_plan.py` has no `--inputs` flag yet; a `run-inputs/1` file is read by
+  the page and by `run_plan.run_inputs`.
+- The hand-off picks one neighborhood as it stands; sockets cannot be added or
+  removed individually (Greg chose the export only).
+- The factory's power statistic and fuel route are declared again in the
+  Hand-off tab, not copied from the run, so each document says what it was
+  given.
+
+### A20.6 Correction, 2026-11-18: the neighborhood export is a start, not the only source
+
+Greg, 2026-11-18: "Socket source using neighborhoods is a start -- suggesting
+-only- is overstating (only for now)". A20.2's "the neighborhood export
+only" and A20.5's "(Greg chose the export only)" overstate his decision. What
+he decided is that a neighborhood from the export is the **first** socket
+source the hand-off offers. Other sources (typed socket ids, a site from a
+saved `portfolio-inputs/2`, adding or removing single sockets on the map) are
+not ruled out. They are not built, and which of them comes next is open and
+Greg's to decide. The page is unchanged: it offers the neighborhood export,
+as built.
+
+### A20.7 Hosting, decided by Greg 2026-11-18
+
+"Set up Netlify with a deploy preview and GitHub pages."
+
+- **Netlify.** `netlify.toml` builds the demand-expansion viewer into
+  `dist/index.html` as before. It then runs `tools/site_planner_web/publish.py
+  --out dist`, which copies the site planner pages and exactly the files in
+  `bundle_files.json` at their repo paths, and refuses a missing one by name.
+  A pull request's deploy preview builds the same way. The pages are at
+  `/tools/site_planner_web/planner.html` and `picker.html`.
+- **GitHub Pages** serves the repository from a branch, with no build. A root
+  `.nojekyll` keeps Jekyll from dropping the files named `_*` (the bundle's
+  `__init__.py`). The branch is chosen in the repository's Pages settings, by
+  Greg.
+- Measured in the container, 2026-11-18: the Netlify build command run locally
+  gives 53 files and 2.7 MB beside the viewer. The planner smoke test passed on
+  that tree, and under a `/satisfactory_progression_planner/` path prefix as
+  Pages serves it. Neither host was reachable from the container, so the first
+  live check is Greg's.
+- `.nojekyll` is not added to the manifests' `root_files`. The integrity scope
+  is unchanged.

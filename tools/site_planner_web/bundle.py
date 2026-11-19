@@ -16,6 +16,13 @@ module imported under the repo:
                                  site that pumps Water at tier 6, so the
                                  generator, Water and alternate paths load,
                                  and the starter under report_need, A11)
+    planner_catalog.catalog, tier_milestones, generators_owned
+                                 (the planner page's choices, reframe A20)
+    run_plan.run_inputs + record + report (a phase that plans and one that is blocked)
+    run_plan.handoff             (that phase to factory-inputs/1)
+    factory_run.run_inputs + record + report (the hand-off's document; a declared
+                                 power site at tier 4, so the supply check
+                                 loads; and the same site in grid mode)
 
 A file a code path reads only under inputs these runs do not reach would be
 missing in the browser; the worker then reports the missing path by name
@@ -65,6 +72,41 @@ TRACE_RUNS = (
                                 "pumps_water": False, "supply": []}]},
 )
 
+#: the planner page's runs (reframe A20); sockets are Rocky Desert district A,
+#: the tests' declaration (tests/test_factory_run.py), not Greg's
+_ROCKY_A = ["BP_ResourceNode153", "BP_ResourceNode109", "BP_ResourceNode108", "BP_ResourceNode105_2463",
+            "BP_ResourceNode107", "BP_ResourceNode106", "BP_ResourceNode112", "BP_ResourceNode111_3367",
+            "BP_ResourceNode103", "BP_ResourceNode102_2068", "BP_ResourceNode104"]
+_FSCENARIO = {"recipe_input_multiplier": 1.0, "machine_power_multiplier": 1.0,
+              "project_assembly_requirement_multiplier": 1.0, "fluid_input_floor": None,
+              "fluid_rounding_unit": "mL"}
+_PT = {"through_tier": 2, "milestones": [], "research": [], "alternates": []}
+RUN_TRACES = (
+    {"schema": "run-inputs/1", "playthrough": _PT, "scenario": _FSCENARIO, "phase": 1,
+     "horizon_min": None, "horizon_fraction": 1.0, "power_statistic": "mean",
+     "fuel_byproducts": "power", "standing_generators": {}, "generation_mix": None},
+    {"schema": "run-inputs/1", "playthrough": {**_PT, "through_tier": 3}, "scenario": _FSCENARIO,
+     "phase": 2, "horizon_min": None, "horizon_fraction": 0.25, "power_statistic": "mean",
+     "fuel_byproducts": "power", "standing_generators": {}, "generation_mix": None},
+)
+HANDOFF_TRACE = {"world_config_id": "default_502094", "label": "rocky", "socket_ids": _ROCKY_A,
+                 "supply": [], "pumps_water": False, "power_mode": "report_need",
+                 "power_statistic": "mean", "fuel_byproducts": "power", "power_from_site": False,
+                 "goal": "balanced", "grid_mw": 0.0, "spare_mw": 0.0,
+                 "infrastructure_policy": "highest_then_step_down", "fixed_rate": True}
+_FACTORY = {"schema": "factory-inputs/1", "world_config_id": "default_502094",
+            "playthrough": {**_PT, "through_tier": 4}, "scenario": _FSCENARIO,
+            "site": {"label": "rocky", "socket_ids": _ROCKY_A,
+                     "supply": [{"item_id": "Desc_Coal_C", "rate_per_min": 1000.0}], "pumps_water": False},
+            "goal_mix": [{"item_id": "Desc_IronPlateReinforced_C", "units": 1},
+                         {"item_id": "Desc_Rotor_C", "units": 1}],
+            "goal": "balanced", "power_mode": "report_need", "power_statistic": "mean",
+            "grid_mw": 0.0, "spare_mw": 0.0, "target_scale": None,
+            "infrastructure_policy": "highest_then_step_down", "fuel_byproducts": "power",
+            "standing_generators": {}, "generation_mix": None, "power_from_site": True}
+FACTORY_TRACES = (_FACTORY, {**_FACTORY, "power_mode": "grid", "grid_mw": 10000.0,
+                             "power_from_site": False})
+
 
 def _trace() -> list[str]:
     """Run in THIS interpreter (call it fresh): hook first, imports after."""
@@ -80,8 +122,11 @@ def _trace() -> list[str]:
     sys.addaudithook(hook)
     sys.path[:0] = [str(REPO / "tools")] + [str(REPO / "tools" / s / "src")
                                              for s in ("production_adapter", "progression", "realization")]
+    import factory_run  # noqa: E402
     import neighborhoods  # noqa: E402
+    import planner_catalog  # noqa: E402
     import portfolio_run  # noqa: E402
+    import run_plan  # noqa: E402
     from production_adapter import load  # noqa: E402
 
     with open(POLICY, encoding="utf-8") as f:
@@ -89,6 +134,15 @@ def _trace() -> list[str]:
     for doc in TRACE_RUNS:
         pr, scenario = portfolio_run.run_inputs(doc, REPO)
         portfolio_run.record(pr, load(REPO, scenario), None, doc)
+    planner_catalog.catalog(REPO)
+    planner_catalog.tier_milestones(REPO, 2)
+    planner_catalog.generators_owned(REPO, _FACTORY["playthrough"])
+    for doc in RUN_TRACES:
+        plan = run_plan.run_inputs(doc, REPO)
+        run_plan.record(plan), run_plan.report(plan)
+    for doc in (run_plan.handoff(RUN_TRACES[0], HANDOFF_TRACE, REPO),) + FACTORY_TRACES:
+        run = factory_run.run_inputs(doc, REPO)
+        factory_run.record(run), factory_run.report(run)
     for mod in list(sys.modules.values()):
         f = getattr(mod, "__file__", None)
         if f and os.path.abspath(f).startswith(root):
