@@ -27,142 +27,141 @@
   Pinned by tests/test_site_planner_web.py: RUN_SCHEMA, FACTORY_SCHEMA,
   RUN_PLAN_SCHEMA, FACTORY_PLAN_SCHEMA, CATALOG_SCHEMA, NB_SCHEMA.
 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+/* Reframe A21 (Greg, 2026-11-19): the look of his v5.5 Multiplier Planner
+   (dark, pill tabs, tiles, segmented choices) with his Full Factory
+   Calculator's phase buttons and horizon chips. Supersedes the A20 styling and
+   its 7384e53 refinement (sticky tabs and 44 px touch targets carried over). */
 :root {
-  --bg: #eceff2; --surface: #ffffff; --fg: #1a2229; --muted: #5a6773; --line: #cdd5dc;
-  --flow: #2d6a8a; --accent: #b8650f; --bind: #b03e1c; --ok: #2f7448; --dot: #2e3a45; --sea: #c9d6e0;
-  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --f-body: "IBM Plex Sans", system-ui, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
-  color-scheme: light;
+  --bg: #0d1117; --surface: #161b22; --tile: #1c2330; --field: #0d1117; --fg: #e6edf3; --muted: #8b98a5;
+  --line: #2d3540; --flow: #58a6ff; --accent: #f2a516; --accent-fg: #1b1300; --bind: #ff7b63; --ok: #56d364;
+  --dot: #c9d4dd; --sea: #10202c;
+  --f-display: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
-  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #d5dde3; --sea: #1b2731; color-scheme: dark } }
-:root[data-theme="dark"] {
-  --bg: #11161b; --surface: #192027; --fg: #e2e7eb; --muted: #95a2ad; --line: #2b353e;
-  --flow: #5ba4c6; --accent: #e5953e; --bind: #e3693f; --ok: #6cb381; --dot: #d5dde3; --sea: #1b2731; color-scheme: dark }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
-.wrap { max-width: 980px; margin: 0 auto; padding-block: 20px 48px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 16px 48px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px));
   display: grid; gap: 16px; }
-h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: .01em; margin: 0; }
-h1 { font-size: 2rem; line-height: 1.05; } h2 { font-size: 1.35rem; } h3 { font-size: 1.08rem; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 750; letter-spacing: -.01em; margin: 0; }
+h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.1; } h2 { font-size: 1.25rem; } h3 { font-size: 1.02rem; }
 p { margin: 0; max-width: 70ch; }
 a { color: var(--flow); }
-.eyebrow { font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.eyebrow { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
-.muted { color: var(--muted); } .small { font-size: .85rem; }
-section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
-.error { border-left: 3px solid var(--bind); padding: 6px 10px; background: color-mix(in srgb, var(--bind) 8%, transparent); font-size: .88rem; overflow-wrap: anywhere; }
+.muted { color: var(--muted); } .small { font-size: .86rem; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: .8rem; color: var(--muted); }
+section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.error { border-left: 3px solid var(--bind); border-radius: 8px; padding: 8px 12px; background: color-mix(in srgb, var(--bind) 12%, transparent); font-size: .9rem; overflow-wrap: anywhere; }
 .error .mono { font-size: .82rem; white-space: pre-wrap; }
-.ok { border-left: 3px solid var(--ok); padding: 6px 10px; background: color-mix(in srgb, var(--ok) 8%, transparent); font-size: .88rem; }
-.note { border-left: 3px solid var(--line); padding: 4px 10px; font-size: .85rem; color: var(--muted); }
-button, input, select, textarea { font: inherit; font-size: .9rem; color: var(--fg); }
-button { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
-button.primary { background: var(--flow); color: #fff; border-color: var(--flow); }
-button:disabled { opacity: .5; cursor: not-allowed; }
-input[type=text], input[type=number], input[type=search], select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; min-width: 0; }
+.ok { border-left: 3px solid var(--ok); border-radius: 8px; padding: 8px 12px; background: color-mix(in srgb, var(--ok) 10%, transparent); font-size: .9rem; }
+.note { border-left: 3px solid var(--line); padding: 4px 10px; font-size: .86rem; color: var(--muted); }
+button, input, select, textarea { font: inherit; font-size: 1rem; color: var(--fg); }
+button { background: var(--tile); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; min-height: 44px; cursor: pointer; font-weight: 600; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+input[type=text], input[type=number], input[type=search], select, textarea { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; min-height: 44px; min-width: 0; }
+select { font-size: 1.05rem; }
 textarea { font-family: var(--f-mono); font-size: .8rem; width: 100%; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
-.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
-.form label, .field { display: grid; gap: 3px; font-size: .78rem; color: var(--muted); align-content: start; }
-.undeclared > span:first-child::after, label.undeclared > span::after { content: " · not declared"; color: var(--bind); }
-fieldset { border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px 8px; margin: 0; min-width: 0; }
-fieldset legend { font-size: .78rem; color: var(--muted); padding: 0 4px; }
-fieldset.undeclared legend::after { content: " · not declared"; color: var(--bind); }
-fieldset label, .form fieldset label { display: flex; gap: 6px; align-items: baseline; color: var(--fg); font-size: .88rem; }
-/* tabs */
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; padding-top: 4px; }
-.tabs button { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; background: transparent; padding: 8px 14px; white-space: nowrap;
-  font-family: var(--f-display); font-size: 1.08rem; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
-.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--fg); margin-bottom: -1px; }
-.tabs .badge { font-family: var(--f-mono); font-size: .66rem; margin-left: 6px; padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; vertical-align: 2px; }
-.tabs .badge.b-ok { color: var(--ok); }
-.tabs .badge.b-bad { color: var(--bind); }
+/* tiles: a label over a big control (v5.5) */
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.form label, .field { display: grid; gap: 6px; align-content: start; background: var(--tile); border: 1px solid transparent; border-radius: 14px; padding: 10px 12px;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.form label > select, .form label > input, .field select, .field input { text-transform: none; letter-spacing: 0; font-weight: 500; width: 100%; }
+.undeclared { border-color: color-mix(in srgb, var(--bind) 55%, transparent) !important; }
+.undeclared > span:first-child::after, label.undeclared > span::after, fieldset.undeclared legend::after { content: " · not declared"; color: var(--bind); }
+fieldset { border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px 12px; margin: 0; min-width: 0; background: var(--tile); }
+fieldset legend { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 4px; }
+fieldset label, .form fieldset label { display: flex; gap: 8px; align-items: center; color: var(--fg); font-size: .95rem; font-weight: 500; text-transform: none; letter-spacing: 0; padding: 4px 0; background: none; }
+/* segmented choices (v5.5 goal buttons; Full Calculator phase buttons and chips):
+   radios stay the controls, the label is the button */
+.seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--seg-min, 92px), 1fr)); gap: 8px; }
+.seg label, fieldset .seg label, .form fieldset .seg label, .form .field .seg label { position: relative; display: grid; justify-items: center; align-content: center; text-align: center; gap: 0; min-height: 48px; padding: 6px 8px;
+  background: var(--field); border: 1px solid var(--line); border-radius: 12px; font-weight: 650; cursor: pointer;
+  text-transform: none; letter-spacing: 0; font-size: .98rem; color: var(--fg); }
+.seg label small { font-weight: 500; font-size: .74rem; color: var(--muted); }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.seg label:has(input:checked) { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--field)); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg.wide { --seg-min: 150px; }
+/* the static radio groups (pumps, supply, power site, goal source, rate, target, mix) as segments */
+fieldset.seg-host { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+fieldset.seg-host > :not(label):not(legend) { grid-column: 1 / -1; }
+fieldset.seg-host > label { position: relative; justify-content: center; text-align: center; min-height: 48px; padding: 6px 10px;
+  background: var(--field); border: 1px solid var(--line); border-radius: 12px; font-weight: 600; cursor: pointer; }
+fieldset.seg-host > label > input[type=radio] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+fieldset.seg-host > label:has(> input:checked) { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--field)); }
+fieldset.seg-host > label:has(> input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* tabs: amber pills, sticky (7384e53) */
+.tabs { display: flex; gap: 8px; overflow-x: auto; position: sticky; top: 0; z-index: 5; padding: 8px 2px; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); scrollbar-width: none; }
+.tabs button { flex: 0 0 auto; border-radius: 999px; padding: 10px 18px; background: var(--surface); color: var(--fg); font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.tabs .badge { font-family: var(--f-mono); font-size: .66rem; margin-left: 6px; padding: 0 6px; border-radius: 999px; border: 1px solid currentColor; vertical-align: 2px; }
+.tabs .badge.b-ok { color: var(--ok); } .tabs .badge.b-bad { color: var(--bind); }
+.tabs button[aria-selected="true"] .badge { color: var(--accent-fg); }
 .tabs .badge:empty { display: none; }
 [role=tabpanel] { display: grid; gap: 16px; }
 [role=tabpanel][hidden] { display: none; }
 /* checklists */
-details.tier { border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; }
-details.tier > summary { cursor: pointer; font-size: .9rem; }
+details.tier { border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; background: var(--tile); }
+details.tier > summary { cursor: pointer; font-size: .95rem; padding: 4px 0; }
 .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px; padding: 6px 0; }
-.checks label { display: flex; gap: 6px; align-items: baseline; font-size: .86rem; color: var(--fg); }
+.checks label { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--fg); min-height: 36px; }
 .checks label .mono { font-size: .68rem; color: var(--muted); }
-.scroll { max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; }
+input[type=checkbox], input[type=radio] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.scroll { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px; background: var(--tile); }
 /* tables */
 .tbl { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: .86rem; }
-th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-weight: 500; color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 700; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
 td.n, th.n { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.id { font-family: var(--f-mono); font-size: .7rem; color: var(--muted); display: block; }
-.chip { font-family: var(--f-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.id { font-family: var(--f-mono); font-size: .68rem; color: var(--muted); display: block; }
+.chip { font-family: var(--f-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
 .chip.bind { color: var(--bind); } .chip.ok { color: var(--ok); } .chip.flow { color: var(--flow); } .chip.acc { color: var(--accent); }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.kpi { border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: grid; gap: 2px; }
-.kpi b { font-family: var(--f-mono); font-size: 1.15rem; font-weight: 500; }
-pre.report { font-family: var(--f-mono); font-size: .76rem; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { border-radius: 14px; padding: 12px 14px; display: grid; gap: 2px; background: var(--tile); }
+.kpi b { font-family: var(--f-mono); font-size: 1.25rem; font-weight: 600; }
+pre.report { font-family: var(--f-mono); font-size: .76rem; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+details > summary { cursor: pointer; }
 /* map */
-.map-wrap { position: relative; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--bg); touch-action: none; }
+.map-wrap { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--field); touch-action: none; }
 svg.map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; max-height: 520px; cursor: grab; }
 svg.map .basemap { pointer-events: none; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) svg.map image.basemap { filter: brightness(.55); } }
-:root[data-theme="dark"] svg.map image.basemap { filter: brightness(.55); }
-.map-tools { position: absolute; right: 6px; top: 6px; display: grid; gap: 4px; }
-.map-tools button { width: 34px; height: 34px; padding: 0; background: var(--surface); }
-ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-ul.list li { border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: grid; gap: 4px; }
-ul.list li.on { border-color: var(--flow); border-left-width: 4px; }
-.mixrow { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; align-items: center; font-size: .88rem; }
+svg.map image.basemap { filter: brightness(.55); }
+.map-tools { position: absolute; right: 8px; top: 8px; display: grid; gap: 6px; }
+.map-tools button { width: 44px; height: 44px; padding: 0; background: var(--surface); }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+ul.list li { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; background: var(--tile); }
+ul.list li.on { border-color: var(--accent); border-left-width: 4px; }
+.mixrow { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 8px; align-items: center; font-size: .92rem; }
 .goalrow { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 6px; }
+.bank { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 10px; background: var(--tile); }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+header.hero { display: grid; gap: 10px; }
 footer { font-size: .8rem; color: var(--muted); display: grid; gap: 4px; }
-/* Visual refinement: keep the four-step workflow, but make its controls and
-   results read as a focused planning workspace on desktop and mobile. */
-.wrap { max-width: 1180px; gap: 18px; }
-.wrap > header { padding: 22px 24px; border: 1px solid var(--line); border-left: 4px solid var(--accent);
-  border-radius: 12px; background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--flow) 5%, var(--surface))); }
-h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
-section.panel { border-radius: 10px; padding: 18px 20px; gap: 12px; box-shadow: 0 3px 14px color-mix(in srgb, var(--fg) 6%, transparent); }
-.tabs { position: sticky; top: 0; z-index: 5; gap: 8px; border: 1px solid var(--line); border-radius: 10px;
-  padding: 6px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); }
-.tabs button { flex: 1 0 auto; border: 1px solid transparent; border-radius: 7px; padding: 10px 14px; }
-.tabs button[aria-selected="true"] { border-color: color-mix(in srgb, var(--flow) 35%, var(--line));
-  background: color-mix(in srgb, var(--flow) 12%, var(--surface)); color: var(--fg); margin-bottom: 0; }
-.tabs button:hover:not([aria-selected="true"]) { background: color-mix(in srgb, var(--flow) 6%, var(--surface)); color: var(--fg); }
-button, input[type=text], input[type=number], input[type=search], select { min-height: 38px; }
-button { border-radius: 7px; padding: 7px 12px; font-weight: 500; }
-button.primary { box-shadow: 0 2px 6px color-mix(in srgb, var(--flow) 22%, transparent); }
-input[type=text], input[type=number], input[type=search], select, textarea { border-radius: 7px; padding: 7px 10px; }
-fieldset { border-radius: 8px; padding: 10px 12px; }
-.form { gap: 12px; }
-.form label, .field { font-size: .82rem; }
-.kpi { border-radius: 8px; padding: 12px 14px; background: color-mix(in srgb, var(--flow) 4%, var(--surface)); }
-details.tier, ul.list li { border-radius: 8px; }
 @media (max-width: 640px) {
-  .wrap { gap: 12px; padding-block: 10px 28px; }
-  .wrap > header { padding: 16px; }
-  section.panel { padding: 14px; }
-  .tabs { top: 0; overflow-x: auto; }
-  .tabs button { flex: 0 0 auto; padding: 9px 11px; }
-  .form { grid-template-columns: minmax(0, 1fr); }
-  .row > button { min-height: 42px; }
+  .form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .form > fieldset, .form > .wide-field { grid-column: 1 / -1; }
+  .goalrow { grid-template-columns: minmax(0, 1fr) 90px auto; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header style="display:grid;gap:6px">
-    <div class="eyebrow">Site Planner · run and factory tracks</div>
+  <header class="hero">
+    <div class="pills"><span class="pill">Run planner</span><span class="pill">Factory planner</span><span class="pill">Storage-priority bank</span><span class="pill">Python in the browser</span></div>
     <h1>Plan a phase, then a factory</h1>
-    <p class="small muted">Declare the playthrough, plan a Project Assembly phase (run-inputs/1 → run-plan/1), hand a step to one site, and run the factory (factory-inputs/1 → factory-plan/1). Every figure is computed by this repo's Python in your browser. The site portfolio is on the <a href="picker.html">picker</a>.</p>
-    <div class="small muted mono" id="pystatus">Python: not started</div>
+    <p class="small muted">Set the playthrough, plan a Project Assembly phase, hand a step to one site and run the factory. Every figure is computed by this repo's Python in your browser. The site portfolio is on the <a href="picker.html">picker</a>.</p>
+    <div class="row"><span class="small muted mono" id="pystatus">Python: not started</span><button id="reset-defaults">Reset to defaults</button></div>
     <div id="boot-err"></div>
   </header>
 
@@ -207,13 +206,13 @@ details.tier, ul.list li { border-radius: 8px; }
       <div class="eyebrow">Scenario · applied at run time by production_adapter.scenario</div>
       <h2 id="h-sc">Multipliers</h2>
       <div class="form">
-        <label data-key="recipe_input_multiplier"><span>Recipe input × (R)</span><input id="sc-r" type="number" step="any" min="0"></label>
-        <label data-key="machine_power_multiplier"><span>Machine power × (P)</span><input id="sc-p" type="number" step="any" min="0"></label>
-        <label data-key="project_assembly_requirement_multiplier"><span>Project Assembly × (E)</span><input id="sc-e" type="number" step="any" min="0"></label>
-        <div class="field" data-key="fluid_input_floor"><span>Fluid input floor below 1× R (demand A5.2, open)</span>
-          <div class="row"><select id="sc-ff-kind"><option value="">—</option><option value="none">none</option><option value="value">a value</option></select>
-          <input id="sc-ff" type="number" step="any" min="0" style="width:7em" aria-label="Fluid input floor value" hidden></div></div>
-        <label data-key="fluid_rounding_unit"><span>Fluid rounding unit</span><select id="sc-fr"></select></label>
+        <label data-key="recipe_input_multiplier"><span>Recipe cost · R</span><select id="sc-r"></select></label>
+        <label data-key="machine_power_multiplier"><span>Power · P</span><select id="sc-p"></select></label>
+        <label data-key="project_assembly_requirement_multiplier"><span>Elevator · E</span><select id="sc-e"></select></label>
+        <div class="field" data-key="fluid_input_floor"><span>Fluid floor below 1× R (A5.2, open)</span>
+          <div class="seg" id="sc-ff-kind"></div>
+          <input id="sc-ff" type="number" step="any" min="0" aria-label="Fluid input floor value" hidden></div>
+        <div class="field" data-key="fluid_rounding_unit"><span>Fluid rounding</span><div class="seg" id="sc-fr"></div></div>
       </div>
     </section>
 
@@ -223,7 +222,7 @@ details.tier, ul.list li { border-radius: 8px; }
       <p class="small muted">Classes this state owns, in the order obtained (Python's reading). Standing units were built in earlier phases and keep carrying load; Biomass Burners are backup once another class is owned. What standing units leave goes to the declared mix, or, if you declare none, to the class obtained last.</p>
       <div id="gen-err"></div>
       <div id="gen-standing" style="display:grid;gap:6px"></div>
-      <fieldset id="mix-fs"><legend>Generation mix</legend>
+      <fieldset id="mix-fs" class="seg-host"><legend>Generation mix</legend>
         <label><input type="radio" name="mix-kind" value="none"> None declared: the class obtained last carries what standing units leave (<span class="mono">generation_mix: null</span>)</label>
         <label><input type="radio" name="mix-kind" value="shares"> Declared shares (sum to 1; a blank class is not in the mix)</label>
         <div id="mix-shares" style="display:grid;gap:6px;margin-top:6px" hidden></div>
@@ -245,14 +244,16 @@ details.tier, ul.list li { border-radius: 8px; }
       <div class="eyebrow">run-inputs/1 · the playthrough and power from the Playthrough tab</div>
       <h2 id="h-runin">Phase and horizon</h2>
       <div class="form">
-        <label data-key="phase"><span>Project Assembly phase</span><select id="run-phase"></select></label>
-        <fieldset id="hz-fs"><legend>Horizon</legend>
-          <label><input type="radio" name="hz-kind" value="fraction"> fraction of the one-machine ceiling</label>
-          <label><input type="radio" name="hz-kind" value="minutes"> minutes</label>
-          <input id="hz-val" type="number" step="any" min="0" aria-label="Horizon value" style="margin-top:4px;width:9em">
+        <fieldset id="phase-fs" class="wide-field"><legend>Project Assembly phase</legend><div class="seg" id="run-phase" style="--seg-min:110px"></div></fieldset>
+        <fieldset id="hz-fs" class="wide-field"><legend>Production time · share of the one-machine ceiling</legend>
+          <div class="seg" id="hz-chips" style="--seg-min:84px"></div>
+          <div id="hz-custom" hidden style="margin-top:8px;display:grid;gap:6px">
+            <div class="seg" id="hz-kind"></div>
+            <input id="hz-val" type="number" step="any" min="0" aria-label="Horizon value">
+          </div>
         </fieldset>
-        <label data-key="power_statistic"><span>Power statistic (variable-power recipes; no default, LP D2)</span><select id="run-stat"></select></label>
-        <label data-key="fuel_byproducts"><span>Leftover fuel (A18): to generators, or packaged</span><select id="run-fuel"></select></label>
+        <div class="field" data-key="power_statistic"><span>Power statistic (variable-power recipes)</span><div class="seg" id="run-stat"></div></div>
+        <div class="field" data-key="fuel_byproducts"><span>Leftover fuel (A18)</span><div class="seg" id="run-fuel"></div></div>
       </div>
       <p class="small muted">The ceiling is the longest any part takes on one machine of its base recipe at 100 % (the prototype's bound, B1). An undeclared field is left out of the document and Python refuses it by name.</p>
       <div class="row">
@@ -296,37 +297,37 @@ details.tier, ul.list li { border-radius: 8px; }
       <h2 id="h-decl">Factory declarations</h2>
       <div class="form">
         <label data-key="label"><span>Site label</span><input id="d-label" type="text"></label>
-        <fieldset id="fs-pumps"><legend>Pumps Water at the site</legend>
+        <fieldset id="fs-pumps" class="seg-host"><legend>Pumps Water at the site</legend>
           <label><input type="radio" name="d-pumps" value="true"> yes (Water Extractors, charged)</label>
           <label><input type="radio" name="d-pumps" value="false"> no</label></fieldset>
-        <fieldset id="fs-supply"><legend>Declared supply beside the sockets</legend>
+        <fieldset id="fs-supply" class="seg-host"><legend>Declared supply beside the sockets</legend>
           <label><input type="radio" name="d-supply" value="none"> none</label>
           <label><input type="radio" name="d-supply" value="rows"> declared below</label>
           <div id="supply-rows" style="display:grid;gap:6px;margin-top:4px" hidden></div>
           <button id="supply-add" hidden>Add supply</button></fieldset>
-        <label data-key="power_mode"><span>Power mode: grid = supply limits the plan; report_need = report the need and the stack</span><select id="d-mode"></select></label>
+        <div class="field" data-key="power_mode"><span>Power mode (grid: supply limits the plan; report_need: the need and the stack)</span><div class="seg wide" id="d-mode"></div></div>
         <label data-key="grid_mw"><span>Standing grid, MW (0 with report_need)</span><input id="d-grid" type="number" step="any"></label>
         <label data-key="spare_mw"><span>Spare held above draw, MW</span><input id="d-spare" type="number" step="any"></label>
-        <label data-key="power_statistic"><span>Power statistic (no default, LP D2)</span><select id="d-stat"></select></label>
-        <label data-key="fuel_byproducts"><span>Leftover fuel (A18)</span><select id="d-fuel"></select></label>
-        <fieldset id="fs-pfs"><legend>Power from the site (A19: declared, never inferred)</legend>
+        <div class="field" data-key="power_statistic"><span>Power statistic</span><div class="seg" id="d-stat"></div></div>
+        <div class="field" data-key="fuel_byproducts"><span>Leftover fuel (A18)</span><div class="seg" id="d-fuel"></div></div>
+        <fieldset id="fs-pfs" class="seg-host"><legend>Power from the site (A19: declared, never inferred)</legend>
           <label><input type="radio" name="d-pfs" value="true"> yes: check the stack against the site's leftover fuel</label>
           <label><input type="radio" name="d-pfs" value="false"> no</label></fieldset>
-        <label data-key="goal"><span>Goal (breaks ties)</span><select id="d-goal"></select></label>
-        <label data-key="infrastructure_policy"><span>Extractor and belt marks (A15.2 B2)</span><select id="d-policy"></select></label>
+        <div class="field" data-key="goal"><span>Goal (breaks ties)</span><div class="seg" id="d-goal"></div></div>
+        <div class="field" data-key="infrastructure_policy"><span>Extractor and belt marks (A15.2 B2)</span><div class="seg wide" id="d-policy"></div></div>
       </div>
-      <fieldset id="fs-src"><legend>Goal mix</legend>
+      <fieldset id="fs-src" class="seg-host"><legend>Goal mix</legend>
         <label><input type="radio" name="d-src" value="run"> from the run step (Run tab): the phase bill in proportion</label>
         <label><input type="radio" name="d-src" value="hand"> declared here</label>
         <div id="src-run" hidden style="margin-top:6px">
-          <fieldset id="fs-fixed"><legend>Rate</legend>
+          <fieldset id="fs-fixed" class="seg-host"><legend>Rate</legend>
             <label><input type="radio" name="d-fixed" value="true"> fixed: deliver the bill over the run's horizon (refused if the site cannot)</label>
             <label><input type="radio" name="d-fixed" value="false"> the site's maximum, and the horizon it implies</label></fieldset>
         </div>
         <div id="src-hand" hidden style="margin-top:6px;display:grid;gap:6px">
           <div id="goal-rows" style="display:grid;gap:6px"></div>
           <div><button id="goal-add">Add item</button></div>
-          <fieldset id="fs-target"><legend>Target scale (goal-mix units per minute)</legend>
+          <fieldset id="fs-target" class="seg-host"><legend>Target scale (goal-mix units per minute)</legend>
             <label><input type="radio" name="d-target" value="max"> none: the site's maximum (<span class="mono">null</span>)</label>
             <label><input type="radio" name="d-target" value="value"> fixed at <input id="d-target-val" type="number" step="any" min="0" style="width:8em" aria-label="Target scale"></label></fieldset>
         </div>
@@ -353,7 +354,7 @@ details.tier, ul.list li { border-radius: 8px; }
   </div>
 
   <footer>
-    <span>Reframe A15–A20. The tool reports what a declared target takes; it never chooses the phase, the horizon, the site, the mix or the order.</span>
+    <span>Reframe A15–A21. The tool reports what a declared target takes; it never chooses the phase, the horizon, the site, the mix or the order.</span>
     <span>Neighborhoods are candidates, not verified build sites (tools/neighborhoods.py).</span>
   </footer>
 </div>
@@ -391,7 +392,9 @@ let S = {
   milestones: [], research: [], alternates: [],
   sc: { r: "", p: "", e: "", ffKind: "", ff: "", fr: "" },
   standing: {}, mixKind: "", mix: {},
-  run: { phase: "", hzKind: "", hz: "", stat: "", fuel: "" },
+  run: { phase: "", hzKind: "", hz: "", stat: "", fuel: "", custom: false },
+  banks: [],          // storage-priority banks as typed (A21)
+  defaulted: false,   // A21: the page's defaults are applied once, on the first visit
   site: null,  // {from, socket_ids, world_config_id}
   d: { label: "", pumps: "", supplyKind: "", supply: [], mode: "", grid: "", spare: "", stat: "", fuel: "", pfs: "", goal: "", policy: "", src: "", fixed: "", goals: [], targetKind: "", target: "" },
   chosen: null,
@@ -460,6 +463,19 @@ function bindValue(input, get, set) {
   input.value = get();
   input.addEventListener(input.tagName === "SELECT" ? "change" : "input", () => { set(input.value); save(); marks(); });
 }
+// segmented choices built from the catalog (A21): a radio per value, the label is the button
+function seg(hostId, name, values, labels, get, set, after) {
+  const host = typeof hostId === "string" ? $(hostId) : hostId; host.replaceChildren();
+  values.forEach((v, i) => {
+    const val = v === null ? "null" : String(v);
+    const l = el("label"), r = el("input"); r.type = "radio"; r.name = name; r.value = val; r.checked = get() === val;
+    r.onchange = () => { set(val); save(); marks(); if (after) after(); };
+    const lab = labels ? labels[i] : (v === null ? "none" : String(v));
+    l.append(r, el("span", null, Array.isArray(lab) ? lab[0] : lab));
+    if (Array.isArray(lab) && lab[1]) l.append(el("small", null, lab[1]));
+    host.append(l);
+  });
+}
 function bindRadio(name, get, set, after) {
   for (const r of document.getElementsByName(name)) {
     r.checked = r.value === get();
@@ -515,13 +531,18 @@ $("tier-go").onclick = async () => {
 $("ms-clear").onclick = () => { S.milestones = []; save(); renderMilestones(); marks(); stateChanged(); };
 
 function bindScenario() {
-  fillSelect($("sc-fr"), CAT.fluid_rounding_units);
-  bindValue($("sc-r"), () => S.sc.r, v => S.sc.r = v);
-  bindValue($("sc-p"), () => S.sc.p, v => S.sc.p = v);
-  bindValue($("sc-e"), () => S.sc.e, v => S.sc.e = v);
-  bindValue($("sc-fr"), () => S.sc.fr, v => S.sc.fr = v);
+  // R, P, E: the game's menus (demand §3.2.1), as planner_catalog lists them
+  const opts = CAT.scenario_options, x = v => `${v}×`;
+  fillSelect($("sc-r"), opts.recipe_input_multiplier, opts.recipe_input_multiplier.map(x));
+  fillSelect($("sc-p"), opts.machine_power_multiplier, opts.machine_power_multiplier.map(x));
+  fillSelect($("sc-e"), opts.project_assembly_requirement_multiplier, opts.project_assembly_requirement_multiplier.map(x));
+  bindValue($("sc-r"), () => S.sc.r, v => { S.sc.r = v; });
+  bindValue($("sc-p"), () => S.sc.p, v => { S.sc.p = v; });
+  bindValue($("sc-e"), () => S.sc.e, v => { S.sc.e = v; refreshHorizons(); });
+  seg("sc-fr", "sc-fr", CAT.fluid_rounding_units, null, () => S.sc.fr, v => S.sc.fr = v, refreshHorizons);
   bindValue($("sc-ff"), () => S.sc.ff, v => S.sc.ff = v);
-  bindValue($("sc-ff-kind"), () => S.sc.ffKind, v => { S.sc.ffKind = v; $("sc-ff").hidden = v !== "value"; });
+  seg("sc-ff-kind", "sc-ff-kind", ["none", "value"], ["none", "a value"], () => S.sc.ffKind,
+      v => S.sc.ffKind = v, () => { $("sc-ff").hidden = S.sc.ffKind !== "value"; });
   $("sc-ff").hidden = S.sc.ffKind !== "value";
 }
 
@@ -533,6 +554,9 @@ async function readGenerators() {
   try {
     const r = await pyJSON("generators", playthroughDoc());
     GENS = r.value; $("gen-err").replaceChildren();
+    // A21: the page's default for a class with nothing declared yet
+    for (const g of GENS) if (S.standing[g.generator_class] === undefined) S.standing[g.generator_class] = String(CAT.page_defaults.standing_units);
+    save();
   } catch (e) { GENS = null; refusal("gen-err", e); }
   renderGenerators(); marks();
 }
@@ -635,7 +659,7 @@ function marks() {
   mark(q("fluid_rounding_unit"), S.sc.fr !== ""); mark($("mix-fs"), !!S.mixKind);
   for (const row of $("gen-standing").querySelectorAll("[data-gen]")) mark(row, (S.standing[row.dataset.gen] ?? "") !== "");
   const r = k => document.querySelector(`#p-run [data-key="${k}"]`);
-  mark(r("phase"), S.run.phase !== ""); mark($("hz-fs"), !!S.run.hzKind && S.run.hz !== "");
+  mark($("phase-fs"), S.run.phase !== ""); mark($("hz-fs"), !!S.run.hzKind && S.run.hz !== "");
   mark(r("power_statistic"), !!S.run.stat); mark(r("fuel_byproducts"), !!S.run.fuel);
   const h = k => document.querySelector(`#p-hand [data-key="${k}"]`);
   mark(h("label"), !!S.d.label.trim()); mark($("fs-pumps"), !!S.d.pumps); mark($("fs-supply"), !!S.d.supplyKind);
@@ -683,13 +707,39 @@ $("pt-file").onchange = async ev => {
 
 // ---- Run tab ---------------------------------------------------------------------
 function bindRun() {
-  fillSelect($("run-phase"), CAT.phases.map(p => p.phase), CAT.phases.map(p => `${p.phase} · ${p.name}`));
-  fillSelect($("run-stat"), CAT.power_statistics); fillSelect($("run-fuel"), CAT.fuel_routes);
-  bindValue($("run-phase"), () => S.run.phase, v => S.run.phase = v);
-  bindValue($("run-stat"), () => S.run.stat, v => S.run.stat = v);
-  bindValue($("run-fuel"), () => S.run.fuel, v => S.run.fuel = v);
+  seg("run-phase", "run-phase", CAT.phases.map(p => p.phase), CAT.phases.map(p => [`Phase ${p.phase}`, p.name]),
+      () => S.run.phase, v => S.run.phase = v, paintHorizons);
+  seg("run-stat", "run-stat", CAT.power_statistics, null, () => S.run.stat, v => S.run.stat = v);
+  seg("run-fuel", "run-fuel", CAT.fuel_routes, null, () => S.run.fuel, v => S.run.fuel = v);
   bindValue($("hz-val"), () => S.run.hz, v => S.run.hz = v);
-  bindRadio("hz-kind", () => S.run.hzKind, v => S.run.hzKind = v);
+  paintHorizons();
+}
+// horizon chips (Greg's Full Calculator): each preset's time is Python's (planner_catalog.horizons)
+let HZ = null, hzTimer = null;
+function refreshHorizons() {
+  clearTimeout(hzTimer);
+  hzTimer = setTimeout(async () => {
+    try { HZ = (await pyJSON("horizons", scenarioDoc())).value; } catch (e) { HZ = null; }
+    paintHorizons();
+  }, 300);
+}
+function fmtTime(min) { return min >= 120 ? `${fmt(min / 60)} h` : `${fmt(min)} min`; }  // display only
+function paintHorizons() {
+  if (!CAT) return;
+  const row = HZ && HZ.find(h => String(h.phase) === S.run.phase);
+  const presets = CAT.horizon_presets, onPreset = S.run.hzKind === "fraction" && presets.some(f => String(f) === S.run.hz);
+  const cur = S.run.custom || (S.run.hzKind && !onPreset) ? "custom" : onPreset ? S.run.hz : "";
+  seg("hz-chips", "hz-chips", [...presets.map(String), "custom"],
+      [...presets.map((f, i) => [`${fmt(100 * f)}%`, row ? fmtTime(row.horizons[i].horizon_min) : ""]), ["Custom", "fraction or minutes"]],
+      () => cur, v => {
+        if (v === "custom") { S.run.custom = true; if (!S.run.hzKind) S.run.hzKind = "minutes"; }
+        else { S.run.custom = false; S.run.hzKind = "fraction"; S.run.hz = v; }
+      }, paintHorizons);
+  $("hz-custom").hidden = cur !== "custom";
+  seg("hz-kind", "hz-kind", ["fraction", "minutes"], ["fraction of ceiling", "minutes"], () => S.run.hzKind, v => S.run.hzKind = v);
+  $("hz-val").value = S.run.hz;
+  const lg = $("hz-fs").querySelector("legend");
+  lg.textContent = row ? `Production time · one-machine ceiling ${fmtTime(row.ceiling_min)}` : "Production time · share of the one-machine ceiling";
 }
 $("run-go").onclick = async () => {
   const doc = runDoc(); $("run-doc").textContent = JSON.stringify(doc, null, 1);
@@ -764,7 +814,7 @@ function byproducts(list) {
   list.forEach(b => walk(b, 0));
   return table(["Item", "Per min", "Disposition", "How"], rows, [1]);
 }
-function reportBlock(text) { const d = el("details"); d.append(el("summary", "small", "Python's report, as the CLI prints it (headroom and capacities included)")); const p = el("pre", "report"); p.textContent = text; d.append(p); return d; }
+function reportBlock(text, summary = "Python's report, as the CLI prints it (headroom and capacities included)") { const d = el("details"); d.append(el("summary", "small", summary)); const p = el("pre", "report"); p.textContent = text; d.append(p); return d; }
 
 function renderRun() {
   const r = RUN.record, out = $("run-out"); out.replaceChildren();
@@ -805,7 +855,86 @@ function renderRun() {
   }
   if (r.power_stack) out.append(panel("Reframe A18, A19", "Power stack", powerStack(r.power_stack), ...r.notes.map(n => el("p", "note", n))));
   if (!r.blocked.length) out.append(panel("Reframe A16–A18: to the sink, to power, or packaged", "By-products", byproducts(r.byproducts)));
+  if (!r.blocked.length) out.append(bankPanel());
   out.append(reportBlock(RUN.report));
+}
+
+// ---- storage-priority banks (A15.2 B3; on the page by A21) ------------------------------
+function bankPanel() {
+  const sec = panel("A15.2 B3 · progression.timeline", "Storage-priority bank",
+    el("p", "small muted", "A smart splitter sends the shared feed lane to a storage bank first; when storage fills, the overflow feeds the Project Assembly lanes. Declare each bank; the phase's duration with and without banks, the fill times and the stock left in storage are Python's."));
+  const list = el("div"); list.style.display = "grid"; list.style.gap = "10px"; sec.append(list);
+  const parts = RUN.record.parts.map(x => x.item_id);
+  const paint = () => {
+    list.replaceChildren();
+    S.banks.forEach((b, i) => list.append(bankRow(b, i, parts, paint)));
+    if (!S.banks.length) list.append(el("span", "small muted", "No bank yet: the phase runs as planned."));
+  };
+  paint();
+  const bar = el("div", "row"), add = el("button", null, "Add bank"), go = el("button", "primary", "Compute the timeline");
+  add.onclick = () => {
+    const D = CAT.page_defaults.bank;
+    S.banks.push({ name: `bank ${S.banks.length + 1}`, storage_item: "", feed: "", intake: "", output: "",
+                   container: CAT.containers[0].building_class, count: String(D.container_count),
+                   pa_items: [...parts], splitter: D.splitter, share: "" });
+    save(); paint();
+  };
+  go.onclick = computeTimeline;
+  const out = el("div"); out.id = "tl-out"; out.style.display = "grid"; out.style.gap = "10px";
+  bar.append(add, go); sec.append(bar, out);
+  return sec;
+}
+function bankRow(b, i, parts, repaint) {
+  const box = el("div", "bank"), form = el("div", "form");
+  const tile = (label, control) => { const l = el("label"); l.append(el("span", null, label), control); form.append(l); return control; };
+  const text = (v, set, type = "number") => { const x = el("input"); x.type = type; if (type === "number") x.step = "any"; x.value = v; x.oninput = () => { set(x.value); save(); }; return x; };
+  tile("Name", text(b.name, v => b.name = v, "text"));
+  const item = el("select"); const o0 = el("option", null, "— item"); o0.value = ""; item.append(o0);
+  for (const id of [...CAT.stackable_items].sort((a, c) => nm(a).localeCompare(nm(c)))) { const o = el("option", null, nm(id)); o.value = id; item.append(o); }  // alphabetical, for finding
+  item.value = b.storage_item; item.onchange = () => { b.storage_item = item.value; save(); };
+  tile("Storage item", item);
+  tile("Feed lane, per min", text(b.feed, v => b.feed = v));
+  tile("Bank intake, per min", text(b.intake, v => b.intake = v));
+  tile("Bank output, per min", text(b.output, v => b.output = v));
+  const cont = el("select");
+  for (const c of CAT.containers) { const o = el("option", null, `${c.name} (${c.slots} slots)`); o.value = c.building_class; cont.append(o); }
+  cont.value = b.container; cont.onchange = () => { b.container = cont.value; save(); };
+  tile("Container", cont);
+  tile("Containers", text(b.count, v => b.count = v));
+  const sp = el("div", "field"), spSeg = el("div", "seg"); sp.append(el("span", null, "Splitter"), spSeg); form.append(sp);
+  const share = text(b.share, v => b.share = v); share.placeholder = "share offered, 0–1";
+  sp.append(share);
+  const paintShare = () => { share.hidden = b.splitter !== "standard"; };
+  seg(spSeg, `bk-${i}-split`, CAT.splitters, null, () => b.splitter, v => b.splitter = v, paintShare); paintShare();
+  const pf = el("fieldset"); pf.append(el("legend", null, "Project Assembly parts on its feed lane"));
+  for (const id of parts) {
+    const l = el("label"), cb = el("input"); cb.type = "checkbox"; cb.checked = b.pa_items.includes(id);
+    cb.onchange = () => { b.pa_items = cb.checked ? [...new Set([...b.pa_items, id])] : b.pa_items.filter(x => x !== id); save(); };
+    l.append(cb, el("span", null, nm(id))); pf.append(l);
+  }
+  const rm = el("button", null, "Remove bank"); rm.onclick = () => { S.banks.splice(i, 1); save(); repaint(); };
+  box.append(form, pf, rm);
+  return box;
+}
+async function computeTimeline() {
+  const banks = S.banks.map(b => ({
+    name: b.name, storage_item: b.storage_item || null, feed_per_min: num(b.feed) ?? null,
+    bank_intake_per_min: num(b.intake) ?? null, bank_output_per_min: num(b.output) ?? null,
+    container_class: b.container, container_count: num(b.count) ?? null, pa_items: b.pa_items,
+    splitter: b.splitter, standard_share: b.splitter === "standard" ? (num(b.share) ?? null) : null }));
+  const out = $("tl-out"); out.replaceChildren(el("div", "note", "Computing…"));
+  try {
+    const t = (await pyJSON("timeline", { run: RUN.doc, banks })).value;
+    out.replaceChildren(
+      kpis([["With banks", fmtTime(t.duration_min), "the phase's duration"], ["Without", fmtTime(t.baseline_min), "the plan alone"],
+            ["Delay", fmtTime(t.delay_min), "the price of filling storage"]]),
+      table(["Bank", "Stores", "Capacity", "Takes / min", "Fills / min", "Full in", "PA share while filling"],
+            t.banks.map(b => [b.name, named(b.storage_item), fmt(b.capacity_units), fmt(b.take_per_min), fmt(b.fill_rate_per_min), fmtTime(b.fill_min), `${fmt(100 * b.pa_share_filling)}%`]), [2, 3, 4, 5, 6]),
+      table(["Part", "Bill", "Rate / min", "While filling / min", "Done at", "Alone"],
+            t.parts.map(x => [named(x.item_id), fmt(x.bill_units), fmt(x.full_rate_per_min), fmt(x.filling_rate_per_min), fmtTime(x.finish_min), fmtTime(x.baseline_min)]), [1, 2, 3, 4, 5]),
+      t.stock_at_finish.length ? table(["In storage at the end", "Units", "Bank"], t.stock_at_finish.map(x => [named(x.item_id), fmt(x.units), x.bank]), [1]) : el("span"),
+      reportBlock(t.report, "progression.timeline's report (what it leaves out included)"));
+  } catch (e) { const d = el("div"); out.replaceChildren(d); d.id = "tl-err"; refusal("tl-err", e); }
 }
 
 // ---- Hand-off tab: neighborhoods map (as the picker draws it) -------------------------
@@ -904,7 +1033,11 @@ function listNB() {
     head.append(el("b", "mono", n.seed_socket_id), el("span", "small muted", `${n.socket_ids.length} sockets`));
     const used = S.site && S.site.from === n.seed_socket_id;
     const btn = el("button", used ? null : "primary", used ? "The site" : "Use as the site"); btn.disabled = used;
-    btn.onclick = () => { S.site = { from: n.seed_socket_id, socket_ids: [...n.socket_ids], world_config_id: NB.world_config_id }; save(); listNB(); draw(); paintSite(); };
+    btn.onclick = () => {
+      S.site = { from: n.seed_socket_id, socket_ids: [...n.socket_ids], world_config_id: NB.world_config_id };
+      if (!S.d.label.trim()) { S.d.label = n.seed_socket_id; $("d-label").value = S.d.label; }  // A21 default: the seed's id
+      save(); listNB(); draw(); paintSite(); marks();
+    };
     head.append(btn); li.append(head, el("span", "small", counts(n))); ul.append(li);
   }
 }
@@ -953,16 +1086,14 @@ function paintGoals() {
 $("goal-add").onclick = () => { S.d.goals.push({ item_id: "", units: "" }); save(); paintGoals(); };
 function paintSrc() { $("src-run").hidden = S.d.src !== "run"; $("src-hand").hidden = S.d.src !== "hand"; }
 function bindHand() {
-  fillSelect($("d-mode"), CAT.power_modes); fillSelect($("d-stat"), CAT.power_statistics); fillSelect($("d-fuel"), CAT.fuel_routes);
-  fillSelect($("d-goal"), CAT.goals); fillSelect($("d-policy"), CAT.infrastructure_policies);
+  seg("d-mode", "d-mode", CAT.power_modes, null, () => S.d.mode, v => S.d.mode = v);
+  seg("d-stat", "d-stat", CAT.power_statistics, null, () => S.d.stat, v => S.d.stat = v);
+  seg("d-fuel", "d-fuel", CAT.fuel_routes, null, () => S.d.fuel, v => S.d.fuel = v);
+  seg("d-goal", "d-goal", CAT.goals, null, () => S.d.goal, v => S.d.goal = v);
+  seg("d-policy", "d-policy", CAT.infrastructure_policies, null, () => S.d.policy, v => S.d.policy = v);
   bindValue($("d-label"), () => S.d.label, v => S.d.label = v);
-  bindValue($("d-mode"), () => S.d.mode, v => S.d.mode = v);
   bindValue($("d-grid"), () => S.d.grid, v => S.d.grid = v);
   bindValue($("d-spare"), () => S.d.spare, v => S.d.spare = v);
-  bindValue($("d-stat"), () => S.d.stat, v => S.d.stat = v);
-  bindValue($("d-fuel"), () => S.d.fuel, v => S.d.fuel = v);
-  bindValue($("d-goal"), () => S.d.goal, v => S.d.goal = v);
-  bindValue($("d-policy"), () => S.d.policy, v => S.d.policy = v);
   bindValue($("d-target-val"), () => S.d.target, v => S.d.target = v);
   paintHand();
 }
@@ -1065,6 +1196,29 @@ function renderFactory() {
   out.append(panel("As the run reads them", "Notes", ...r.warnings.map(w => el("p", "note", w)), reportBlock(FAC.report)));
 }
 
+// ---- defaults (reframe A21, decided by Greg 2026-11-19: the page starts pre-filled) ----------
+// The values are planner_catalog.PAGE_DEFAULTS; the milestones are Python's "through tier N".
+// Documents still carry every key; clearing a field still leaves it undeclared for Python to refuse.
+async function applyDefaults() {
+  const D = CAT.page_defaults, str = v => v == null ? "" : String(v), sc = D.scenario, h = D.handoff;
+  try { S.milestones = (await pyJSON("tier", D.through_tier)).value; } catch (e) { refusal("boot-err", e); }
+  S.research = []; S.alternates = []; S.standing = {}; S.mix = {};
+  S.mixKind = D.generation_mix === null ? "none" : "shares";
+  S.sc = { r: str(sc.recipe_input_multiplier), p: str(sc.machine_power_multiplier), e: str(sc.project_assembly_requirement_multiplier),
+           ffKind: sc.fluid_input_floor === null ? "none" : "value", ff: str(sc.fluid_input_floor),
+           fr: sc.fluid_rounding_unit === null ? "null" : sc.fluid_rounding_unit };
+  S.run = { phase: str(D.run.phase), hzKind: "fraction", hz: str(D.run.horizon_fraction), stat: D.run.power_statistic, fuel: D.run.fuel_byproducts, custom: false };
+  S.d = { ...S.d, pumps: str(h.pumps_water), supplyKind: h.supply.length ? "rows" : "none", supply: [], mode: h.power_mode,
+          grid: str(h.grid_mw), spare: str(h.spare_mw), stat: h.power_statistic, fuel: h.fuel_byproducts, pfs: str(h.power_from_site),
+          goal: h.goal, policy: h.infrastructure_policy, src: h.goal_source, fixed: str(h.fixed_rate), goals: [], targetKind: "", target: "" };
+  S.banks = []; S.defaulted = true; save();
+  paintAll(); readGenerators(); refreshHorizons();
+}
+$("reset-defaults").onclick = () => {
+  if (!CAT) return;
+  if (confirm("Reset every field to the planner's defaults? The site and documents are kept.")) applyDefaults();
+};
+
 // ---- start -------------------------------------------------------------------------
 function paintAll() {
   if (!CAT) return;
@@ -1081,7 +1235,8 @@ window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
   try {
     const r = await pyJSON("catalog", null);
     if (r.value.schema !== CATALOG_SCHEMA) throw new Error(`catalog schema ${r.value.schema}, this page reads ${CATALOG_SCHEMA}`);
-    CAT = r.value; paintAll(); readGenerators();
+    CAT = r.value;
+    if (!S.defaulted) await applyDefaults(); else { paintAll(); readGenerators(); refreshHorizons(); }
     if (NB) { listNB(); paintSite(); draw(); }
   } catch (e) { refusal("boot-err", e); $("ms-list").textContent = "Python did not start; serve the repo root over http (python -m http.server) and reload."; }
 })();

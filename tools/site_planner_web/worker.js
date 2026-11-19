@@ -15,7 +15,9 @@
 // Messages in:  {id, op, arg}; op is
 //   picker:  "boot" | "pairs" | "neighborhoods" | "run" (portfolio-inputs/2)
 //   planner: "catalog" | "tier" (milestones through tier N) | "generators"
-//            (classes a playthrough owns) | "run_plan" (run-inputs/1) |
+//            (classes a playthrough owns) | "horizons" (each phase's ceiling and
+//            preset horizons for a scenario, A21) | "run_plan" (run-inputs/1) |
+//            "timeline" ({run, banks}: storage-priority banks, A21) |
 //            "handoff" ({run, decl} -> factory-inputs/1) | "factory" (factory-inputs/1)
 // A Python refusal is passed back as Python worded it (its last line).
 // Messages out: {id, ok: true, result, ms} | {id, ok: false, error, boot}
@@ -26,7 +28,7 @@ importScripts(PYODIDE + "pyodide.js");
 const ROOT = new URL("../../", self.location.href);  // tools/site_planner_web/ -> repo root
 
 // planner.html's ops: each answers with the Python's JSON text, parsed by the page
-const PLANNER_OPS = new Set(["catalog", "tier", "generators", "run_plan", "handoff", "factory"]);
+const PLANNER_OPS = new Set(["catalog", "tier", "generators", "horizons", "run_plan", "timeline", "handoff", "factory"]);
 
 const PACKAGES = ["numpy", "scipy"];
 
@@ -109,6 +111,13 @@ def _run_plan(arg):
     plan = run_plan.run_inputs(json.loads(arg), REPO)
     return json.dumps({"record": json.dumps(run_plan.record(plan), indent=1, default=str) + "\\n",
                        "report": run_plan.report(plan)})
+
+def _horizons(arg):
+    return json.dumps(planner_catalog.horizons(REPO, json.loads(arg)))
+
+def _timeline(arg):
+    a = json.loads(arg)
+    return json.dumps(run_plan.storage_timeline(run_plan.run_inputs(a["run"], REPO), a["banks"], REPO))
 
 def _handoff(arg):
     a = json.loads(arg)

@@ -39,6 +39,7 @@
  "tools/progression/src/progression/pool.py",
  "tools/progression/src/progression/power.py",
  "tools/progression/src/progression/power_stack.py",
+ "tools/progression/src/progression/timeline.py",
  "tools/progression/src/progression/unlocks.py",
  "tools/run_plan.py",
  "tools/shadow_text.py",

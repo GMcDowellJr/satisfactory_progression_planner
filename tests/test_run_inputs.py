@@ -178,3 +178,66 @@ def test_the_factory_track_still_refuses_what_the_hand_off_passes_through():
     doc = R.handoff(_run(), _decl(power_mode="island"))
     with pytest.raises(F.FactoryRunError, match="power_mode 'island'"):
         F.run_inputs(copy.deepcopy(doc))
+
+
+# --- reframe A21: horizon presets and storage-priority banks ---------------------
+
+BANK = {"name": "plates", "storage_item": "Desc_IronPlate_C", "feed_per_min": 120.0,
+        "bank_intake_per_min": 60.0, "bank_output_per_min": 40.0,
+        "container_class": "Desc_StorageContainerMk1_C", "container_count": 1,
+        "pa_items": [SP], "splitter": "smart", "standard_share": None}
+
+
+def test_phase_horizons_are_the_plans_own_ceiling():
+    rows = R.phase_horizons(REPO, Scenario(project_assembly_requirement_multiplier=2.0), (0.25, 1.0))
+    one = next(r for r in rows if r["phase"] == 1)
+    plan = R.run_inputs(_run(scenario={**_run()["scenario"],
+                                       "project_assembly_requirement_multiplier": 2.0},
+                             horizon_fraction=0.25))
+    assert one["ceiling_min"] == pytest.approx(plan.ceiling_min)
+    assert one["horizons"][0]["horizon_min"] == pytest.approx(plan.horizon_min)
+    assert [r["phase"] for r in rows] == [1, 2, 3, 4, 5]
+
+
+def test_the_storage_timeline_is_progression_timelines():
+    from progression.timeline import StorageBank, pa_duration
+    plan = R.run_inputs(_run())
+    got = R.storage_timeline(plan, [BANK])
+    want = pa_duration({SP: 50.0}, {SP: 2.0}, (StorageBank(
+        "plates", "Desc_IronPlate_C", 120.0, 60.0, 40.0, 24 * 200.0, (SP,), "smart"),))
+    assert got["duration_min"] == pytest.approx(want.duration_min) == pytest.approx(50.0)
+    assert got["baseline_min"] == pytest.approx(25.0)
+    b = got["banks"][0]
+    assert b["capacity_units"] == 24 * 200 and b["fill_min"] == pytest.approx(120.0)
+    assert b["pa_share_filling"] == pytest.approx(0.5)
+    assert got["stock_at_finish"][0]["units"] == pytest.approx(2000.0)
+    assert R.storage_timeline(plan, [])["duration_min"] == pytest.approx(25.0)
+
+
+@pytest.mark.parametrize("over, match", [
+    ({"container_class": "Desc_StorageContainerMk2_C"}, "not one this state can build"),
+    ({"storage_item": "Desc_Water_C"}, "not a stackable solid"),
+    ({"container_count": 1.5}, "a whole number"),
+    ({"pa_items": "Desc_SpaceElevatorPart_1_C"}, "a list of PA parts"),
+])
+def test_a_bad_bank_is_refused_by_name(over, match):
+    with pytest.raises(R.RunPlanError, match=match):
+        R.storage_timeline(R.run_inputs(_run()), [{**BANK, **over}])
+
+
+def test_a_missing_bank_key_and_a_blocked_step_are_refused():
+    bank = dict(BANK)
+    del bank["splitter"]
+    with pytest.raises(R.RunPlanError, match=r"banks\[0\]: missing \['splitter'\]"):
+        R.storage_timeline(R.run_inputs(_run()), [bank])
+    blocked = R.run_inputs(_run(phase=2, playthrough={"through_tier": 3, "milestones": [],
+                                                       "research": [], "alternates": []},
+                                horizon_fraction=0.25))
+    with pytest.raises(R.RunPlanError, match="blocked parts"):
+        R.storage_timeline(blocked, [BANK])
+
+
+def test_timeline_refusals_come_from_the_timeline():
+    from progression.timeline import TimelineError
+    with pytest.raises(TimelineError, match="splitter 'priority'"):
+        R.storage_timeline(R.run_inputs(_run()), [{**BANK, "splitter": "priority"}])

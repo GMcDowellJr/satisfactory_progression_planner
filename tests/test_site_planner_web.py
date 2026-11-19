@@ -224,6 +224,6 @@ def test_worker_answers_every_planner_op():
     page = PLANNER.read_text(encoding="utf-8")
     ops = set(re.findall(r'pyJSON\("(\w+)"', page))
     declared = set(json.loads(re.findall(r"const PLANNER_OPS = new Set\((\[[^\]]*\])\)", worker)[0]))
-    assert ops == declared == {"catalog", "tier", "generators", "run_plan", "handoff", "factory"}
+    assert ops == declared == {"catalog", "tier", "generators", "horizons", "run_plan", "timeline", "handoff", "factory"}
     for op in ops:
         assert re.search(rf"^def _{op}\(arg\):", worker, re.M), op

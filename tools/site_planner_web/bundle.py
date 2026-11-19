@@ -16,8 +16,9 @@ module imported under the repo:
                                  site that pumps Water at tier 6, so the
                                  generator, Water and alternate paths load,
                                  and the starter under report_need, A11)
-    planner_catalog.catalog, tier_milestones, generators_owned
-                                 (the planner page's choices, reframe A20)
+    planner_catalog.catalog, tier_milestones, generators_owned, horizons
+                                 (the planner page's choices, reframe A20/A21)
+    run_plan.storage_timeline    (a storage-priority bank, A21)
     run_plan.run_inputs + record + report (a phase that plans and one that is blocked)
     run_plan.handoff             (that phase to factory-inputs/1)
     factory_run.run_inputs + record + report (the hand-off's document; a declared
@@ -89,6 +90,10 @@ RUN_TRACES = (
      "phase": 2, "horizon_min": None, "horizon_fraction": 0.25, "power_statistic": "mean",
      "fuel_byproducts": "power", "standing_generators": {}, "generation_mix": None},
 )
+BANK_TRACE = {"name": "plates", "storage_item": "Desc_IronPlate_C", "feed_per_min": 120.0,
+              "bank_intake_per_min": 60.0, "bank_output_per_min": 40.0,
+              "container_class": "Desc_StorageContainerMk1_C", "container_count": 1,
+              "pa_items": ["Desc_SpaceElevatorPart_1_C"], "splitter": "smart", "standard_share": None}
 HANDOFF_TRACE = {"world_config_id": "default_502094", "label": "rocky", "socket_ids": _ROCKY_A,
                  "supply": [], "pumps_water": False, "power_mode": "report_need",
                  "power_statistic": "mean", "fuel_byproducts": "power", "power_from_site": False,
@@ -137,6 +142,8 @@ def _trace() -> list[str]:
     planner_catalog.catalog(REPO)
     planner_catalog.tier_milestones(REPO, 2)
     planner_catalog.generators_owned(REPO, _FACTORY["playthrough"])
+    planner_catalog.horizons(REPO, _FSCENARIO)
+    run_plan.storage_timeline(run_plan.run_inputs(RUN_TRACES[0], REPO), [BANK_TRACE], REPO)
     for doc in RUN_TRACES:
         plan = run_plan.run_inputs(doc, REPO)
         run_plan.record(plan), run_plan.report(plan)

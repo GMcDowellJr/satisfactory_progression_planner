@@ -1384,3 +1384,84 @@ as built.
   live check is Greg's.
 - `.nojekyll` is not added to the manifests' `root_files`. The integrity scope
   is unchanged.
+
+## Amendment 21 — 2026-11-19. The planner page: Greg's prototypes' look, pre-filled defaults, the storage-priority bank
+
+### A21.1 What raised it
+
+After A20 was merged (PR #16), Greg compared the planner page with three of
+his own browser prototypes, which are not in the repository:
+- the "Satisfactory Multiplier Planner" v5.5 PWA;
+- the "R/P/E Full Factory Calculator";
+- the "Multiplier Comparison Lab".
+
+He found them "closer to what I want with defaults set and easy selection and
+navigation in iOS", and named the work on splitting resources into lanes for
+Project Assembly and storage as useful. Read 2026-11-19: none of the three
+models a storage split. The split he meant is his storage-priority bank
+(A15.2 B3), which `progression.timeline` models (R8) and no page showed.
+
+### A21.2 Decided by Greg, 2026-11-19 (holds until proven wrong)
+
+- **Look and navigation: both prototypes, combined.**
+  - From v5.5: the dark theme, the pill tabs, the tiles and the segmented
+    choices.
+  - From the Full Factory Calculator: phase buttons and horizon chips
+    (5, 10, 25, 50, 100 % of the one-machine ceiling), each chip showing its
+    time.
+  - R, P and E are menus of the game's values (demand record §3.2.1).
+- **Pre-filled defaults.** The page starts filled in.
+  - This relaxes A20.4's "nothing is pre-filled" **for the page only**. No
+    Python layer gains a default: `plan_phase`, `factory_run` and the
+    record readers still require `power_statistic` and every other key, and
+    refuse a missing one by name.
+  - Every document the page writes still carries every key explicitly.
+  - Greg chose the option that listed 1×, phase 1, a 100 % horizon, `mean`
+    and `power` as defaults.
+- **The split is the storage-priority bank** (A15.2 B3), shown on the page.
+
+### A21.3 Built (Claude's reading; Greg may reverse any of it)
+
+- **`planner_catalog.PAGE_DEFAULTS`** is the one table of defaults, beside
+  the option sets, the horizon presets and the containers. Defaults beyond
+  those Greg named:
+  - the Scenario's own (fluid floor none, rounding mL);
+  - milestones through tier 2, what phase 1's parts need;
+  - 0 standing units per owned class, and no generation mix;
+  - for the hand-off, the declaration the tests use (`report_need`, grid 0,
+    spare 0, no pumped Water, no supply, not a power site, `balanced`,
+    `highest_then_step_down`, the goal mix from the run step at a fixed
+    rate);
+  - for a new bank, a smart splitter into one Storage Container.
+
+  The site has no default; its label defaults to the neighborhood's seed id.
+  A test runs the defaults end to end. The defaults are applied on the first
+  visit, which includes a browser that kept A20 state, and by "Reset to
+  defaults".
+- **`run_plan.phase_bill`** is the bill and ceiling, factored out of
+  `plan_phase` with no figure moved. `run_plan.phase_horizons` and
+  `planner_catalog.horizons` give each phase's ceiling and each preset's
+  minutes, so the page multiplies nothing.
+- **`run_plan.storage_timeline(plan, banks)`** applies `progression.timeline`
+  to a planned step:
+  - The bill and the PA lanes' rates are the plan's parts.
+  - Each bank declares its feed, intake, output, container type and count,
+    the parts on its lane, and its splitter.
+  - A container must be unlocked in the plan's state, and the storage item
+    must be a stackable solid.
+  - Every figure in the result is computed in Python, the bank properties
+    included.
+- **The worker** gains `horizons` and `timeline`. The bundle grows from 44 to
+  45 files (`progression/timeline.py`).
+- **The A20 styling is superseded,** including Greg's refinement `7384e53`.
+  Its sticky tabs and larger touch targets are kept.
+
+### A21.4 Not done, said so
+
+- **The Comparison Lab's A/B view** of two scenarios is not ported. Greg
+  named only the look and the defaults.
+- **v5.5's district allocation** (per-resource reserve and "future resource
+  pressure") is not ported. Its allocator was superseded by the repository's
+  solve in crossover A26–A35.
+- **A bank's intake and output are declared numbers.** They are not derived
+  from a recipe and a machine count.

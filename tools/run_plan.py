@@ -61,6 +61,7 @@ from progression import (  # noqa: E402
 from progression.byproducts import Byproduct, ledger, report_lines  # noqa: E402
 from progression.power_stack import PowerStack, power_stack  # noqa: E402
 from progression.power_stack import report_lines as stack_lines  # noqa: E402
+from progression.timeline import StorageBank, container_options, pa_duration  # noqa: E402
 
 PLAN_SCHEMA = "run-plan/1"
 #: The declared run (reframe A20, 2026-11-18): what plan_phase takes, as a
@@ -135,6 +136,43 @@ class PhasePlan:
     byproducts: tuple[Byproduct, ...] = ()   # reframe A16: default to the AWESOME Sink
 
 
+def phase_bill(repo: pathlib.Path, data, phase: int) -> tuple[dict[str, float], dict[str, float], float]:
+    """The phase's E-scaled bill, each part's one-machine minutes and the
+    one-machine ceiling (B1, the prototype's bound), under `data`'s scenario."""
+    rows = [r for r in load_project_assembly(repo, data) if r.phase == phase]
+    if not rows:
+        raise RunPlanError(f"no Project Assembly phase {phase}")
+    bill: dict[str, float] = {}
+    for r in rows:
+        bill[r.item_id] = bill.get(r.item_id, 0.0) + data.scenario.apply_project_assembly_quantity(
+            r.quantity_1x)
+    one_machine: dict[str, float] = {}
+    for item, q in bill.items():
+        base = [rc for rc in data.recipes.values()
+                if not rc.is_alternate and any(i == item for i, _ in rc.outputs)]
+        if len(base) != 1:
+            raise RunPlanError(f"{item}: {len(base)} base recipes make it; the one-machine "
+                               "ceiling needs exactly one")
+        rate = dict(base[0].outputs)[item]
+        one_machine[item] = q / rate
+    return bill, one_machine, max(one_machine.values())
+
+
+def phase_horizons(repo: pathlib.Path, scenario: Scenario,
+                   fractions: tuple[float, ...]) -> list[dict]:
+    """Per Project Assembly phase: the one-machine ceiling and the horizon each
+    declared fraction of it gives (reframe A21: the page's horizon chips show
+    these minutes; the page does not multiply)."""
+    data = load(repo, scenario)
+    phases = sorted({r.phase for r in load_project_assembly(repo, data)})
+    out = []
+    for n in phases:
+        _, _, ceiling = phase_bill(repo, data, n)
+        out.append({"phase": n, "ceiling_min": ceiling,
+                    "horizons": [{"fraction": f, "horizon_min": f * ceiling} for f in fractions]})
+    return out
+
+
 def plan_phase(
     repo: pathlib.Path, *, state: PlaythroughState, scenario: Scenario, phase: int,
     horizon_min: float | None = None, horizon_fraction: float | None = None,
@@ -153,24 +191,7 @@ def plan_phase(
         raise RunPlanError(f"horizon_fraction must be in (0, 1], got {horizon_fraction!r}")
 
     data = load(repo, scenario)
-    rows = [r for r in load_project_assembly(repo, data) if r.phase == phase]
-    if not rows:
-        raise RunPlanError(f"no Project Assembly phase {phase}")
-    bill: dict[str, float] = {}
-    for r in rows:
-        bill[r.item_id] = bill.get(r.item_id, 0.0) + data.scenario.apply_project_assembly_quantity(
-            r.quantity_1x)
-
-    one_machine: dict[str, float] = {}
-    for item, q in bill.items():
-        base = [rc for rc in data.recipes.values()
-                if not rc.is_alternate and any(i == item for i, _ in rc.outputs)]
-        if len(base) != 1:
-            raise RunPlanError(f"{item}: {len(base)} base recipes make it; the one-machine "
-                               "ceiling needs exactly one")
-        rate = dict(base[0].outputs)[item]
-        one_machine[item] = q / rate
-    ceiling = max(one_machine.values())
+    bill, one_machine, ceiling = phase_bill(repo, data, phase)
     horizon = horizon_min if horizon_min is not None else horizon_fraction * ceiling
     parts = tuple(PartTarget(i, q, one_machine[i], q / horizon) for i, q in bill.items())
 
@@ -355,6 +376,66 @@ def handoff(run_doc: dict, decl: dict, repo: pathlib.Path = REPO) -> dict:
         supply=tuple((s["item_id"], s["rate_per_min"]) for s in decl["supply"]),
         pumps_water=decl["pumps_water"], grid_mw=decl["grid_mw"], spare_mw=decl["spare_mw"],
         infrastructure_policy=decl["infrastructure_policy"], fixed_rate=decl["fixed_rate"])
+
+
+#: a storage-priority bank as the page declares it (reframe A21; A15.2 B3)
+BANK_KEYS = ("name", "storage_item", "feed_per_min", "bank_intake_per_min", "bank_output_per_min",
+             "container_class", "container_count", "pa_items", "splitter", "standard_share")
+
+
+def storage_timeline(plan: PhasePlan, banks: list, repo: pathlib.Path = REPO) -> dict:
+    """B3/Q6 on a planned step: the phase's duration with declared
+    storage-priority banks, from `progression.timeline`.
+
+    The bill and the PA lanes' full rates are the plan's parts (E-scaled bill,
+    rate over the horizon). Each bank's capacity is its declared container type
+    and count (Q6), which must be unlocked in the plan's state; the stack size
+    is the storage item's. Every figure in the result is computed here, the
+    bank properties included, so the page multiplies nothing."""
+    if plan.blocked:
+        raise RunPlanError(f"phase {plan.phase} has blocked parts; a blocked step has no duration")
+    if not isinstance(banks, list):
+        raise RunPlanError("banks: a list ([] gives the phase without banks)")
+    data = load(repo, plan.scenario)
+    built = []
+    for n, b in enumerate(banks):
+        _keys(f"banks[{n}]", b, BANK_KEYS)
+        item = b["storage_item"]
+        if item not in data.items:
+            raise RunPlanError(f"banks[{n}].storage_item: {item!r} is not an item")
+        stack = data.items[item].stack_size
+        if data.items[item].form != "solid" or not stack:
+            raise RunPlanError(f"banks[{n}].storage_item: {item} is not a stackable solid; "
+                               "a storage container holds solids (items.csv form, stack size)")
+        count = b["container_count"]
+        if not isinstance(count, int) or isinstance(count, bool):
+            raise RunPlanError(f"banks[{n}].container_count: a whole number, got {count!r}")
+        options = container_options(repo, plan.state, stack, count)
+        chosen = [o for o in options if o.building_class == b["container_class"]]
+        if not chosen:
+            raise RunPlanError(f"banks[{n}].container_class {b['container_class']!r} is not one "
+                               f"this state can build: {[o.building_class for o in options]}")
+        if not isinstance(b["pa_items"], list):
+            raise RunPlanError(f"banks[{n}].pa_items: a list of PA parts")
+        built.append(StorageBank(
+            name=b["name"], storage_item=item, feed_per_min=b["feed_per_min"],
+            bank_intake_per_min=b["bank_intake_per_min"],
+            bank_output_per_min=b["bank_output_per_min"],
+            capacity_units=chosen[0].capacity_units, pa_items=tuple(b["pa_items"]),
+            splitter=b["splitter"], standard_share=b["standard_share"]))
+    tl = pa_duration({p.item_id: p.bill_units for p in plan.parts},
+                     {p.item_id: p.rate_per_min for p in plan.parts}, tuple(built))
+    return {
+        "duration_min": tl.duration_min, "baseline_min": tl.baseline_min, "delay_min": tl.delay_min,
+        "banks": [{"name": x.name, "storage_item": x.storage_item, "splitter": x.splitter,
+                   "capacity_units": x.capacity_units, "take_per_min": x.bank_take_per_min,
+                   "fill_rate_per_min": x.fill_rate_per_min, "fill_min": x.fill_min,
+                   "pa_share_filling": x.pa_share_filling, "pa_items": list(x.pa_items)}
+                  for x in built],
+        "parts": [dataclasses.asdict(p) for p in tl.parts],
+        "stock_at_finish": [{"bank": bk, "item_id": i, "units": u} for bk, i, u in tl.stock_at_finish],
+        "report": tl.report(),
+    }
 
 
 def record(plan: PhasePlan) -> dict:

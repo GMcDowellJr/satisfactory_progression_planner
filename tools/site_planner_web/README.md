@@ -8,7 +8,8 @@ browser (Pyodide 0.27.7 from the CDN). Decisions: reframe record
                    portfolio-inputs/2 file or run it here
     index.html     render a portfolio-plan/1 record (from the picker's run, or
                    a file from `portfolio_run.py --export`)
-    planner.html   the run and factory tracks (A20), in tabs: Playthrough
+    planner.html   the run and factory tracks (A20; look, defaults and the
+                   storage-priority bank A21), in tabs: Playthrough
                    (milestones, research, alternates, scenario, generators
                    built and mix), Run (run-inputs/1 -> run-plan/1), Hand-off
                    (a neighborhood as the site, every factory declaration),

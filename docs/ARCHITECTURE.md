@@ -4,7 +4,7 @@
   changes. Decision records stay immutable and are amended forward; this
   document says which of them govern.
 - Adopted: site-planner reframe Amendments 15–18 (decided by Greg, 2026-11-17).
-- Last revised: 2026-11-18 (reframe A20: the planner page and `run-inputs/1`).
+- Last revised: 2026-11-19 (reframe A21: the planner page's look, defaults and storage bank).
 - Scope: the whole repository. `planning_data/ARCHITECTURE.md` covers the data
   layout only.
 
@@ -112,7 +112,7 @@ module is not built yet.
 | Power tables (generator, fuel, extractor figures) | `progression.power.load_power_tables` (the ledger it once served was retired) | reframe A19.1 item 4 |
 | PA demand | `gamedata.load_project_assembly` → `district.compose_bill` / `stock` | demand A1 |
 | PA pacing (bill ÷ T) | `progression.schedule` | carried as implementation, demand-side only |
-| Storage-priority banks, PA duration | `progression.timeline` (R8): FILLING then FULL segments, smart or standard splitter, container options by unlock | A15.2 (B3, Q6) |
+| Storage-priority banks, PA duration | `progression.timeline` (R8): FILLING then FULL segments, smart or standard splitter, container options by unlock; on a planned step via `run_plan.storage_timeline` (A21) | A15.2 (B3, Q6) |
 | Recipe expansion to quantities | `demand_expansion` (tier-blind, primary outputs): whole-run quantity totals | demand A1–A4; kept for whole-run totals, A19.1 |
 
 ---
@@ -143,7 +143,7 @@ migrated explicitly, never read as something else.
 | `portfolio_run.py`, `site_planner_web/`, `neighborhoods.py` | site portfolio | current |
 | `factory_run.py` | factory planner (supply side) | current (R7) |
 | `run_plan.py` | run planner (demand side) | current (R9) |
-| `site_planner_web/planner.html`, `planner_catalog.py` | run and factory tracks in the browser (tabs: Playthrough, Run, Hand-off, Factory) | current (A20) |
+| `site_planner_web/planner.html`, `planner_catalog.py` | run and factory tracks in the browser (tabs: Playthrough, Run, Hand-off, Factory); storage-priority bank on the Run tab | current (A20, A21) |
 | `production_cli.py` | core inspection (tiers, solve, compare) | current |
 | `demand_expansion_cli.py` (+ Netlify viewer, `netlify.toml`) | quantity datasets | current |
 | `phase_run.py` | demand-side phase pacing (goal-paced T) | **deprecated** (A15.3). Ideas ported into the run planner. Library pieces `goal_run`, `schedule`, `stock` stay in use |
@@ -174,6 +174,8 @@ Current, in force:
     the power-site check, ledger retired, `demand_expansion` kept for whole-run totals);
   - **A20** (2026-11-18: the planner page, tabs; `run-inputs/1`; milestones as a
     checklist with the tier as a button; the hand-off's site from the neighborhood export, as a start, A20.6);
+  - **A21** (2026-11-19: the page takes the look of Greg's prototypes, starts pre-filled
+    (the page only; no Python default), and shows the storage-priority bank);
   - A12: only Greg's stated facts in A12.2; A12.3 is a proposal.
 - `demand_expansion_scope_and_site_capacity.md`: A5 and A6 (in-game reads,
   post-reframe).
